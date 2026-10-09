@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FilePlus, FileText, FolderOpen, LayoutTemplate, type LucideIcon } from 'lucide-react'
 import { newDocument, openDocument, openExample, openRecent } from './actions'
 import { t } from './i18n'
@@ -40,8 +40,10 @@ export function Welcome() {
   const show = usePrefs((p) => p.showWelcome)
   const [recent, setRecent] = useState<{ name: string; path: string }[]>([])
 
+  const box = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
+    box.current?.focus()
     let current = true
     platform.recent?.().then((files) => current && setRecent(files), () => {})
     return () => {
@@ -59,7 +61,8 @@ export function Welcome() {
 
   return (
     <div className="palette-backdrop welcome-backdrop" onMouseDown={close} onKeyDown={(e) => e.key === 'Escape' && close()}>
-      <div className="dialog welcome" role="dialog" aria-label={t('Welcome to OpenCalque')} onMouseDown={(e) => e.stopPropagation()}>
+      {/* The window itself takes the keyboard, so that Esc closes it without any one control looking chosen. */}
+      <div className="dialog welcome" role="dialog" aria-label={t('Welcome to OpenCalque')} tabIndex={-1} ref={box} onMouseDown={(e) => e.stopPropagation()}>
         <div className="welcome-head">
           <Logo size={46} />
           <div>
@@ -94,7 +97,7 @@ export function Welcome() {
         )}
         <footer>
           <label>
-            <input type="checkbox" autoFocus checked={show} onChange={(e) => setPrefs({ showWelcome: e.target.checked })} />
+            <input type="checkbox" checked={show} onChange={(e) => setPrefs({ showWelcome: e.target.checked })} />
             {t('Show this window when the app starts')}
           </label>
           <button className="text-button" onClick={() => useStore.setState({ welcomeOpen: false, aboutOpen: true })}>

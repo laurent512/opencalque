@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, LockOpen, Plus, Trash2, ArrowDown, ArrowUp, Copy, Files } from 'lucide-react'
 import { childrenOf, layersOf, pagesOf, type Node, type Op, colorsOf, colorUses } from '@opencalque/core'
 import { moveInOrder, duplicatePage, movePage } from '../actions'
+import { ColorChoice } from '../ColorChoice'
 import { t } from '../i18n'
 import { apply, editComponent, select, showPage, useStore } from '../store'
 import { EditableText, IconButton, labelOf, Section, TypeIcon } from '../ui'
@@ -86,14 +87,7 @@ export function Layers() {
           title={t('New objects go on the highlighted layer')}
           onClick={() => useStore.setState({ activeLayer: layer.id })}
         >
-          <input
-            type="color"
-            className="swatch"
-            title={t('Layer color')}
-            value={layer.color ?? '#1f1f1f'}
-            onClick={(e) => e.stopPropagation()}
-            onChange={(e) => update(layer.id, { color: e.target.value })}
-          />
+          <ColorChoice compact title={t('Layer color')} stored={layer.color} fallback="#1f1f1f" commit={(color) => update(layer.id, { color: (color as string | undefined) ?? null })} />
           <EditableText value={layer.name} onChange={(name) => update(layer.id, { name })} />
           {layers.length > 1 && (
             <IconButton title={t('Delete layer')} onClick={() => apply([{ op: 'remove_layer', id: layer.id }])}>

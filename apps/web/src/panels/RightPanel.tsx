@@ -6,7 +6,8 @@ import { reorderSelection, transformSelection, addModifier, alignSelection, dist
 import { applyCalibration } from '../floorplan'
 import { language, msg, t } from '../i18n'
 import { apply, editComponent, registry, setTool, toast, useStore, selectCorner } from '../store'
-import { Field, IconButton, labelOf, Section } from '../ui'
+import { ColorChoice } from '../ColorChoice'
+import { DashPicker, Field, IconButton, labelOf, Section } from '../ui'
 import { dashIndex, DASHES, penOf, PENS, pixelsOf } from '../strokes'
 import { formatLength, parseLength, parseNumber, unit } from '../units'
 
@@ -35,6 +36,8 @@ interface FieldSpec {
   optional?: boolean
   /** For a color: what an unset value means, e.g. "from layer". */
   unset?: string
+  /** The options are the symbols of a line's end, shown as pictures to pick from: of its first end or of its last. */
+  ends?: 'start' | 'end'
 }
 
 const GEOMETRY = msg('Geometry')
@@ -60,8 +63,8 @@ const DIMENSION: FieldSpec[] = [
   ...AB,
   len('offset', msg('Offset')),
   ...stroke(msg('Dimension line')),
-  { path: 'startMarker', label: msg('Start'), type: 'string', section: msg('Ends'), fallback: 'tick', options: MARKERS },
-  { path: 'endMarker', label: msg('End'), type: 'string', section: msg('Ends'), fallback: 'tick', options: MARKERS },
+  { path: 'startMarker', label: msg('Start'), type: 'string', section: msg('Ends'), fallback: 'tick', options: MARKERS, ends: 'start' },
+  { path: 'endMarker', label: msg('End'), type: 'string', section: msg('Ends'), fallback: 'tick', options: MARKERS, ends: 'end' },
   len('markerSize', msg('Size'), 100, msg('Ends')),
   { path: 'extension.stroke', label: msg('Color'), type: 'color', section: msg('Extension lines'), fallback: '#1f1f1f', unset: msg('from line') },
   { ...num('extension.strokeWidth', msg('Weight'), undefined, msg('Extension lines')), optional: true },
@@ -84,8 +87,8 @@ const TIPS = options(['arrow', msg('Arrow')], ['open-arrow', msg('Open arrow')],
 const ANNOTATION: FieldSpec[] = [
   { path: 'text', label: msg('Text'), type: 'string', multiline: true },
   ...AB,
-  { path: 'startMarker', label: msg('At the tip'), type: 'string', section: msg('Ends'), fallback: 'arrow', options: TIPS },
-  { path: 'endMarker', label: msg('At the text'), type: 'string', section: msg('Ends'), fallback: 'none', options: TIPS },
+  { path: 'startMarker', label: msg('At the tip'), type: 'string', section: msg('Ends'), fallback: 'arrow', options: TIPS, ends: 'start' },
+  { path: 'endMarker', label: msg('At the text'), type: 'string', section: msg('Ends'), fallback: 'none', options: TIPS, ends: 'end' },
   { ...len('markerSize', msg('Size'), undefined, msg('Ends')), optional: true },
   { path: 'shape', label: msg('Path'), type: 'string', section: msg('Line'), fallback: 'curve', options: options(['curve', msg('Curved')], ['straight', msg('Straight')], ['elbow', msg('Elbow (square turn)')]) },
   num('bend', msg('Curve'), 0.2, msg('Line')),
@@ -96,8 +99,8 @@ const ANNOTATION: FieldSpec[] = [
 
 /** The symbols at the ends of a plain line, which has none unless asked. */
 const LINE_ENDS: FieldSpec[] = [
-  { path: 'startMarker', label: msg('Start'), type: 'string', section: msg('Ends'), fallback: 'none', options: TIPS },
-  { path: 'endMarker', label: msg('End'), type: 'string', section: msg('Ends'), fallback: 'none', options: TIPS },
+  { path: 'startMarker', label: msg('Start'), type: 'string', section: msg('Ends'), fallback: 'none', options: TIPS, ends: 'start' },
+  { path: 'endMarker', label: msg('End'), type: 'string', section: msg('Ends'), fallback: 'none', options: TIPS, ends: 'end' },
   len('markerSize', msg('Size'), 150, msg('Ends')),
 ]
 
@@ -196,120 +199,6 @@ type Update = (patch: (node: Node) => Record<string, unknown>) => void
 /** Properties that are sizes, which dragging must not take below zero. */
 const SIZES = /(^|\.)(width|height|thickness|rx|ry|size|markerSize|extensionGap|strokeWidth|opacity|decimals)$/
 
-/**
- * A colour property: what it is now, and a list to change it from. It can hold a colour of its
- * own, or be linked to one of the drawing's shared colours, in which case it shows that colour's
- * name with a link and follows it whenever it changes.
- */
-function ColorChoice({ stored, fallback, unset, commit }: { stored: string | undefined; fallback: string; unset?: string; commit: (value: unknown) => void }) {
-  const doc = useStore((s) => s.doc)
-  const [open, setOpen] = useState(false)
-  const box = useRef<HTMLSpanElement>(null)
-  const menu = useRef<HTMLDivElement>(null)
-  const [place, setPlace] = useState<{ left: number; top: number } | null>(null)
-  useEffect(() => {
-    if (!open) return
-    const onPointerDown = (e: PointerEvent) => {
-      if (!box.current?.contains(e.target as HTMLElement)) setOpen(false)
-    }
-    // The list is placed against the field once; when the panel scrolls under it, it closes.
-    const onScroll = (e: Event) => {
-      if (!(e.target instanceof Element) || !menu.current?.contains(e.target)) setOpen(false)
-    }
-    const onResize = () => setOpen(false)
-    window.addEventListener('pointerdown', onPointerDown, true)
-    window.addEventListener('scroll', onScroll, true)
-    window.addEventListener('resize', onResize)
-    return () => {
-      window.removeEventListener('pointerdown', onPointerDown, true)
-      window.removeEventListener('scroll', onScroll, true)
-      window.removeEventListener('resize', onResize)
-    }
-  }, [open])
-  // The list has a width of its own, whatever the width of the field: it hangs under the field,
-  // ending where the field ends, goes above it when there is no room below, and stays in the window.
-  useLayoutEffect(() => {
-    if (!open || !box.current || !menu.current) return setPlace(null)
-    const field = box.current.getBoundingClientRect()
-    const list = menu.current.getBoundingClientRect()
-    const margin = 8
-    const left = Math.min(Math.max(margin, field.right - list.width), window.innerWidth - list.width - margin)
-    const below = field.bottom + 4
-    const top = below + list.height + margin <= window.innerHeight ? below : Math.max(margin, field.top - 4 - list.height)
-    setPlace({ left, top })
-  }, [open, stored, doc.colors])
-
-  const linked = colorRefOf(stored)
-  const shared = linked === null ? undefined : doc.colors?.[linked]
-  // What is painted: the shared colour's value, the property's own colour, or what it falls back on.
-  const shown = resolveColor(doc, stored) ?? fallback
-  const colors = colorsOf(doc)
-
-  /** Makes a shared colour out of the one shown and links this property to it. */
-  const share = () => {
-    const id = newId('color')
-    if (apply([{ op: 'add_color', color: { id, name: t('Colour {n}', { n: colors.length + 1 }), value: shown } }])) commit(colorRef(id))
-    setOpen(false)
-  }
-
-  return (
-    <span className="color-choice" ref={box}>
-      <button type="button" className={`color-now${linked ? ' linked' : ''}`} title={linked ? t('Linked to a shared colour: it changes when that colour does') : t('Choose a colour')} onClick={() => setOpen(!open)}>
-        <i style={{ background: shown }} />
-        {linked ? (
-          <>
-            <Link2 size={12} />
-            <span>{shared?.name ?? t('Missing colour')}</span>
-          </>
-        ) : stored === undefined ? (
-          <em className="faint">{unset && t(unset)}</em>
-        ) : (
-          <span>{shown}</span>
-        )}
-      </button>
-      {open && (
-        <div className="color-menu" ref={menu} style={place ? { left: place.left, top: place.top } : { visibility: 'hidden' }}>
-          <h4>{t('Shared colours')}</h4>
-          {colors.length === 0 && <p className="hint">{t('None yet. A shared colour is used by reference: change it once and everything linked to it changes.')}</p>}
-          {colors.map((color) => (
-            <button key={color.id} type="button" className={`color-option${color.id === linked ? ' active' : ''}`} title={t('Link to this shared colour')} onClick={() => (commit(colorRef(color.id)), setOpen(false))}>
-              <i style={{ background: color.value }} />
-              <span>{color.name}</span>
-              {color.id === linked && <Check size={12} />}
-            </button>
-          ))}
-          <button type="button" className="color-option" onClick={share}>
-            <Plus size={12} />
-            <span>{t('New shared colour from this one')}</span>
-          </button>
-          {shared && (
-            <label className="color-option" title={t('Changes every object linked to it')}>
-              <input type="color" className="swatch" value={shared.value} onChange={(e) => apply([{ op: 'update_color', id: shared.id, patch: { value: e.target.value } }])} />
-              <span>{t('Change “{name}” everywhere', { name: shared.name })}</span>
-            </label>
-          )}
-          <h4>{t('This object only')}</h4>
-          <label className="color-option">
-            <input type="color" className="swatch" value={shown} onChange={(e) => commit(e.target.value)} />
-            <span>{linked ? t('Unlink and pick a colour') : t('Pick a colour')}</span>
-          </label>
-          {linked && (
-            <button type="button" className="color-option" onClick={() => (commit(shown), setOpen(false))}>
-              <Unlink size={12} />
-              <span>{t('Unlink, keeping the colour')}</span>
-            </button>
-          )}
-          {stored !== undefined && (
-            <button type="button" className="color-option" onClick={() => (commit(undefined), setOpen(false))}>
-              <span>{t('Reset')}{unset ? ` (${t(unset)})` : ''}</span>
-            </button>
-          )}
-        </div>
-      )}
-    </span>
-  )
-}
-
 function FieldRow({ node, nodes, field, update }: { node: Node; nodes: Node[]; field: FieldSpec; update: Update }) {
   // With several objects selected, a property they do not all agree on is shown as mixed, with no
   // value of its own; setting it gives them all the same.
@@ -334,6 +223,23 @@ function FieldRow({ node, nodes, field, update }: { node: Node; nodes: Node[]; f
       />
     )
   }
+  if (field.type === 'dash') {
+    return (
+      <div className="field">
+        <span>{t(field.label)}</span>
+        <DashPicker value={stored} none={mixed} onPick={(pattern) => commit(pattern ?? undefined)} />
+      </div>
+    )
+  }
+  if (field.ends) {
+    // Not a label: a label would hand every click to the first button in it.
+    return (
+      <div className="field">
+        <span>{t(field.label)}</span>
+        <EndPicker side={field.ends} options={field.options!} value={mixed ? undefined : (value as string | undefined)} onPick={commit} />
+      </div>
+    )
+  }
   return (
     <label className="field">
       <span>{t(field.label)}</span>
@@ -346,17 +252,6 @@ function FieldRow({ node, nodes, field, update }: { node: Node; nodes: Node[]; f
           }}
           onChange={(e) => commit(e.target.checked)}
         />
-      )}
-      {field.type === 'dash' && (
-        <select value={mixed ? 'mixed' : dashIndex(stored)} onChange={(e) => commit(DASHES[Number(e.target.value)][1] ?? undefined)}>
-          {mixed && <option value="mixed">{t('Mixed')}</option>}
-          {dashIndex(stored) < 0 && !mixed && <option value={-1}>{t('Custom')}</option>}
-          {DASHES.map(([name], i) => (
-            <option key={name} value={i}>
-              {t(name)}
-            </option>
-          ))}
-        </select>
       )}
       {field.type === 'weight' && (
         // Chosen as what it prints at; kept in the drawing as pixels of screen.
@@ -381,6 +276,43 @@ function FieldRow({ node, nodes, field, update }: { node: Node; nodes: Node[]; f
       )}
       {field.type === 'color' && <ColorChoice key={node.id} stored={stored as string | undefined} fallback={(value as string | undefined) ?? '#ffffff'} unset={mixed ? msg('Mixed') : field.unset} commit={commit} />}
     </label>
+  )
+}
+
+/** What each symbol of a line's end looks like, drawn at the right-hand end of a short line. */
+const END_SHAPES: Record<string, React.ReactNode> = {
+  none: null,
+  arrow: <path d="M22 9 14 5.5v7z" fill="currentColor" stroke="none" />,
+  'open-arrow': <path d="M14.5 5 22 9l-7.5 4" fill="none" />,
+  dot: <circle cx="19.5" cy="9" r="2.6" fill="currentColor" stroke="none" />,
+  tick: <path d="M16.5 13.5 22.5 4.5" />,
+}
+
+/**
+ * The symbols a line can end in, as a row of small pictures to pick from: each shows the end of
+ * a line with that symbol on it, turned the way that end of the line points.
+ */
+function EndPicker(props: { side: 'start' | 'end'; options: Option[]; value: string | undefined; onPick: (value: string) => void }) {
+  return (
+    <div className="end-picker" role="radiogroup">
+      {props.options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          role="radio"
+          aria-checked={option.value === props.value}
+          className={option.value === props.value ? 'active' : ''}
+          title={t(option.label)}
+          aria-label={t(option.label)}
+          onClick={() => props.onPick(option.value)}
+        >
+          <svg width="26" height="18" viewBox="0 0 26 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={props.side === 'start' ? { transform: 'scaleX(-1)' } : undefined}>
+            <path d={option.value === 'arrow' ? 'M3 9h12' : option.value === 'dot' ? 'M3 9h14' : 'M3 9h19'} />
+            {END_SHAPES[option.value]}
+          </svg>
+        </button>
+      ))}
+    </div>
   )
 }
 

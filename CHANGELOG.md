@@ -4,6 +4,15 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 0.3.1 — 2026-10-09
+
+### Improved
+- The ends of a line, a dimension or an annotation, and the kind of line (solid, dashed, dotted…), are picked from a row of pictures instead of a list of names, in the right panel and in the bar above the tools.
+- The colour of a layer, and the colour of the next shapes in the bar above the tools, can be linked to a shared colour like any other colour.
+- Shared colours have a panel of their own, Colours, beside Structure, instead of sitting under the layers.
+- At start, nothing in the welcome window looks selected, and the window's own buttons no longer stand out in white while a window of the app is open.
+- Walls meeting at a sharp angle (under 60°) get a chamfered corner by default instead of a long spike. Right angles and wider keep their sharp point.
+
 ## 0.3.0 — 2026-10-09
 
 ### New

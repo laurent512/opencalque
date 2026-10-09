@@ -10,6 +10,8 @@ import { Stage } from './Stage'
 
 const STORAGE_KEY = 'opencalque.layout'
 const CANVAS = 'canvas'
+/** Where the panels that existed when the layout was last saved are listed, to tell a new panel from a closed one. */
+const KNOWN_KEY = 'opencalque.layout.panels'
 /** A column narrower than this is not offered to be split into two side by side. */
 const SPLIT_MIN_WIDTH = 520
 
@@ -34,22 +36,17 @@ const scrolling = (id: PanelId, Panel: FunctionComponent) => () => (
 const COMPONENTS: Record<PanelId | typeof CANVAS, FunctionComponent> = {
   canvas: Stage,
   pages: scrolling('pages', Pages),
-  // Shared colours sit with the layers: both say how things look across the whole drawing.
-  layers: scrolling('layers', () => (
-    <>
-      <Layers />
-      <Colors />
-    </>
-  )),
+  layers: scrolling('layers', Layers),
   objects: scrolling('objects', Objects),
+  colors: scrolling('colors', Colors),
   properties: scrolling('properties', Properties),
   assistant: AssistantPanel,
 }
 
 /** Where a panel goes when it is opened and its usual neighbours are closed too. */
-const SIDE: Record<PanelId, 'left' | 'right'> = { pages: 'left', layers: 'left', objects: 'left', properties: 'right', assistant: 'right' }
+const SIDE: Record<PanelId, 'left' | 'right'> = { pages: 'left', layers: 'left', objects: 'left', colors: 'left', properties: 'right', assistant: 'right' }
 /** The panel each one shares tabs with by default. */
-const PARTNER: Record<PanelId, PanelId> = { pages: 'layers', layers: 'pages', objects: 'layers', properties: 'assistant', assistant: 'properties' }
+const PARTNER: Record<PanelId, PanelId> = { pages: 'layers', layers: 'pages', objects: 'colors', colors: 'objects', properties: 'assistant', assistant: 'properties' }
 
 const title = (id: PanelId) => t(PANELS[id])
 
@@ -85,6 +82,7 @@ function arrange(api: DockviewApi): void {
   add('layers', { referencePanel: CANVAS, direction: 'left' }, 250)
   add('pages', { referencePanel: 'layers', direction: 'within' })
   add('objects', { referencePanel: 'layers', direction: 'below' })
+  add('colors', { referencePanel: 'objects', direction: 'within' })
   add('properties', { referencePanel: CANVAS, direction: 'right' }, 290)
   add('assistant', { referencePanel: 'properties', direction: 'within' })
   for (const front of ['layers', 'objects', 'properties']) api.getPanel(front)?.api.setActive()
@@ -147,13 +145,11 @@ export function Layout() {
       useDock.setState({ open: api.panels.map((p) => p.id) })
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(api.toJSON()))
+        localStorage.setItem(KNOWN_KEY, JSON.stringify(Object.keys(PANELS)))
       } catch {
         // Storage can be unavailable (private windows); the layout then lasts for this session.
       }
     }
-    remember()
-    api.onDidLayoutChange(remember)
-
     const show = (id: PanelId) => {
       const existing = api.getPanel(id)
       if (existing) return existing.api.setActive()
@@ -161,6 +157,21 @@ export function Layout() {
       const position = partner ? { referencePanel: partner.id, direction: 'within' as const } : { referencePanel: CANVAS, direction: SIDE[id] }
       api.addPanel({ id, component: id, title: title(id), position, initialWidth: partner ? undefined : 270 })
     }
+    // A panel added to the app since the layout was saved is not in it: it is opened beside its
+    // usual neighbour, behind it, so that it is found without disturbing what was arranged.
+    try {
+      const known: string[] = JSON.parse(localStorage.getItem(KNOWN_KEY) ?? 'null') ?? (localStorage.getItem(STORAGE_KEY) ? ['pages', 'layers', 'objects', 'properties', 'assistant'] : Object.keys(PANELS))
+      for (const id of Object.keys(PANELS) as PanelId[]) {
+        if (known.includes(id) || api.getPanel(id)) continue
+        const front = api.getPanel(PARTNER[id])
+        show(id)
+        front?.api.setActive()
+      }
+    } catch {
+      // Without storage there is no saved layout either: every panel is already there.
+    }
+    remember()
+    api.onDidLayoutChange(remember)
     registerDock({
       show,
       // A panel hidden behind another tab is brought forward; only one in view is closed.

@@ -3,6 +3,7 @@ import { BrickWall, Circle, Component, File, Group, Image, MessageSquare, Minus,
 import type { Document, Node } from '@opencalque/core'
 import { msg, t } from './i18n'
 import { collapseHistory, registry, useStore } from './store'
+import { dashIndex, DASHES } from './strokes'
 import { formatNumber, parseLength, parseNumber } from './units'
 
 const TYPE_LABELS: Record<Node['type'], string> = {
@@ -224,5 +225,26 @@ export function Section(props: { title: string; action?: ReactNode; children: Re
       </h3>
       {props.children}
     </section>
+  )
+}
+
+/**
+ * The kinds of line as a row of small pictures to pick from: each a short stroke drawn with its
+ * dashes. `value` is the pattern in use (none for a solid line); one that is not among the kinds
+ * leaves no picture chosen.
+ */
+export function DashPicker(props: { value: unknown; none?: boolean; label?: string; onPick: (pattern: number[] | null) => void }) {
+  const current = props.none ? -1 : dashIndex(props.value)
+  return (
+    <div className="end-picker dash-picker" role="radiogroup" aria-label={props.label}>
+      {DASHES.map(([name, pattern], i) => (
+        <button key={name} type="button" role="radio" aria-checked={i === current} className={i === current ? 'active' : ''} title={t(name)} aria-label={t(name)} onClick={() => props.onPick(pattern)}>
+          <svg width="28" height="18" viewBox="0 0 28 18" fill="none" stroke="currentColor" strokeWidth="1.6">
+            {/* The patterns are in screen pixels of a drawn line; here they are shown a little tighter to fit a few repeats. */}
+            <path d="M2 9h24" strokeDasharray={pattern?.map((length) => length * 0.6).join(' ')} />
+          </svg>
+        </button>
+      ))}
+    </div>
   )
 }

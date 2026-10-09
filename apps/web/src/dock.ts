@@ -12,6 +12,7 @@ export const PANELS = {
   pages: msg('Pages'),
   layers: msg('Layers'),
   objects: msg('Structure'),
+  colors: msg('Colours'),
   properties: msg('Properties'),
   assistant: msg('Assistant'),
 } as const

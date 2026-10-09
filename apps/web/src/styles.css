@@ -1942,3 +1942,102 @@ body.scrubbing .quick-field input[title] {
 .section.untitled {
   padding-top: 8px;
 }
+
+/* The symbols of a line's end, side by side, to pick one from */
+
+.end-picker {
+  display: flex;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--hover);
+}
+
+.end-picker button {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.end-picker button:hover {
+  color: var(--text);
+}
+
+.end-picker button.active {
+  background: var(--bg);
+  box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgb(0 0 0 / 8%);
+  color: var(--accent);
+}
+
+.dialog.welcome:focus {
+  outline: none;
+}
+
+/* In the bar above the tools the kinds of line sit in a row of their own width */
+.quickbar .dash-picker {
+  flex: none;
+  margin-left: 6px;
+}
+
+.quickbar .dash-picker button {
+  flex: none;
+  width: 30px;
+}
+
+/* The colour chooser as a swatch alone, in a row of a list or in a bar */
+
+.color-choice.compact {
+  flex: none;
+}
+
+.color-choice.compact .color-now {
+  position: relative;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.color-choice.compact .color-now > i {
+  width: 18px;
+  height: 18px;
+}
+
+/* Linked to a shared colour: a small link in the corner of the swatch. */
+.color-choice.compact .color-now > svg {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  padding: 1px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--accent);
+}
+
+.quickbar .color-choice.compact {
+  margin-left: 4px;
+}
+
+.quickbar .color-choice.compact .color-now > i {
+  border-radius: 50%;
+}
+
+/* In a row of a list the swatch keeps its own size, whatever the row gives its other parts. */
+.row > .color-choice.compact {
+  flex: none;
+  width: auto;
+  overflow: visible;
+}

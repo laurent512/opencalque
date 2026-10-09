@@ -454,7 +454,6 @@ export const es: Record<string, string> = {
   "Link to this shared colour": "Vincular a este color compartido",
   "New shared colour from this one": "Nuevo color compartido a partir de este",
   "Change “{name}” everywhere": "Cambiar «{name}» en todas partes",
-  "This object only": "Solo este objeto",
   "Unlink and pick a colour": "Desvincular y elegir un color",
   "Pick a colour": "Elegir un color concreto",
   "Unlink, keeping the colour": "Desvincular conservando el color",
@@ -579,4 +578,7 @@ export const es: Record<string, string> = {
   "Repeat in rows and columns": "Repetir en filas y columnas",
   "This PDF has {n} pages. Which one do you want to import?": "Este PDF tiene {n} páginas. ¿Cuál quiere importar?",
   "Scale set. The plan is locked so you can trace over it; unlock it in the Structure panel to move it.": "Escala definida. El plano está bloqueado para poder calcar encima; desbloquéelo en el panel Estructura para moverlo.",
+  "Colours": "Colores",
+  "Another colour, or a shared one": "Otro color, o uno compartido",
+  "A colour of its own": "Un color propio",
 }

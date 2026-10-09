@@ -25,6 +25,22 @@ describe('wall corners', () => {
     expect(moved.nodes.apart).toBe(ell.nodes.apart)
   })
 
+  it('are cut off rather than drawn as a spike when two walls meet at a sharp angle', () => {
+    // How far the outer point of the corner reaches from the joint (it lies behind the joint, on
+    // the side away from both walls), for two walls opening by so many degrees.
+    const tip = (degrees: number) => {
+      const turn = (degrees * Math.PI) / 180
+      const doc = applyOps(createDocument(), [wall('a', 0, 0, 3000, 0), wall('b', 0, 0, 3000 * Math.cos(turn), 3000 * Math.sin(turn))])
+      return Math.max(...(outline(doc, 'a').points as { x: number; y: number }[]).filter((p) => p.x < 0).map((p) => Math.hypot(p.x, p.y)))
+    }
+    // At 30 degrees a mitre would stick out 386 mm from the joint of two 200 mm walls: it is chamfered instead.
+    expect(tip(30)).toBeLessThan(101)
+    expect(tip(50)).toBeLessThan(101)
+    // From 60 degrees up the point is short enough to keep: 141 mm at a right angle.
+    expect(Math.round(tip(90))).toBe(141)
+    expect(Math.round(tip(70))).toBe(174)
+  })
+
   it('are mitred to a sharp point unless told otherwise', () => {
     expect(cornerJoin(wallEndsAt(ell, 'page_1', corner))).toBe('miter')
     // The outer corner of the L is the point (4100, -100).

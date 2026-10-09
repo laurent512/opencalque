@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { drawing } from './canvas/drawing'
+import { ColorChoice } from './ColorChoice'
 import { msg, t } from './i18n'
 import { useStore, type Tool } from './store'
 import { dashIndex, DASHES, penOf, PENS, pixelsOf } from './strokes'
-import { scrub } from './ui'
+import { DashPicker, scrub } from './ui'
 import { formatNumber, parseLength, parseNumber, unit } from './units'
 
 /** The two sizes each drawing tool lets you type, and whether the second is an angle rather than a length. */
@@ -149,6 +150,8 @@ export function QuickBar() {
             onClick={() => useStore.setState({ drawColor: c })}
           />
         ))}
+        {/* Beyond the ready-made ones: any colour, or one of the drawing's shared colours. */}
+        <ColorChoice compact title={t('Another colour, or a shared one')} stored={color !== null && !COLORS.includes(color) ? color : undefined} fallback="#ffffff" commit={(next) => useStore.setState({ drawColor: (next as string | undefined) ?? null })} />
         <select className="quick-select" title={t('Line weight of the next shapes, as printed')} aria-label={t('Line weight of the next shapes, as printed')} value={weight === null ? '' : String(penOf(weight))} onChange={(e) => useStore.setState({ drawWeight: e.target.value === '' ? null : pixelsOf(Number(e.target.value)) })}>
           <option value="">{t('Weight')}</option>
           {(weight !== null && !PENS.includes(penOf(weight)) ? [...PENS, penOf(weight)].sort((p, q) => p - q) : PENS).map((mm) => (
@@ -157,13 +160,7 @@ export function QuickBar() {
             </option>
           ))}
         </select>
-        <select className="quick-select" title={t('Kind of line of the next shapes')} aria-label={t('Kind of line of the next shapes')} value={Math.max(0, dashIndex(dash))} onChange={(e) => useStore.setState({ drawDash: DASHES[Number(e.target.value)][1] })}>
-          {DASHES.map(([name], i) => (
-            <option key={name} value={i}>
-              {t(name)}
-            </option>
-          ))}
-        </select>
+        <DashPicker value={dash} label={t('Kind of line of the next shapes')} onPick={(pattern) => useStore.setState({ drawDash: pattern })} />
       </div>
     </div>
   )

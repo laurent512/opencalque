@@ -193,6 +193,7 @@ const STATIC: Command[] = [
   panel('pages'),
   panel('layers'),
   panel('objects'),
+  panel('colors'),
   panel('properties'),
   panel('assistant', ['Mod+J']),
   { id: 'view.resetLayout', title: msg('Reset the panel layout'), category: 'View', run: resetLayout },

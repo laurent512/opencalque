@@ -80,8 +80,9 @@ function createWindow(): void {
   const merged = process.platform === 'win32' || process.platform === 'darwin'
   const win = new BrowserWindow({
     titleBarStyle: merged ? 'hidden' : 'default',
-    // The height is that of `.menubar` in the web app.
-    titleBarOverlay: merged ? { color: '#ffffff', symbolColor: '#1e1e1e', height: 36 } : false,
+    // The height is that of `.menubar` in the web app. The strip behind the system's buttons is
+    // see-through, so it is whatever the app shows there: the menu bar, or the veil of an open window.
+    titleBarOverlay: merged ? { color: '#00000000', symbolColor: '#1e1e1e', height: 36 } : false,
     width: 1440,
     height: 900,
     minWidth: 900,

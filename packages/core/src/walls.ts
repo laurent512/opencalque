@@ -8,8 +8,12 @@ type Wall = NodeOf<'wall'>
 
 /** Wall ends closer than this (mm) are treated as meeting at one joint. */
 const JOIN_TOLERANCE = 0.5
-/** A mitre sticking out further than this many half-thicknesses is cut off square instead. */
-const MITER_LIMIT = 4
+/**
+ * A mitre sticking out further than this many half-thicknesses is cut off instead. At 2, walls
+ * meeting at less than 60° get a chamfered corner rather than a long spike; a right angle (1.41)
+ * and anything wider keep their sharp point.
+ */
+const MITER_LIMIT = 2
 
 const cross = (a: Vec2, b: Vec2) => a.x * b.y - a.y * b.x
 const dot = (a: Vec2, b: Vec2) => a.x * b.x + a.y * b.y

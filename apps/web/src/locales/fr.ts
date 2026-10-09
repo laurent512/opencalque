@@ -454,7 +454,6 @@ export const fr: Record<string, string> = {
   "Link to this shared colour": "Lier à cette couleur partagée",
   "New shared colour from this one": "Nouvelle couleur partagée à partir de celle-ci",
   "Change “{name}” everywhere": "Modifier « {name} » partout",
-  "This object only": "Cet objet uniquement",
   "Unlink and pick a colour": "Délier et choisir une couleur",
   "Pick a colour": "Choisir une couleur précise",
   "Unlink, keeping the colour": "Délier en gardant la couleur",
@@ -579,4 +578,7 @@ export const fr: Record<string, string> = {
   "Repeat in rows and columns": "Répéter en lignes et colonnes",
   "This PDF has {n} pages. Which one do you want to import?": "Ce PDF a {n} pages. Laquelle voulez-vous importer ?",
   "Scale set. The plan is locked so you can trace over it; unlock it in the Structure panel to move it.": "Échelle définie. Le plan est verrouillé pour pouvoir dessiner par-dessus ; déverrouillez-le dans le panneau Structure pour le déplacer.",
+  "Colours": "Couleurs",
+  "Another colour, or a shared one": "Une autre couleur, ou une couleur partagée",
+  "A colour of its own": "Une couleur à part",
 }
