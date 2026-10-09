@@ -7,7 +7,7 @@ Last updated: 2026-10-08.
 ## 1. What exists today
 
 ### Drawing
-- Lines, rectangles, ellipses, polylines and polygons, text.
+- Lines, rectangles, ellipses and arcs (an ellipse with a start and an end angle), polylines and polygons, straight or curved through their points, text.
 - Exact sizes while drawing: a bar above the tools takes typed lengths, angles, widths and heights, and the shape shows its sizes as you draw.
 - Walls defined by centerline and thickness, joined cleanly at any angle where their ends meet. A run of walls closes with a double-click.
 - Doors and windows that snap onto a wall, cut the opening, adapt to the wall's thickness and slide along it. Door type, hinge side, angle; window panes, glazing, sill.
@@ -28,7 +28,8 @@ Last updated: 2026-10-08.
 - **Rooms**: click inside closed walls to name a space; its floor, outline and area follow the walls. **Dividers** split an open space into rooms without a wall.
 - **Floor patterns**: a Hatch modifier (lines, planks, tiles) for rooms and any closed shape.
 - **Shared colours**: named colours that objects and layers link to; change one and everything linked follows.
-- **Modifiers**: non-destructive changes to how an object is drawn, stacked and applied in order, that can be switched off or removed at any time. Crop is the first; extensions can add more.
+- **Modifiers**: non-destructive changes to how an object is drawn, stacked and applied in order, that can be switched off or removed at any time: crop, hatch, and repeat (copies in rows and columns); extensions can add more.
+- Text can be bold and aligned left, centred or right.
 - Hints and size fields that follow what you are doing: only the next step and the keys usable right now are shown.
 - Snapping to existing points and to the grid, angle constraint, drag handles, exact values in the properties panel.
 
@@ -48,7 +49,8 @@ Last updated: 2026-10-08.
 
 ### Working from an existing plan
 - Drop a picture, a PDF, a drawing or an extension onto the window and it goes to the right place.
-- Import a PDF or picture as a background, set its scale from one known distance, and trace over it.
+- Import a PDF (any one of its pages) or a picture as a background, set its scale from one known distance, and trace over it.
+- Import a DXF: lines, polylines, circles, arcs, ellipses and text, on their layers.
 
 ### Assistant
 - A chat panel that changes the drawing from a description, through the same validated operations as the rest of the app; one undo per request.
@@ -75,10 +77,10 @@ Ranked by how much each one moves the app from "promising" to "usable for real w
 | 2 | **Extension warehouse** | **Done** for data-only extensions (new parametric objects). Extensions that add tools or commands still have to be compiled in. |
 | 3 | **Groups, stacking order, right-click menu** | **Done.** |
 | 4 | **Cut, copy, paste** | **Done**, including across drawings. |
-| 5 | **DXF export** | **Done** (lines, circles, text, layers). DXF import is not started. |
+| 5 | **DXF export** | **Done** (lines, circles, text, layers), and DXF import of the same kinds of geometry. Blocks, hatches and dimensions are not imported. |
 | 6 | **Sheets and printing**: paper size, drawing scale, title block, PDF export to scale | **Done**: papers with format, direction, scale and a title block; vector PDF export at true scale, one page per paper. Views of the plan at another scale on a sheet are in the ideas below. |
-| 7 | **More drawing tools**: polyline and polygon tool, arcs and curves, typed lengths while drawing, room areas | **Partly done**: polyline tool and typed sizes. Arcs, curves and room areas are not started. |
-| 8 | **Transforming**: rotate and scale handles, align and distribute, mirror, array | **Mostly done**: rotate, mirror, uniform scale and nudge for any selection, from grips on the selection box, the panel, menus and shortcuts. Align and distribute are done; array is not started. |
+| 7 | **More drawing tools**: polyline and polygon tool, arcs and curves, typed lengths while drawing, room areas | **Mostly done**: polyline tool, typed sizes, room areas, arcs (by angles) and curved polylines. A tool to draw an arc directly is not started. |
+| 8 | **Transforming**: rotate and scale handles, align and distribute, mirror, array | **Mostly done**: rotate, mirror, uniform scale and nudge for any selection, from grips on the selection box, the panel, menus and shortcuts. Align, distribute and a repeat (array) modifier are done; non-uniform scaling is not. |
 | 9 | **Walls as a system**: openings that follow their wall, walls trimmed where they meet mid-span, moving a wall drags its neighbours, rooms detected from walls | **Done**, with selectable corners and joint types. Curved walls and wall types are in the ideas below. |
 | 10 | **Hosted version**: accounts, cloud storage, sharing by link, realtime collaboration | Not started. The data model is prepared for it (see ARCHITECTURE §10). |
 
@@ -100,13 +102,13 @@ Agreed with the owner in October 2026. The first was built straight away.
 
 **Drawing comfort**
 - Smart guides: alignment and equal spacing against other objects while moving
-- ~~Align, distribute~~ (done); a repeat ("array") modifier and a live mirror modifier
+- ~~Align, distribute, a repeat ("array") modifier~~ (done); a live mirror modifier
 - Snapping to midpoints, perpendiculars and intersections
 - ~~Eyedropper~~ (done)
 - Trim, extend and fillet for lines
 
 **Import and sharing**
-- DXF import
+- ~~DXF import~~ (done for plain geometry); blocks as components
 - PNG export
 - A live demo on GitHub Pages; ~~downloadable installers~~ (done, unsigned); signed installers and automatic updates
 

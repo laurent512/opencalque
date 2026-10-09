@@ -72,6 +72,7 @@ export interface TextPrim extends PrimStyle {
   align?: 'left' | 'center' | 'right'
   /** CSS font family. */
   font?: string
+  bold?: boolean
 }
 
 export interface ImagePrim extends PrimStyle {
@@ -127,7 +128,7 @@ function transformGeometry(p: Primitive, t: Transform): Primitive {
 
 /** Approximate outline of a text primitive; exact metrics depend on the renderer's font. */
 function textCorners(p: TextPrim): Vec2[] {
-  const w = p.text.length * p.size * 0.55
+  const w = p.text.length * p.size * (p.bold ? 0.6 : 0.55)
   const x0 = p.align === 'center' ? -w / 2 : p.align === 'right' ? -w : 0
   const local = [
     { x: x0, y: -p.size },

@@ -951,6 +951,10 @@
               "closed": {
                 "type": "boolean"
               },
+              "smooth": {
+                "description": "Drawn as a curve flowing through the points instead of straight segments.",
+                "type": "boolean"
+              },
               "startMarker": {
                 "description": "Symbol at the first point of an open polyline. Defaults to 'none'.",
                 "type": "string",
@@ -1836,6 +1840,14 @@
               "rotation": {
                 "description": "Degrees, clockwise on screen.",
                 "type": "number"
+              },
+              "from": {
+                "description": "With `to`, makes it an arc: the angle in degrees where the arc starts, measured clockwise on screen from the X axis.",
+                "type": "number"
+              },
+              "to": {
+                "description": "The angle where the arc ends, going clockwise from `from`.",
+                "type": "number"
               }
             },
             "required": [
@@ -2005,6 +2017,18 @@
               "font": {
                 "description": "CSS font family, e.g. 'serif'. Defaults to the system sans-serif.",
                 "type": "string"
+              },
+              "bold": {
+                "type": "boolean"
+              },
+              "align": {
+                "description": "Which part of each line is at x: its left end (the default), its middle, or its right end.",
+                "type": "string",
+                "enum": [
+                  "left",
+                  "center",
+                  "right"
+                ]
               }
             },
             "required": [

@@ -117,7 +117,17 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
     { path: 'style.stroke', label: msg('Text'), type: 'color', section: msg('Style'), fallback: '#1f1f1f', unset: msg('from layer') },
   ],
   divider: AB,
-  ellipse: [len('cx', msg('X')), len('cy', msg('Y')), len('rx', msg('Radius X')), len('ry', msg('Radius Y')), ...STYLE],
+  ellipse: [
+    len('cx', msg('X')),
+    len('cy', msg('Y')),
+    len('rx', msg('Radius X')),
+    len('ry', msg('Radius Y')),
+    num('rotation', msg('Rotation'), 0),
+    // Given a start or an end, the ellipse is drawn as an arc between them; emptied, it is whole again.
+    { ...num('from', msg('Arc from (°)')), optional: true },
+    { ...num('to', msg('Arc to (°)')), optional: true },
+    ...STYLE,
+  ],
   text: [
     { path: 'text', label: msg('Text'), type: 'string', multiline: true },
     len('x', msg('X')),
@@ -125,9 +135,11 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
     len('size', msg('Size')),
     num('rotation', msg('Rotation'), 0),
     { path: 'font', label: msg('Font'), type: 'string', options: FONTS },
+    { path: 'bold', label: msg('Bold'), type: 'boolean', fallback: false },
+    { path: 'align', label: msg('Alignment'), type: 'string', options: options(['', msg('Left')], ['center', msg('Centred')], ['right', msg('Right')]) },
     { path: 'style.stroke', label: msg('Color'), type: 'color', section: msg('Style'), fallback: '#1f1f1f', unset: msg('from layer') },
   ],
-  polyline: [{ path: 'closed', label: msg('Closed'), type: 'boolean', fallback: false }, ...LINE_ENDS, ...STYLE],
+  polyline: [{ path: 'closed', label: msg('Closed'), type: 'boolean', fallback: false }, { path: 'smooth', label: msg('Curved'), type: 'boolean', fallback: false }, ...LINE_ENDS, ...STYLE],
   image: [len('x', msg('X')), len('y', msg('Y')), len('width', msg('W')), len('height', msg('H')), num('rotation', msg('Rotation'), 0), num('opacity', msg('Opacity'), 1)],
   instance: [...PLACEMENT, ...STYLE],
   parametric: PLACEMENT,
@@ -418,6 +430,12 @@ export const MODIFIER_TEXTS = [
   msg('Lines'),
   msg('Planks'),
   msg('Tiles'),
+  msg('Repeat'),
+  msg('Draws copies at a steady step: in a row, or in rows and columns.'),
+  msg('Across'),
+  msg('Step across'),
+  msg('Rows'),
+  msg('Step down'),
 ]
 
 /**

@@ -1,5 +1,5 @@
 import { applyTransform, pointInPolygon, sub, type Transform, type Vec2 } from './geometry'
-import type { Primitive } from './primitives'
+import { transformPrimitive, type Primitive } from './primitives'
 import type { ParamDef, Registry } from './registry'
 import type { Modifier, Node } from './schema'
 
@@ -116,10 +116,47 @@ export const hatchModifier: ModifierKind = {
   ],
 }
 
+/** A repeat never draws more copies than this, whatever is typed. */
+const MAX_COPIES = 400
+
+/**
+ * Draws what it is given again and again at a steady step: a row of copies, or rows and columns.
+ * The copies are drawn, not made: they are one object, and follow it when it changes.
+ */
+export const arrayModifier: ModifierKind = {
+  type: 'array',
+  label: 'Repeat',
+  description: 'Draws copies at a steady step: in a row, or in rows and columns.',
+  params: [
+    { key: 'count', label: 'Across', type: 'number', default: 3 },
+    { key: 'dx', label: 'Step across', type: 'number', default: 1000, unit: 'length' },
+    { key: 'rows', label: 'Rows', type: 'number', default: 1 },
+    { key: 'dy', label: 'Step down', type: 'number', default: 1000, unit: 'length' },
+  ],
+  apply: (prims, params, frame) => {
+    const whole = (value: unknown) => Math.max(1, Math.round(Number(value) || 1))
+    const columns = Math.min(whole(params.count), MAX_COPIES)
+    const rows = Math.min(whole(params.rows), Math.max(1, Math.floor(MAX_COPIES / columns)))
+    // The steps turn and scale with the object, so a turned row stays a row of the object.
+    const origin = applyTransform({ x: 0, y: 0 }, frame)
+    const across = sub(applyTransform({ x: Number(params.dx) || 0, y: 0 }, frame), origin)
+    const down = sub(applyTransform({ x: 0, y: Number(params.dy) || 0 }, frame), origin)
+    const out: Primitive[] = []
+    for (let row = 0; row < rows; row++) {
+      for (let column = 0; column < columns; column++) {
+        const by = { x: across.x * column + down.x * row, y: across.y * column + down.y * row }
+        out.push(...(row === 0 && column === 0 ? prims : prims.map((prim) => transformPrimitive(prim, by))))
+      }
+    }
+    return out
+  },
+}
+
 /** The modifiers every drawing can use, whatever extensions are in use. */
 export const BUILT_IN_MODIFIERS: ReadonlyMap<string, ModifierKind> = new Map([
   [cropModifier.type, cropModifier],
   [hatchModifier.type, hatchModifier],
+  [arrayModifier.type, arrayModifier],
 ])
 
 export const modifierKind = (registry: Registry, type: string): ModifierKind | undefined => registry.modifiers.get(type) ?? BUILT_IN_MODIFIERS.get(type)

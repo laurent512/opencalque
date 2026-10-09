@@ -1,6 +1,6 @@
 import { childrenOf } from './document'
 import { add, rotate, scale, sub, type Vec2 } from './geometry'
-import { ANNOTATION_BEND, ANNOTATION_TEXT_SIZE } from './kinds'
+import { ANNOTATION_BEND, ANNOTATION_TEXT_SIZE, arcOf } from './kinds'
 import type { Op } from './ops'
 import type { Registry } from './registry'
 import type { Document, Node } from './schema'
@@ -90,7 +90,10 @@ export function transformOps(doc: Document, nodes: Node[], t: Similarity, regist
       }
       case 'ellipse': {
         const centre = map({ x: node.cx, y: node.cy })
-        return { cx: centre.x, cy: centre.y, rx: tidy(node.rx * s), ry: tidy(node.ry * s), rotation: angle(node.rotation) }
+        // Mirrored, an arc runs the other way round: its ends swap, each to the other side of the axis.
+        const ends = arcOf(node)
+        const arc = flip && ends ? { from: turned(180 - ends.to), to: turned(180 - ends.from) } : {}
+        return { cx: centre.x, cy: centre.y, rx: tidy(node.rx * s), ry: tidy(node.ry * s), rotation: angle(node.rotation), ...arc }
       }
       case 'text':
         // Its width is not known exactly without the renderer's font; this matches the estimate used for picking.

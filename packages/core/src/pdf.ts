@@ -1,4 +1,5 @@
 import { rotate, type Vec2 } from './geometry'
+import { decodePng } from './png'
 import { PRINT_MM_PER_PIXEL, type Primitive } from './primitives'
 import type { Registry } from './registry'
 import { buildScene, paintOrder, type PaintStep } from './scene'
@@ -9,9 +10,23 @@ import type { Document, NodeOf } from './schema'
  * metre of the plan measures 20 mm. The drawing stays vector, so it prints sharp at any size.
  *
  * The file is written here from scratch, with no library: a PDF is a list of numbered objects
- * followed by a table of where each one starts. Text uses Helvetica, one of the fonts every PDF
- * reader has, so nothing needs embedding. Pictures are taken as they are when they are JPEGs.
+ * followed by a table of where each one starts. Text uses the fonts every PDF reader has, so
+ * nothing needs embedding: Helvetica, Times or Courier, each plain or bold, chosen from the
+ * text's own font. JPEG pictures are taken as they are; PNG ones are read into plain pixels.
  */
+
+/** The fonts a text can print in, in the order they are numbered (F1 to F6): a family, plain then bold. */
+const FONTS = ['Helvetica', 'Helvetica-Bold', 'Times-Roman', 'Times-Bold', 'Courier', 'Courier-Bold']
+
+/** Which of the fonts stands for a CSS font family, and how wide its letters run compared with Helvetica's. */
+function fontFor(family: string | undefined, bold: boolean | undefined): { index: number; fixed: boolean; widen: number } {
+  const name = (family ?? '').toLowerCase()
+  const mono = /mono|courier|consol/.test(name)
+  const serif = !mono && /(^|[^-])\bserif|times|georgia|garamond/.test(name.replace(/sans-serif/g, ''))
+  const narrow = /narrow|condensed/.test(name)
+  // Only Helvetica's widths are known here; the others are told apart well enough to centre a text.
+  return { index: (mono ? 4 : serif ? 2 : 0) + (bold ? 1 : 0), fixed: mono, widen: (serif ? 0.92 : 1) * (bold && !mono ? 1.06 : 1) * (narrow ? 0.82 : 1) }
+}
 
 /** Points per millimetre: a PDF measures in 1/72 of an inch. */
 const POINT = 72 / 25.4
@@ -97,7 +112,8 @@ type Paper = NodeOf<'paper'>
 interface Resources {
   /** Opacities in use, as "fill stroke" keys, in the order they were first needed. */
   alphas: string[]
-  images: { bytes: Uint8Array; width: number; height: number; channels: number }[]
+  /** A JPEG goes in as it is; anything else as plain pixels, three bytes each. */
+  images: { bytes: Uint8Array; width: number; height: number; channels: number; jpeg: boolean }[]
   /** The picture already added for a data URL, so one used on several pages is stored once. */
   imageByHref: Map<string, number>
 }
@@ -126,23 +142,40 @@ function pageContent(doc: Document, paper: Paper, registry: Registry, resources:
       const ink = parseColor(prim.stroke) ?? { r: 0, g: 0, b: 0, a: 1 }
       const size = prim.size * perMm
       const bytes = encode(prim.text)
+      const font = fontFor(prim.font, prim.bold)
+      const wide = font.fixed ? bytes.length * 0.6 * size : textWidth(bytes, size) * font.widen
+      // A condensed face has no standard font: Helvetica is squeezed sideways instead.
+      const squeeze = /narrow|condensed/i.test(prim.font ?? '') ? ' 82 Tz' : ''
       const turn = ((prim.rotation ?? 0) * Math.PI) / 180
       // The page's Y runs up where the drawing's runs down, so a clockwise turn there is the opposite one here.
       const [cos, sin] = [Math.cos(turn), Math.sin(turn)]
-      const back = prim.align === 'center' ? textWidth(bytes, size) / 2 : prim.align === 'right' ? textWidth(bytes, size) : 0
+      const back = prim.align === 'center' ? wide / 2 : prim.align === 'right' ? wide : 0
       const x = (prim.x - paper.x) * perMm - back * cos
       const y = height - (prim.y - paper.y) * perMm + back * sin
       alpha(ink.a, 1)
       const literal = bytes.map((b) => (b === 40 || b === 41 || b === 92 ? `\\${String.fromCharCode(b)}` : b < 127 ? String.fromCharCode(b) : `\\${b.toString(8)}`)).join('')
-      out.push(`BT /F1 ${n(size)} Tf ${n(ink.r)} ${n(ink.g)} ${n(ink.b)} rg ${n(cos)} ${n(-sin)} ${n(sin)} ${n(cos)} ${n(x)} ${n(y)} Tm (${literal}) Tj ET`)
+      out.push(`BT /F${font.index + 1} ${n(size)} Tf${squeeze} ${n(ink.r)} ${n(ink.g)} ${n(ink.b)} rg ${n(cos)} ${n(-sin)} ${n(sin)} ${n(cos)} ${n(x)} ${n(y)} Tm (${literal}) Tj ET`)
     } else if (prim.kind === 'image') {
-      const data = /^data:image\/jpeg;base64,(.*)$/s.exec(prim.href)?.[1]
+      const [, format, data] = /^data:image\/(jpeg|png);base64,(.*)$/s.exec(prim.href) ?? []
       let index = resources.imageByHref.get(prim.href)
       if (index === undefined && data) {
         const bytes = fromBase64(data)
-        const info = jpegInfo(bytes)
-        if (info) {
-          index = resources.images.push({ bytes, ...info }) - 1
+        let image: Resources['images'][number] | null = null
+        if (format === 'jpeg') {
+          const info = jpegInfo(bytes)
+          image = info && { bytes, ...info, jpeg: true }
+        } else {
+          // A PNG that cannot be read (damaged, or interlaced) is left out, like any other kind of picture.
+          let pixels: ReturnType<typeof decodePng> = null
+          try {
+            pixels = decodePng(bytes)
+          } catch {
+            pixels = null
+          }
+          image = pixels && { bytes: pixels.rgb, width: pixels.width, height: pixels.height, channels: 3, jpeg: false }
+        }
+        if (image) {
+          index = resources.images.push(image) - 1
           resources.imageByHref.set(prim.href, index)
         }
       }
@@ -197,21 +230,21 @@ export function toPDF(doc: Document, registry: Registry, paperIds?: string[]): U
   const resources: Resources = { alphas: [], images: [], imageByHref: new Map() }
   const pages = papers.map((paper) => pageContent(doc, paper, registry, resources))
 
-  // Objects, in the order they are numbered: the catalog, the list of pages, the font, the
+  // Objects, in the order they are numbered: the catalog, the list of pages, the fonts, the
   // opacities, the pictures, then a page and its drawing commands for each paper.
   const chunks: (string | Uint8Array)[] = []
-  const firstAlpha = 4
+  const firstAlpha = 3 + FONTS.length
   const firstImage = firstAlpha + resources.alphas.length
   const firstPage = firstImage + resources.images.length
   const names = (prefix: string, first: number, count: number) => Array.from({ length: count }, (_, i) => `/${prefix}${i + 1} ${first + i} 0 R`).join(' ')
-  const shared = `<< /Font << /F1 3 0 R >> /ExtGState << ${names('GS', firstAlpha, resources.alphas.length)} >> /XObject << ${names('Im', firstImage, resources.images.length)} >> >>`
+  const shared = `<< /Font << ${names('F', 3, FONTS.length)} >> /ExtGState << ${names('GS', firstAlpha, resources.alphas.length)} >> /XObject << ${names('Im', firstImage, resources.images.length)} >> >>`
   const objects: (string | [string, Uint8Array])[] = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     `<< /Type /Pages /Count ${pages.length} /Kids [${pages.map((_, i) => `${firstPage + i * 2} 0 R`).join(' ')}] >>`,
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
+    ...FONTS.map((name) => `<< /Type /Font /Subtype /Type1 /BaseFont /${name} /Encoding /WinAnsiEncoding >>`),
     ...resources.alphas.map((key) => `<< /Type /ExtGState /ca ${key.split(' ')[0]} /CA ${key.split(' ')[1]} >>`),
     ...resources.images.map((image): [string, Uint8Array] => [
-      `<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace ${image.channels === 1 ? '/DeviceGray' : '/DeviceRGB'} /BitsPerComponent 8 /Filter /DCTDecode /Length ${image.bytes.length} >>`,
+      `<< /Type /XObject /Subtype /Image /Width ${image.width} /Height ${image.height} /ColorSpace ${image.channels === 1 ? '/DeviceGray' : '/DeviceRGB'} /BitsPerComponent 8${image.jpeg ? ' /Filter /DCTDecode' : ''} /Length ${image.bytes.length} >>`,
       image.bytes,
     ]),
     ...pages.flatMap((page, i): (string | [string, Uint8Array])[] => {

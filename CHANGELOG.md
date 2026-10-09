@@ -4,6 +4,21 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 0.3.0 — 2026-10-09
+
+### New
+- Import DXF (File menu, or drop the file): lines, polylines, circles, arcs, ellipses and text come in on their layers, in millimetres.
+- Arcs: give an ellipse a start and an end angle in the right panel and it is drawn as an arc.
+- Curves: tick Curved on a polyline and it flows through its points.
+- Repeat (Object menu, or Modifiers): draws an object again in a row, or in rows and columns, without adding objects.
+- Text can be bold, and aligned left, centred or right.
+- A PDF with several pages asks which page to import.
+
+### Improved
+- PDF export includes PNG pictures as well as JPEG ones.
+- PDF export prints text in the font that matches its own: sans-serif, serif or monospace, plain or bold, condensed.
+- DXF export draws walls that meet in a T as one outline: no line across the end of the wall that stops, and the side it meets is open.
+
 ## 0.2.1 — 2026-10-09
 
 ### New

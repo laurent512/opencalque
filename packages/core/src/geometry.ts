@@ -108,3 +108,35 @@ export function arcPoints(center: Vec2, radius: number, startDeg: number, endDeg
   }
   return points
 }
+
+/**
+ * A curve flowing through every one of the points (a Catmull-Rom spline), as the points to draw
+ * it with: `steps` to each stretch between two of them.
+ */
+export function smoothPoints(points: Vec2[], closed = false, steps = 12): Vec2[] {
+  const n = points.length
+  if (n < 3) return points
+  const at = (i: number) => (closed ? points[(i + n) % n] : points[Math.max(0, Math.min(n - 1, i))])
+  const out: Vec2[] = []
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)]
+    for (let k = 0; k < steps; k++) {
+      const t = k / steps
+      const blend = (a: number, b: number, c: number, d: number) => 0.5 * (2 * b + (c - a) * t + (2 * a - 5 * b + 4 * c - d) * t * t + (3 * b - a - 3 * c + d) * t * t * t)
+      out.push({ x: blend(p0.x, p1.x, p2.x, p3.x), y: blend(p0.y, p1.y, p2.y, p3.y) })
+    }
+  }
+  if (!closed) out.push(points[n - 1])
+  return out
+}
+
+/** The points of an arc of an ellipse, clockwise on screen from one angle to another (a whole turn when they are equal). */
+export function ellipseArc(e: { cx: number; cy: number; rx: number; ry: number; rotation?: number; from: number; to: number }): Vec2[] {
+  const sweep = (((e.to - e.from) % 360) + 360) % 360 || 360
+  const steps = Math.max(8, Math.ceil(sweep / 4))
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const angle = ((e.from + (sweep * i) / steps) * Math.PI) / 180
+    const local = rotate({ x: e.rx * Math.cos(angle), y: e.ry * Math.sin(angle) }, e.rotation ?? 0)
+    return { x: e.cx + local.x, y: e.cy + local.y }
+  })
+}

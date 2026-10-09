@@ -25,21 +25,28 @@ function blankCanvas(width: number, height: number): [HTMLCanvasElement, CanvasR
   return [canvas, ctx]
 }
 
-/** The first page of a PDF as a picture. A PDF knows its paper size, so the guess assumes it was drawn at 1:100. */
-async function fromPdf(bytes: Uint8Array): Promise<Picture> {
+/**
+ * A page of a PDF as a picture: its only page, or the one the user asks for. Null when they give
+ * up. A PDF knows its paper size, so the guess assumes it was drawn at 1:100.
+ */
+async function fromPdf(bytes: Uint8Array): Promise<Picture | null> {
   // Loaded on demand: the PDF library is larger than the rest of the app.
   const pdfjs = await import('pdfjs-dist')
   // Running the "worker" code on this thread avoids a separate worker file, which a desktop app
   // loaded from disk cannot always start. Rendering one page is quick enough.
   ;(globalThis as any).pdfjsWorker ??= await import('pdfjs-dist/build/pdf.worker.mjs')
   const pdf = await pdfjs.getDocument({ data: bytes }).promise
-  const page = await pdf.getPage(1)
+  let number = 1
+  if (pdf.numPages > 1) {
+    const answer = window.prompt(t('This PDF has {n} pages. Which one do you want to import?', { n: pdf.numPages }), '1')
+    if (answer === null) return null
+    number = Math.min(pdf.numPages, Math.max(1, Math.round(Number(answer)) || 1))
+  }
+  const page = await pdf.getPage(number)
   const paper = page.getViewport({ scale: 1 })
   const viewport = page.getViewport({ scale: Math.min(4, MAX_PIXELS / Math.max(paper.width, paper.height)) })
   const [canvas, ctx] = blankCanvas(viewport.width, viewport.height)
   await page.render({ canvas, canvasContext: ctx, viewport }).promise
-  const pages = pdf.numPages
-  if (pages > 1) toast(t('This PDF has {n} pages; the first one was imported.', { n: pages }))
   return { canvas, width: ((paper.width * 25.4) / 72) * 100 }
 }
 
@@ -68,7 +75,9 @@ export const importFloorPlan = () =>
  */
 export async function placeFloorPlan(file: { name: string; bytes: Uint8Array }, at?: Vec2): Promise<void> {
   {
-    const { canvas, width } = /\.pdf$/i.test(file.name) ? await fromPdf(file.bytes) : await fromImage(file.bytes)
+    const picture = /\.pdf$/i.test(file.name) ? await fromPdf(file.bytes) : await fromImage(file.bytes)
+    if (!picture) return
+    const { canvas, width } = picture
     const height = (width * canvas.height) / canvas.width
     const { doc, scope, view, viewport } = useStore.getState()
     const reference = t('Reference')
@@ -133,5 +142,5 @@ export function applyCalibration(real: number): void {
   useStore.setState({ calibration: null })
   setTool('select')
   zoomToFit()
-  toast(t('Scale set. The plan is locked so you can trace over it; unlock it in the Objects list to move it.'))
+  toast(t('Scale set. The plan is locked so you can trace over it; unlock it in the Structure panel to move it.'))
 }

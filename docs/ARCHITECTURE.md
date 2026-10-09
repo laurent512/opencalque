@@ -247,6 +247,18 @@ The registry is one object that is refilled, not replaced: `loadExtensions()` in
 
 The warehouse's content is imported through Vite (`import.meta.glob`), not fetched by URL, because the desktop app is loaded from disk where `fetch` of a local file is not allowed. Libraries are separate chunks loaded when opened. A web catalog is fetched normally and needs CORS on its host. Library documents have fixed ids (`warehouse.furniture`), which is what lets a component imported twice be recognised.
 
+### DXF import (`dxf-import.ts`)
+
+`dxfOps(doc, parent, text)` reads an ASCII DXF into `add_layer` and `add_node` operations: LINE, LWPOLYLINE and POLYLINE, CIRCLE and ARC (an ellipse, with `from`/`to` for an arc), ELLIPSE, TEXT and MTEXT. Y is flipped, `$INSUNITS` scales to millimetres, layers are matched by name. Everything else is counted in `skipped`. The editor calls it from `placeDxf` (`actions.ts`), for the File menu and for a dropped `.dxf`.
+
+### Arcs, curves, repeats
+
+An arc is not a node type: an `ellipse` with `from` and/or `to` (degrees, clockwise on screen from the X axis) draws as an open path (`arcOf`, `ellipseArc`), so everything that works on an ellipse works on it; a mirror swaps its ends in `transformOps`. A polyline with `smooth` draws a Catmull-Rom curve through its points (`smoothPoints`); the points stay the handles. The `array` modifier returns the primitives it is given plus translated copies; its steps go through the modifier's `frame`, so they turn and scale with the object.
+
+### PNG in PDF (`png.ts`)
+
+The PDF writer takes JPEGs as they are. A PNG is decoded by `decodePng`, which carries its own small `inflate` so that the core still needs nothing from a browser or from Node, and goes into the file as uncompressed RGB with transparency laid on white. Interlaced PNGs and other formats are left out. Text picks one of six standard fonts from the primitive's `font` and `bold` (`fontFor`); only Helvetica's widths are known, the others are estimated for centring.
+
 ### DXF export (`dxf.ts`)
 
 Entities only (LINE, CIRCLE, TEXT), R12-style, Y flipped to point up, layers named after the drawing's. Wall polygons share edges at joints; an edge that occurs in two polygons is left out, so two mitred walls export as one outline. Not handled: fills, line weights, pictures, and walls that merely overlap.
@@ -479,6 +491,7 @@ Verified at the end of the first session:
 
 - Modifiers and step-aware hints (77 tests): a crop added from the panel hides the ends of a line and leaves the line's own coordinates alone; dragging its corner, switching it off and on, nudging the line (the crop follows), Object › Crop on a group, removing it; the hint and the fields at every step of every tool; a digit typed before a wall is started no longer lands in a field.
 
+- Shapes and exchange (134 tests): a drawing made through the CLI with a PNG, bold, serif and monospace text, two arcs, an open and a closed curve and a repeated rectangle, exported to PDF and looked at in Chromium's viewer; the example apartment exported to DXF and dropped back on the app (842 objects on their layers, the T junctions of its inner walls clean). Not checked by hand: the new fields in the right panel, the page question for a PDF of several pages, a DXF from another CAD program.
 - Pages, text, line styles and start-up (124 tests): a text typed on two lines with fields; weight, kind of line and arrow set from the panel and from the bar above the tools; two lines selected showing "Mixed" and set together; the eyedropper; three rectangles aligned and spaced; a page duplicated and moved, a layer shared. The welcome window in French, the example opened from it (not marked unsaved), About with both versions, the welcome setting off. The Windows installers built locally (`pnpm dist`) and the unpacked app started with a throwaway profile to look at the merged title bar. Not verified by hand: the recent-files list in a real session, the macOS and Linux builds beyond CI building them, and installing through the setup program.
 - PDF and Preferences (115 tests): the example apartment exported with Ctrl+P through a stand-in save dialog (a 58 kB file starting `%PDF-1.4`), opened in Chromium's PDF viewer and looked at; the five pages of Preferences in French; the wall tool's shortcut changed from W to Q on the shortcuts page and then used.
 - Corners (110 tests): the pointer changing over a corner, a click selecting it with its panel, the four joint types and swapping which wall runs through (screenshots checked), dragging a corner with both walls following and the joint kept, a free end and the foot of a T selected as wall ends, Esc, and a double-click on a wall making it two with the new corner then dragged.
@@ -519,7 +532,7 @@ Tool versions are unusually new (TypeScript 7, Vite 7 for the apps, Vitest 5, El
 
 - Installed extensions do not update themselves. A library's texts are translated only when its catalog entry carries `translations`.
 - A declarative extension can add objects but not tools, commands or panels.
-- DXF export writes separate lines rather than polylines, and there is no DXF import.
+- DXF export writes separate lines rather than polylines. Walls are written as one outline: each edge is cut where other walls cross it and the parts inside or along another wall are dropped (`outside` in `dxf.ts`), which is quadratic in the number of walls.
 - Snapping treats a group as its outline: wall centerlines inside a group are not snap targets from outside it.
 - Openings are linked to walls by position only, so they do not follow a wall that moves (see §4, Openings).
 - A wall ending on another wall's body overlaps it rather than being trimmed.
@@ -527,7 +540,7 @@ Tool versions are unusually new (TypeScript 7, Vite 7 for the apps, Vitest 5, El
 - Stairs have no break line, handrails or winders; the L and U landings are square.
 - Dimensions are linear and aligned to their two points only: no horizontal/vertical-only, angular, radius or chained dimensions, and they do not follow the geometry they measure. Text width is estimated, so the gap for on-line text is approximate. Fonts are limited to generic families available without downloads.
 - Dimension tool defaults are not persisted between sessions.
-- Imported plans cannot be cropped, rotated or straightened, only the first PDF page is read, and each plan adds up to a few megabytes of base64 to the file.
+- Imported plans cannot be straightened, one PDF page is read at a time (asked with a plain prompt), and each plan adds up to a few megabytes of base64 to the file.
 - The assistant edits without asking first (undo is the safety net), keeps its conversation only in memory, and shows replies as plain text. The whole drawing is resent with every request up to 40 000 characters, which costs tokens on large drawings.
 - API keys are stored unencrypted in localStorage. The desktop app should move them to the OS keychain (Electron `safeStorage`) through the platform seam.
 - Translation covers the interface only; see Languages above for what stays in English. Right-to-left languages are not supported by the layout.

@@ -8,7 +8,7 @@ const num = (n: number) => String(Math.round(n * 1000) / 1000)
 function stepToSvg({ prim, stroke, fill, widthScale, widthExtra, seam }: PaintStep): string {
   if (prim.kind === 'text') {
     const turn = prim.rotation ? ` transform="rotate(${num(prim.rotation)} ${num(prim.x)} ${num(prim.y)})"` : ''
-    const anchor = (prim.align === 'center' ? ' text-anchor="middle"' : prim.align === 'right' ? ' text-anchor="end"' : '') + (prim.font ? ` font-family="${esc(prim.font)}"` : '')
+    const anchor = (prim.align === 'center' ? ' text-anchor="middle"' : prim.align === 'right' ? ' text-anchor="end"' : '') + (prim.font ? ` font-family="${esc(prim.font)}"` : '') + (prim.bold ? ' font-weight="bold"' : '')
     return `<text x="${num(prim.x)}" y="${num(prim.y)}" font-size="${num(prim.size)}" fill="${esc(prim.stroke ?? 'black')}"${anchor}${turn}>${esc(prim.text)}</text>`
   }
   if (prim.kind === 'image') {

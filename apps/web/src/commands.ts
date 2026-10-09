@@ -23,6 +23,7 @@ import {
   transformSelection,
   addModifier,
   exportPdf,
+  importDxf,
   openExample,
   alignSelection,
   distributeSelection,
@@ -114,6 +115,7 @@ const STATIC: Command[] = [
   { id: 'file.saveAs', title: msg('Save as…'), category: 'File', keys: ['Mod+Shift+S'], global: true, interrupts: true, run: () => saveDocument(true) },
   { id: 'file.autosave', title: msg('Save automatically'), category: 'File', checked: () => prefs().autosave, run: () => setPrefs({ autosave: !prefs().autosave }) },
   { id: 'file.importPlan', title: msg('Import floor plan (PDF or picture)…'), category: 'File', interrupts: true, run: importFloorPlan },
+  { id: 'file.importDxf', title: msg('Import DXF (from other CAD programs)…'), category: 'File', interrupts: true, run: importDxf },
   { id: 'file.importLibrary', title: msg('Import component library…'), category: 'File', interrupts: true, run: importLibrary },
   { id: 'file.exportDxf', title: msg('Export DXF (for other CAD programs)…'), category: 'File', run: exportDxf },
   { id: 'file.exportPdf', title: msg('Export PDF (sheets, to scale)…'), category: 'File', keys: ['Mod+P'], global: true, run: exportPdf },
@@ -161,6 +163,7 @@ const STATIC: Command[] = [
   { id: 'edit.align.bottom', title: msg('Align bottom'), category: 'Edit', when: () => get().selection.length > 1, run: () => alignSelection('bottom') },
   { id: 'edit.distribute.x', title: msg('Space evenly, across'), category: 'Edit', when: () => get().selection.length > 2, run: () => distributeSelection('x') },
   { id: 'edit.distribute.y', title: msg('Space evenly, up and down'), category: 'Edit', when: () => get().selection.length > 2, run: () => distributeSelection('y') },
+  { id: 'modifier.array', title: msg('Repeat in rows and columns'), category: 'Edit', when: selected, run: () => addModifier('array') },
   { id: 'modifier.hatch', title: msg('Hatch or floor pattern'), category: 'Edit', when: selected, run: () => addModifier('hatch') },
   { id: 'edit.group', title: msg('Group selection'), category: 'Edit', keys: ['Mod+G'], interrupts: true, when: selected, run: groupSelection },
   {

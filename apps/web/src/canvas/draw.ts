@@ -125,7 +125,7 @@ function paintWhole(ctx: CanvasRenderingContext2D, { prim, stroke, fill, widthSc
     ctx.save()
     ctx.translate(prim.x, prim.y)
     if (prim.rotation) ctx.rotate((prim.rotation * Math.PI) / 180)
-    ctx.font = `${prim.size}px ${prim.font ?? FONT}`
+    ctx.font = `${prim.bold ? 'bold ' : ''}${prim.size}px ${prim.font ?? FONT}`
     ctx.textAlign = prim.align ?? 'left'
     ctx.fillStyle = prim.stroke ?? 'black'
     ctx.fillText(prim.text, 0, 0)

@@ -7,7 +7,7 @@ import { preview, useStore } from './store'
 const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif'
 
 /** Where and how the words of a node that has some are drawn: a text, or the note of an annotation. */
-function wording(node: Node | undefined): { x: number; y: number; size: number; text: string; rotation?: number; right?: boolean; font?: string } | null {
+function wording(node: Node | undefined): { x: number; y: number; size: number; text: string; rotation?: number; right?: boolean; font?: string; bold?: boolean; align?: 'left' | 'center' | 'right' } | null {
   if (node?.type === 'text') return node
   if (node?.type === 'annotation') return { ...annotationText(node), text: node.text, font: node.font }
   return null
@@ -58,9 +58,11 @@ export function TextEditor() {
         font: `${size}px/1.25 ${words.font ?? FONT}`,
         width: `calc(${Math.max(4, ...lines.map((line) => line.length)) + 1}ch + 8px)`,
         color: node.style?.stroke ?? undefined,
-        textAlign: words.right ? 'right' : undefined,
-        // Words that end at their anchor grow leftwards from it.
-        transform: words.right ? 'translateX(-100%)' : words.rotation ? `rotate(${words.rotation}deg)` : undefined,
+        fontWeight: words.bold ? 'bold' : undefined,
+        textAlign: words.right ? 'right' : words.align,
+        // Words that end at their anchor grow leftwards from it; centred ones, both ways.
+        transform:
+          [words.rotation ? `rotate(${words.rotation}deg)` : '', words.right || words.align === 'right' ? 'translateX(-100%)' : words.align === 'center' ? 'translateX(-50%)' : ''].filter(Boolean).join(' ') || undefined,
         transformOrigin: `0 ${size * 0.95}px`,
       }}
       onChange={(e) => write(e.target.value)}

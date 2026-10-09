@@ -65,7 +65,7 @@ The welcome window offers a new drawing, a file, or the example: a furnished fla
 ```sh
 pnpm dev:web      # the same editor in a browser
 pnpm build && pnpm start   # the built desktop app
-pnpm test         # 125 tests
+pnpm test         # 134 tests
 pnpm dist         # build the installer for the system you are on, into apps/desktop/dist
 ```
 
@@ -75,8 +75,8 @@ pnpm dist         # build the installer for the system you are on, into apps/des
 - Walls by centerline and thickness, joined cleanly at any angle; a double-click closes a room.
 - Corners you can select and drag, with a choice of joint: mitred, rounded, cut off, or one wall running through.
 - Doors, windows, four kinds of stairs and a compass for north, each with its own parameters.
-- Lines, rectangles, ellipses, polylines, and annotations with curved, straight or elbowed leaders.
-- Text typed in place, on several lines, with fields such as `{date}` or `{page}` that fill themselves in.
+- Lines, rectangles, ellipses and arcs, polylines straight or curved, and annotations with curved, straight or elbowed leaders.
+- Text typed in place, on several lines, bold or not, aligned left, centred or right, with fields such as `{date}` or `{page}` that fill themselves in.
 - Line weights in printed millimetres, dashed and dotted lines, arrows at the ends.
 - Exact sizes: type a length or an angle while drawing, in mm, cm, m, inches or feet.
 - Dimensions with configurable ends, text and units; a measure tool that only reads.
@@ -87,6 +87,7 @@ pnpm dist         # build the installer for the system you are on, into apps/des
 - Pages you can duplicate and reorder; layers, with shared layers that show on every page (a frame, a logo); groups and reusable components.
 - Shared colours: link objects to a named colour and recolour them all at once.
 - Rotate, flip, scale and nudge any selection, from handles, the keyboard or exact values; align and space evenly.
+- Repeat an object in rows and columns without multiplying objects.
 - Change what several objects have in common in one go, or copy a look from one object to others with the eyedropper.
 
 **Reuse**
@@ -96,6 +97,7 @@ pnpm dist         # build the installer for the system you are on, into apps/des
 
 **Bring in and take out**
 - Drop a PDF or a picture to trace it, and set its scale from one known distance.
+- Import a DXF from another CAD program: lines, polylines, circles, arcs and text, on their layers.
 - Export a vector PDF at true scale, one page per paper, with a title block. Also SVG and DXF.
 
 The full inventory and roadmap are in [docs/FEATURES.md](docs/FEATURES.md).
@@ -140,7 +142,7 @@ A batch is all-or-nothing and every result is validated, so a script or a model 
 | Menus | File, Edit, Object, View and Preferences are in the bar at the top, which in the desktop app is also the window's title bar; the tools are in the bar under the drawing. About shows the version and what is new |
 | Language | English, French, Spanish and German. The app follows your system language; change it under Preferences |
 | Panels | Drag a panel's tab to another edge, onto another panel to share its tabs, or out to float. Close and reopen panels from View. Preferences → Reset the panel layout puts everything back |
-| Drop files | Drag a picture or a PDF from your file manager onto the drawing to trace it, an `.opencalque` file to open it, or an extension `.json` to install it |
+| Drop files | Drag a picture or a PDF from your file manager onto the drawing to trace it, a `.dxf` to add its geometry, an `.opencalque` file to open it, or an extension `.json` to install it |
 | Trace a floor plan | File → Import floor plan, and pick a PDF or a picture (PNG, JPG, WebP…). Then set its scale: click two points whose real distance you know and type that distance (`3500`, `350 cm`, `3.5 m`). The plan is then locked so you can draw over it |
 | Assistant | The Assistant tab on the right (`Ctrl+J`) changes the drawing from a description, such as "draw a 5 × 4 m room with a door on the bottom wall". Each request is undone with one undo. It needs an AI provider, set up in Preferences |
 | Conversations | The assistant keeps your conversations: pick one at the top of its panel, or type `/resume`. `/new` starts one, `/model` changes the model (also the list under the message), `/clear` deletes. Paste a picture (`Ctrl+V`) or use the paperclip to show it a sketch |
@@ -169,6 +171,9 @@ A batch is all-or-nothing and every result is validated, so a script or a model 
 | Doors and windows | The Door or Window button in the toolbar, then click on a wall: it snaps on, turns to follow the wall, opens towards your cursor and cuts the opening. Drag it to slide it along the wall. Type, hinge side, width and more are in the right panel |
 | Compass | Component library → Compass (north). Turn it with the round handle above it, or type its rotation; size and letter are in the right panel |
 | Select | Click an object. A component or a library object is picked anywhere inside its outline; a plain shape with no fill by its line. A room is picked by its name, so what stands on its floor stays easy to click |
+| Arcs and curves | Draw an ellipse (`O`), then type a start and an end angle under "Arc from" and "Arc to" in the right panel: angles run clockwise from the right. Tick Curved on a polyline to make it flow through its points |
+| Repeat | Select something, Object → Repeat in rows and columns, then set how many across, how many rows and the steps under Modifiers. The copies are drawn, not made: change the object and they all follow |
+| Import DXF | File → Import DXF, or drop the file. It must be a text (ASCII) DXF; a DWG has to be saved as DXF first. Blocks, hatches and dimensions are not read |
 | Stairs | Component library → straight, L-shaped, U-shaped or spiral. `R` rotates before placing. Steps, tread, width and turn direction are in the right panel |
 | Groups | `Ctrl+G` groups the selection, `Ctrl+Shift+G` ungroups. Double-click a group to edit inside it |
 | Order | `]` to front, `[` to back, `Ctrl+]` and `Ctrl+[` one step. Also in the properties panel, the right-click menu, or drag rows in the Structure panel |
@@ -350,10 +355,10 @@ Extensions are currently compiled in: add yours to the registry in [`apps/web/sr
 
 - **Installers** are not signed and do not update themselves: download the next version from the releases page.
 - **Release notes** and the example drawing are in English only. Recent drawings are listed in the desktop app only.
-- **Printing.** PDF export uses one standard font, so text looks slightly different from the screen, and only JPEG pictures are included. A sheet cannot yet show a part of the plan at another scale.
-- **Drawing.** No arcs or curves, no array, and scaling is uniform only. Text is in one font weight, left-aligned.
-- **Walls.** No curved walls yet. In a DXF export, a wall ending against the middle of another keeps the line across its end.
-- **Import.** Only the first page of a PDF is taken; there is no DXF or DWG import.
+- **Printing.** PDF export uses the standard fonts of PDF readers (sans-serif, serif, monospace, plain or bold), so text is close to the screen but not identical, and letters outside Western European alphabets print as "?". Pictures other than JPEG and PNG are left out. A sheet cannot yet show a part of the plan at another scale.
+- **Drawing.** Arcs are made by typing angles, not yet drawn with a tool of their own. Scaling is uniform only.
+- **Walls.** No curved walls yet.
+- **Import.** One page of a PDF at a time. DXF import reads lines, polylines, circles, arcs, ellipses and text, not blocks, hatches or dimensions, and not binary DXF or DWG.
 - **Hosted version.** Accounts, cloud storage and realtime collaboration are planned; the data model is prepared for them, nothing is built.
 - **Extensions.** Those installed at runtime can add objects and modifiers as data. Extensions that add tools must be compiled in.
 

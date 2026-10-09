@@ -1,5 +1,5 @@
 import { declarativeExtension, parseDocument, type Vec2 } from '@opencalque/core'
-import { DRAWING_EXTENSIONS, guarded } from './actions'
+import { DRAWING_EXTENSIONS, guarded, placeDxf } from './actions'
 import { PLAN_EXTENSIONS, placeFloorPlan } from './floorplan'
 import { t } from './i18n'
 import { setPrefs, usePrefs } from './prefs'
@@ -13,6 +13,7 @@ export const carriesFiles = (data: DataTransfer | null) => Boolean(data && [...d
 /**
  * Takes files dropped onto the app and sends each where its kind belongs:
  * - a picture or a PDF becomes a plan to trace, placed where it was dropped;
+ * - a .dxf file has its geometry added to the drawing;
  * - an .opencalque file is opened as the drawing;
  * - a .json file is opened as a drawing, or installed when it is an extension (data, never code).
  * `at` is the point of the drawing under the pointer, when the files were dropped on it.
@@ -24,6 +25,8 @@ export async function openDropped(files: File[], at?: Vec2): Promise<void> {
     await guarded(async () => {
       if (PLAN_EXTENSIONS.includes(kind)) {
         await placeFloorPlan({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) }, at)
+      } else if (kind === 'dxf') {
+        placeDxf(file.name, await file.text())
       } else if (DRAWING_EXTENSIONS.includes(kind)) {
         const content = JSON.parse(await file.text())
         // An extension describes objects; a drawing holds nodes.

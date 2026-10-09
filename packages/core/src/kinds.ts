@@ -1,5 +1,5 @@
 import { childrenOf, isVisible } from './document'
-import { add, dist, len, mid, norm, perp, rotate, scale, sub, type Vec2 } from './geometry'
+import { add, dist, len, mid, norm, perp, rotate, scale, sub, type Vec2, ellipseArc, smoothPoints } from './geometry'
 import { resolveColor } from './colors'
 import { fillFields } from './fields'
 import { applyModifiers, movedModifiers } from './modifiers'
@@ -161,12 +161,17 @@ function endMarkers(points: Vec2[], node: { startMarker?: NodeOf<'dimension'>['s
 }
 
 /** A text as one primitive per line, each a line height below the one before, turned with the text. */
-function textLines(text: string, at: Vec2, size: number, look: { rotation?: number; font?: string; align?: 'left' | 'center' | 'right' }): Primitive[] {
+function textLines(text: string, at: Vec2, size: number, look: { rotation?: number; font?: string; align?: 'left' | 'center' | 'right'; bold?: boolean }): Primitive[] {
   return text.split('\n').flatMap((line, i): Primitive[] => {
     if (line === '') return []
     const down = rotate({ x: 0, y: i * size * 1.25 }, look.rotation ?? 0)
     return [{ kind: 'text', x: at.x + down.x, y: at.y + down.y, text: line, size, ...look }]
   })
+}
+
+/** The angles an ellipse is an arc between, or null when it is whole. One angle given alone runs to or from the X axis. */
+export function arcOf(node: { from?: number; to?: number }): { from: number; to: number } | null {
+  return node.from === undefined && node.to === undefined ? null : { from: node.from ?? 0, to: node.to ?? 360 }
 }
 
 /**
@@ -323,7 +328,7 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     moveHandle: moveHandleAB,
   },
   polyline: {
-    primitives: (node) => [{ kind: 'path', points: node.points, closed: node.closed }, ...(node.closed ? [] : endMarkers(node.points, node))],
+    primitives: (node) => [{ kind: 'path', points: node.smooth ? smoothPoints(node.points, node.closed) : node.points, closed: node.closed }, ...(node.closed ? [] : endMarkers(node.points, node))],
     move: (node, d) => ({ points: node.points.map((p) => add(p, d)) }),
     handles: (node) => node.points,
     moveHandle: (node, index, p) => ({ points: node.points.map((q, i) => (i === index ? p : q)) }),
@@ -368,12 +373,22 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     },
   },
   ellipse: {
-    primitives: (node) => [{ kind: 'ellipse', cx: node.cx, cy: node.cy, rx: node.rx, ry: node.ry, rotation: node.rotation }],
+    // With a start and an end angle it is an arc, drawn as an open line.
+    primitives: (node) => {
+      const arc = arcOf(node)
+      return arc ? [{ kind: 'path', points: ellipseArc({ ...node, ...arc }) }] : [{ kind: 'ellipse', cx: node.cx, cy: node.cy, rx: node.rx, ry: node.ry, rotation: node.rotation }]
+    },
     move: (node, d) => ({ cx: node.cx + d.x, cy: node.cy + d.y }),
-    snapPoints: (node) => [{ x: node.cx, y: node.cy }],
+    snapPoints: (node) => {
+      const centre = { x: node.cx, y: node.cy }
+      const arc = arcOf(node)
+      if (!arc) return [centre]
+      const points = ellipseArc({ ...node, ...arc })
+      return [centre, points[0], points[points.length - 1]]
+    },
   },
   text: {
-    primitives: (node, ctx) => textLines(fillFields(node.text, ctx.doc, node.parent), node, node.size, { rotation: node.rotation, font: node.font }),
+    primitives: (node, ctx) => textLines(fillFields(node.text, ctx.doc, node.parent), node, node.size, { rotation: node.rotation, font: node.font, align: node.align, bold: node.bold }),
     move: moveXY,
     snapPoints: (node) => [{ x: node.x, y: node.y }],
   },

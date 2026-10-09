@@ -121,6 +121,7 @@ export const NodeSchema = z
         type: z.literal('polyline'),
         points: z.array(Vec2Schema).min(2),
         closed: z.boolean().optional(),
+        smooth: z.boolean().optional().describe('Drawn as a curve flowing through the points instead of straight segments.'),
         startMarker: tip.describe("Symbol at the first point of an open polyline. Defaults to 'none'."),
         endMarker: tip.describe("Symbol at its last point. Defaults to 'none'."),
         markerSize,
@@ -179,9 +180,22 @@ export const NodeSchema = z
       rx: z.number().nonnegative(),
       ry: z.number().nonnegative(),
       rotation,
+      from: z.number().optional().describe('With `to`, makes it an arc: the angle in degrees where the arc starts, measured clockwise on screen from the X axis.'),
+      to: z.number().optional().describe('The angle where the arc ends, going clockwise from `from`.'),
     }),
     z
-      .object({ ...base, type: z.literal('text'), x: z.number(), y: z.number(), text: z.string(), size: z.number().positive(), rotation, font })
+      .object({
+        ...base,
+        type: z.literal('text'),
+        x: z.number(),
+        y: z.number(),
+        text: z.string(),
+        size: z.number().positive(),
+        rotation,
+        font,
+        bold: z.boolean().optional(),
+        align: z.enum(['left', 'center', 'right']).optional().describe("Which part of each line is at x: its left end (the default), its middle, or its right end."),
+      })
       .describe(
         'Text anchored at the left end of the baseline of its first line; a line break in the text starts a new line below. Size is the font size in mm. These fields are filled in when it is drawn: {date}, {page} (name of the page it is on), {page-number}, {pages} (how many pages there are), {document}.',
       ),

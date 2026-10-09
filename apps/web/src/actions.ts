@@ -19,6 +19,7 @@ import {
   sceneBounds,
   serializeDocument,
   toDXF,
+  dxfOps,
   toSVG,
   ungroupNode,
   type Document,
@@ -192,6 +193,25 @@ export const exportSvg = () =>
   })
 
 /** Any OpenCalque document can be used as a library: this copies all of its components in. */
+/** Adds the geometry of a DXF file to what is being edited, selects it and brings it into view. */
+export function placeDxf(name: string, content: string): void {
+  const { doc, scope } = get()
+  const { ops, added, skipped } = dxfOps(doc, scope, content)
+  if (added === 0) return toast(t('{file} holds nothing that can be imported: no lines, circles, arcs or text.', { file: name }))
+  const before = new Set(Object.keys(doc.nodes))
+  if (!apply(ops)) return
+  select(Object.keys(get().doc.nodes).filter((id) => !before.has(id)))
+  zoomToFit()
+  const left = skipped > 0 ? ' ' + tn(skipped, '{n} other was left out (blocks, hatches and dimensions are not read).', '{n} others were left out (blocks, hatches and dimensions are not read).') : ''
+  toast(tn(added, 'Imported {n} object from {file}.', 'Imported {n} objects from {file}.', { file: name }) + left)
+}
+
+export const importDxf = () =>
+  guarded(async () => {
+    const file = await platform.open(['dxf'])
+    if (file) placeDxf(file.name, file.content)
+  })
+
 export const importLibrary = () =>
   guarded(async () => {
     const file = await platform.open(DRAWING_EXTENSIONS)
@@ -271,7 +291,8 @@ export function addModifier(type: string): void {
   const added: Modifier = {
     type,
     frame: sized ? { x: across.from, y: down.from } : { x: box.minX, y: box.minY },
-    params: sized ? { width: across.size, height: down.size } : {},
+    // A repeat starts with steps that clear the object by a fifth of its size, rounded to a tidy length.
+    params: sized ? { width: across.size, height: down.size } : type === 'array' ? { dx: Math.ceil(((box.maxX - box.minX) * 1.2) / 10) * 10 || 1000, dy: Math.ceil(((box.maxY - box.minY) * 1.2) / 10) * 10 || 1000 } : {},
   }
   apply(selection.map((id): Op => ({ op: 'update_node', id, patch: { modifiers: [...(doc.nodes[id].modifiers ?? []), added] } })))
 }
