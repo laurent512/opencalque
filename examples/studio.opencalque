@@ -1,0 +1,288 @@
+{
+  "format": "opencalque",
+  "version": 1,
+  "id": "doc_stirdtzvun",
+  "name": "Studio",
+  "unit": "mm",
+  "layers": {
+    "layer_1": {
+      "id": "layer_1",
+      "name": "Walls",
+      "order": "a0"
+    },
+    "furniture": {
+      "id": "furniture",
+      "name": "Furniture",
+      "order": "a1",
+      "color": "#2563eb"
+    },
+    "notes": {
+      "id": "notes",
+      "name": "Annotations",
+      "order": "a2",
+      "color": "#b91c1c"
+    }
+  },
+  "nodes": {
+    "page_1": {
+      "id": "page_1",
+      "name": "Page 1",
+      "parent": null,
+      "order": "a0",
+      "type": "page"
+    },
+    "n_5ksn9ca0bo": {
+      "id": "n_5ksn9ca0bo",
+      "parent": "page_1",
+      "order": "a0",
+      "layer": "layer_1",
+      "type": "wall",
+      "a": {
+        "x": 0,
+        "y": 0
+      },
+      "b": {
+        "x": 6000,
+        "y": 0
+      },
+      "thickness": 200
+    },
+    "n_8dc2rae34u": {
+      "id": "n_8dc2rae34u",
+      "parent": "page_1",
+      "order": "a1",
+      "layer": "layer_1",
+      "type": "wall",
+      "a": {
+        "x": 6000,
+        "y": 0
+      },
+      "b": {
+        "x": 6000,
+        "y": 4000
+      },
+      "thickness": 200
+    },
+    "n_9oup8lac4p": {
+      "id": "n_9oup8lac4p",
+      "parent": "page_1",
+      "order": "a2",
+      "layer": "layer_1",
+      "type": "wall",
+      "a": {
+        "x": 6000,
+        "y": 4000
+      },
+      "b": {
+        "x": 0,
+        "y": 4000
+      },
+      "thickness": 200
+    },
+    "n_hxp0is7vcx": {
+      "id": "n_hxp0is7vcx",
+      "parent": "page_1",
+      "order": "a3",
+      "layer": "layer_1",
+      "type": "wall",
+      "a": {
+        "x": 0,
+        "y": 4000
+      },
+      "b": {
+        "x": 0,
+        "y": 0
+      },
+      "thickness": 200
+    },
+    "n_x1ugiz22rm": {
+      "id": "n_x1ugiz22rm",
+      "name": "Partition",
+      "parent": "page_1",
+      "order": "a4",
+      "layer": "layer_1",
+      "type": "wall",
+      "a": {
+        "x": 3600,
+        "y": 0
+      },
+      "b": {
+        "x": 3600,
+        "y": 4000
+      },
+      "thickness": 100
+    },
+    "n_4s72dzid39": {
+      "id": "n_4s72dzid39",
+      "name": "Entrance",
+      "parent": "page_1",
+      "order": "a5",
+      "layer": "layer_1",
+      "type": "parametric",
+      "kind": "arch.door",
+      "props": {
+        "width": 900
+      },
+      "x": 1900,
+      "y": 4000,
+      "rotation": 180
+    },
+    "n_zflu5bwqi8": {
+      "id": "n_zflu5bwqi8",
+      "parent": "page_1",
+      "order": "a6",
+      "layer": "layer_1",
+      "type": "parametric",
+      "kind": "arch.door",
+      "props": {
+        "width": 800
+      },
+      "x": 3600,
+      "y": 1200,
+      "rotation": 90
+    },
+    "n_7ylt3fdizh": {
+      "id": "n_7ylt3fdizh",
+      "parent": "page_1",
+      "order": "a7",
+      "layer": "layer_1",
+      "type": "parametric",
+      "kind": "arch.stair.u",
+      "props": {
+        "steps": 16
+      },
+      "x": 3800,
+      "y": 3700
+    },
+    "n_s79e8fbmd4": {
+      "id": "n_s79e8fbmd4",
+      "parent": "page_1",
+      "order": "a8",
+      "layer": "layer_1",
+      "type": "parametric",
+      "kind": "arch.window",
+      "props": {
+        "width": 1500,
+        "panes": 3
+      },
+      "x": 1200,
+      "y": 0
+    },
+    "n_8xtu4kzb3u": {
+      "id": "n_8xtu4kzb3u",
+      "parent": "page_1",
+      "order": "a9",
+      "layer": "layer_1",
+      "type": "parametric",
+      "kind": "arch.window",
+      "props": {
+        "width": 1200
+      },
+      "x": 6000,
+      "y": 1400,
+      "rotation": 90
+    },
+    "table": {
+      "id": "table",
+      "name": "Table for two",
+      "parent": null,
+      "order": "a1",
+      "type": "component",
+      "description": "1200 x 700 table with two chairs"
+    },
+    "n_4okjnuzzcr": {
+      "id": "n_4okjnuzzcr",
+      "parent": "table",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 250,
+      "width": 1200,
+      "height": 700
+    },
+    "n_n7zewxv11h": {
+      "id": "n_n7zewxv11h",
+      "parent": "table",
+      "order": "a1",
+      "type": "ellipse",
+      "cx": 300,
+      "cy": 200,
+      "rx": 200,
+      "ry": 200
+    },
+    "n_liwfsonp9r": {
+      "id": "n_liwfsonp9r",
+      "parent": "table",
+      "order": "a2",
+      "type": "ellipse",
+      "cx": 900,
+      "cy": 200,
+      "rx": 200,
+      "ry": 200
+    },
+    "n_5k9nsvqzti": {
+      "id": "n_5k9nsvqzti",
+      "parent": "page_1",
+      "order": "aA",
+      "layer": "furniture",
+      "type": "instance",
+      "component": "table",
+      "x": 700,
+      "y": 500
+    },
+    "n_yeywgtt5fv": {
+      "id": "n_yeywgtt5fv",
+      "parent": "page_1",
+      "order": "aB",
+      "layer": "furniture",
+      "type": "instance",
+      "component": "table",
+      "x": 3200,
+      "y": 2000,
+      "rotation": 90
+    },
+    "n_wg3sunungi": {
+      "id": "n_wg3sunungi",
+      "parent": "page_1",
+      "order": "aC",
+      "layer": "notes",
+      "type": "dimension",
+      "a": {
+        "x": 0,
+        "y": 0
+      },
+      "b": {
+        "x": 6000,
+        "y": 0
+      },
+      "offset": -700
+    },
+    "n_zibtjyclky": {
+      "id": "n_zibtjyclky",
+      "parent": "page_1",
+      "order": "aD",
+      "layer": "notes",
+      "type": "dimension",
+      "a": {
+        "x": 0,
+        "y": 0
+      },
+      "b": {
+        "x": 0,
+        "y": 4000
+      },
+      "offset": 700
+    },
+    "n_5rlw5iinbp": {
+      "id": "n_5rlw5iinbp",
+      "parent": "page_1",
+      "order": "aE",
+      "layer": "notes",
+      "type": "text",
+      "x": 900,
+      "y": 3300,
+      "text": "Living room",
+      "size": 200
+    }
+  }
+}

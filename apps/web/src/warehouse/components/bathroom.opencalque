@@ -1,0 +1,183 @@
+{
+  "format": "opencalque",
+  "version": 1,
+  "id": "warehouse.bathroom",
+  "name": "Bathroom",
+  "unit": "mm",
+  "layers": {
+    "layer_1": {
+      "id": "layer_1",
+      "name": "Layer 1",
+      "order": "a0"
+    }
+  },
+  "nodes": {
+    "page_1": {
+      "id": "page_1",
+      "type": "page",
+      "name": "Page 1",
+      "parent": null,
+      "order": "a0"
+    },
+    "bathroom_1": {
+      "id": "bathroom_1",
+      "name": "Toilet",
+      "parent": null,
+      "order": "a1",
+      "type": "component",
+      "description": "380 × 700"
+    },
+    "n_95gsmspsqr": {
+      "id": "n_95gsmspsqr",
+      "parent": "bathroom_1",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 380,
+      "height": 200
+    },
+    "n_rbpnoztner": {
+      "id": "n_rbpnoztner",
+      "parent": "bathroom_1",
+      "order": "a1",
+      "type": "ellipse",
+      "cx": 190,
+      "cy": 450,
+      "rx": 170,
+      "ry": 250
+    },
+    "bathroom_2": {
+      "id": "bathroom_2",
+      "name": "Washbasin",
+      "parent": null,
+      "order": "a2",
+      "type": "component",
+      "description": "600 × 450"
+    },
+    "n_e57pnz6iom": {
+      "id": "n_e57pnz6iom",
+      "parent": "bathroom_2",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 600,
+      "height": 450
+    },
+    "n_9bnrwem9ub": {
+      "id": "n_9bnrwem9ub",
+      "parent": "bathroom_2",
+      "order": "a1",
+      "type": "ellipse",
+      "cx": 300,
+      "cy": 250,
+      "rx": 220,
+      "ry": 150
+    },
+    "n_gi08ymfcmr": {
+      "id": "n_gi08ymfcmr",
+      "parent": "bathroom_2",
+      "order": "a2",
+      "type": "ellipse",
+      "cx": 300,
+      "cy": 60,
+      "rx": 20,
+      "ry": 20
+    },
+    "bathroom_3": {
+      "id": "bathroom_3",
+      "name": "Bathtub",
+      "parent": null,
+      "order": "a3",
+      "type": "component",
+      "description": "1700 × 750"
+    },
+    "n_l3zwvceg1h": {
+      "id": "n_l3zwvceg1h",
+      "parent": "bathroom_3",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 1700,
+      "height": 750
+    },
+    "n_97ahv60uzk": {
+      "id": "n_97ahv60uzk",
+      "parent": "bathroom_3",
+      "order": "a1",
+      "type": "rect",
+      "x": 60,
+      "y": 60,
+      "width": 1580,
+      "height": 630
+    },
+    "n_a7xx3ygtne": {
+      "id": "n_a7xx3ygtne",
+      "parent": "bathroom_3",
+      "order": "a2",
+      "type": "ellipse",
+      "cx": 200,
+      "cy": 375,
+      "rx": 25,
+      "ry": 25
+    },
+    "bathroom_4": {
+      "id": "bathroom_4",
+      "name": "Shower tray",
+      "parent": null,
+      "order": "a4",
+      "type": "component",
+      "description": "900 × 900"
+    },
+    "n_fgixku0x9l": {
+      "id": "n_fgixku0x9l",
+      "parent": "bathroom_4",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 900,
+      "height": 900
+    },
+    "n_9j9pm8q61m": {
+      "id": "n_9j9pm8q61m",
+      "parent": "bathroom_4",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 0,
+        "y": 0
+      },
+      "b": {
+        "x": 900,
+        "y": 900
+      }
+    },
+    "n_pj83s2bh0o": {
+      "id": "n_pj83s2bh0o",
+      "parent": "bathroom_4",
+      "order": "a2",
+      "type": "line",
+      "a": {
+        "x": 900,
+        "y": 0
+      },
+      "b": {
+        "x": 0,
+        "y": 900
+      }
+    },
+    "n_8qslih9pl2": {
+      "id": "n_8qslih9pl2",
+      "parent": "bathroom_4",
+      "order": "a3",
+      "type": "ellipse",
+      "cx": 450,
+      "cy": 450,
+      "rx": 30,
+      "ry": 30
+    }
+  }
+}

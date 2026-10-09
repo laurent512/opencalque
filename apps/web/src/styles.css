@@ -1,0 +1,1418 @@
+:root {
+  --bg: #ffffff;
+  --border: #e6e6e6;
+  --text: #1e1e1e;
+  --muted: #8a8a8a;
+  --hover: #f3f3f3;
+  --accent: #0d99ff;
+  --accent-soft: #e5f4ff;
+  font: 12px/16px system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--text);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
+}
+
+/* Panels around the drawing */
+
+.dock {
+  flex: 1;
+  min-height: 0;
+  --dv-group-view-background-color: var(--bg);
+  --dv-tabs-and-actions-container-background-color: var(--bg);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--bg);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--bg);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--bg);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--bg);
+  --dv-activegroup-visiblepanel-tab-color: var(--text);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--text);
+  --dv-activegroup-hiddenpanel-tab-color: var(--muted);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--muted);
+  --dv-separator-border: var(--border);
+  --dv-paneview-header-border-color: var(--border);
+  --dv-tab-divider-color: transparent;
+  --dv-tabs-and-actions-container-height: 32px;
+  --dv-tabs-and-actions-container-font-size: 12px;
+  --dv-drag-over-background-color: rgb(13 153 255 / 14%);
+  --dv-drag-over-border-color: var(--accent);
+  --dv-active-sash-color: var(--accent);
+}
+
+/* Tabs: a tinted strip, so the row of tabs reads as separate from the panel beneath it, with the
+   tab in front shown as a raised white pill and the others lighting up under the pointer. */
+
+.dock {
+  --dv-tabs-and-actions-container-background-color: #f4f4f4;
+  --dv-tabs-and-actions-container-height: 36px;
+  --dv-activegroup-visiblepanel-tab-background-color: transparent;
+  --dv-activegroup-hiddenpanel-tab-background-color: transparent;
+  --dv-inactivegroup-visiblepanel-tab-background-color: transparent;
+  --dv-inactivegroup-hiddenpanel-tab-background-color: transparent;
+}
+
+.dock .dv-tabs-and-actions-container {
+  border-bottom: 1px solid var(--border);
+}
+
+.dock .dv-tabs-container {
+  gap: 2px;
+  padding: 0 6px;
+}
+
+.dock .dv-tab {
+  height: 26px;
+  margin: 5px 0;
+  padding: 0 4px 0 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: background-color 80ms;
+}
+
+.dock .dv-tab.dv-inactive-tab:hover {
+  background-color: #e6e6e6;
+  color: var(--text);
+}
+
+.dock .dv-tab.dv-active-tab {
+  background-color: var(--bg);
+  box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgb(0 0 0 / 6%);
+}
+
+/* The close button only on the tab in front or under the pointer, so the others stay compact. */
+.dock .dv-tab .dv-default-tab-action {
+  border-radius: 4px;
+  visibility: hidden;
+}
+
+.dock .dv-tab.dv-active-tab .dv-default-tab-action,
+.dock .dv-tab:hover .dv-default-tab-action {
+  visibility: visible;
+}
+
+.dock .dv-tab .dv-default-tab-action:hover {
+  background-color: #dcdcdc;
+}
+
+.dock-panel {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Top bar */
+
+.menubar {
+  display: flex;
+  flex: none;
+  height: 36px;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.menubar-brand {
+  padding: 0 10px 0 4px;
+  font-size: 13px;
+}
+
+.menubar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+}
+
+.menubar-item:hover,
+.menubar-item.open {
+  background: var(--hover);
+}
+
+.menubar-name {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  font-weight: 600;
+}
+
+/* Panels */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+}
+
+.panel:last-child {
+  border-right: 0;
+  border-left: 1px solid var(--border);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 8px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabs button {
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabs button.active {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.section {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.section h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+  margin: 0;
+  padding: 0 8px 0 16px;
+  font-size: 11px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px 0 16px;
+  cursor: default;
+}
+
+.row:hover {
+  background: var(--hover);
+}
+
+.row.selected {
+  background: var(--accent-soft);
+}
+
+.row.current {
+  box-shadow: inset 2px 0 var(--accent);
+  font-weight: 600;
+}
+
+.row > span:first-of-type,
+.row > .editable {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row .icon-button {
+  width: 22px;
+  height: 22px;
+}
+
+.hint {
+  margin: 4px 16px;
+  color: var(--muted);
+}
+
+.faint {
+  color: #bdbdbd;
+  font-style: normal;
+}
+
+/* Controls */
+
+.icon-button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  cursor: pointer;
+}
+
+.icon-button:hover:not(:disabled) {
+  background: var(--hover);
+}
+
+.icon-button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.icon-button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* The tool in use stays in its colour under the pointer, a shade darker; the plain hover would leave a white icon on a pale button. */
+.icon-button.active:hover:not(:disabled) {
+  background: var(--accent);
+  filter: brightness(0.92);
+}
+
+.text-button {
+  margin: 4px 12px;
+  padding: 4px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.field .text-button {
+  margin: 0;
+}
+
+.inline-input {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  outline: 0;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 2px 12px 2px 16px;
+}
+
+.field > span {
+  flex: none;
+  width: 72px;
+  color: var(--muted);
+}
+
+.field > input:not([type]),
+.field > select {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: var(--hover);
+  outline: 0;
+}
+
+.field > input:not([type]):focus,
+.field > select:focus {
+  border-color: var(--accent);
+}
+
+/* The stack of modifiers of the selected object */
+
+.modifier {
+  margin: 4px 8px;
+  padding: 2px 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.modifier .field {
+  padding: 2px 8px;
+}
+
+.modifier .field > strong {
+  flex: 1;
+}
+
+.modifier.off > .field ~ * {
+  opacity: 0.45;
+}
+
+.section-add {
+  height: 22px;
+  max-width: 96px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.section-add:hover {
+  background: var(--hover);
+}
+
+/* While Alt is held, a number can be dragged sideways to change it. */
+body.scrubbing .field.numeric > input,
+body.scrubbing .quick-field input[title] {
+  cursor: ew-resize;
+}
+
+.swatch {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: none;
+  cursor: pointer;
+}
+
+.swatch::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.swatch::-webkit-color-swatch {
+  border: 0;
+  border-radius: 2px;
+}
+
+/* Main menu */
+
+.menu {
+  position: relative;
+}
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
+
+.menu-list {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  z-index: 11;
+  width: 290px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 8px;
+  background: #1e1e1e;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 25%);
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.menu-list button {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-list button:hover:not(:disabled) {
+  background: var(--accent);
+}
+
+.menu-list button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.menu-check {
+  flex: none;
+  width: 18px;
+}
+
+.menu-title {
+  flex: 1;
+}
+
+.menu-list kbd {
+  font: inherit;
+  opacity: 0.6;
+}
+
+.menu-list hr {
+  margin: 6px 0;
+  border: 0;
+  border-top: 1px solid #444;
+}
+
+/* Canvas area */
+
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.toolbar {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: 0 2px 14px rgb(0 0 0 / 15%), 0 0 0 1px rgb(0 0 0 / 6%);
+  transform: translateX(-50%);
+}
+
+.toolbar .icon-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 7px;
+}
+
+.toolbar hr {
+  align-self: stretch;
+  margin: 4px 2px;
+  border: 0;
+  border-left: 1px solid var(--border);
+}
+
+.zoom {
+  min-width: 64px;
+  padding: 0 6px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.status {
+  position: absolute;
+  bottom: 8px;
+  left: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.banner,
+.toast {
+  position: absolute;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 80%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #fff;
+  transform: translateX(-50%);
+}
+
+.banner {
+  top: 12px;
+  background: #7b61ff;
+}
+
+/* Keys worth knowing for the tool in use */
+
+.hint-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  display: flex;
+  gap: 14px;
+  max-width: 90%;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 8%);
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.banner ~ .hint-bar {
+  top: 56px;
+}
+
+.hint-bar span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* The first hint is what to do next; it reads as the instruction, the rest as asides. */
+.hint-bar .next {
+  color: var(--text, #1f1f1f);
+  font-weight: 600;
+}
+
+.quick-group:empty {
+  display: none;
+}
+
+.hint-bar kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--hover);
+  color: var(--text, inherit);
+  font: inherit;
+  font-weight: 600;
+}
+
+.banner button {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: #fff;
+  color: #7b61ff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toast {
+  bottom: 72px;
+  background: #1e1e1e;
+  white-space: pre-line;
+}
+
+/* Command palette */
+
+.palette-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14vh;
+  background: rgb(0 0 0 / 18%);
+}
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  width: min(620px, calc(100vw - 32px));
+  max-height: 62vh;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 28%);
+  user-select: none;
+}
+
+.palette > input {
+  padding: 14px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  outline: 0;
+  font-size: 14px;
+}
+
+.palette-list {
+  flex: 1;
+  padding: 6px;
+  overflow-y: auto;
+}
+
+.palette-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding: 0 6px 0 10px;
+  border-radius: 6px;
+  cursor: default;
+}
+
+.palette-row.active {
+  background: var(--accent-soft);
+}
+
+.palette-row.unavailable .palette-title {
+  color: var(--muted);
+}
+
+.palette-row > .faint {
+  flex: none;
+  width: 84px;
+  color: var(--muted);
+}
+
+.palette-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-keys,
+.palette-reset {
+  flex: none;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 11px;
+  white-space: pre;
+  cursor: pointer;
+}
+
+.palette-reset {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 5px;
+}
+
+.palette-keys:hover,
+.palette-reset:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.palette-keys.recording {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.palette-footer {
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* Preferences */
+
+.dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: 76vh;
+  overflow-y: auto;
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 28%);
+  user-select: text;
+}
+
+.dialog header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 8px 4px 20px;
+}
+
+.dialog h2 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.dialog section {
+  padding: 8px 20px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.dialog h3 {
+  margin: 8px 0;
+  font-size: 12px;
+}
+
+.dialog .hint {
+  margin: 8px 0;
+}
+
+.dialog .text-button {
+  margin: 0 12px 0 0;
+  padding: 4px 0;
+}
+
+.pref-row,
+.pref-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+}
+
+.pref-field > span {
+  flex: none;
+  width: 80px;
+  color: var(--muted);
+}
+
+.pref-field > input,
+.pref-field > select {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  outline: 0;
+}
+
+.pref-field > input:focus,
+.pref-field > select:focus {
+  border-color: var(--accent);
+}
+
+/* Assistant */
+
+.assistant-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.assistant-log {
+  flex: 1;
+  padding: 8px 12px;
+  overflow-y: auto;
+  user-select: text;
+}
+
+.assistant-log .hint {
+  margin: 8px 4px;
+}
+
+.assistant-log .text-button {
+  margin: 0;
+}
+
+.assistant-entry {
+  margin: 8px 0;
+  line-height: 18px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.assistant-entry.user {
+  margin-left: 24px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--hover);
+}
+
+.assistant-entry.activity,
+.assistant-entry.error {
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.assistant-entry.error {
+  border-color: #e5484d;
+  color: #c2272d;
+}
+
+.assistant-example {
+  display: block;
+  width: 100%;
+  margin: 6px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.assistant-example:hover {
+  border-color: var(--accent);
+}
+
+.assistant-composer {
+  margin: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.assistant-composer:focus-within {
+  border-color: var(--accent);
+}
+
+.assistant-composer textarea {
+  display: block;
+  width: 100%;
+  padding: 8px 10px 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font: inherit;
+  resize: none;
+}
+
+.assistant-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+}
+
+.assistant-model {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.assistant-model:hover {
+  background: var(--hover);
+}
+
+.assistant-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.assistant-head select {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.assistant-head select:hover {
+  border-color: var(--border);
+}
+
+.assistant-entry img {
+  display: block;
+  max-width: 120px;
+  max-height: 120px;
+  margin: 2px 0 6px;
+  border-radius: 6px;
+}
+
+.assistant-composer {
+  position: relative;
+}
+
+.assistant-suggest {
+  position: absolute;
+  right: -1px;
+  bottom: calc(100% + 6px);
+  left: -1px;
+  max-height: 240px;
+  padding: 4px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 14%);
+}
+
+.assistant-suggest button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.assistant-suggest button > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assistant-suggest button > .faint {
+  flex-shrink: 0;
+}
+
+.assistant-suggest button.active {
+  background: var(--hover);
+}
+
+.assistant-suggest .hint {
+  margin: 6px 8px;
+}
+
+.assistant-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 8px 0;
+}
+
+.assistant-attachment {
+  position: relative;
+}
+
+.assistant-attachment img {
+  display: block;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.assistant-attachment button {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #1f1f1f;
+  color: #fff;
+  cursor: pointer;
+}
+
+.menubar-saved {
+  font-size: 11px;
+}
+
+.assistant-actions .icon-button {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+}
+
+/* Object list */
+
+.type-icon {
+  display: inline-flex;
+  flex: none;
+  color: var(--muted);
+}
+
+.type-icon.component,
+.type-icon.instance {
+  color: #7b61ff;
+}
+
+.twist {
+  flex: none;
+  width: 22px;
+}
+
+.row[draggable='true'] {
+  cursor: grab;
+}
+
+.row.drop-above {
+  box-shadow: inset 0 2px var(--accent);
+}
+
+.row.drop-below {
+  box-shadow: inset 0 -2px var(--accent);
+}
+
+/* Right-click menu */
+
+.context-menu {
+  position: fixed;
+  z-index: 30;
+  width: 240px;
+}
+
+/* Warehouse */
+
+.dialog.warehouse {
+  display: flex;
+  flex-direction: column;
+  width: min(860px, calc(100vw - 32px));
+  height: min(640px, 82vh);
+  overflow: hidden;
+  user-select: none;
+}
+
+.dialog.warehouse > header {
+  padding: 8px 8px 0 12px;
+}
+
+.dialog.warehouse .tabs {
+  border: 0;
+}
+
+.warehouse-bar,
+.warehouse-footer,
+.warehouse-catalog {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+}
+
+.warehouse-bar input,
+.warehouse-catalog input {
+  flex: 1;
+  min-width: 80px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  outline: 0;
+}
+
+.warehouse-footer,
+.warehouse-catalog {
+  justify-content: space-between;
+  border-top: 1px solid var(--border);
+}
+
+.warehouse-footer .hint {
+  margin: 0;
+}
+
+.pill {
+  flex: none;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--bg);
+  cursor: pointer;
+}
+
+.pill.active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.warehouse-grid {
+  display: grid;
+  flex: 1;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  align-content: start;
+  gap: 10px;
+  padding: 4px 16px 16px;
+  overflow-y: auto;
+}
+
+.warehouse-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.warehouse-card {
+  position: relative;
+}
+
+.warehouse-actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.warehouse-card:hover .warehouse-actions,
+.warehouse-card:focus-within .warehouse-actions {
+  display: flex;
+}
+
+.warehouse-heading {
+  grid-column: 1 / -1;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.warehouse-blank {
+  height: 110px;
+}
+
+.warehouse-bar input:only-child {
+  flex: 1;
+}
+
+.warehouse-card:hover {
+  border-color: var(--accent);
+}
+
+.warehouse-card img {
+  width: 100%;
+  height: 110px;
+  object-fit: contain;
+}
+
+.warehouse-list {
+  flex: 1;
+  padding: 0 16px;
+  overflow-y: auto;
+}
+
+.warehouse-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.warehouse-row .hint {
+  margin: 2px 0 0;
+}
+
+/* Shape button with its list of shapes */
+
+.tool-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.tool-more {
+  display: inline-flex;
+  align-items: center;
+  width: 14px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tool-more:hover,
+.tool-more.open {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.tool-menu {
+  top: auto;
+  bottom: 44px;
+  width: 210px;
+}
+
+.tool-menu button {
+  align-items: center;
+  gap: 8px;
+}
+
+/* Sizes typed while drawing */
+
+.quickbar {
+  position: absolute;
+  bottom: 72px;
+  left: 50%;
+  display: flex;
+  gap: 8px;
+  transform: translateX(-50%);
+}
+
+.quick-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 2px 14px rgb(0 0 0 / 15%), 0 0 0 1px rgb(0 0 0 / 6%);
+}
+
+.quick-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--hover);
+}
+
+.quick-field:focus-within {
+  border-color: var(--accent);
+  background: var(--bg);
+}
+
+.quick-field.locked input {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.quick-field span,
+.quick-field em {
+  color: var(--muted);
+  font-style: normal;
+  font-size: 11px;
+}
+
+.quick-field input {
+  width: 58px;
+  border: 0;
+  outline: 0;
+  background: none;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.quick-color {
+  width: 18px;
+  height: 18px;
+  margin: 0 3px;
+  padding: 0;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.quick-color.active {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+/* A lighter line for the tool icons than the icon set's default. */
+.toolbar svg,
+.tool-menu svg {
+  stroke-width: 1.5;
+}
+
+/* A text being typed in place on the drawing */
+
+.text-editor {
+  position: absolute;
+  min-width: 2ch;
+  padding: 0;
+  border: 0;
+  outline: 1px dashed var(--accent);
+  outline-offset: 3px;
+  background: none;
+  color: #1f1f1f;
+  user-select: text;
+}
+
+/* Shown while files from outside are dragged over the window */
+
+.drop-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(13 153 255 / 10%);
+  /* The veil must not be what the files are dropped on, or leaving it would hide it. */
+  pointer-events: none;
+}
+
+.drop-veil p {
+  margin: 0;
+  padding: 14px 22px;
+  border: 2px dashed var(--accent);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+}

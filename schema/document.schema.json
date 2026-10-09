@@ -1,0 +1,3167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "opencalque"
+    },
+    "version": {
+      "type": "number",
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "name": {
+      "type": "string"
+    },
+    "unit": {
+      "type": "string",
+      "const": "mm"
+    },
+    "layers": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "order": {
+            "type": "string",
+            "description": "Fractional index; layers sort by plain string comparison of this key."
+          },
+          "visible": {
+            "description": "Defaults to true.",
+            "type": "boolean"
+          },
+          "locked": {
+            "description": "Defaults to false.",
+            "type": "boolean"
+          },
+          "color": {
+            "description": "Default stroke color of nodes on this layer.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "order"
+        ],
+        "additionalProperties": false,
+        "description": "A drawing layer: a named set of nodes that can be hidden, locked and colored together."
+      },
+      "description": "Layers by id."
+    },
+    "assets": {
+      "description": "Embedded files by id. Large; tools that only need the drawing can ignore it.",
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mime": {
+            "type": "string",
+            "description": "Media type, e.g. 'image/jpeg'."
+          },
+          "data": {
+            "type": "string",
+            "description": "The file contents, base64-encoded."
+          },
+          "width": {
+            "description": "Width of the picture in pixels.",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "height": {
+            "description": "Height of the picture in pixels.",
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "mime",
+          "data"
+        ],
+        "additionalProperties": false,
+        "description": "A binary file embedded in the document, referenced by image nodes."
+      }
+    },
+    "nodes": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "page"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type"
+            ],
+            "additionalProperties": false,
+            "description": "A drawing sheet. Top-level container."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "component"
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type"
+            ],
+            "additionalProperties": false,
+            "description": "A reusable definition. Its children are drawn wherever an instance references it."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "group"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type"
+            ],
+            "additionalProperties": false,
+            "description": "Several nodes treated as one object: selected, moved and stacked together. It has no geometry; the nodes whose parent is this group keep their own coordinates. Groups can be nested."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "line"
+              },
+              "a": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              },
+              "b": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "a",
+              "b"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "polyline"
+              },
+              "points": {
+                "minItems": 2,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "x": {
+                      "type": "number"
+                    },
+                    "y": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "x",
+                    "y"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "closed": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "points"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "rect"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "width": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height": {
+                "type": "number",
+                "minimum": 0
+              },
+              "rotation": {
+                "description": "Degrees, clockwise on screen.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "x",
+              "y",
+              "width",
+              "height"
+            ],
+            "additionalProperties": false,
+            "description": "Rectangle with its top-left corner at (x, y), rotated around that corner."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "room"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "size": {
+                "description": "Size of the name and area written at (x, y), in mm. Defaults to 250.",
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "showArea": {
+                "description": "Whether the floor area is written under the name. Defaults to true.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "x",
+              "y"
+            ],
+            "additionalProperties": false,
+            "description": "A room: the space enclosed by the walls and dividers around the point (x, y), which is also where its name and area are written. Its outline is not stored: it is found from the walls each time, so it follows them. Give it a \"name\". style.fill colours the floor. If the walls around the point do not close, only the name is drawn."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "divider"
+              },
+              "a": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              },
+              "b": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "a",
+              "b"
+            ],
+            "additionalProperties": false,
+            "description": "A line that separates two rooms where there is no wall, for example between a kitchen and a living room in one open space. It bounds rooms as a wall does and takes no space."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "paper"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "width": {
+                "type": "number",
+                "minimum": 0
+              },
+              "height": {
+                "type": "number",
+                "minimum": 0
+              },
+              "scale": {
+                "description": "The drawing scale of the sheet, as the N of 1:N. Default 100. An A3 sheet (420 × 297 mm of paper) at 1:100 is 42000 × 29700 here.",
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "x",
+              "y",
+              "width",
+              "height"
+            ],
+            "additionalProperties": false,
+            "description": "A sheet of paper laid on the drawing, with its top-left corner at (x, y): it frames the part of the drawing meant for one printed sheet. Width and height are in drawing millimetres like everything else. It has no children: whatever lies entirely inside its rectangle is on it, and is moved and copied with it in the editor."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "ellipse"
+              },
+              "cx": {
+                "type": "number"
+              },
+              "cy": {
+                "type": "number"
+              },
+              "rx": {
+                "type": "number",
+                "minimum": 0
+              },
+              "ry": {
+                "type": "number",
+                "minimum": 0
+              },
+              "rotation": {
+                "description": "Degrees, clockwise on screen.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "cx",
+              "cy",
+              "rx",
+              "ry"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "text"
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "text": {
+                "type": "string"
+              },
+              "size": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "rotation": {
+                "description": "Degrees, clockwise on screen.",
+                "type": "number"
+              },
+              "font": {
+                "description": "CSS font family, e.g. 'serif'. Defaults to the system sans-serif.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "x",
+              "y",
+              "text",
+              "size"
+            ],
+            "additionalProperties": false,
+            "description": "Single-line text anchored at the left end of its baseline. Size is the font size in mm."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "annotation"
+              },
+              "a": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false,
+                "description": "The tip: the point the note is about."
+              },
+              "b": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false,
+                "description": "Where the leader ends and the text sits. The text runs away from the tip: to the right of b when b is right of a, otherwise ending at b."
+              },
+              "text": {
+                "type": "string",
+                "description": "The note. May be empty, which leaves an arrow."
+              },
+              "size": {
+                "description": "Text size in mm. Defaults to 200.",
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "font": {
+                "description": "CSS font family, e.g. 'serif'. Defaults to the system sans-serif.",
+                "type": "string"
+              },
+              "startMarker": {
+                "description": "Symbol at the tip (a). Defaults to 'arrow'.",
+                "type": "string",
+                "enum": [
+                  "tick",
+                  "arrow",
+                  "open-arrow",
+                  "dot",
+                  "none"
+                ]
+              },
+              "endMarker": {
+                "description": "Symbol at the text end (b). Defaults to 'none'.",
+                "type": "string",
+                "enum": [
+                  "tick",
+                  "arrow",
+                  "open-arrow",
+                  "dot",
+                  "none"
+                ]
+              },
+              "markerSize": {
+                "description": "Length of the end symbols in mm. Defaults to three quarters of the text size.",
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "bend": {
+                "description": "How much the leader curves, as a fraction of its length: 0 is straight, positive bows one way and negative the other. Defaults to 0.2.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "a",
+              "b",
+              "text"
+            ],
+            "additionalProperties": false,
+            "description": "A note pointing at something: a leader line from the tip a to the point b, with text beside b."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "wall"
+              },
+              "a": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              },
+              "b": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              },
+              "thickness": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "a",
+              "b",
+              "thickness"
+            ],
+            "additionalProperties": false,
+            "description": "A wall along the centerline a-b. Walls sharing an endpoint are drawn joined."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "dimension"
+              },
+              "a": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              },
+              "b": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false
+              },
+              "offset": {
+                "type": "number",
+                "description": "Signed distance from the measured points to the dimension line."
+              },
+              "startMarker": {
+                "description": "Symbol at this end of the dimension line. Defaults to 'tick'.",
+                "type": "string",
+                "enum": [
+                  "tick",
+                  "arrow",
+                  "open-arrow",
+                  "dot",
+                  "none"
+                ]
+              },
+              "endMarker": {
+                "description": "Symbol at this end of the dimension line. Defaults to 'tick'.",
+                "type": "string",
+                "enum": [
+                  "tick",
+                  "arrow",
+                  "open-arrow",
+                  "dot",
+                  "none"
+                ]
+              },
+              "markerSize": {
+                "description": "Length of the end markers in mm. Defaults to 100.",
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "extension": {
+                "description": "Look of the two extension lines. Unset values follow the dimension line.",
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "extensionGap": {
+                "description": "Gap in mm between a measured point and its extension line. Defaults to 0.",
+                "type": "number",
+                "minimum": 0
+              },
+              "text": {
+                "description": "Replaces the measured value when set.",
+                "type": "string"
+              },
+              "size": {
+                "description": "Text size in mm. Defaults to 150.",
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "font": {
+                "description": "CSS font family, e.g. 'serif'. Defaults to the system sans-serif.",
+                "type": "string"
+              },
+              "textColor": {
+                "description": "Defaults to the color of the dimension line.",
+                "type": "string"
+              },
+              "textPosition": {
+                "description": "Where the text sits relative to the dimension line. Defaults to 'above'.",
+                "type": "string",
+                "enum": [
+                  "above",
+                  "center",
+                  "below"
+                ]
+              },
+              "textRotation": {
+                "description": "Defaults to 'aligned' (along the dimension line).",
+                "type": "string",
+                "enum": [
+                  "aligned",
+                  "horizontal"
+                ]
+              },
+              "unit": {
+                "description": "Unit the measured value is shown in. Defaults to 'mm'. Coordinates stay in mm whatever this is.",
+                "type": "string",
+                "enum": [
+                  "mm",
+                  "cm",
+                  "m",
+                  "in",
+                  "ft"
+                ]
+              },
+              "decimals": {
+                "description": "Decimal places. Defaults to 0 for mm, 1 for cm and in, 2 for m and ft.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 6
+              },
+              "showUnit": {
+                "description": "Append the unit to the value.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "a",
+              "b",
+              "offset"
+            ],
+            "additionalProperties": false,
+            "description": "A linear dimension: an annotation showing the distance between a and b. The node \"style\" styles the dimension line and its end markers."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "image"
+              },
+              "asset": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Id of the asset holding the picture."
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "width": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Width the picture covers, in mm. Together with height this sets its scale."
+              },
+              "height": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "rotation": {
+                "description": "Degrees, clockwise on screen.",
+                "type": "number"
+              },
+              "opacity": {
+                "description": "Defaults to 1.",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "asset",
+              "x",
+              "y",
+              "width",
+              "height"
+            ],
+            "additionalProperties": false,
+            "description": "A picture placed with its top-left corner at (x, y), typically a scanned plan to trace over."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "instance"
+              },
+              "component": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Id of the component node being placed."
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "rotation": {
+                "description": "Degrees, clockwise on screen.",
+                "type": "number"
+              },
+              "flipX": {
+                "type": "boolean"
+              },
+              "scale": {
+                "description": "Size multiplier of this placement. Defaults to 1.",
+                "type": "number",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "component",
+              "x",
+              "y"
+            ],
+            "additionalProperties": false,
+            "description": "A placement of a component. Editing the component updates every instance."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top)."
+              },
+              "layer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none'.",
+                    "type": "string"
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false,
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color."
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "parametric"
+              },
+              "kind": {
+                "type": "string",
+                "description": "Parametric kind registered by an extension, e.g. 'arch.stair'."
+              },
+              "props": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {},
+                "description": "Parameters of the kind. Missing ones use the kind defaults."
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "rotation": {
+                "description": "Degrees, clockwise on screen.",
+                "type": "number"
+              },
+              "flipX": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "kind",
+              "props",
+              "x",
+              "y"
+            ],
+            "additionalProperties": false,
+            "description": "An object generated from parameters by an extension. Unknown kinds are preserved and drawn as a placeholder."
+          }
+        ],
+        "description": "All coordinates and lengths are millimetres. X grows to the right, Y grows downward."
+      },
+      "description": "Every node by id, as a flat map. The tree is expressed by each node's \"parent\" and \"order\"."
+    },
+    "meta": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    }
+  },
+  "required": [
+    "format",
+    "version",
+    "id",
+    "name",
+    "unit",
+    "layers",
+    "nodes"
+  ],
+  "additionalProperties": false,
+  "description": "An OpenCalque document (.opencalque file)."
+}

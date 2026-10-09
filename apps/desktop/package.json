@@ -1,0 +1,24 @@
+{
+  "name": "@opencalque/desktop",
+  "productName": "OpenCalque",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc --noEmit",
+    "smoke": "electron scripts/smoke.cjs"
+  },
+  "dependencies": {
+    "@opencalque/web": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5",
+    "electron": "^44.7.0",
+    "electron-vite": "^5.0.0",
+    "vite": "^7"
+  }
+}

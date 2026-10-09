@@ -1,0 +1,221 @@
+[
+  {
+    "id": "furniture",
+    "name": "Furniture",
+    "description": "Beds, seating, tables and storage for furnishing a plan.",
+    "file": "furniture.opencalque",
+    "components": 9,
+    "translations": {
+      "fr": {
+        "Furniture": "Mobilier",
+        "Beds, seating, tables and storage for furnishing a plan.": "Lits, sièges, tables et rangements pour meubler un plan.",
+        "Double bed": "Lit double",
+        "Single bed": "Lit simple",
+        "Sofa, two seats": "Canapé deux places",
+        "Armchair": "Fauteuil",
+        "Chair": "Chaise",
+        "Dining table, six chairs": "Table à manger, six chaises",
+        "1800 × 900 table": "table 1800 × 900",
+        "Desk with chair": "Bureau avec chaise",
+        "Wardrobe": "Armoire",
+        "Coffee table, round": "Table basse ronde"
+      },
+      "es": {
+        "Furniture": "Mobiliario",
+        "Beds, seating, tables and storage for furnishing a plan.": "Camas, asientos, mesas y almacenaje para amueblar un plano.",
+        "Double bed": "Cama doble",
+        "Single bed": "Cama individual",
+        "Sofa, two seats": "Sofá de dos plazas",
+        "Armchair": "Sillón",
+        "Chair": "Silla",
+        "Dining table, six chairs": "Mesa de comedor, seis sillas",
+        "1800 × 900 table": "mesa 1800 × 900",
+        "Desk with chair": "Escritorio con silla",
+        "Wardrobe": "Armario",
+        "Coffee table, round": "Mesa de centro redonda"
+      },
+      "de": {
+        "Furniture": "Möbel",
+        "Beds, seating, tables and storage for furnishing a plan.": "Betten, Sitzmöbel, Tische und Stauraum zum Möblieren eines Plans.",
+        "Double bed": "Doppelbett",
+        "Single bed": "Einzelbett",
+        "Sofa, two seats": "Sofa, Zweisitzer",
+        "Armchair": "Sessel",
+        "Chair": "Stuhl",
+        "Dining table, six chairs": "Esstisch, sechs Stühle",
+        "1800 × 900 table": "Tisch 1800 × 900",
+        "Desk with chair": "Schreibtisch mit Stuhl",
+        "Wardrobe": "Kleiderschrank",
+        "Coffee table, round": "Couchtisch, rund"
+      }
+    }
+  },
+  {
+    "id": "bathroom",
+    "name": "Bathroom",
+    "description": "Sanitary fittings.",
+    "file": "bathroom.opencalque",
+    "components": 4,
+    "translations": {
+      "fr": {
+        "Bathroom": "Salle de bain",
+        "Sanitary fittings.": "Appareils sanitaires.",
+        "Toilet": "WC",
+        "Washbasin": "Lavabo",
+        "Bathtub": "Baignoire",
+        "Shower tray": "Receveur de douche"
+      },
+      "es": {
+        "Bathroom": "Baño",
+        "Sanitary fittings.": "Aparatos sanitarios.",
+        "Toilet": "Inodoro",
+        "Washbasin": "Lavabo",
+        "Bathtub": "Bañera",
+        "Shower tray": "Plato de ducha"
+      },
+      "de": {
+        "Bathroom": "Bad",
+        "Sanitary fittings.": "Sanitärobjekte.",
+        "Toilet": "WC",
+        "Washbasin": "Waschbecken",
+        "Bathtub": "Badewanne",
+        "Shower tray": "Duschwanne"
+      }
+    }
+  },
+  {
+    "id": "kitchen",
+    "name": "Kitchen",
+    "description": "Units and appliances on a 600 mm module.",
+    "file": "kitchen.opencalque",
+    "components": 5,
+    "translations": {
+      "fr": {
+        "Kitchen": "Cuisine",
+        "Units and appliances on a 600 mm module.": "Meubles et appareils sur un module de 600 mm.",
+        "Base unit": "Meuble bas",
+        "Sink unit": "Meuble évier",
+        "Hob": "Plaque de cuisson",
+        "Fridge": "Réfrigérateur",
+        "Washing machine": "Lave-linge"
+      },
+      "es": {
+        "Kitchen": "Cocina",
+        "Units and appliances on a 600 mm module.": "Muebles y electrodomésticos en módulo de 600 mm.",
+        "Base unit": "Mueble bajo",
+        "Sink unit": "Mueble fregadero",
+        "Hob": "Placa de cocción",
+        "Fridge": "Frigorífico",
+        "Washing machine": "Lavadora"
+      },
+      "de": {
+        "Kitchen": "Küche",
+        "Units and appliances on a 600 mm module.": "Schränke und Geräte im 600-mm-Raster.",
+        "Base unit": "Unterschrank",
+        "Sink unit": "Spülenschrank",
+        "Hob": "Kochfeld",
+        "Fridge": "Kühlschrank",
+        "Washing machine": "Waschmaschine"
+      }
+    }
+  },
+  {
+    "id": "electrical",
+    "name": "Electrical",
+    "description": "Lights, wall lights, sockets, switches and other symbols for an electrical plan.",
+    "file": "electrical.opencalque",
+    "components": 20,
+    "translations": {
+      "fr": {
+        "Electrical": "Électricité",
+        "Lights, wall lights, sockets, switches and other symbols for an electrical plan.": "Luminaires, appliques, prises, interrupteurs et autres symboles pour un plan électrique.",
+        "Ceiling light": "Plafonnier",
+        "Pendant light": "Suspension",
+        "Wall light": "Applique murale",
+        "Top edge on the wall": "Bord supérieur contre le mur",
+        "Recessed spotlight": "Spot encastré",
+        "Light strip": "Réglette lumineuse",
+        "Socket": "Prise de courant",
+        "Double socket": "Prise double",
+        "Socket, 32 A": "Prise 32 A",
+        "For a cooker. Top edge on the wall": "Pour une cuisinière. Bord supérieur contre le mur",
+        "TV socket": "Prise TV",
+        "Network socket": "Prise réseau",
+        "Switch": "Interrupteur",
+        "One-way": "Simple allumage",
+        "Double switch": "Interrupteur double",
+        "Two circuits": "Deux circuits",
+        "Two-way switch": "Va-et-vient",
+        "One of two controlling the same light": "L’un des deux qui commandent la même lumière",
+        "Push button": "Bouton-poussoir",
+        "Dimmer": "Variateur",
+        "Switch with a dimmer": "Interrupteur avec variateur",
+        "Consumer unit": "Tableau électrique",
+        "Junction box": "Boîte de dérivation",
+        "Smoke detector": "Détecteur de fumée",
+        "Extractor fan": "Extracteur d’air (VMC)",
+        "Electric radiator": "Radiateur électrique"
+      },
+      "es": {
+        "Electrical": "Electricidad",
+        "Lights, wall lights, sockets, switches and other symbols for an electrical plan.": "Luminarias, apliques, enchufes, interruptores y otros símbolos para un plano eléctrico.",
+        "Ceiling light": "Luz de techo",
+        "Pendant light": "Lámpara colgante",
+        "Wall light": "Aplique de pared",
+        "Top edge on the wall": "Borde superior contra la pared",
+        "Recessed spotlight": "Foco empotrado",
+        "Light strip": "Regleta de luz",
+        "Socket": "Enchufe",
+        "Double socket": "Enchufe doble",
+        "Socket, 32 A": "Enchufe de 32 A",
+        "For a cooker. Top edge on the wall": "Para una cocina. Borde superior contra la pared",
+        "TV socket": "Toma de TV",
+        "Network socket": "Toma de red",
+        "Switch": "Interruptor",
+        "One-way": "Simple",
+        "Double switch": "Interruptor doble",
+        "Two circuits": "Dos circuitos",
+        "Two-way switch": "Conmutador",
+        "One of two controlling the same light": "Uno de los dos que controlan la misma luz",
+        "Push button": "Pulsador",
+        "Dimmer": "Regulador de luz",
+        "Switch with a dimmer": "Interruptor con regulador",
+        "Consumer unit": "Cuadro eléctrico",
+        "Junction box": "Caja de derivación",
+        "Smoke detector": "Detector de humo",
+        "Extractor fan": "Extractor de aire",
+        "Electric radiator": "Radiador eléctrico"
+      },
+      "de": {
+        "Electrical": "Elektro",
+        "Lights, wall lights, sockets, switches and other symbols for an electrical plan.": "Leuchten, Wandleuchten, Steckdosen, Schalter und weitere Symbole für einen Elektroplan.",
+        "Ceiling light": "Deckenleuchte",
+        "Pendant light": "Pendelleuchte",
+        "Wall light": "Wandleuchte",
+        "Top edge on the wall": "Oberkante an die Wand",
+        "Recessed spotlight": "Einbaustrahler",
+        "Light strip": "Lichtleiste",
+        "Socket": "Steckdose",
+        "Double socket": "Doppelsteckdose",
+        "Socket, 32 A": "Steckdose, 32 A",
+        "For a cooker. Top edge on the wall": "Für einen Herd. Oberkante an die Wand",
+        "TV socket": "TV-Dose",
+        "Network socket": "Netzwerkdose",
+        "Switch": "Schalter",
+        "One-way": "Ausschalter",
+        "Double switch": "Serienschalter",
+        "Two circuits": "Zwei Stromkreise",
+        "Two-way switch": "Wechselschalter",
+        "One of two controlling the same light": "Einer von zweien für dieselbe Leuchte",
+        "Push button": "Taster",
+        "Dimmer": "Dimmer",
+        "Switch with a dimmer": "Schalter mit Dimmer",
+        "Consumer unit": "Sicherungskasten",
+        "Junction box": "Abzweigdose",
+        "Smoke detector": "Rauchmelder",
+        "Extractor fan": "Abluftventilator",
+        "Electric radiator": "Elektroheizkörper"
+      }
+    }
+  }
+]

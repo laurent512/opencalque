@@ -1,0 +1,1493 @@
+{
+  "format": "opencalque",
+  "version": 1,
+  "id": "warehouse.electrical",
+  "name": "Electrical",
+  "unit": "mm",
+  "layers": {
+    "layer_1": {
+      "id": "layer_1",
+      "name": "Layer 1",
+      "order": "a0"
+    }
+  },
+  "nodes": {
+    "page_1": {
+      "id": "page_1",
+      "type": "page",
+      "name": "Page 1",
+      "parent": null,
+      "order": "a0"
+    },
+    "electrical_1": {
+      "id": "electrical_1",
+      "name": "Ceiling light",
+      "parent": null,
+      "order": "a1",
+      "type": "component",
+      "description": "Ø 300"
+    },
+    "n_dxhzo019cu": {
+      "id": "n_dxhzo019cu",
+      "parent": "electrical_1",
+      "order": "a0",
+      "type": "ellipse",
+      "cx": 150,
+      "cy": 150,
+      "rx": 150,
+      "ry": 150
+    },
+    "n_ad0fzlvgrl": {
+      "id": "n_ad0fzlvgrl",
+      "parent": "electrical_1",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 44,
+        "y": 44
+      },
+      "b": {
+        "x": 256,
+        "y": 256
+      }
+    },
+    "n_mayvtd5azf": {
+      "id": "n_mayvtd5azf",
+      "parent": "electrical_1",
+      "order": "a2",
+      "type": "line",
+      "a": {
+        "x": 44,
+        "y": 256
+      },
+      "b": {
+        "x": 256,
+        "y": 44
+      }
+    },
+    "electrical_2": {
+      "id": "electrical_2",
+      "name": "Pendant light",
+      "parent": null,
+      "order": "a2",
+      "type": "component",
+      "description": "Ø 300"
+    },
+    "n_y6qa41xai3": {
+      "id": "n_y6qa41xai3",
+      "parent": "electrical_2",
+      "order": "a0",
+      "type": "ellipse",
+      "cx": 150,
+      "cy": 150,
+      "rx": 150,
+      "ry": 150
+    },
+    "n_887juhmoef": {
+      "id": "n_887juhmoef",
+      "parent": "electrical_2",
+      "order": "a1",
+      "type": "ellipse",
+      "cx": 150,
+      "cy": 150,
+      "rx": 90,
+      "ry": 90
+    },
+    "n_ew7wmqbtoe": {
+      "id": "n_ew7wmqbtoe",
+      "parent": "electrical_2",
+      "order": "a2",
+      "type": "line",
+      "a": {
+        "x": 86,
+        "y": 86
+      },
+      "b": {
+        "x": 214,
+        "y": 214
+      }
+    },
+    "n_780i30warf": {
+      "id": "n_780i30warf",
+      "parent": "electrical_2",
+      "order": "a3",
+      "type": "line",
+      "a": {
+        "x": 86,
+        "y": 214
+      },
+      "b": {
+        "x": 214,
+        "y": 86
+      }
+    },
+    "electrical_3": {
+      "id": "electrical_3",
+      "name": "Wall light",
+      "parent": null,
+      "order": "a3",
+      "type": "component",
+      "description": "Top edge on the wall"
+    },
+    "n_f1yzmxd2wn": {
+      "id": "n_f1yzmxd2wn",
+      "parent": "electrical_3",
+      "order": "a0",
+      "type": "line",
+      "a": {
+        "x": 0,
+        "y": 0
+      },
+      "b": {
+        "x": 300,
+        "y": 0
+      }
+    },
+    "n_0rqwgew2d2": {
+      "id": "n_0rqwgew2d2",
+      "parent": "electrical_3",
+      "order": "a1",
+      "type": "polyline",
+      "points": [
+        {
+          "x": 300,
+          "y": 0
+        },
+        {
+          "x": 297,
+          "y": 29
+        },
+        {
+          "x": 289,
+          "y": 57
+        },
+        {
+          "x": 275,
+          "y": 83
+        },
+        {
+          "x": 256,
+          "y": 106
+        },
+        {
+          "x": 233,
+          "y": 125
+        },
+        {
+          "x": 207,
+          "y": 139
+        },
+        {
+          "x": 179,
+          "y": 147
+        },
+        {
+          "x": 150,
+          "y": 150
+        },
+        {
+          "x": 121,
+          "y": 147
+        },
+        {
+          "x": 93,
+          "y": 139
+        },
+        {
+          "x": 67,
+          "y": 125
+        },
+        {
+          "x": 44,
+          "y": 106
+        },
+        {
+          "x": 25,
+          "y": 83
+        },
+        {
+          "x": 11,
+          "y": 57
+        },
+        {
+          "x": 3,
+          "y": 29
+        },
+        {
+          "x": 0,
+          "y": 0
+        }
+      ],
+      "closed": false
+    },
+    "n_5zs6ehtd19": {
+      "id": "n_5zs6ehtd19",
+      "parent": "electrical_3",
+      "order": "a2",
+      "type": "line",
+      "a": {
+        "x": 150,
+        "y": 0
+      },
+      "b": {
+        "x": 256,
+        "y": 106
+      }
+    },
+    "n_mmom2k8x9t": {
+      "id": "n_mmom2k8x9t",
+      "parent": "electrical_3",
+      "order": "a3",
+      "type": "line",
+      "a": {
+        "x": 150,
+        "y": 0
+      },
+      "b": {
+        "x": 44,
+        "y": 106
+      }
+    },
+    "electrical_4": {
+      "id": "electrical_4",
+      "name": "Recessed spotlight",
+      "parent": null,
+      "order": "a4",
+      "type": "component",
+      "description": "Ø 120"
+    },
+    "n_12emxqhluy": {
+      "id": "n_12emxqhluy",
+      "parent": "electrical_4",
+      "order": "a0",
+      "type": "ellipse",
+      "cx": 60,
+      "cy": 60,
+      "rx": 60,
+      "ry": 60
+    },
+    "n_5qt5oqcwzv": {
+      "id": "n_5qt5oqcwzv",
+      "parent": "electrical_4",
+      "order": "a1",
+      "style": {
+        "fill": "#1f1f1f"
+      },
+      "type": "ellipse",
+      "cx": 60,
+      "cy": 60,
+      "rx": 25,
+      "ry": 25
+    },
+    "electrical_5": {
+      "id": "electrical_5",
+      "name": "Light strip",
+      "parent": null,
+      "order": "a5",
+      "type": "component",
+      "description": "1200 × 100"
+    },
+    "n_nf14w90un2": {
+      "id": "n_nf14w90un2",
+      "parent": "electrical_5",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 1200,
+      "height": 100
+    },
+    "n_5jt2mb5bsa": {
+      "id": "n_5jt2mb5bsa",
+      "parent": "electrical_5",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 0,
+        "y": 50
+      },
+      "b": {
+        "x": 1200,
+        "y": 50
+      }
+    },
+    "electrical_6": {
+      "id": "electrical_6",
+      "name": "Socket",
+      "parent": null,
+      "order": "a6",
+      "type": "component",
+      "description": "Top edge on the wall"
+    },
+    "n_7k5nk8xcf8": {
+      "id": "n_7k5nk8xcf8",
+      "parent": "electrical_6",
+      "order": "a0",
+      "type": "line",
+      "a": {
+        "x": 150,
+        "y": 0
+      },
+      "b": {
+        "x": 150,
+        "y": 100
+      }
+    },
+    "n_rdoczoxqop": {
+      "id": "n_rdoczoxqop",
+      "parent": "electrical_6",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 90,
+        "y": 100
+      },
+      "b": {
+        "x": 210,
+        "y": 100
+      }
+    },
+    "n_lhfshcthsc": {
+      "id": "n_lhfshcthsc",
+      "parent": "electrical_6",
+      "order": "a2",
+      "type": "polyline",
+      "points": [
+        {
+          "x": 0,
+          "y": 250
+        },
+        {
+          "x": 3,
+          "y": 221
+        },
+        {
+          "x": 11,
+          "y": 193
+        },
+        {
+          "x": 25,
+          "y": 167
+        },
+        {
+          "x": 44,
+          "y": 144
+        },
+        {
+          "x": 67,
+          "y": 125
+        },
+        {
+          "x": 93,
+          "y": 111
+        },
+        {
+          "x": 121,
+          "y": 103
+        },
+        {
+          "x": 150,
+          "y": 100
+        },
+        {
+          "x": 179,
+          "y": 103
+        },
+        {
+          "x": 207,
+          "y": 111
+        },
+        {
+          "x": 233,
+          "y": 125
+        },
+        {
+          "x": 256,
+          "y": 144
+        },
+        {
+          "x": 275,
+          "y": 167
+        },
+        {
+          "x": 289,
+          "y": 193
+        },
+        {
+          "x": 297,
+          "y": 221
+        },
+        {
+          "x": 300,
+          "y": 250
+        }
+      ],
+      "closed": false
+    },
+    "electrical_7": {
+      "id": "electrical_7",
+      "name": "Double socket",
+      "parent": null,
+      "order": "a7",
+      "type": "component",
+      "description": "Top edge on the wall"
+    },
+    "n_k147lep3vc": {
+      "id": "n_k147lep3vc",
+      "parent": "electrical_7",
+      "order": "a0",
+      "type": "line",
+      "a": {
+        "x": 150,
+        "y": 0
+      },
+      "b": {
+        "x": 150,
+        "y": 100
+      }
+    },
+    "n_icr1zjmv3d": {
+      "id": "n_icr1zjmv3d",
+      "parent": "electrical_7",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 90,
+        "y": 100
+      },
+      "b": {
+        "x": 210,
+        "y": 100
+      }
+    },
+    "n_tlt3cvpkkn": {
+      "id": "n_tlt3cvpkkn",
+      "parent": "electrical_7",
+      "order": "a2",
+      "type": "polyline",
+      "points": [
+        {
+          "x": 0,
+          "y": 250
+        },
+        {
+          "x": 3,
+          "y": 221
+        },
+        {
+          "x": 11,
+          "y": 193
+        },
+        {
+          "x": 25,
+          "y": 167
+        },
+        {
+          "x": 44,
+          "y": 144
+        },
+        {
+          "x": 67,
+          "y": 125
+        },
+        {
+          "x": 93,
+          "y": 111
+        },
+        {
+          "x": 121,
+          "y": 103
+        },
+        {
+          "x": 150,
+          "y": 100
+        },
+        {
+          "x": 179,
+          "y": 103
+        },
+        {
+          "x": 207,
+          "y": 111
+        },
+        {
+          "x": 233,
+          "y": 125
+        },
+        {
+          "x": 256,
+          "y": 144
+        },
+        {
+          "x": 275,
+          "y": 167
+        },
+        {
+          "x": 289,
+          "y": 193
+        },
+        {
+          "x": 297,
+          "y": 221
+        },
+        {
+          "x": 300,
+          "y": 250
+        }
+      ],
+      "closed": false
+    },
+    "n_auk2mb5be6": {
+      "id": "n_auk2mb5be6",
+      "parent": "electrical_7",
+      "order": "a3",
+      "type": "line",
+      "a": {
+        "x": 480,
+        "y": 0
+      },
+      "b": {
+        "x": 480,
+        "y": 100
+      }
+    },
+    "n_5ul4z2pv17": {
+      "id": "n_5ul4z2pv17",
+      "parent": "electrical_7",
+      "order": "a4",
+      "type": "line",
+      "a": {
+        "x": 420,
+        "y": 100
+      },
+      "b": {
+        "x": 540,
+        "y": 100
+      }
+    },
+    "n_1pdwcxp650": {
+      "id": "n_1pdwcxp650",
+      "parent": "electrical_7",
+      "order": "a5",
+      "type": "polyline",
+      "points": [
+        {
+          "x": 330,
+          "y": 250
+        },
+        {
+          "x": 333,
+          "y": 221
+        },
+        {
+          "x": 341,
+          "y": 193
+        },
+        {
+          "x": 355,
+          "y": 167
+        },
+        {
+          "x": 374,
+          "y": 144
+        },
+        {
+          "x": 397,
+          "y": 125
+        },
+        {
+          "x": 423,
+          "y": 111
+        },
+        {
+          "x": 451,
+          "y": 103
+        },
+        {
+          "x": 480,
+          "y": 100
+        },
+        {
+          "x": 509,
+          "y": 103
+        },
+        {
+          "x": 537,
+          "y": 111
+        },
+        {
+          "x": 563,
+          "y": 125
+        },
+        {
+          "x": 586,
+          "y": 144
+        },
+        {
+          "x": 605,
+          "y": 167
+        },
+        {
+          "x": 619,
+          "y": 193
+        },
+        {
+          "x": 627,
+          "y": 221
+        },
+        {
+          "x": 630,
+          "y": 250
+        }
+      ],
+      "closed": false
+    },
+    "electrical_8": {
+      "id": "electrical_8",
+      "name": "Socket, 32 A",
+      "parent": null,
+      "order": "a8",
+      "type": "component",
+      "description": "For a cooker. Top edge on the wall"
+    },
+    "n_2u3jcxg38c": {
+      "id": "n_2u3jcxg38c",
+      "parent": "electrical_8",
+      "order": "a0",
+      "type": "line",
+      "a": {
+        "x": 150,
+        "y": 0
+      },
+      "b": {
+        "x": 150,
+        "y": 100
+      }
+    },
+    "n_2t8gs0mld3": {
+      "id": "n_2t8gs0mld3",
+      "parent": "electrical_8",
+      "order": "a1",
+      "style": {
+        "fill": "#1f1f1f"
+      },
+      "type": "polyline",
+      "points": [
+        {
+          "x": 0,
+          "y": 250
+        },
+        {
+          "x": 3,
+          "y": 221
+        },
+        {
+          "x": 11,
+          "y": 193
+        },
+        {
+          "x": 25,
+          "y": 167
+        },
+        {
+          "x": 44,
+          "y": 144
+        },
+        {
+          "x": 67,
+          "y": 125
+        },
+        {
+          "x": 93,
+          "y": 111
+        },
+        {
+          "x": 121,
+          "y": 103
+        },
+        {
+          "x": 150,
+          "y": 100
+        },
+        {
+          "x": 179,
+          "y": 103
+        },
+        {
+          "x": 207,
+          "y": 111
+        },
+        {
+          "x": 233,
+          "y": 125
+        },
+        {
+          "x": 256,
+          "y": 144
+        },
+        {
+          "x": 275,
+          "y": 167
+        },
+        {
+          "x": 289,
+          "y": 193
+        },
+        {
+          "x": 297,
+          "y": 221
+        },
+        {
+          "x": 300,
+          "y": 250
+        }
+      ],
+      "closed": true
+    },
+    "electrical_9": {
+      "id": "electrical_9",
+      "name": "TV socket",
+      "parent": null,
+      "order": "a9",
+      "type": "component",
+      "description": "Top edge on the wall"
+    },
+    "n_3cc6mvt63w": {
+      "id": "n_3cc6mvt63w",
+      "parent": "electrical_9",
+      "order": "a0",
+      "type": "line",
+      "a": {
+        "x": 150,
+        "y": 0
+      },
+      "b": {
+        "x": 150,
+        "y": 100
+      }
+    },
+    "n_eg1of7r8y8": {
+      "id": "n_eg1of7r8y8",
+      "parent": "electrical_9",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 90,
+        "y": 100
+      },
+      "b": {
+        "x": 210,
+        "y": 100
+      }
+    },
+    "n_xc7m6xmoxe": {
+      "id": "n_xc7m6xmoxe",
+      "parent": "electrical_9",
+      "order": "a2",
+      "type": "polyline",
+      "points": [
+        {
+          "x": 0,
+          "y": 250
+        },
+        {
+          "x": 3,
+          "y": 221
+        },
+        {
+          "x": 11,
+          "y": 193
+        },
+        {
+          "x": 25,
+          "y": 167
+        },
+        {
+          "x": 44,
+          "y": 144
+        },
+        {
+          "x": 67,
+          "y": 125
+        },
+        {
+          "x": 93,
+          "y": 111
+        },
+        {
+          "x": 121,
+          "y": 103
+        },
+        {
+          "x": 150,
+          "y": 100
+        },
+        {
+          "x": 179,
+          "y": 103
+        },
+        {
+          "x": 207,
+          "y": 111
+        },
+        {
+          "x": 233,
+          "y": 125
+        },
+        {
+          "x": 256,
+          "y": 144
+        },
+        {
+          "x": 275,
+          "y": 167
+        },
+        {
+          "x": 289,
+          "y": 193
+        },
+        {
+          "x": 297,
+          "y": 221
+        },
+        {
+          "x": 300,
+          "y": 250
+        }
+      ],
+      "closed": false
+    },
+    "n_5z3gpcop55": {
+      "id": "n_5z3gpcop55",
+      "parent": "electrical_9",
+      "order": "a3",
+      "type": "text",
+      "x": 75,
+      "y": 400,
+      "text": "TV",
+      "size": 130
+    },
+    "electrical_10": {
+      "id": "electrical_10",
+      "name": "Network socket",
+      "parent": null,
+      "order": "aA",
+      "type": "component",
+      "description": "RJ45"
+    },
+    "n_b5y7ncvhtn": {
+      "id": "n_b5y7ncvhtn",
+      "parent": "electrical_10",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 300,
+      "height": 300
+    },
+    "n_68fe5mebz5": {
+      "id": "n_68fe5mebz5",
+      "parent": "electrical_10",
+      "order": "a1",
+      "type": "text",
+      "x": 25,
+      "y": 195,
+      "text": "RJ45",
+      "size": 100
+    },
+    "electrical_11": {
+      "id": "electrical_11",
+      "name": "Switch",
+      "parent": null,
+      "order": "aB",
+      "type": "component",
+      "description": "One-way"
+    },
+    "n_630lyeb0ws": {
+      "id": "n_630lyeb0ws",
+      "parent": "electrical_11",
+      "order": "a0",
+      "type": "ellipse",
+      "cx": 75,
+      "cy": 300,
+      "rx": 75,
+      "ry": 75
+    },
+    "n_ofy2rx4fc4": {
+      "id": "n_ofy2rx4fc4",
+      "parent": "electrical_11",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 128,
+        "y": 247
+      },
+      "b": {
+        "x": 300,
+        "y": 75
+      }
+    },
+    "n_g3taau570p": {
+      "id": "n_g3taau570p",
+      "parent": "electrical_11",
+      "order": "a2",
+      "type": "line",
+      "a": {
+        "x": 300,
+        "y": 75
+      },
+      "b": {
+        "x": 360,
+        "y": 135
+      }
+    },
+    "electrical_12": {
+      "id": "electrical_12",
+      "name": "Double switch",
+      "parent": null,
+      "order": "aC",
+      "type": "component",
+      "description": "Two circuits"
+    },
+    "n_wczl7huzla": {
+      "id": "n_wczl7huzla",
+      "parent": "electrical_12",
+      "order": "a0",
+      "type": "ellipse",
+      "cx": 75,
+      "cy": 300,
+      "rx": 75,
+      "ry": 75
+    },
+    "n_7nrkhbeuvj": {
+      "id": "n_7nrkhbeuvj",
+      "parent": "electrical_12",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 128,
+        "y": 247
+      },
+      "b": {
+        "x": 300,
+        "y": 75
+      }
+    },
+    "n_pcf83ss25v": {
+      "id": "n_pcf83ss25v",
+      "parent": "electrical_12",
+      "order": "a2",
+      "type": "line",
+      "a": {
+        "x": 300,
+        "y": 75
+      },
+      "b": {
+        "x": 360,
+        "y": 135
+      }
+    },
+    "n_iirsehqasx": {
+      "id": "n_iirsehqasx",
+      "parent": "electrical_12",
+      "order": "a3",
+      "type": "line",
+      "a": {
+        "x": 240,
+        "y": 135
+      },
+      "b": {
+        "x": 300,
+        "y": 195
+      }
+    },
+    "electrical_13": {
+      "id": "electrical_13",
+      "name": "Two-way switch",
+      "parent": null,
+      "order": "aD",
+      "type": "component",
+      "description": "One of two controlling the same light"
+    },
+    "n_wqw382eelr": {
+      "id": "n_wqw382eelr",
+      "parent": "electrical_13",
+      "order": "a0",
+      "type": "ellipse",
+      "cx": 300,
+      "cy": 300,
+      "rx": 75,
+      "ry": 75
+    },
+    "n_fob6l5k61w": {
+      "id": "n_fob6l5k61w",
+      "parent": "electrical_13",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 353,
+        "y": 247
+      },
+      "b": {
+        "x": 525,
+        "y": 75
+      }
+    },
+    "n_1bc2ztrhfi": {
+      "id": "n_1bc2ztrhfi",
+      "parent": "electrical_13",
+      "order": "a2",
+      "type": "line",
+      "a": {
+        "x": 525,
+        "y": 75
+      },
+      "b": {
+        "x": 585,
+        "y": 135
+      }
+    },
+    "n_adlvfhb4em": {
+      "id": "n_adlvfhb4em",
+      "parent": "electrical_13",
+      "order": "a3",
+      "type": "line",
+      "a": {
+        "x": 247,
+        "y": 353
+      },
+      "b": {
+        "x": 75,
+        "y": 525
+      }
+    },
+    "n_j0c84e60ap": {
+      "id": "n_j0c84e60ap",
+      "parent": "electrical_13",
+      "order": "a4",
+      "type": "line",
+      "a": {
+        "x": 75,
+        "y": 525
+      },
+      "b": {
+        "x": 15,
+        "y": 465
+      }
+    },
+    "electrical_14": {
+      "id": "electrical_14",
+      "name": "Push button",
+      "parent": null,
+      "order": "aE",
+      "type": "component",
+      "description": "Ø 200"
+    },
+    "n_o4j6qjfcj6": {
+      "id": "n_o4j6qjfcj6",
+      "parent": "electrical_14",
+      "order": "a0",
+      "type": "ellipse",
+      "cx": 100,
+      "cy": 100,
+      "rx": 100,
+      "ry": 100
+    },
+    "n_7tf6ogw8ty": {
+      "id": "n_7tf6ogw8ty",
+      "parent": "electrical_14",
+      "order": "a1",
+      "type": "ellipse",
+      "cx": 100,
+      "cy": 100,
+      "rx": 45,
+      "ry": 45
+    },
+    "electrical_15": {
+      "id": "electrical_15",
+      "name": "Dimmer",
+      "parent": null,
+      "order": "aF",
+      "type": "component",
+      "description": "Switch with a dimmer"
+    },
+    "n_im8a6vkkao": {
+      "id": "n_im8a6vkkao",
+      "parent": "electrical_15",
+      "order": "a0",
+      "type": "ellipse",
+      "cx": 75,
+      "cy": 300,
+      "rx": 75,
+      "ry": 75
+    },
+    "n_67eijfdixg": {
+      "id": "n_67eijfdixg",
+      "parent": "electrical_15",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 128,
+        "y": 247
+      },
+      "b": {
+        "x": 300,
+        "y": 75
+      }
+    },
+    "n_0ho5exm4bq": {
+      "id": "n_0ho5exm4bq",
+      "parent": "electrical_15",
+      "order": "a2",
+      "type": "line",
+      "a": {
+        "x": 300,
+        "y": 75
+      },
+      "b": {
+        "x": 360,
+        "y": 135
+      }
+    },
+    "n_ocrap4v4j8": {
+      "id": "n_ocrap4v4j8",
+      "parent": "electrical_15",
+      "order": "a3",
+      "style": {
+        "fill": "#1f1f1f"
+      },
+      "type": "polyline",
+      "points": [
+        {
+          "x": 75,
+          "y": 262
+        },
+        {
+          "x": 108,
+          "y": 322
+        },
+        {
+          "x": 42,
+          "y": 322
+        }
+      ],
+      "closed": true
+    },
+    "electrical_16": {
+      "id": "electrical_16",
+      "name": "Consumer unit",
+      "parent": null,
+      "order": "aG",
+      "type": "component",
+      "description": "600 × 250"
+    },
+    "n_sv9u2q6n29": {
+      "id": "n_sv9u2q6n29",
+      "parent": "electrical_16",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 600,
+      "height": 250
+    },
+    "n_zttkn23tj7": {
+      "id": "n_zttkn23tj7",
+      "parent": "electrical_16",
+      "order": "a1",
+      "style": {
+        "fill": "#1f1f1f"
+      },
+      "type": "polyline",
+      "points": [
+        {
+          "x": 0,
+          "y": 250
+        },
+        {
+          "x": 600,
+          "y": 0
+        },
+        {
+          "x": 600,
+          "y": 250
+        }
+      ],
+      "closed": true
+    },
+    "electrical_17": {
+      "id": "electrical_17",
+      "name": "Junction box",
+      "parent": null,
+      "order": "aH",
+      "type": "component",
+      "description": "200 × 200"
+    },
+    "n_bdflv7dfhn": {
+      "id": "n_bdflv7dfhn",
+      "parent": "electrical_17",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 200,
+      "height": 200
+    },
+    "n_gqu69apr3n": {
+      "id": "n_gqu69apr3n",
+      "parent": "electrical_17",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 0,
+        "y": 0
+      },
+      "b": {
+        "x": 200,
+        "y": 200
+      }
+    },
+    "n_f1h1ama9ef": {
+      "id": "n_f1h1ama9ef",
+      "parent": "electrical_17",
+      "order": "a2",
+      "type": "line",
+      "a": {
+        "x": 0,
+        "y": 200
+      },
+      "b": {
+        "x": 200,
+        "y": 0
+      }
+    },
+    "electrical_18": {
+      "id": "electrical_18",
+      "name": "Smoke detector",
+      "parent": null,
+      "order": "aI",
+      "type": "component",
+      "description": "300 × 300"
+    },
+    "n_lo8vbpd42t": {
+      "id": "n_lo8vbpd42t",
+      "parent": "electrical_18",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 300,
+      "height": 300
+    },
+    "n_raxzykkr3i": {
+      "id": "n_raxzykkr3i",
+      "parent": "electrical_18",
+      "order": "a1",
+      "type": "ellipse",
+      "cx": 150,
+      "cy": 150,
+      "rx": 100,
+      "ry": 100
+    },
+    "n_258b9diarn": {
+      "id": "n_258b9diarn",
+      "parent": "electrical_18",
+      "order": "a2",
+      "style": {
+        "fill": "#1f1f1f"
+      },
+      "type": "ellipse",
+      "cx": 150,
+      "cy": 150,
+      "rx": 30,
+      "ry": 30
+    },
+    "electrical_19": {
+      "id": "electrical_19",
+      "name": "Extractor fan",
+      "parent": null,
+      "order": "aJ",
+      "type": "component",
+      "description": "Ø 400"
+    },
+    "n_1h3us1h6o9": {
+      "id": "n_1h3us1h6o9",
+      "parent": "electrical_19",
+      "order": "a0",
+      "type": "ellipse",
+      "cx": 200,
+      "cy": 200,
+      "rx": 200,
+      "ry": 200
+    },
+    "n_pfewsy6zna": {
+      "id": "n_pfewsy6zna",
+      "parent": "electrical_19",
+      "order": "a1",
+      "type": "polyline",
+      "points": [
+        {
+          "x": 60,
+          "y": 100
+        },
+        {
+          "x": 340,
+          "y": 300
+        },
+        {
+          "x": 340,
+          "y": 100
+        },
+        {
+          "x": 60,
+          "y": 300
+        }
+      ],
+      "closed": true
+    },
+    "electrical_20": {
+      "id": "electrical_20",
+      "name": "Electric radiator",
+      "parent": null,
+      "order": "aK",
+      "type": "component",
+      "description": "1000 × 120"
+    },
+    "n_i7bjo02l8m": {
+      "id": "n_i7bjo02l8m",
+      "parent": "electrical_20",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 1000,
+      "height": 120
+    },
+    "n_jttdvy676j": {
+      "id": "n_jttdvy676j",
+      "parent": "electrical_20",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 100,
+        "y": 0
+      },
+      "b": {
+        "x": 100,
+        "y": 120
+      }
+    },
+    "n_vh5i5s2f70": {
+      "id": "n_vh5i5s2f70",
+      "parent": "electrical_20",
+      "order": "a2",
+      "type": "line",
+      "a": {
+        "x": 200,
+        "y": 0
+      },
+      "b": {
+        "x": 200,
+        "y": 120
+      }
+    },
+    "n_hlovp50ika": {
+      "id": "n_hlovp50ika",
+      "parent": "electrical_20",
+      "order": "a3",
+      "type": "line",
+      "a": {
+        "x": 300,
+        "y": 0
+      },
+      "b": {
+        "x": 300,
+        "y": 120
+      }
+    },
+    "n_ekmq9icigl": {
+      "id": "n_ekmq9icigl",
+      "parent": "electrical_20",
+      "order": "a4",
+      "type": "line",
+      "a": {
+        "x": 400,
+        "y": 0
+      },
+      "b": {
+        "x": 400,
+        "y": 120
+      }
+    },
+    "n_quyo8gpuyn": {
+      "id": "n_quyo8gpuyn",
+      "parent": "electrical_20",
+      "order": "a5",
+      "type": "line",
+      "a": {
+        "x": 500,
+        "y": 0
+      },
+      "b": {
+        "x": 500,
+        "y": 120
+      }
+    },
+    "n_ai1jvbq1oo": {
+      "id": "n_ai1jvbq1oo",
+      "parent": "electrical_20",
+      "order": "a6",
+      "type": "line",
+      "a": {
+        "x": 600,
+        "y": 0
+      },
+      "b": {
+        "x": 600,
+        "y": 120
+      }
+    },
+    "n_22obt8dt3s": {
+      "id": "n_22obt8dt3s",
+      "parent": "electrical_20",
+      "order": "a7",
+      "type": "line",
+      "a": {
+        "x": 700,
+        "y": 0
+      },
+      "b": {
+        "x": 700,
+        "y": 120
+      }
+    },
+    "n_3ja5bbc5qq": {
+      "id": "n_3ja5bbc5qq",
+      "parent": "electrical_20",
+      "order": "a8",
+      "type": "line",
+      "a": {
+        "x": 800,
+        "y": 0
+      },
+      "b": {
+        "x": 800,
+        "y": 120
+      }
+    },
+    "n_8ivvx7p2el": {
+      "id": "n_8ivvx7p2el",
+      "parent": "electrical_20",
+      "order": "a9",
+      "type": "line",
+      "a": {
+        "x": 900,
+        "y": 0
+      },
+      "b": {
+        "x": 900,
+        "y": 120
+      }
+    }
+  }
+}

@@ -1,0 +1,281 @@
+{
+  "format": "opencalque",
+  "version": 1,
+  "id": "warehouse.kitchen",
+  "name": "Kitchen",
+  "unit": "mm",
+  "layers": {
+    "layer_1": {
+      "id": "layer_1",
+      "name": "Layer 1",
+      "order": "a0"
+    }
+  },
+  "nodes": {
+    "page_1": {
+      "id": "page_1",
+      "type": "page",
+      "name": "Page 1",
+      "parent": null,
+      "order": "a0"
+    },
+    "kitchen_1": {
+      "id": "kitchen_1",
+      "name": "Base unit",
+      "parent": null,
+      "order": "a1",
+      "type": "component",
+      "description": "600 × 600"
+    },
+    "n_5gjb0vl2ku": {
+      "id": "n_5gjb0vl2ku",
+      "parent": "kitchen_1",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 600,
+      "height": 600
+    },
+    "kitchen_2": {
+      "id": "kitchen_2",
+      "name": "Sink unit",
+      "parent": null,
+      "order": "a2",
+      "type": "component",
+      "description": "1200 × 600"
+    },
+    "n_8fvrdp9chc": {
+      "id": "n_8fvrdp9chc",
+      "parent": "kitchen_2",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 1200,
+      "height": 600
+    },
+    "n_axyumlwpp5": {
+      "id": "n_axyumlwpp5",
+      "parent": "kitchen_2",
+      "order": "a1",
+      "type": "rect",
+      "x": 80,
+      "y": 80,
+      "width": 480,
+      "height": 440
+    },
+    "n_19s900y2k2": {
+      "id": "n_19s900y2k2",
+      "parent": "kitchen_2",
+      "order": "a2",
+      "type": "ellipse",
+      "cx": 600,
+      "cy": 60,
+      "rx": 20,
+      "ry": 20
+    },
+    "n_pld20mwkps": {
+      "id": "n_pld20mwkps",
+      "parent": "kitchen_2",
+      "order": "a3",
+      "type": "line",
+      "a": {
+        "x": 700,
+        "y": 100
+      },
+      "b": {
+        "x": 700,
+        "y": 500
+      }
+    },
+    "n_8fqg6bfj34": {
+      "id": "n_8fqg6bfj34",
+      "parent": "kitchen_2",
+      "order": "a4",
+      "type": "line",
+      "a": {
+        "x": 800,
+        "y": 100
+      },
+      "b": {
+        "x": 800,
+        "y": 500
+      }
+    },
+    "n_2sxt2w1pzb": {
+      "id": "n_2sxt2w1pzb",
+      "parent": "kitchen_2",
+      "order": "a5",
+      "type": "line",
+      "a": {
+        "x": 900,
+        "y": 100
+      },
+      "b": {
+        "x": 900,
+        "y": 500
+      }
+    },
+    "n_bogca94zsm": {
+      "id": "n_bogca94zsm",
+      "parent": "kitchen_2",
+      "order": "a6",
+      "type": "line",
+      "a": {
+        "x": 1000,
+        "y": 100
+      },
+      "b": {
+        "x": 1000,
+        "y": 500
+      }
+    },
+    "n_gh5p7zfu0l": {
+      "id": "n_gh5p7zfu0l",
+      "parent": "kitchen_2",
+      "order": "a7",
+      "type": "line",
+      "a": {
+        "x": 1100,
+        "y": 100
+      },
+      "b": {
+        "x": 1100,
+        "y": 500
+      }
+    },
+    "kitchen_3": {
+      "id": "kitchen_3",
+      "name": "Hob",
+      "parent": null,
+      "order": "a3",
+      "type": "component",
+      "description": "600 × 600"
+    },
+    "n_1u4kvq3gf1": {
+      "id": "n_1u4kvq3gf1",
+      "parent": "kitchen_3",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 600,
+      "height": 600
+    },
+    "n_pu16pfxzo8": {
+      "id": "n_pu16pfxzo8",
+      "parent": "kitchen_3",
+      "order": "a1",
+      "type": "ellipse",
+      "cx": 170,
+      "cy": 170,
+      "rx": 90,
+      "ry": 90
+    },
+    "n_mzrhxpko9t": {
+      "id": "n_mzrhxpko9t",
+      "parent": "kitchen_3",
+      "order": "a2",
+      "type": "ellipse",
+      "cx": 430,
+      "cy": 170,
+      "rx": 70,
+      "ry": 70
+    },
+    "n_ya20slpqbk": {
+      "id": "n_ya20slpqbk",
+      "parent": "kitchen_3",
+      "order": "a3",
+      "type": "ellipse",
+      "cx": 170,
+      "cy": 430,
+      "rx": 70,
+      "ry": 70
+    },
+    "n_eixter4ai4": {
+      "id": "n_eixter4ai4",
+      "parent": "kitchen_3",
+      "order": "a4",
+      "type": "ellipse",
+      "cx": 430,
+      "cy": 430,
+      "rx": 90,
+      "ry": 90
+    },
+    "kitchen_4": {
+      "id": "kitchen_4",
+      "name": "Fridge",
+      "parent": null,
+      "order": "a4",
+      "type": "component",
+      "description": "600 × 650"
+    },
+    "n_vgl1avuwas": {
+      "id": "n_vgl1avuwas",
+      "parent": "kitchen_4",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 600,
+      "height": 650
+    },
+    "n_tguspa0o3l": {
+      "id": "n_tguspa0o3l",
+      "parent": "kitchen_4",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 0,
+        "y": 50
+      },
+      "b": {
+        "x": 600,
+        "y": 50
+      }
+    },
+    "kitchen_5": {
+      "id": "kitchen_5",
+      "name": "Washing machine",
+      "parent": null,
+      "order": "a5",
+      "type": "component",
+      "description": "600 × 600"
+    },
+    "n_7614aij6qr": {
+      "id": "n_7614aij6qr",
+      "parent": "kitchen_5",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 600,
+      "height": 600
+    },
+    "n_3eqtye9tn7": {
+      "id": "n_3eqtye9tn7",
+      "parent": "kitchen_5",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 0,
+        "y": 90
+      },
+      "b": {
+        "x": 600,
+        "y": 90
+      }
+    },
+    "n_vipv0bam1n": {
+      "id": "n_vipv0bam1n",
+      "parent": "kitchen_5",
+      "order": "a2",
+      "type": "ellipse",
+      "cx": 300,
+      "cy": 330,
+      "rx": 200,
+      "ry": 200
+    }
+  }
+}

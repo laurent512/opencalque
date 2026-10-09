@@ -1,0 +1,28 @@
+{
+  "name": "opencalque",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "packageManager": "pnpm@9.14.2",
+  "scripts": {
+    "dev": "pnpm --filter @opencalque/desktop dev",
+    "dev:web": "pnpm --filter @opencalque/web dev",
+    "build:web": "pnpm --filter @opencalque/web build",
+    "build": "pnpm --filter @opencalque/desktop build",
+    "start": "pnpm --filter @opencalque/desktop start",
+    "test": "vitest run",
+    "typecheck": "pnpm -r typecheck",
+    "opencalque": "tsx packages/cli/src/cli.ts",
+    "schema": "tsx packages/cli/src/cli.ts schema --out schema",
+    "smoke": "pnpm --filter @opencalque/desktop smoke",
+    "warehouse": "tsx packages/cli/src/build-warehouse.ts",
+    "example": "tsx packages/cli/src/build-example.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.3"
+  },
+  "description": "Open-source 2D architectural editor: floor plans and layouts with a Figma-like interface, a local CLI, and a plain JSON format built for AI workflows."
+}

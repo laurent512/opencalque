@@ -1,0 +1,9 @@
+{
+  "name": "@opencalque/ext-architecture",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc --noEmit" },
+  "dependencies": { "@opencalque/core": "workspace:*" }
+}

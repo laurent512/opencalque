@@ -1,0 +1,117 @@
+{
+  "format": "opencalque-extension",
+  "formatVersion": 1,
+  "id": "opencalque.furniture",
+  "name": "Adjustable furniture",
+  "version": "1.0.0",
+  "author": "OpenCalque",
+  "description": "Tables, beds and shelving whose size and number of seats or bays you set.",
+  "translations": {
+    "fr": {
+      "Adjustable furniture": "Mobilier ajustable",
+      "Tables, beds and shelving whose size and number of seats or bays you set.": "Tables, lits et étagères dont vous réglez la taille et le nombre de places ou de travées.",
+      "Table with chairs": "Table avec chaises",
+      "Bed": "Lit",
+      "Shelving unit": "Étagère",
+      "Length": "Longueur",
+      "Width": "Largeur",
+      "Depth": "Profondeur",
+      "Seats": "Places",
+      "Bays": "Travées"
+    },
+    "es": {
+      "Adjustable furniture": "Mobiliario ajustable",
+      "Tables, beds and shelving whose size and number of seats or bays you set.": "Mesas, camas y estanterías cuyo tamaño y número de plazas o módulos usted define.",
+      "Table with chairs": "Mesa con sillas",
+      "Bed": "Cama",
+      "Shelving unit": "Estantería",
+      "Length": "Longitud",
+      "Width": "Ancho",
+      "Depth": "Fondo",
+      "Seats": "Plazas",
+      "Bays": "Módulos"
+    },
+    "de": {
+      "Adjustable furniture": "Anpassbare Möbel",
+      "Tables, beds and shelving whose size and number of seats or bays you set.": "Tische, Betten und Regale, deren Größe und Anzahl der Plätze oder Felder Sie festlegen.",
+      "Table with chairs": "Tisch mit Stühlen",
+      "Bed": "Bett",
+      "Shelving unit": "Regal",
+      "Length": "Länge",
+      "Width": "Breite",
+      "Depth": "Tiefe",
+      "Seats": "Plätze",
+      "Bays": "Felder"
+    }
+  },
+  "objects": [
+    {
+      "kind": "furn.table",
+      "label": "Table with chairs",
+      "params": [
+        { "key": "length", "label": "Length", "type": "number", "default": 1800, "unit": "length" },
+        { "key": "width", "label": "Width", "type": "number", "default": 900, "unit": "length" },
+        { "key": "seats", "label": "Seats", "type": "number", "default": 6 }
+      ],
+      "draw": [
+        { "closed": true, "path": [[0, 0], ["length", 0], ["length", "width"], [0, "width"]] },
+        {
+          "repeat": { "count": "max(1, floor(seats / 2))" },
+          "closed": true,
+          "path": [
+            ["(i + 0.5) * length / max(1, floor(seats / 2)) - 225", -450],
+            ["(i + 0.5) * length / max(1, floor(seats / 2)) + 225", -450],
+            ["(i + 0.5) * length / max(1, floor(seats / 2)) + 225", -50],
+            ["(i + 0.5) * length / max(1, floor(seats / 2)) - 225", -50]
+          ]
+        },
+        {
+          "repeat": { "count": "max(1, floor(seats / 2))" },
+          "closed": true,
+          "path": [
+            ["(i + 0.5) * length / max(1, floor(seats / 2)) - 225", "width + 50"],
+            ["(i + 0.5) * length / max(1, floor(seats / 2)) + 225", "width + 50"],
+            ["(i + 0.5) * length / max(1, floor(seats / 2)) + 225", "width + 450"],
+            ["(i + 0.5) * length / max(1, floor(seats / 2)) - 225", "width + 450"]
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "furn.bed",
+      "label": "Bed",
+      "params": [
+        { "key": "width", "label": "Width", "type": "number", "default": 1600, "unit": "length" },
+        { "key": "length", "label": "Length", "type": "number", "default": 2000, "unit": "length" }
+      ],
+      "draw": [
+        { "closed": true, "path": [[0, 0], ["width", 0], ["width", "length"], [0, "length"]] },
+        {
+          "repeat": { "count": "width >= 1400 ? 2 : 1" },
+          "closed": true,
+          "path": [
+            ["80 + i * width / 2", 80],
+            ["(width >= 1400 ? width / 2 : width) - 80 + i * width / 2", 80],
+            ["(width >= 1400 ? width / 2 : width) - 80 + i * width / 2", 460],
+            ["80 + i * width / 2", 460]
+          ]
+        },
+        { "path": [[0, 600], ["width", 600]] }
+      ]
+    },
+    {
+      "kind": "furn.shelf",
+      "label": "Shelving unit",
+      "params": [
+        { "key": "length", "label": "Length", "type": "number", "default": 2000, "unit": "length" },
+        { "key": "depth", "label": "Depth", "type": "number", "default": 400, "unit": "length" },
+        { "key": "bays", "label": "Bays", "type": "number", "default": 4 }
+      ],
+      "draw": [
+        { "closed": true, "path": [[0, 0], ["length", 0], ["length", "depth"], [0, "depth"]] },
+        { "repeat": { "count": "max(0, bays - 1)" }, "path": [["(i + 1) * length / max(1, bays)", 0], ["(i + 1) * length / max(1, bays)", "depth"]] },
+        { "dash": [5, 4], "path": [[0, 0], ["length", "depth"]] }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,519 @@
+{
+  "format": "opencalque",
+  "version": 1,
+  "id": "warehouse.furniture",
+  "name": "Furniture",
+  "unit": "mm",
+  "layers": {
+    "layer_1": {
+      "id": "layer_1",
+      "name": "Layer 1",
+      "order": "a0"
+    }
+  },
+  "nodes": {
+    "page_1": {
+      "id": "page_1",
+      "type": "page",
+      "name": "Page 1",
+      "parent": null,
+      "order": "a0"
+    },
+    "furniture_1": {
+      "id": "furniture_1",
+      "name": "Double bed",
+      "parent": null,
+      "order": "a1",
+      "type": "component",
+      "description": "1600 × 2000"
+    },
+    "n_pkzexvctis": {
+      "id": "n_pkzexvctis",
+      "parent": "furniture_1",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 1600,
+      "height": 2000
+    },
+    "n_qsx8cqgbnl": {
+      "id": "n_qsx8cqgbnl",
+      "parent": "furniture_1",
+      "order": "a1",
+      "type": "rect",
+      "x": 100,
+      "y": 80,
+      "width": 650,
+      "height": 400
+    },
+    "n_gjspsuhp8w": {
+      "id": "n_gjspsuhp8w",
+      "parent": "furniture_1",
+      "order": "a2",
+      "type": "rect",
+      "x": 850,
+      "y": 80,
+      "width": 650,
+      "height": 400
+    },
+    "n_9s2q1ckuab": {
+      "id": "n_9s2q1ckuab",
+      "parent": "furniture_1",
+      "order": "a3",
+      "type": "line",
+      "a": {
+        "x": 0,
+        "y": 600
+      },
+      "b": {
+        "x": 1600,
+        "y": 600
+      }
+    },
+    "furniture_2": {
+      "id": "furniture_2",
+      "name": "Single bed",
+      "parent": null,
+      "order": "a2",
+      "type": "component",
+      "description": "900 × 2000"
+    },
+    "n_2psdzvvm20": {
+      "id": "n_2psdzvvm20",
+      "parent": "furniture_2",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 900,
+      "height": 2000
+    },
+    "n_94wthdhc9s": {
+      "id": "n_94wthdhc9s",
+      "parent": "furniture_2",
+      "order": "a1",
+      "type": "rect",
+      "x": 100,
+      "y": 80,
+      "width": 700,
+      "height": 400
+    },
+    "n_2xgdeybn9k": {
+      "id": "n_2xgdeybn9k",
+      "parent": "furniture_2",
+      "order": "a2",
+      "type": "line",
+      "a": {
+        "x": 0,
+        "y": 600
+      },
+      "b": {
+        "x": 900,
+        "y": 600
+      }
+    },
+    "furniture_3": {
+      "id": "furniture_3",
+      "name": "Sofa, two seats",
+      "parent": null,
+      "order": "a3",
+      "type": "component",
+      "description": "1600 × 850"
+    },
+    "n_j58ep2mtco": {
+      "id": "n_j58ep2mtco",
+      "parent": "furniture_3",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 1600,
+      "height": 850
+    },
+    "n_9d3dwzr4lw": {
+      "id": "n_9d3dwzr4lw",
+      "parent": "furniture_3",
+      "order": "a1",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 1600,
+      "height": 200
+    },
+    "n_8wiy8g4w4g": {
+      "id": "n_8wiy8g4w4g",
+      "parent": "furniture_3",
+      "order": "a2",
+      "type": "rect",
+      "x": 0,
+      "y": 200,
+      "width": 180,
+      "height": 650
+    },
+    "n_6mc2sh3pwy": {
+      "id": "n_6mc2sh3pwy",
+      "parent": "furniture_3",
+      "order": "a3",
+      "type": "rect",
+      "x": 1420,
+      "y": 200,
+      "width": 180,
+      "height": 650
+    },
+    "n_girlyrufa9": {
+      "id": "n_girlyrufa9",
+      "parent": "furniture_3",
+      "order": "a4",
+      "type": "line",
+      "a": {
+        "x": 800,
+        "y": 200
+      },
+      "b": {
+        "x": 800,
+        "y": 850
+      }
+    },
+    "furniture_4": {
+      "id": "furniture_4",
+      "name": "Armchair",
+      "parent": null,
+      "order": "a4",
+      "type": "component",
+      "description": "850 × 850"
+    },
+    "n_qsygt681fu": {
+      "id": "n_qsygt681fu",
+      "parent": "furniture_4",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 850,
+      "height": 850
+    },
+    "n_07p6076nzf": {
+      "id": "n_07p6076nzf",
+      "parent": "furniture_4",
+      "order": "a1",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 850,
+      "height": 200
+    },
+    "n_66w9x6o1sr": {
+      "id": "n_66w9x6o1sr",
+      "parent": "furniture_4",
+      "order": "a2",
+      "type": "rect",
+      "x": 0,
+      "y": 200,
+      "width": 150,
+      "height": 650
+    },
+    "n_i0y67ktjsd": {
+      "id": "n_i0y67ktjsd",
+      "parent": "furniture_4",
+      "order": "a3",
+      "type": "rect",
+      "x": 700,
+      "y": 200,
+      "width": 150,
+      "height": 650
+    },
+    "furniture_5": {
+      "id": "furniture_5",
+      "name": "Chair",
+      "parent": null,
+      "order": "a5",
+      "type": "component",
+      "description": "450 × 450"
+    },
+    "n_pr6aylffmm": {
+      "id": "n_pr6aylffmm",
+      "parent": "furniture_5",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 450,
+      "height": 450
+    },
+    "n_xa371kkhu1": {
+      "id": "n_xa371kkhu1",
+      "parent": "furniture_5",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 0,
+        "y": 60
+      },
+      "b": {
+        "x": 450,
+        "y": 60
+      }
+    },
+    "furniture_6": {
+      "id": "furniture_6",
+      "name": "Dining table, six chairs",
+      "parent": null,
+      "order": "a6",
+      "type": "component",
+      "description": "1800 × 900 table"
+    },
+    "n_cyqtunmbb8": {
+      "id": "n_cyqtunmbb8",
+      "parent": "furniture_6",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 500,
+      "width": 1800,
+      "height": 900
+    },
+    "n_juqemxip8g": {
+      "id": "n_juqemxip8g",
+      "parent": "furniture_6",
+      "order": "a1",
+      "type": "rect",
+      "x": 150,
+      "y": 0,
+      "width": 450,
+      "height": 450
+    },
+    "n_r29z1kzlfh": {
+      "id": "n_r29z1kzlfh",
+      "parent": "furniture_6",
+      "order": "a2",
+      "type": "line",
+      "a": {
+        "x": 150,
+        "y": 60
+      },
+      "b": {
+        "x": 600,
+        "y": 60
+      }
+    },
+    "n_fqtn3zo8jn": {
+      "id": "n_fqtn3zo8jn",
+      "parent": "furniture_6",
+      "order": "a3",
+      "type": "rect",
+      "x": 150,
+      "y": 1450,
+      "width": 450,
+      "height": 450
+    },
+    "n_48rn6rdc94": {
+      "id": "n_48rn6rdc94",
+      "parent": "furniture_6",
+      "order": "a4",
+      "type": "line",
+      "a": {
+        "x": 150,
+        "y": 1840
+      },
+      "b": {
+        "x": 600,
+        "y": 1840
+      }
+    },
+    "n_8r4lhlo726": {
+      "id": "n_8r4lhlo726",
+      "parent": "furniture_6",
+      "order": "a5",
+      "type": "rect",
+      "x": 675,
+      "y": 0,
+      "width": 450,
+      "height": 450
+    },
+    "n_5bpwg967i7": {
+      "id": "n_5bpwg967i7",
+      "parent": "furniture_6",
+      "order": "a6",
+      "type": "line",
+      "a": {
+        "x": 675,
+        "y": 60
+      },
+      "b": {
+        "x": 1125,
+        "y": 60
+      }
+    },
+    "n_wyc6ktouhp": {
+      "id": "n_wyc6ktouhp",
+      "parent": "furniture_6",
+      "order": "a7",
+      "type": "rect",
+      "x": 675,
+      "y": 1450,
+      "width": 450,
+      "height": 450
+    },
+    "n_1ueooxghiw": {
+      "id": "n_1ueooxghiw",
+      "parent": "furniture_6",
+      "order": "a8",
+      "type": "line",
+      "a": {
+        "x": 675,
+        "y": 1840
+      },
+      "b": {
+        "x": 1125,
+        "y": 1840
+      }
+    },
+    "n_3u3x0si4fc": {
+      "id": "n_3u3x0si4fc",
+      "parent": "furniture_6",
+      "order": "a9",
+      "type": "rect",
+      "x": 1200,
+      "y": 0,
+      "width": 450,
+      "height": 450
+    },
+    "n_l2428230ij": {
+      "id": "n_l2428230ij",
+      "parent": "furniture_6",
+      "order": "aA",
+      "type": "line",
+      "a": {
+        "x": 1200,
+        "y": 60
+      },
+      "b": {
+        "x": 1650,
+        "y": 60
+      }
+    },
+    "n_u6a3cloaw0": {
+      "id": "n_u6a3cloaw0",
+      "parent": "furniture_6",
+      "order": "aB",
+      "type": "rect",
+      "x": 1200,
+      "y": 1450,
+      "width": 450,
+      "height": 450
+    },
+    "n_rts7jr5hv0": {
+      "id": "n_rts7jr5hv0",
+      "parent": "furniture_6",
+      "order": "aC",
+      "type": "line",
+      "a": {
+        "x": 1200,
+        "y": 1840
+      },
+      "b": {
+        "x": 1650,
+        "y": 1840
+      }
+    },
+    "furniture_7": {
+      "id": "furniture_7",
+      "name": "Desk with chair",
+      "parent": null,
+      "order": "a7",
+      "type": "component",
+      "description": "1400 × 700"
+    },
+    "n_vsesfgo99a": {
+      "id": "n_vsesfgo99a",
+      "parent": "furniture_7",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 1400,
+      "height": 700
+    },
+    "n_3kdod9ulrk": {
+      "id": "n_3kdod9ulrk",
+      "parent": "furniture_7",
+      "order": "a1",
+      "type": "ellipse",
+      "cx": 700,
+      "cy": 980,
+      "rx": 250,
+      "ry": 250
+    },
+    "furniture_8": {
+      "id": "furniture_8",
+      "name": "Wardrobe",
+      "parent": null,
+      "order": "a8",
+      "type": "component",
+      "description": "1800 × 600"
+    },
+    "n_tfvo0z3as6": {
+      "id": "n_tfvo0z3as6",
+      "parent": "furniture_8",
+      "order": "a0",
+      "type": "rect",
+      "x": 0,
+      "y": 0,
+      "width": 1800,
+      "height": 600
+    },
+    "n_wcglyqtmgr": {
+      "id": "n_wcglyqtmgr",
+      "parent": "furniture_8",
+      "order": "a1",
+      "type": "line",
+      "a": {
+        "x": 900,
+        "y": 0
+      },
+      "b": {
+        "x": 900,
+        "y": 600
+      }
+    },
+    "n_0wo4ek47xg": {
+      "id": "n_0wo4ek47xg",
+      "parent": "furniture_8",
+      "order": "a2",
+      "style": {
+        "dash": [
+          5,
+          4
+        ]
+      },
+      "type": "line",
+      "a": {
+        "x": 50,
+        "y": 300
+      },
+      "b": {
+        "x": 1750,
+        "y": 300
+      }
+    },
+    "furniture_9": {
+      "id": "furniture_9",
+      "name": "Coffee table, round",
+      "parent": null,
+      "order": "a9",
+      "type": "component",
+      "description": "Ø 900"
+    },
+    "n_18lmigu9v7": {
+      "id": "n_18lmigu9v7",
+      "parent": "furniture_9",
+      "order": "a0",
+      "type": "ellipse",
+      "cx": 450,
+      "cy": 450,
+      "rx": 450,
+      "ry": 450
+    }
+  }
+}

@@ -1,0 +1,98 @@
+{
+  "format": "opencalque-extension",
+  "formatVersion": 1,
+  "id": "opencalque.annotation",
+  "name": "Plan annotations",
+  "version": "1.0.0",
+  "author": "OpenCalque",
+  "description": "North arrow, scale bar and level marker.",
+  "translations": {
+    "fr": {
+      "Plan annotations": "Annotations de plan",
+      "North arrow, scale bar and level marker.": "Flèche du nord, échelle graphique et repère de niveau.",
+      "North arrow": "Flèche du nord",
+      "Scale bar": "Échelle graphique",
+      "Level marker": "Repère de niveau",
+      "Size": "Taille",
+      "Length": "Longueur",
+      "Divisions": "Divisions",
+      "Level": "Niveau",
+      "Text size": "Taille du texte"
+    },
+    "es": {
+      "Plan annotations": "Anotaciones de plano",
+      "North arrow, scale bar and level marker.": "Flecha de norte, escala gráfica y marca de nivel.",
+      "North arrow": "Flecha de norte",
+      "Scale bar": "Escala gráfica",
+      "Level marker": "Marca de nivel",
+      "Size": "Tamaño",
+      "Length": "Longitud",
+      "Divisions": "Divisiones",
+      "Level": "Nivel",
+      "Text size": "Tamaño del texto"
+    },
+    "de": {
+      "Plan annotations": "Planbeschriftung",
+      "North arrow, scale bar and level marker.": "Nordpfeil, Maßstabsleiste und Höhenkote.",
+      "North arrow": "Nordpfeil",
+      "Scale bar": "Maßstabsleiste",
+      "Level marker": "Höhenkote",
+      "Size": "Größe",
+      "Length": "Länge",
+      "Divisions": "Teilungen",
+      "Level": "Höhe",
+      "Text size": "Textgröße"
+    }
+  },
+  "objects": [
+    {
+      "kind": "note.north",
+      "label": "North arrow",
+      "params": [{ "key": "size", "label": "Size", "type": "number", "default": 800, "unit": "length" }],
+      "draw": [
+        { "ellipse": { "cx": 0, "cy": 0, "rx": "size / 2", "ry": "size / 2" } },
+        { "closed": true, "fill": "#1f1f1f", "path": [[0, "-size / 2"], ["size * 0.17", "size * 0.33"], [0, "size * 0.18"], ["-size * 0.17", "size * 0.33"]] },
+        { "text": { "x": 0, "y": "-size * 0.58", "value": "N", "size": "size * 0.3", "align": "center" } }
+      ]
+    },
+    {
+      "kind": "note.scalebar",
+      "label": "Scale bar",
+      "params": [
+        { "key": "length", "label": "Length", "type": "number", "default": 5000, "unit": "length" },
+        { "key": "divisions", "label": "Divisions", "type": "number", "default": 5 },
+        { "key": "textSize", "label": "Text size", "type": "number", "default": 150, "unit": "length" }
+      ],
+      "draw": [
+        { "closed": true, "path": [[0, 0], ["length", 0], ["length", -100], [0, -100]] },
+        {
+          "repeat": { "count": "max(1, divisions)" },
+          "when": "i % 2 == 0",
+          "closed": true,
+          "fill": "#1f1f1f",
+          "path": [
+            ["i * length / max(1, divisions)", 0],
+            ["(i + 1) * length / max(1, divisions)", 0],
+            ["(i + 1) * length / max(1, divisions)", -100],
+            ["i * length / max(1, divisions)", -100]
+          ]
+        },
+        { "text": { "x": 0, "y": "-100 - textSize * 0.4", "value": "0", "size": "textSize", "align": "center" } },
+        { "text": { "x": "length", "y": "-100 - textSize * 0.4", "value": "{length / 1000} m", "size": "textSize", "align": "center" } }
+      ]
+    },
+    {
+      "kind": "note.level",
+      "label": "Level marker",
+      "params": [
+        { "key": "level", "label": "Level", "type": "string", "default": "+0.00" },
+        { "key": "size", "label": "Size", "type": "number", "default": 200, "unit": "length" }
+      ],
+      "draw": [
+        { "closed": true, "path": [[0, 0], ["size * 0.6", "-size"], ["-size * 0.6", "-size"]] },
+        { "path": [["-size * 0.6", "-size"], ["size * 3.2", "-size"]] },
+        { "text": { "x": "size * 0.8", "y": "-size * 1.15", "value": "{level}", "size": "size * 0.8" } }
+      ]
+    }
+  ]
+}

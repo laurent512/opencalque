@@ -1,0 +1,17 @@
+{
+  "name": "@opencalque/cli",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "opencalque": "./src/cli.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@opencalque/core": "workspace:*",
+    "@opencalque/ext-architecture": "workspace:*",
+    "zod": "^4.6.5"
+  }
+}
