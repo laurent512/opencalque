@@ -262,14 +262,25 @@
           },
           "name": {
             "type": "string"
+          },
+          "info": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
           }
         },
         "required": [
-          "op",
-          "name"
+          "op"
         ],
         "additionalProperties": false,
-        "description": "Renames the document."
+        "description": "Renames the document and/or changes what it says about itself (\"info\": project, client, address, author), shown in title blocks. In \"info\" each key replaces that entry and a null or empty value removes it."
       }
     ]
   }

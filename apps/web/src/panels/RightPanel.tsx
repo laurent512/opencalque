@@ -1,4 +1,4 @@
-import { childrenOf, DEFAULT_PAPER_SCALE, layersOf, lengthOf, PAPER_FORMATS, paperFormat, paperSize, type Node, type Op, modifierKind, modifierKinds, modifierParams, type Modifier, roomAt, colorRef, colorRefOf, colorsOf, newId, resolveColor, cornerJoin, cornerJoinOps, moveCornerOps, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
+import { childrenOf, DEFAULT_PAPER_SCALE, layersOf, lengthOf, PAPER_FORMATS, paperFormat, paperSize, type Node, type Op, modifierKind, modifierKinds, modifierParams, type Modifier, roomAt, colorRef, colorRefOf, colorsOf, newId, resolveColor, cornerJoin, cornerJoinOps, moveCornerOps, wallEndsAt, TEXT_FIELDS, titleBlockHidden, titleBlockValues, type TitleField } from '@opencalque/core'
 import { executeById } from '../commands'
 import { useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { Pipette, ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, FlipHorizontal2, FlipVertical2, RotateCcw, RotateCw, Eye, EyeOff, Trash2, Check, Link2, Plus, Unlink, AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalSpaceAround, AlignStartHorizontal, AlignStartVertical, AlignVerticalSpaceAround } from 'lucide-react'
@@ -518,6 +518,86 @@ function RoomFacts({ node }: { node: Extract<Node, { type: 'room' }> }) {
   )
 }
 
+
+/** What each entry of a title block is called. */
+const TITLE_NAMES: Record<TitleField, string> = {
+  project: msg('Project'),
+  client: msg('Client'),
+  address: msg('Address'),
+  sheet: msg('Sheet'),
+  page: msg('Page'),
+  author: msg('Author'),
+  scale: msg('Scale'),
+  format: msg('Format'),
+  date: msg('Date'),
+  number: msg('Sheet no.'),
+}
+
+/** The entries said once for the whole drawing, and those typed for one sheet; the others are read from the sheet itself. */
+const DRAWING_ENTRIES: TitleField[] = ['project', 'client', 'address', 'author']
+const SHEET_ENTRIES: TitleField[] = ['sheet', 'page', 'scale', 'format', 'date', 'number']
+
+/**
+ * The entries of a paper's title block: a tick for each says whether this sheet shows it, and an
+ * entry with nothing in it takes no room whatever its tick. Project, client, address and author
+ * belong to the drawing and are the same on all its sheets; date and number belong to the sheet;
+ * its name, its page, its scale and its format are read from the sheet as it is.
+ */
+function TitleBlockEntries({ node }: { node: Extract<Node, { type: 'paper' }> }) {
+  const doc = useStore((s) => s.doc)
+  const values = titleBlockValues(node, doc)
+  const hidden = titleBlockHidden(node)
+  const block = node.titleBlock ?? {}
+  const setBlock = (next: Record<string, unknown>) => ({ op: 'update_node', id: node.id, patch: { titleBlock: next } }) as Op
+  const without = (key: string) => {
+    const { [key]: _, ...rest } = block as Record<string, unknown>
+    return rest
+  }
+  const show = (field: TitleField, on: boolean) => apply([setBlock({ ...block, hide: on ? hidden.filter((other) => other !== field) : [...hidden, field] })])
+  const write = (field: TitleField, text: string) => {
+    const value = text.trim()
+    if (DRAWING_ENTRIES.includes(field)) {
+      // Said for the drawing; what an older file kept on this one sheet gives way to it.
+      apply([{ op: 'set_document', info: { [field]: value || null } }, ...(field in block ? [setBlock(without(field))] : [])])
+    } else apply([setBlock(value ? { ...block, [field]: value } : without(field))])
+  }
+  // What is typed, as against what is shown: fields such as {date} stay as written here.
+  const written = (field: TitleField) => ((block as Record<string, unknown>)[field] as string | undefined) ?? (doc.info as Record<string, string> | undefined)?.[field] ?? ''
+  const typed = (field: TitleField) => DRAWING_ENTRIES.includes(field) || field === 'date' || field === 'number'
+  const placeholder: Partial<Record<TitleField, string>> = { project: doc.name, date: '{date}', number: '{page-number} / {pages}' }
+
+  const row = (field: TitleField) => (
+    <div key={field} className={`title-entry${hidden.includes(field) ? ' off' : ''}`}>
+      <input type="checkbox" checked={!hidden.includes(field)} title={t('Show it on this sheet')} aria-label={t('Show it on this sheet')} onChange={(e) => show(field, e.target.checked)} />
+      <span>{t(TITLE_NAMES[field])}</span>
+      {typed(field) ? (
+        field === 'address' ? (
+          <textarea key={`${node.id} ${written(field)}`} rows={2} defaultValue={written(field)} onBlur={(e) => e.target.value.trim() !== written(field) && write(field, e.target.value)} />
+        ) : (
+          <input
+            key={`${node.id} ${written(field)}`}
+            defaultValue={written(field)}
+            placeholder={placeholder[field]}
+            onBlur={(e) => e.target.value.trim() !== written(field) && write(field, e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+        )
+      ) : (
+        <em className={values[field] ? '' : 'faint'}>{values[field] || t('none')}</em>
+      )}
+    </div>
+  )
+  return (
+    <>
+      <h4 className="title-heading">{t('For the whole drawing')}</h4>
+      {DRAWING_ENTRIES.map(row)}
+      <h4 className="title-heading">{t('For this sheet')}</h4>
+      {SHEET_ENTRIES.map(row)}
+      <p className="hint">{t('An entry left empty takes no room in the block. Write {date} for the day’s date, {page-number} and {pages} for the page and how many there are.')}</p>
+    </>
+  )
+}
+
 /** The sheet a paper stands for: a standard format or a custom size, which way up, and at what drawing scale. */
 function PaperSheet({ node, update }: { node: Extract<Node, { type: 'paper' }>; update: Update }) {
   const doc = useStore((s) => s.doc)
@@ -555,36 +635,7 @@ function PaperSheet({ node, update }: { node: Extract<Node, { type: 'paper' }>; 
         <span>{t('Title block')}</span>
         <input type="checkbox" checked={node.titleBlock !== undefined} onChange={(e) => update(() => ({ titleBlock: e.target.checked ? {} : null }))} />
       </label>
-      {node.titleBlock && (
-        <>
-          {(
-            [
-              ['project', t('Project'), doc.name],
-              ['author', t('Author'), ''],
-              ['date', t('Date'), new Date().toLocaleDateString()],
-              ['number', t('Sheet no.'), ''],
-            ] as const
-          ).map(([key, label, suggestion]) => (
-            <label key={key} className="field">
-              <span>{label}</span>
-              <input
-                key={`${node.id} ${node.titleBlock?.[key] ?? ''}`}
-                defaultValue={node.titleBlock?.[key] ?? ''}
-                placeholder={suggestion}
-                onBlur={(e) => {
-                  const value = e.target.value.trim()
-                  if (value === (node.titleBlock?.[key] ?? '')) return
-                  const next: Record<string, string> = { ...node.titleBlock, [key]: value }
-                  if (!value) delete next[key]
-                  update(() => ({ titleBlock: next }))
-                }}
-                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-              />
-            </label>
-          ))}
-          <p className="hint">{t('The sheet also shows its name, its scale and its format. Left empty, the project is the name of the drawing.')}</p>
-        </>
-      )}
+      {node.titleBlock && <TitleBlockEntries node={node} />}
       <button className="text-button" onClick={() => executeById('file.exportPdf')}>
         {t('Export this sheet as PDF…')}
       </button>

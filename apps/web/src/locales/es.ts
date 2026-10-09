@@ -472,7 +472,6 @@ export const es: Record<string, string> = {
   "Author": "Autor",
   "Date": "Fecha",
   "Sheet no.": "N.º de hoja",
-  "The sheet also shows its name, its scale and its format. Left empty, the project is the name of the drawing.": "La hoja muestra también su nombre, su escala y su formato. Si se deja vacío, el proyecto es el nombre del dibujo.",
   "Export this sheet as PDF…": "Exportar esta hoja en PDF…",
   "Holding Alt while drawing or moving turns snapping off for that moment.": "Mantener Alt mientras se dibuja o se mueve desactiva el ajuste durante ese momento.",
   "Click a shortcut, then press the keys you want for it. Backspace removes it; Esc leaves it as it is.": "Haga clic en un atajo y pulse las teclas que quiera. Retroceso lo quita; Esc lo deja como está.",
@@ -575,4 +574,10 @@ export const es: Record<string, string> = {
   "Unlink from “{name}”": "Desvincular de «{name}»",
   "Recent": "Recientes",
   "Extensions…": "Extensiones…",
+  "Client": "Cliente",
+  "Show it on this sheet": "Mostrarlo en esta hoja",
+  "none": "ninguno",
+  "For the whole drawing": "Para todo el dibujo",
+  "For this sheet": "Para esta hoja",
+  "An entry left empty takes no room in the block. Write {date} for the day’s date, {page-number} and {pages} for the page and how many there are.": "Una entrada vacía no ocupa sitio en el cajetín. Escriba {date} para la fecha del día, {page-number} y {pages} para la página y cuántas hay.",
 }

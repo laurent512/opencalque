@@ -65,7 +65,7 @@ The welcome window offers a new drawing, a file, or the example: a furnished fla
 ```sh
 pnpm dev:web      # the same editor in a browser
 pnpm build && pnpm start   # the built desktop app
-pnpm test         # 135 tests
+pnpm test         # 140 tests
 pnpm dist         # build the installer for the system you are on, into apps/desktop/dist
 ```
 
@@ -191,7 +191,7 @@ A batch is all-or-nothing and every result is validated, so a script or a model 
 | Shared colours | In any colour field, choose "New shared colour from this one", then link other objects to it from the same list. Change it in the Colours panel and everything linked follows. A linked colour shows its name with a link icon |
 | Crop | Select something (an object, a group, a placed component), Object → Crop: only the part inside the orange rectangle is drawn. Drag its corners to change it. Nothing is cut: switch it off or remove it under Modifiers in the right panel |
 | Extensions | Preferences → Extensions adds new kinds of object: install, remove, switch off, or load more from a web catalog |
-| Export | File → Export PDF (`Ctrl+P`) for sheets at true scale: the selected papers, or all of them, one page each. Tick "Title block" on a paper for a border and a cartouche. Also Export SVG, and Export DXF for other CAD programs |
+| Export | File → Export PDF (`Ctrl+P`) for sheets at true scale: the selected papers, or all of them, one page each. Tick "Title block" on a paper for a border and a cartouche, then tick what it shows: project, client, address, sheet and page names, author, scale, format, date, number. Empty entries take no room; project, client, address and author are typed once for all the sheets. Also Export SVG, and Export DXF for other CAD programs |
 | Files | `Ctrl+S` save, `Ctrl+O` open, `Ctrl+Z` / `Ctrl+Shift+Z` undo and redo, `Ctrl+D` duplicate |
 
 A component library is just another `.opencalque` file: **File → Import component library** copies its components in.

@@ -110,7 +110,7 @@ Call apply_operations with a list of operations. The operations are:
 - add_node: {"op":"add_node","node":{...}}. Omit "id" and "order" unless you need to refer to the node later in the same list, in which case choose a short unique id. Pages and components take no parent.
 - update_node: {"op":"update_node","id":"...","patch":{...}}. The patch replaces the properties it names; a null value removes a property. Nested objects such as "a", "props" and "style" are replaced whole, so include every field of the one you change. Setting "parent" or "order" moves the node.
 - remove_node: {"op":"remove_node","id":"..."}.
-- add_layer, update_layer, remove_layer, and set_document (renames the drawing).
+- add_layer, update_layer, remove_layer, and set_document (renames the drawing, and with "info" sets its project, client, address and author, which every sheet's title block shows).
 
 Put new nodes on the page named in the request context unless the person says otherwise, and give them a suitable existing layer when there is one.
 

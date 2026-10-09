@@ -163,10 +163,16 @@ export const NodeSchema = z
         height: z.number().nonnegative(),
         scale: z.number().positive().optional().describe('The drawing scale of the sheet, as the N of 1:N. Default 100. An A3 sheet (420 × 297 mm of paper) at 1:100 is 42000 × 29700 here.'),
         titleBlock: z
-          .object({ project: z.string().optional(), author: z.string().optional(), date: z.string().optional(), number: z.string().optional() })
+          .object({
+            project: z.string().optional().describe('Overrides the project of the drawing on this sheet.'),
+            author: z.string().optional().describe('Overrides the author of the drawing on this sheet.'),
+            date: z.string().optional(),
+            number: z.string().optional(),
+            hide: z.array(z.string()).optional().describe("Entries this sheet leaves out, among project, client, address, sheet, page, author, scale, format, date and number. Defaults to ['page']."),
+          })
           .optional()
           .describe(
-            'When present (even empty), the sheet gets a border and a title block in its bottom right corner showing the project (the document name unless given here), the name of the paper, its scale and format, and the author, date and sheet number given here.',
+            'When present (even empty), the sheet gets a border and a title block in its bottom right corner. The block is made of the entries that have something to say and are not hidden: the project, client and address (from the document\'s "info"; the project falls back on the document name), the name of the paper and of its page, the author, the scale and format, and the date and sheet number given here. An entry with nothing in it takes no room. Texts may hold fields such as {date} or {page-number}.',
           ),
       })
       .describe(
@@ -310,6 +316,10 @@ export const DocumentSchema = z
     nodes: z
       .record(Id, NodeSchema)
       .describe('Every node by id, as a flat map. The tree is expressed by each node\'s "parent" and "order".'),
+    info: z
+      .object({ project: z.string().optional(), client: z.string().optional(), address: z.string().optional(), author: z.string().optional() })
+      .optional()
+      .describe('What the drawing says about itself, shown in the title block of every sheet: the project (the document name when not given), the client, the address of the site (lines separated by a line break), the author.'),
     meta: z.record(z.string(), z.unknown()).optional(),
   })
   .describe('An OpenCalque document (.opencalque file).')

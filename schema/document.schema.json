@@ -1656,13 +1656,15 @@
                 "exclusiveMinimum": 0
               },
               "titleBlock": {
-                "description": "When present (even empty), the sheet gets a border and a title block in its bottom right corner showing the project (the document name unless given here), the name of the paper, its scale and format, and the author, date and sheet number given here.",
+                "description": "When present (even empty), the sheet gets a border and a title block in its bottom right corner. The block is made of the entries that have something to say and are not hidden: the project, client and address (from the document's \"info\"; the project falls back on the document name), the name of the paper and of its page, the author, the scale and format, and the date and sheet number given here. An entry with nothing in it takes no room. Texts may hold fields such as {date} or {page-number}.",
                 "type": "object",
                 "properties": {
                   "project": {
+                    "description": "Overrides the project of the drawing on this sheet.",
                     "type": "string"
                   },
                   "author": {
+                    "description": "Overrides the author of the drawing on this sheet.",
                     "type": "string"
                   },
                   "date": {
@@ -1670,6 +1672,13 @@
                   },
                   "number": {
                     "type": "string"
+                  },
+                  "hide": {
+                    "description": "Entries this sheet leaves out, among project, client, address, sheet, page, author, scale, format, date and number. Defaults to ['page'].",
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 },
                 "additionalProperties": false
@@ -3314,6 +3323,25 @@
         "description": "All coordinates and lengths are millimetres. X grows to the right, Y grows downward."
       },
       "description": "Every node by id, as a flat map. The tree is expressed by each node's \"parent\" and \"order\"."
+    },
+    "info": {
+      "description": "What the drawing says about itself, shown in the title block of every sheet: the project (the document name when not given), the client, the address of the site (lines separated by a line break), the author.",
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string"
+        },
+        "client": {
+          "type": "string"
+        },
+        "address": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     },
     "meta": {
       "type": "object",

@@ -36,7 +36,7 @@ export type Op =
   | { op: 'update_color'; id: string; patch: Record<string, unknown> }
   | { op: 'remove_color'; id: string }
   | { op: 'add_asset'; asset: Omit<Asset, 'id'> & { id?: string } }
-  | { op: 'set_document'; name: string }
+  | { op: 'set_document'; name?: string; info?: Record<string, string | null> }
 
 const patch = z
   .record(z.string(), z.unknown())
@@ -68,7 +68,9 @@ export const OpSchema = z.discriminatedUnion('op', [
   z
     .object({ op: z.literal('add_asset'), asset: z.looseObject({ mime: z.string(), data: z.string() }) })
     .describe('Embeds a file (base64) so image nodes can show it. Assets are dropped on save once nothing uses them.'),
-  z.object({ op: z.literal('set_document'), name: z.string() }).describe('Renames the document.'),
+  z
+    .object({ op: z.literal('set_document'), name: z.string().optional(), info: z.record(z.string(), z.string().nullable()).optional() })
+    .describe('Renames the document and/or changes what it says about itself ("info": project, client, address, author), shown in title blocks. In "info" each key replaces that entry and a null or empty value removes it.'),
 ])
 
 export class OpError extends Error {}
@@ -228,8 +230,19 @@ function applyOp(d: Document, op: Op): void {
       d.assets = { ...d.assets, [id]: parse(AssetSchema, { ...op.asset, id }, 'asset') }
       return
     }
-    case 'set_document':
-      d.name = op.name
+    case 'set_document': {
+      if (op.name !== undefined) d.name = op.name
+      if (op.info) {
+        const info: Record<string, string> = { ...d.info }
+        for (const [key, value] of Object.entries(op.info)) {
+          if (!['project', 'client', 'address', 'author'].includes(key)) throw new OpError(`Unknown document information "${key}". Use project, client, address or author.`)
+          if (value === null || value.trim() === '') delete info[key]
+          else info[key] = value
+        }
+        if (Object.keys(info).length > 0) d.info = info
+        else delete d.info
+      }
       return
+    }
   }
 }

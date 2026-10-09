@@ -104,44 +104,124 @@ function dimensionMarker(type: NodeOf<'dimension'>['startMarker'], at: Vec2, out
   }
 }
 
+/** What a title block can show, in the order it is listed for the user. */
+export const TITLE_FIELDS = ['project', 'client', 'address', 'sheet', 'page', 'author', 'scale', 'format', 'date', 'number'] as const
+export type TitleField = (typeof TITLE_FIELDS)[number]
+
+/** The entries a sheet leaves out when it does not say: the page's name usually repeats the sheet's. */
+const TITLE_HIDDEN: TitleField[] = ['page']
+
+/** The entries of its title block a paper leaves out. */
+export const titleBlockHidden = (node: NodeOf<'paper'>): TitleField[] => (node.titleBlock?.hide as TitleField[] | undefined) ?? TITLE_HIDDEN
+
+/**
+ * What each entry of a paper's title block reads, hidden or not, with fields such as {date}
+ * filled in. Most come from elsewhere than the paper: the drawing's information, shared by all
+ * its sheets, the names of the paper and of its page, its scale and format. An empty text means
+ * the entry has nothing to say and takes no room in the block.
+ */
+export function titleBlockValues(node: NodeOf<'paper'>, doc: Document): Record<TitleField, string> {
+  const fill = (text: string | undefined) => fillFields(text ?? '', doc, node.parent).trim()
+  const block = node.titleBlock ?? {}
+  const s = node.scale ?? DEFAULT_PAPER_SCALE
+  let page: Node | undefined = node.parent ? doc.nodes[node.parent] : undefined
+  while (page && page.type !== 'page' && page.parent) page = doc.nodes[page.parent]
+  return {
+    project: fill(block.project || doc.info?.project || doc.name),
+    client: fill(doc.info?.client),
+    address: fill(doc.info?.address),
+    sheet: (node.name ?? '').trim(),
+    page: page?.type === 'page' ? (page.name ?? '').trim() : '',
+    author: fill(block.author || doc.info?.author),
+    scale: `1:${s}`,
+    format: paperFormat(node)?.name ?? `${Math.round(node.width / s)} × ${Math.round(node.height / s)}`,
+    date: fill(block.date),
+    number: fill(block.number),
+  }
+}
+
 /**
  * The border and title block of a paper that asks for one. Sizes are those of the printed sheet
- * (a 10 mm margin, a 100 × 30 mm block), multiplied by the paper's scale to stand on the drawing.
+ * (a 10 mm margin, a block 100 mm wide), multiplied by the paper's scale to stand on the drawing.
+ * The block is built from the entries that are shown and have something to say, so it is only as
+ * tall as it needs to be: a heading of the project, client and address, a line with the names of
+ * the sheet and its page and the author, and a row of cells for scale, format, date and number.
  * It has no captions, only values, so it reads the same in any language.
  */
 function titleBlock(node: NodeOf<'paper'>, doc: Document): Primitive[] {
-  const documentName = doc.name
-  // Its entries may hold fields, such as {date} or {page-number}.
-  const fill = (text: string) => fillFields(text, doc, node.parent)
-  const block = node.titleBlock
   const s = node.scale ?? DEFAULT_PAPER_SCALE
   // A sheet too small to hold it goes without.
-  if (!block || node.width < 130 * s || node.height < 60 * s) return []
+  if (!node.titleBlock || node.width < 130 * s || node.height < 60 * s) return []
+  const values = titleBlockValues(node, doc)
+  const hidden = new Set<string>(titleBlockHidden(node))
+  const shown = (field: TitleField) => (hidden.has(field) ? '' : values[field])
+
   const ink = { stroke: '#1f1f1f', own: true }
   const margin = 10 * s
+  const width = 100 * s
   const right = node.x + node.width - margin
   const bottom = node.y + node.height - margin
-  const left = right - 100 * s
-  const top = bottom - 30 * s
+  const left = right - width
   const line = (x1: number, y1: number, x2: number, y2: number): Primitive => ({ kind: 'path', points: [{ x: x1, y: y1 }, { x: x2, y: y2 }], ...ink, strokeWidth: 0.6 })
-  const words = (text: string, x: number, y: number, size: number, align: 'left' | 'right' = 'left'): Primitive[] => (text ? [{ kind: 'text', x, y, text, size: size * s, align, ...ink }] : [])
-  const format = paperFormat(node)?.name ?? `${Math.round(node.width / s)} × ${Math.round(node.height / s)}`
-  return [
-    { kind: 'path', closed: true, ...ink, strokeWidth: 1.2, points: boxCorners({ x: node.x + margin, y: node.y + margin, width: node.width - 2 * margin, height: node.height - 2 * margin }) },
-    { kind: 'path', closed: true, ...ink, strokeWidth: 1.2, points: boxCorners({ x: left, y: top, width: 100 * s, height: 30 * s }) },
-    line(left, top + 12 * s, right, top + 12 * s),
-    line(left, top + 21 * s, right, top + 21 * s),
-    line(left + 30 * s, top + 21 * s, left + 30 * s, bottom),
-    line(left + 52 * s, top + 21 * s, left + 52 * s, bottom),
-    line(left + 80 * s, top + 21 * s, left + 80 * s, bottom),
-    ...words(fill(block.project || documentName), left + 3 * s, top + 8.5 * s, 5),
-    ...words(node.name ?? '', left + 3 * s, top + 18 * s, 3.5),
-    ...words(fill(block.author ?? ''), right - 3 * s, top + 18 * s, 3, 'right'),
-    ...words(`1:${s}`, left + 3 * s, top + 27 * s, 3.5),
-    ...words(format, left + 33 * s, top + 27 * s, 3.5),
-    ...words(fill(block.date ?? ''), left + 55 * s, top + 27 * s, 3),
-    ...words(fill(block.number ?? ''), right - 3 * s, top + 27 * s, 3.5, 'right'),
-  ]
+  // A text too long for its place is set smaller, down to what still reads, rather than run out of the block.
+  const words = (text: string, x: number, y: number, size: number, room: number, look: { align?: 'left' | 'right'; bold?: boolean } = {}): Primitive => {
+    const fitted = Math.max(size * 0.5, Math.min(size, room / Math.max(1, text.length * 0.56)))
+    return { kind: 'text', x, y, text, size: fitted * s, ...look, ...ink }
+  }
+
+  // The heading: the project in large letters, then the client and each line of the address.
+  const heading = [shown('project'), shown('client'), ...shown('address').split('\n').map((part) => part.trim())].filter(Boolean)
+  const large = shown('project') !== ''
+  const headingHeight = heading.length === 0 ? 0 : (large ? 12 : 8) + (heading.length - 1) * 5
+  // The names: the sheet and its page on the left (once, when they are the same), the author on the right.
+  const names = [...new Set([shown('sheet'), shown('page')].filter(Boolean))].join(' · ')
+  const author = shown('author')
+  const namesHeight = names || author ? 9 : 0
+  // The cells: each as wide as what it usually holds, sharing the row among those that are there.
+  const cells = (
+    [
+      ['scale', 22],
+      ['format', 20],
+      ['date', 32],
+      ['number', 26],
+    ] as [TitleField, number][]
+  ).filter(([field]) => shown(field) !== '')
+  const cellsHeight = cells.length > 0 ? 9 : 0
+
+  const frame: Primitive = { kind: 'path', closed: true, ...ink, strokeWidth: 1.2, points: boxCorners({ x: node.x + margin, y: node.y + margin, width: node.width - 2 * margin, height: node.height - 2 * margin }) }
+  const height = (headingHeight + namesHeight + cellsHeight) * s
+  if (height === 0) return [frame]
+  const top = bottom - height
+  const out: Primitive[] = [frame, { kind: 'path', closed: true, ...ink, strokeWidth: 1.2, points: boxCorners({ x: left, y: top, width, height }) }]
+  const pad = 3 * s
+
+  let y = top
+  heading.forEach((text, i) => {
+    const first = i === 0
+    const baseline = first ? (large ? 8.5 : 5.5) : (large ? 12 : 8) + (i - 1) * 5 + 3
+    out.push(words(text, left + pad, y + baseline * s, first && large ? 5 : 3, 94, { bold: first && large }))
+  })
+  y += headingHeight * s
+  if (namesHeight) {
+    if (y > top) out.push(line(left, y, right, y))
+    // The author takes what it needs, up to half the line; the names have the rest.
+    const authorRoom = author ? Math.min(47, author.length * 3 * 0.56 + 2) : 0
+    if (names) out.push(words(names, left + pad, y + 6 * s, 3.5, 94 - authorRoom))
+    if (author) out.push(words(author, right - pad, y + 6 * s, 3, authorRoom, { align: 'right' }))
+    y += namesHeight * s
+  }
+  if (cellsHeight) {
+    if (y > top) out.push(line(left, y, right, y))
+    const total = cells.reduce((sum, [, weight]) => sum + weight, 0)
+    let x = left
+    cells.forEach(([field, weight], i) => {
+      const cell = (weight / total) * width
+      if (i > 0) out.push(line(x, y, x, bottom))
+      out.push(words(shown(field), x + pad, y + 6 * s, 3.5, cell / s - 6))
+      x += cell
+    })
+  }
+  return out
 }
 
 /** Text size of an annotation that does not give one, and how much its leader curves by default. */
@@ -469,6 +549,9 @@ export function kindOf(node: Node): NodeKind<any> {
   return KINDS[node.type]
 }
 
+/** What backs the closed shapes of a component or an object that have no fill: the white of the paper. */
+export const OBJECT_FILL = '#ffffff'
+
 /**
  * The primitives of a node with styles resolved: the node's own style wins, then what the kind
  * specified, then the layer color, then the default ink. Primitives marked `own` skip the first step.
@@ -491,8 +574,17 @@ export function nodePrimitives(node: Node, ctx: KindContext): Primitive[] {
         dash: p.own ? p.dash : (style?.dash ?? p.dash),
       }
     })
+  // A component or an object is a solid thing: a chair hides the floor it stands on. Each of its
+  // closed shapes that has no fill of its own is backed with paper white, all the backings under
+  // all the lines, so that one shape of the object never hides the lines of another.
+  const solid = node.type === 'instance' || node.type === 'parametric'
+  const backing: Primitive[] = solid
+    ? styled.flatMap((p): Primitive[] =>
+        (p.kind === 'path' ? p.closed && p.points.length > 2 : p.kind === 'ellipse') && p.fill === undefined && !p.backdrop ? [{ ...p, fill: OBJECT_FILL, stroke: 'none', dash: undefined }] : [],
+      )
+    : []
   // Last of all, so modifiers work on the node as it would otherwise be drawn.
-  return applyModifiers(node, styled, ctx.registry)
+  return applyModifiers(node, [...backing, ...styled], ctx.registry)
 }
 
 /** The operations that translate a node by `d`. For a group that means moving everything inside it. */

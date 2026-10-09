@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { applyOps, createDocument, declarativeExtension, holdsChildren, layersOf, pagesOf, Registry, type Document, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
+import { applyOps, createDocument, declarativeExtension, holdsChildren, layersOf, pagesOf, Registry, type Document, type NodeInput, type Op, type Vec2, wallEndsAt } from '@opencalque/core'
 import { architecture } from '@opencalque/ext-architecture'
 import type { StoredFile } from './platform'
 import { usePrefs } from './prefs'
@@ -171,6 +171,8 @@ function settle(s: State, doc: Document): Partial<State> {
     page,
     scope,
     selection: s.selection.filter((id) => doc.nodes[id]?.parent === scope),
+    // A corner is a place, not an object: after an undo no wall may end there any more.
+    corner: s.corner && wallEndsAt(doc, scope, s.corner).length > 0 ? s.corner : null,
     activeLayer: doc.layers[s.activeLayer] ? s.activeLayer : layersOf(doc)[0].id,
   }
 }

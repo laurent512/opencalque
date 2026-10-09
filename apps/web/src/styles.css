@@ -2168,3 +2168,71 @@ body.scrubbing .quick-field input[title] {
   flex-direction: column;
   margin: 0 -8px;
 }
+
+/* The entries of a title block: a tick to show each, its name, and what it reads */
+
+.title-heading {
+  margin: 10px 16px 2px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.title-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 2px 12px 2px 16px;
+}
+
+.title-entry > span {
+  flex: none;
+  width: 58px;
+  color: var(--muted);
+}
+
+.title-entry > input:not([type]),
+.title-entry > textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: var(--hover);
+  font: inherit;
+}
+
+.title-entry > input:not([type]) {
+  height: 24px;
+}
+
+.title-entry > textarea {
+  padding: 4px 6px;
+  resize: vertical;
+}
+
+.title-entry > input:not([type]):focus,
+.title-entry > textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.title-entry > em {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Not shown on this sheet: still there to read and to fill in, but set back. */
+.title-entry.off > span,
+.title-entry.off > em,
+.title-entry.off > input:not([type]),
+.title-entry.off > textarea {
+  opacity: 0.45;
+}

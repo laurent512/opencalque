@@ -167,6 +167,10 @@ A `paper` node is a sheet laid on the drawing, in the spirit of a frame: `x`, `y
 - The name above the corner is editor chrome (`Overlay.titles`, drawn in screen-size text and hit-tested by `titleAt` in the canvas), not part of the drawing or of exports. Once a scene has a backdrop the canvas paints the surroundings as a grey desk; the grid is drawn over the sheets.
 - **Paper tool** (`F`). The first click sets a corner and, if needed, zooms out until an A3 fits half the view. While pulling, `paperFormats` offers A5 to A0 at `paperScale` (store), upright or lying according to where the pointer is, as `Overlay.ghosts`; within 14 px of a format's corner the paper takes it (`constrain`), Alt gives any size. The properties panel sets format, direction and scale.
 
+### Title block (`titleBlock` in `kinds.ts`)
+
+A paper with `titleBlock` draws a border and a block built from entries (`TITLE_FIELDS`). `titleBlockValues` resolves what each reads: project, client, address and author from the document's `info` (set with `set_document`; the project falls back on the document name, and a paper may still override project and author for itself), the names of the paper and of its page, scale, format, and the paper's own date and number, with text fields filled in. An entry is drawn when it is not in the paper's `hide` list (`['page']` by default) and is not empty; the block's rows and height follow from what is left, and a text too long for its place is set smaller. The panel (`TitleBlockEntries`) writes drawing-wide entries to `info` and the others to the paper.
+
 ### Shared colours (`colors.ts`)
 
 A drawing may hold named colours in `colors` (id, name, value). Any colour property (a style's stroke or fill, a layer's colour, a dimension's text colour) refers to one by holding `var(--<id>)` in place of a colour. Nothing is copied, so `update_color` recolours everything that refers to it with one operation and without touching a node.
@@ -537,6 +541,7 @@ Tool versions are unusually new (TypeScript 7, Vite 7 for the apps, Vitest 5, El
 - Snapping treats a group as its outline: wall centerlines inside a group are not snap targets from outside it.
 - Openings are linked to walls by position only, so they do not follow a wall that moves (see §4, Openings).
 - A wall ending on another wall's body overlaps it rather than being trimmed.
+- Objects are solid: for an `instance` or a `parametric` node, `nodePrimitives` puts a white, strokeless copy of every closed shape that has no fill under all of the node's lines (`OBJECT_FILL`), so what lies beneath does not show through and no shape of the object hides another's lines. Open shapes (a door's swing) stay see-through. There is no way yet to ask for a see-through object.
 - Picking (`hitTest`): a component instance or a parametric object is hit anywhere inside one of its closed shapes, filled or not (`insidePrimitive`); other nodes by their lines and fills. Floors (`backdrop: 'floor'`, with their hatch) are never hit: a room is picked by its name. An object made only of open lines (a door's leaf and arc) is still picked by its lines.
 - Stairs have no break line, handrails or winders; the L and U landings are square.
 - Dimensions are linear and aligned to their two points only: no horizontal/vertical-only, angular, radius or chained dimensions, and they do not follow the geometry they measure. Text width is estimated, so the gap for on-line text is approximate. Fonts are limited to generic families available without downloads.

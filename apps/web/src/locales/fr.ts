@@ -472,7 +472,6 @@ export const fr: Record<string, string> = {
   "Author": "Auteur",
   "Date": "Date",
   "Sheet no.": "N° de feuille",
-  "The sheet also shows its name, its scale and its format. Left empty, the project is the name of the drawing.": "La feuille affiche aussi son nom, son échelle et son format. Laissé vide, le projet est le nom du dessin.",
   "Export this sheet as PDF…": "Exporter cette feuille en PDF…",
   "Holding Alt while drawing or moving turns snapping off for that moment.": "Maintenir Alt pendant un tracé ou un déplacement désactive l’aimantation le temps du geste.",
   "Click a shortcut, then press the keys you want for it. Backspace removes it; Esc leaves it as it is.": "Cliquez sur un raccourci, puis appuyez sur les touches voulues. Retour arrière le supprime ; Échap le laisse tel quel.",
@@ -575,4 +574,10 @@ export const fr: Record<string, string> = {
   "Unlink from “{name}”": "Délier de « {name} »",
   "Recent": "Récentes",
   "Extensions…": "Extensions…",
+  "Client": "Client",
+  "Show it on this sheet": "L’afficher sur cette feuille",
+  "none": "aucun",
+  "For the whole drawing": "Pour tout le dessin",
+  "For this sheet": "Pour cette feuille",
+  "An entry left empty takes no room in the block. Write {date} for the day’s date, {page-number} and {pages} for the page and how many there are.": "Une entrée laissée vide ne prend pas de place dans le cartouche. Écrivez {date} pour la date du jour, {page-number} et {pages} pour la page et leur nombre.",
 }

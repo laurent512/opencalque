@@ -4,6 +4,20 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 0.4.0 — 2026-10-09
+
+### New
+- A smarter title block. It is built from what there is to say: an entry left empty takes no room, and the block is only as tall as it needs to be. Each sheet ticks which entries it shows: project, client, address, sheet name, page name, author, scale, format, date, sheet number.
+- Project, client, address and author are said once for the drawing and appear on all its sheets; the project is the drawing's name unless you give another. A text too long for its place is set smaller instead of running out of the block.
+
+### Improved
+- The example flat is laid out as a flat is: the entrance opens on a hall that serves the living room, the bedroom and the bathroom, and the kitchen is a corner of the living room.
+- The points of a selected object (the ends of a wall or a line, the corners of a shape) are round and a little larger, so they read as points to drag; the corners of a selection box stay square.
+- Components and library objects are solid: a chair, a table or a cabinet drawn as an outline hides the floor pattern under it instead of letting it show through. Give one a fill of its own to colour it.
+
+### Fixed
+- After undoing the move of a wall corner, the blue dot of the selected corner no longer stays where the corner had been dragged.
+
 ## 0.3.2 — 2026-10-09
 
 ### Improved

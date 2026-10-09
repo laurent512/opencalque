@@ -301,10 +301,14 @@ describe('declarative extensions', () => {
     const local = new Registry().use(declarativeExtension(socket))
     const place = (props: object): Op => ({ op: 'add_node', node: { type: 'parametric', parent: 'page_1', kind: 'test.rail', props: props as Record<string, unknown>, x: 0, y: 0 } })
     const [plain] = buildScene(applyOps(createDocument(), [place({})]), 'page_1', local)
-    expect(plain.prims.map((p) => p.kind)).toEqual(['path', 'ellipse', 'ellipse', 'ellipse'])
-    expect(plain.prims[3]).toMatchObject({ cx: 1000 })
+    // Under its lines, an object has a white backing for each closed shape, so that it hides what it stands on.
+    const lines = plain.prims.filter((p) => p.stroke !== 'none')
+    expect(lines.map((p) => p.kind)).toEqual(['path', 'ellipse', 'ellipse', 'ellipse'])
+    expect(lines[3]).toMatchObject({ cx: 1000 })
+    expect(plain.prims.filter((p) => p.stroke === 'none').map((p) => [p.kind, p.fill])).toEqual([['ellipse', '#ffffff'], ['ellipse', '#ffffff'], ['ellipse', '#ffffff']])
+    expect(plain.prims.findIndex((p) => p.stroke !== 'none')).toBe(3)
     const [capped] = buildScene(applyOps(createDocument(), [place({ style: 'Capped', posts: 2, length: 400 })]), 'page_1', local)
-    expect(capped.prims).toHaveLength(4)
+    expect(capped.prims.filter((p) => p.stroke !== 'none')).toHaveLength(4)
     expect(capped.bounds).toEqual({ minX: -20, minY: -50, maxX: 420, maxY: 20 })
   })
 
@@ -443,7 +447,7 @@ describe('components', () => {
     expect(doc.nodes[instanceId]).toMatchObject({ x: 100, y: 200 })
     const [instance] = buildScene(doc, 'page_1', registry)
     expect(instance.bounds).toEqual({ minX: 100, minY: 200, maxX: 300, maxY: 400 })
-    expect(instance.prims.length).toBe(before.flatMap((i) => i.prims).length)
+    expect(instance.prims.filter((p) => p.stroke !== 'none').length).toBe(before.flatMap((i) => i.prims).length)
   })
 
   it('imports components from another document once, with their dependencies', () => {

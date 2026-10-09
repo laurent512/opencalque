@@ -260,12 +260,18 @@ export function drawScene(
       ctx.stroke()
     }
   }
+  // The points of an object (the ends of a line or a wall, the corners of a shape) are round and
+  // a little larger than the square grips of a selection box, which scale rather than move a point.
   ctx.fillStyle = '#ffffff'
+  ctx.lineWidth = 1.5
   for (const h of handles) {
     const p = toScreen(h)
-    ctx.fillRect(Math.round(p.x) - 3.5, Math.round(p.y) - 3.5, 7, 7)
-    ctx.strokeRect(Math.round(p.x) - 3.5, Math.round(p.y) - 3.5, 7, 7)
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, 5, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
   }
+  ctx.lineWidth = 1
   if (overlay.marquee) {
     const a = toScreen(overlay.marquee.a)
     const b = toScreen(overlay.marquee.b)

@@ -472,7 +472,6 @@ export const de: Record<string, string> = {
   "Author": "Verfasser",
   "Date": "Datum",
   "Sheet no.": "Blatt-Nr.",
-  "The sheet also shows its name, its scale and its format. Left empty, the project is the name of the drawing.": "Das Blatt zeigt außerdem seinen Namen, Maßstab und sein Format. Bleibt das Feld leer, ist das Projekt der Name der Zeichnung.",
   "Export this sheet as PDF…": "Dieses Blatt als PDF exportieren…",
   "Holding Alt while drawing or moving turns snapping off for that moment.": "Alt beim Zeichnen oder Verschieben gedrückt halten schaltet das Einrasten solange aus.",
   "Click a shortcut, then press the keys you want for it. Backspace removes it; Esc leaves it as it is.": "Klicken Sie auf ein Kürzel und drücken Sie die gewünschten Tasten. Rücktaste entfernt es; Esc lässt es unverändert.",
@@ -575,4 +574,10 @@ export const de: Record<string, string> = {
   "Unlink from “{name}”": "Von „{name}“ lösen",
   "Recent": "Zuletzt verwendet",
   "Extensions…": "Erweiterungen…",
+  "Client": "Bauherr",
+  "Show it on this sheet": "Auf diesem Blatt anzeigen",
+  "none": "keine",
+  "For the whole drawing": "Für die ganze Zeichnung",
+  "For this sheet": "Für dieses Blatt",
+  "An entry left empty takes no room in the block. Write {date} for the day’s date, {page-number} and {pages} for the page and how many there are.": "Ein leerer Eintrag nimmt im Schriftfeld keinen Platz ein. Schreiben Sie {date} für das Tagesdatum, {page-number} und {pages} für die Seite und ihre Anzahl.",
 }
