@@ -2236,3 +2236,21 @@ body.scrubbing .quick-field input[title] {
 .title-entry.off > textarea {
   opacity: 0.45;
 }
+
+.quickbar .justify-picker {
+  flex: none;
+  margin-left: 6px;
+}
+
+.quickbar .justify-picker button {
+  flex: none;
+  width: 32px;
+}
+
+/* A few small buttons side by side under the fields of a section */
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 12px 2px 16px;
+}

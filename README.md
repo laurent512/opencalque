@@ -44,10 +44,10 @@ Installers for each version are on the [releases page](https://github.com/lauren
 | System | File |
 | --- | --- |
 | Windows | `OpenCalque-…-windows-setup.exe` to install, or `…-windows-portable.exe` to run without installing |
-| macOS | `OpenCalque-…-mac-….dmg` |
+| macOS | `OpenCalque-…-mac-arm64.dmg` (Apple silicon) or `…-mac-x64.dmg` (Intel) |
 | Linux | `OpenCalque-…-linux-….AppImage` |
 
-The builds are not signed, so the system asks before running them the first time: on Windows choose "More info", then "Run anyway"; on macOS right-click the app and choose Open. When it starts, pick **Start with the example** to get a furnished flat to take apart.
+The builds are not signed, so the system asks before running them the first time: on Windows choose "More info", then "Run anyway"; on macOS right-click the app and choose Open (or allow it under System Settings → Privacy & Security). If a version before 0.4.1 says the app "is damaged", run `xattr -cr /Applications/OpenCalque.app` once, or take a newer version. When it starts, pick **Start with the example** to get a furnished flat to take apart.
 
 ## Run from source
 
@@ -65,14 +65,14 @@ The welcome window offers a new drawing, a file, or the example: a furnished fla
 ```sh
 pnpm dev:web      # the same editor in a browser
 pnpm build && pnpm start   # the built desktop app
-pnpm test         # 140 tests
+pnpm test         # 141 tests
 pnpm dist         # build the installer for the system you are on, into apps/desktop/dist
 ```
 
 ## What you can do
 
 **Draw**
-- Walls by centerline and thickness, joined cleanly at any angle; a double-click closes a room.
+- Walls drawn along their middle or along either face, joined cleanly at any angle; a double-click closes a room. Extend a wall to the next one, or trim what sticks out.
 - Corners you can select and drag, with a choice of joint: mitred, rounded, cut off, or one wall running through.
 - Doors, windows, four kinds of stairs and a compass for north, each with its own parameters.
 - Lines, rectangles, ellipses and arcs, polylines straight or curved, and annotations with curved, straight or elbowed leaders.
@@ -180,6 +180,9 @@ A batch is all-or-nothing and every result is validated, so a script or a model 
 | Right-click | On an object or the drawing, for order, grouping, copy and paste |
 | Copy and paste | `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, also between drawings |
 | Paper | `F`, click a corner, pull: the standard formats (A5 to A0) appear at the scale shown in the bar, upright or lying as you move; come close to one to take it, or hold `Alt` for any size. A paper carries what is drawn on it when moved, copied or duplicated; grab it by its edge or its name |
+| Wall faces | With the wall tool, the three small pictures in the bar above the tools say where the points you click lie: along the left face, the middle or the right face of the wall, as you draw it. Trace the inside of a room clockwise with "left" and the walls land outside it |
+| Extend and trim | Select a wall end (click it): Extend runs it on to the next wall, Trim cuts it back to the last wall it crossed. Object → Extend or Trim does it for every free end of the selected walls |
+| Keep on course | Hold `Shift` while dragging the end of a wall or a line: it slides along its own line, or swings to level, upright or 45° |
 | Joined walls | Moving a wall, or dragging one of its corners, stretches the walls that meet it and takes its doors and windows along. Hold `Alt` to move it alone |
 | Drag a number | Hold `Alt` over a number in the panels and drag sideways to change it; `Shift` goes ten times faster |
 | Transform | Select, then drag a corner of the box to scale or the round handle above it to turn (`Shift` for 15° steps). `Shift+R` turns a quarter, `Shift+H` and `Shift+V` flip, the arrow keys move by one grid step. Exact angles and percentages are in the right panel, under Transform |

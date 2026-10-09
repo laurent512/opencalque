@@ -19,6 +19,9 @@ import {
   sceneBounds,
   serializeDocument,
   toDXF,
+  extendWallOps,
+  trimWallOps,
+  wallEndsAt,
   dxfOps,
   toSVG,
   ungroupNode,
@@ -39,7 +42,7 @@ import { gridStep } from './canvas/draw'
 import { t, tn } from './i18n'
 import { platform } from './platform'
 import { usePrefs } from './prefs'
-import { apply, cancel, commit, isDirty, loadDocument, registry, replaceDoc, select, setTool, toast, useStore, showPage } from './store'
+import { apply, cancel, commit, isDirty, loadDocument, registry, replaceDoc, select, selectCorner, setTool, toast, useStore, showPage } from './store'
 
 const get = useStore.getState
 /** What a drawing file may be called: the current extension, the one from before the project was renamed, and plain JSON. */
@@ -295,6 +298,30 @@ export function addModifier(type: string): void {
     params: sized ? { width: across.size, height: down.size } : type === 'array' ? { dx: Math.ceil(((box.maxX - box.minX) * 1.2) / 10) * 10 || 1000, dy: Math.ceil(((box.maxY - box.minY) * 1.2) / 10) * 10 || 1000 } : {},
   }
   apply(selection.map((id): Op => ({ op: 'update_node', id, patch: { modifiers: [...(doc.nodes[id].modifiers ?? []), added] } })))
+}
+
+/** The walls an extend or a trim is about, and which of their ends: the selected wall end, or else every free end of the selected walls. */
+function wallsToFit(): { walls: Extract<Node, { type: 'wall' }>[]; end?: 'a' | 'b' } {
+  const { doc, scope, selection, corner } = get()
+  const ends = corner ? wallEndsAt(doc, scope, corner) : []
+  if (ends.length === 1) return { walls: [ends[0].wall], end: ends[0].end }
+  return { walls: selection.flatMap((id) => (doc.nodes[id]?.type === 'wall' ? [doc.nodes[id] as Extract<Node, { type: 'wall' }>] : [])) }
+}
+
+export const canFitWalls = () => wallsToFit().walls.length > 0
+
+/** Lengthens the selected walls, or the selected wall end, to the next wall in their way; or cuts back what sticks out past a wall. */
+export function fitWalls(how: 'extend' | 'trim'): void {
+  const { doc, corner } = get()
+  const { walls, end } = wallsToFit()
+  const ops = how === 'extend' ? extendWallOps(doc, walls, end) : trimWallOps(doc, walls, end)
+  if (ops.length === 0) return toast(how === 'extend' ? t('No wall lies ahead to extend to.') : t('Nothing sticks out past another wall to trim.'))
+  if (!apply(ops)) return
+  // The end that was selected has moved: select it where it is now.
+  if (corner && end) {
+    const moved = get().doc.nodes[walls[0].id]
+    if (moved?.type === 'wall') selectCorner(moved[end])
+  }
 }
 
 /** Makes a copy of a page, with what is on it, and shows the copy. */

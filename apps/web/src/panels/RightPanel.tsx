@@ -829,6 +829,16 @@ function CornerPanel({ at }: { at: { x: number; y: number } }) {
         <p className="hint">{ends.length > 1 ? t('{n} walls meet here. Drag the corner, or type where it should be: they all follow.', { n: ends.length }) : t('The free end of a wall. Bring it onto another wall’s end to join them.')}</p>
         <Field label={t('X')} numeric length value={at.x} onCommit={(x) => move({ x, y: at.y })} />
         <Field label={t('Y')} numeric length value={at.y} onCommit={(y) => move({ x: at.x, y })} />
+        {ends.length === 1 && (
+          <div className="pill-row">
+            <button className="pill" onClick={() => executeById('wall.extend')}>
+              {t('Extend to the next wall')}
+            </button>
+            <button className="pill" onClick={() => executeById('wall.trim')}>
+              {t('Trim back to a wall')}
+            </button>
+          </div>
+        )}
       </Section>
       {ends.length === 2 && (
         <Section title={t('Joint')}>

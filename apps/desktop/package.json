@@ -1,7 +1,7 @@
 {
   "name": "@opencalque/desktop",
   "productName": "OpenCalque",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "license": "MIT",
   "main": "./out/main/index.js",
@@ -58,7 +58,16 @@
       "artifactName": "OpenCalque-${version}-windows-portable.${ext}"
     },
     "mac": {
-      "target": "dmg",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "identity": null,
       "category": "public.app-category.graphics-design",
       "artifactName": "OpenCalque-${version}-mac-${arch}.${ext}"
     },
@@ -67,6 +76,7 @@
       "category": "Graphics",
       "executableName": "opencalque",
       "artifactName": "OpenCalque-${version}-linux-${arch}.${ext}"
-    }
+    },
+    "afterPack": "scripts/adhoc-sign.cjs"
   }
 }

@@ -34,6 +34,8 @@ import {
   moveCornerOps,
   splitWallOps,
   wallEndsAt,
+ scale,
+ add,
 } from '@opencalque/core'
 import { finishTextEdit, zoomToFit, withPaperContents, pickStyle } from '../actions'
 import { onCommand } from '../commands'
@@ -64,7 +66,7 @@ type Gesture =
    * until it is released. `origin`, `segments` and `since` describe the run of chained shapes this
    * one continues: where it began, how many are drawn, and when the last one was finished.
    */
-  | { kind: 'draw'; id: string; start: Vec2; press: (Vec2 & { time: number }) | null; origin: Vec2; segments: number; since: number }
+  | { kind: 'draw'; id: string; start: Vec2; press: (Vec2 & { time: number }) | null; origin: Vec2; segments: number; since: number; prev?: WallRun; first?: WallRun }
   /** A dimension whose two points are set; the pointer now chooses how far its line stands off. */
   | { kind: 'offset'; id: string; a: Vec2; b: Vec2 }
   /** A live reading from `start`. Nothing is added to the drawing. */
@@ -181,6 +183,53 @@ function currentStyle(inkOnly = false): { style?: { stroke?: string; strokeWidth
   const { drawColor, drawWeight, drawDash } = get()
   const style = { ...(drawColor ? { stroke: drawColor } : {}), ...(!inkOnly && drawWeight ? { strokeWidth: drawWeight } : {}), ...(!inkOnly && drawDash ? { dash: drawDash } : {}) }
   return Object.keys(style).length > 0 ? { style } : {}
+}
+
+/** A wall already drawn in the run under way, with the clicked points it goes between. */
+interface WallRun {
+  id: string
+  a: Vec2
+  b: Vec2
+}
+
+/**
+ * The operations that add a wall between two clicked points. Drawn along its middle, that is the
+ * wall itself. Drawn along a face, the wall lies half its thickness to one side, and where it
+ * follows another wall of the run (`prev`), or closes the run onto its first wall (`first`), the
+ * two are brought to the point where their middle lines cross, so the corner stays a corner.
+ */
+function wallOps(id: string, a: Vec2, b: Vec2, prev?: WallRun, first?: WallRun): Op[] {
+  const { wallJustify, wallThickness } = get()
+  const node = shape('wall', id, a, b)
+  if (wallJustify === 'center' || dist(a, b) < 1e-6) return [{ op: 'add_node', node }]
+  // The side the wall's body is on, seen in the direction it is drawn: to the right of a left face.
+  const half = (wallThickness / 2) * (wallJustify === 'left' ? 1 : -1)
+  const side = (from: Vec2, to: Vec2) => perp(norm(sub(to, from)))
+  const n = side(a, b)
+  const tidy = (p: Vec2): Vec2 => ({ x: Math.round(p.x * 1000) / 1000, y: Math.round(p.y * 1000) / 1000 })
+  /** Where the middle lines of two walls meeting at the clicked point `at` cross, or null when they fold back on each other. */
+  const corner = (at: Vec2, other: Vec2): Vec2 | null => {
+    const k = 1 + other.x * n.x + other.y * n.y
+    return k > 0.05 ? tidy(add(at, scale(add(other, n), half / k))) : null
+  }
+  const ops: Op[] = []
+  let start = tidy(add(a, scale(n, half)))
+  let end = tidy(add(b, scale(n, half)))
+  if (prev && dist(prev.a, prev.b) > 1e-6) {
+    const c = corner(a, side(prev.a, prev.b))
+    if (c) {
+      start = c
+      ops.push({ op: 'update_node', id: prev.id, patch: { b: c } })
+    }
+  }
+  if (first && first.id !== prev?.id && dist(b, first.a) < 1e-6 && dist(first.a, first.b) > 1e-6) {
+    const c = corner(b, side(first.a, first.b))
+    if (c) {
+      end = c
+      ops.push({ op: 'update_node', id: first.id, patch: { a: c } })
+    }
+  }
+  return [...ops, { op: 'add_node', node: { ...node, a: start, b: end } as NodeInput }]
 }
 
 /** The node a two-point tool makes from its two points. */
@@ -383,15 +432,20 @@ export function CanvasView() {
    * Where a point lands after snapping: on a nearby point of existing geometry, else on the grid.
    * Shift constrains to 45° steps from `from`; Alt turns snapping off.
    */
-  const snap = (world: Vec2, e: { altKey: boolean; shiftKey: boolean }, exclude: string[], from?: Vec2) => {
+  const snap = (world: Vec2, e: { altKey: boolean; shiftKey: boolean }, exclude: string[], from?: Vec2, own: number[] = []) => {
     const { zoom } = get().view
     const { snapToGrid, snapToObjects } = usePrefs.getState()
     if (e.altKey) return { p: world, marker: null }
     const step = gridStep(zoom)
     if (e.shiftKey && from) {
       const d = sub(world, from)
-      const angle = Math.round(Math.atan2(d.y, d.x) / (Math.PI / 4)) * (Math.PI / 4)
-      const length = Math.round(len(d) / step) * step
+      const pointed = Math.atan2(d.y, d.x)
+      // The directions on offer: every 45°, and those given (the line a wall already lies on), whichever is nearest.
+      const apart = (angle: number) => Math.abs(Math.atan2(Math.sin(angle - pointed), Math.cos(angle - pointed)))
+      const angle = [Math.round(pointed / (Math.PI / 4)) * (Math.PI / 4), ...own.flatMap((a) => [a, a + Math.PI])].reduce((best, a) => (apart(a) < apart(best) ? a : best))
+      // On a line of its own the length is where the pointer falls on it; on the usual ones it keeps to the grid.
+      const along = d.x * Math.cos(angle) + d.y * Math.sin(angle)
+      const length = Math.abs(angle - Math.round(angle / (Math.PI / 4)) * (Math.PI / 4)) < 1e-9 ? Math.round(len(d) / step) * step : Math.max(0, Math.round(along / step) * step)
       return { p: { x: round(from.x + Math.cos(angle) * length), y: round(from.y + Math.sin(angle) * length) }, marker: null }
     }
     let best: Vec2 | null = null
@@ -425,7 +479,7 @@ export function CanvasView() {
       // closes the run back to where it started.
       const closes = tool === 'wall' && g.segments >= 2 && performance.now() - g.since < 500 && dist(g.start, g.origin) > 1e-6
       reset()
-      if (closes) apply([{ op: 'add_node', node: shape('wall', newId(), g.start, g.origin) }])
+      if (closes) apply(wallOps(newId(), g.start, g.origin, g.prev, g.first))
       return
     }
     p = constrain(tool, g.start, p, lastWorld.current.altKey)
@@ -445,12 +499,13 @@ export function CanvasView() {
       setOverlay({})
       return
     }
-    if (preview([{ op: 'add_node', node: shape(tool, g.id, g.start, p) }])) commit()
+    if (preview(tool === 'wall' ? wallOps(g.id, g.start, p, g.prev, g.first) : [{ op: 'add_node', node: shape(tool, g.id, g.start, p) }])) commit()
     else cancel()
+    const run: WallRun = { id: g.id, a: g.start, b: p }
     // A run that arrives back at its first point is complete.
     const continues = chain && CHAINED.includes(tool) && !(g.segments >= 1 && dist(p, g.origin) < 1e-6)
     gesture.current = continues
-      ? { kind: 'draw', id: newId(), start: p, press: null, origin: g.origin, segments: g.segments + 1, since: performance.now() }
+      ? { kind: 'draw', id: newId(), start: p, press: null, origin: g.origin, segments: g.segments + 1, since: performance.now(), prev: run, first: g.first ?? run }
       : { kind: 'idle' }
   }
 
@@ -681,7 +736,10 @@ export function CanvasView() {
         break
       }
       case 'handle': {
-        const target = snap(world, e, [g.node.id])
+        // Shift keeps a wall or a line on course: its end slides along the line it already lies on,
+        // or swings to level, upright or 45° about its other end.
+        const ends = 'a' in g.node && 'b' in g.node && g.index < 2 ? { moved: g.index === 0 ? g.node.a : g.node.b, fixed: g.index === 0 ? g.node.b : g.node.a } : null
+        const target = e.shiftKey && ends ? snap(world, e, [g.node.id], ends.fixed, [Math.atan2(ends.moved.y - ends.fixed.y, ends.moved.x - ends.fixed.x)]) : snap(world, e, [g.node.id])
         marker = target.marker
         // The other walls that end at a wall's corner come along with it, unless Alt is held.
         const joined = e.altKey ? [] : wallEndFollowOps(s.base ?? s.doc, g.node, g.index, target.p)
@@ -692,7 +750,9 @@ export function CanvasView() {
         // Nothing has moved until the pointer has: a press on a corner only selects it.
         const before = s.base ?? s.doc
         const ends = wallEndsAt(before, s.scope, g.from)
-        const target = snap(world, e, ends.map((end) => end.wall.id))
+        // Shift moves the corner along one of the walls that meet there, or level, upright or at 45° from where it was.
+        const lines = ends.map(({ wall }) => Math.atan2(wall.b.y - wall.a.y, wall.b.x - wall.a.x))
+        const target = e.shiftKey ? snap(world, e, ends.map((end) => end.wall.id), g.from, lines) : snap(world, e, ends.map((end) => end.wall.id))
         marker = target.marker
         if (dist(target.p, g.from) < 1e-6) {
           cancel()
@@ -739,7 +799,7 @@ export function CanvasView() {
         const end = constrain(s.tool, g.start, target.p, e.altKey)
         // The formats on offer follow the pointer itself, so one stays lit while the paper is held on it.
         if (s.tool === 'paper' && s.drawLocks.a === undefined && s.drawLocks.b === undefined && !e.altKey) ghosts = paperFormats(g.start, target.p)
-        previewed = preview([{ op: 'add_node', node: shape(s.tool, g.id, g.start, end) }])
+        previewed = preview(s.tool === 'wall' ? wallOps(g.id, g.start, end, g.prev, g.first) : [{ op: 'add_node', node: shape(s.tool, g.id, g.start, end) }])
         const d = sub(end, g.start)
         if (constrained) axis = axisOf(g.start, end)
         status = constrained ? t('Length {value}', { value: formatLength(len(d)) }) : `${formatNumber(Math.abs(d.x))} × ${formatLength(Math.abs(d.y))}`

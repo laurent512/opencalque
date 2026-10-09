@@ -300,6 +300,10 @@ In the editor the selected corner is `corner` in the store (a point, never set t
 
 A wall that ends against the middle of another needs nothing: the merged painting of walls already hides the lines between them.
 
+### Drawing along a face, extending and trimming
+
+A wall is always stored by its middle line. Drawing along a face is the wall tool's doing (`wallOps` in `CanvasView.tsx`, `wallJustify` in the store): the wall is put half its thickness to one side of the clicked points, and where it follows the previous wall of the run, or closes onto the first, both are moved to where their middle lines cross. `extendWallOps` and `trimWallOps` (`walls.ts`) work on free ends only (ends no other wall ends at), against the middle lines of the other walls.
+
 ### Staying joined (`wallFollowOps`, `wallEndFollowOps`)
 
 Walls are tied to each other only by having ends at the same point, so a move has to honour that explicitly. `wallFollowOps(doc, moved, d, registry)` returns what must follow a move for the plan to stay in one piece: the ends of other walls that met an end of a moved wall (those walls stretch and turn), and the doors and windows sitting in a moved wall. `wallEndFollowOps` does the same for one dragged corner. The canvas adds them to the `move` and `handle` previews unless Alt is held. Not handled: a wall ending against the middle of another (a T), and openings in a wall that only got stretched.
@@ -558,7 +562,7 @@ Tool versions are unusually new (TypeScript 7, Vite 7 for the apps, Vitest 5, El
 - Rectangles lose their handles once rotated.
 - A text's hit box is estimated from character count; text has no alignment or bold of its own.
 - No viewports: a paper cannot show part of the plan at another scale.
-- Installers are unsigned and there is no automatic update. On macOS, opening a file by double-click (the `open-file` event) is not handled; on Windows and Linux the path comes as an argument and is.
+- Installers are unsigned and there is no automatic update. The macOS app is signed ad hoc by `apps/desktop/scripts/adhoc-sign.cjs` (an `afterPack` hook), which is what keeps Apple-silicon Macs from calling it damaged; it is not notarised, which needs a paid Apple developer account. On macOS, opening a file by double-click (the `open-file` event) is not handled; on Windows and Linux the path comes as an argument and is.
 - Instances have no overrides and cannot be detached.
 - Imported components lose their layer when no layer of the same name exists.
 - Extensions are compiled in; there is no runtime loading or permission model.

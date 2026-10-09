@@ -7,6 +7,13 @@ import { dashIndex, DASHES, penOf, PENS, pixelsOf } from './strokes'
 import { DashPicker, scrub } from './ui'
 import { formatNumber, parseLength, parseNumber, unit } from './units'
 
+/** Where the clicked points can lie on a wall, as it is drawn from left to right: its name and where the line is in its picture. */
+const JUSTIFY: ['left' | 'center' | 'right', string, number][] = [
+  ['left', msg('Points along the left face of the wall'), 5],
+  ['center', msg('Points along the middle of the wall'), 9],
+  ['right', msg('Points along the right face of the wall'), 13],
+]
+
 /** The two sizes each drawing tool lets you type, and whether the second is an angle rather than a length. */
 const SIZES: Partial<Record<Tool, [first: string, second: string, angle: boolean]>> = {
   rect: [msg('Width'), msg('Height'), false],
@@ -90,6 +97,7 @@ export function QuickBar() {
   const weight = useStore((s) => s.drawWeight)
   const dash = useStore((s) => s.drawDash)
   const wallThickness = useStore((s) => s.wallThickness)
+  const wallJustify = useStore((s) => s.wallJustify)
   const paperScale = useStore((s) => s.paperScale)
   const started = useStore((s) => s.drawStep > 0)
   const sizes = SIZES[tool]
@@ -120,6 +128,21 @@ export function QuickBar() {
             />
             <em>{unit()}</em>
           </label>
+        )}
+        {tool === 'wall' && (
+          <div className="end-picker justify-picker" role="radiogroup" aria-label={t('Where the points you click lie on the wall')}>
+            {JUSTIFY.map(([value, name, y]) => (
+              <button key={value} type="button" role="radio" aria-checked={value === wallJustify} className={value === wallJustify ? 'active' : ''} title={t(name)} aria-label={t(name)} onClick={() => useStore.setState({ wallJustify: value })}>
+                {/* The wall as a band, and the line of clicked points as a dashed line with its two points. */}
+                <svg width="28" height="18" viewBox="0 0 28 18" fill="none" stroke="currentColor" strokeWidth="1.2">
+                  <rect x="3" y="5" width="22" height="8" fill="currentColor" fillOpacity="0.18" />
+                  <path d={`M3 ${y}h22`} strokeWidth="1.6" strokeDasharray="3 2" />
+                  <circle cx="3" cy={y} r="1.8" fill="currentColor" stroke="none" />
+                  <circle cx="25" cy={y} r="1.8" fill="currentColor" stroke="none" />
+                </svg>
+              </button>
+            ))}
+          </div>
         )}
         {tool === 'paper' && (
           <label className="quick-field locked" title={t('The drawing scale of the sheet. It sets how much of the drawing a standard format covers.')}>

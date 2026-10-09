@@ -4,6 +4,16 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 0.4.1 — 2026-10-09
+
+### New
+- Walls can be drawn along a face: with the wall tool, the bar above the tools chooses whether the points you click run along the left face, the middle or the right face of the wall. Corners of a run still meet.
+- Extend and trim: a wall end runs on to the next wall in its way, or what sticks out past a wall is cut back to it. From the Object menu for the selected walls, or from the right panel for a selected wall end.
+- Shift while dragging the end of a wall or a line keeps it on course: the end slides along the line it already lies on, or swings to level, upright or 45°. Shift while dragging a corner moves it along one of its walls.
+
+### Fixed
+- macOS: the app no longer opens with "OpenCalque is damaged and can't be opened" on Apple-silicon Macs. It is still not signed by an identified developer, so the first time it has to be opened with a right-click, then Open. There is now a build for Intel Macs as well.
+
 ## 0.4.0 — 2026-10-09
 
 ### New

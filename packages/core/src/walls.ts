@@ -1,5 +1,5 @@
 import { childrenOf, isVisible, leavesOf, rootOf } from './document'
-import { add, applyTransform, dist, distToSegment, mid, norm, perp, scale, sub, type Vec2 } from './geometry'
+import { add, applyTransform, dist, distToSegment, mid, norm, perp, scale, sub, type Vec2, len } from './geometry'
 import type { Op } from './ops'
 import type { Registry } from './registry'
 import type { Document, Node, NodeOf, WALL_JOINS } from './schema'
@@ -370,4 +370,68 @@ export function splitWallOps(wall: Node, p: Vec2, newWallId: string): { ops: Op[
       { op: 'add_node', node: { ...rest, id: newWallId, a: at, b: wall.b, ...(joins?.b ? { joins: { b: joins.b } } : {}) } },
     ],
   }
+}
+
+/** Where the line of a wall, taken from `from` in direction `d`, meets the middle lines of the other walls: how far along, nearest first. */
+function crossings(doc: Document, parentId: string | null, wall: Wall, from: Vec2, d: Vec2): number[] {
+  const hits: number[] = []
+  for (const other of wallsIn(doc, parentId)) {
+    if (other.id === wall.id) continue
+    const e = sub(other.b, other.a)
+    const denom = cross(d, e)
+    if (Math.abs(denom) < 1e-9) continue
+    const between = sub(other.a, from)
+    const t = cross(between, e) / denom
+    const u = cross(between, d) / denom
+    if (u >= -1e-6 && u <= 1 + 1e-6) hits.push(t)
+  }
+  return hits.sort((p, q) => p - q)
+}
+
+/** The ends of a wall that no other wall ends at: the ones that can be extended or trimmed. */
+const freeEnds = (doc: Document, wall: Wall): ('a' | 'b')[] => (['a', 'b'] as const).filter((end) => wallEndsAt(doc, wall.parent, wall[end]).length === 1)
+
+/**
+ * Lengthens walls to the next wall in their way: each free end of each wall given (or only `end`
+ * of the one wall given) runs straight on until it meets the middle line of another wall. An end
+ * with nothing ahead of it stays where it is.
+ */
+export function extendWallOps(doc: Document, walls: Wall[], end?: 'a' | 'b'): Op[] {
+  return walls.flatMap((wall): Op[] => {
+    const patch: Record<string, Vec2> = {}
+    for (const side of end ? [end] : freeEnds(doc, wall)) {
+      const tip = wall[side]
+      const d = sub(tip, wall[side === 'a' ? 'b' : 'a'])
+      const reach = len(d)
+      if (reach < 1e-6) continue
+      // Distances are in units of the wall's own length; just past the tip is the first place to look.
+      const ahead = crossings(doc, wall.parent, wall, tip, d).find((t) => t > JOIN_TOLERANCE / reach)
+      if (ahead !== undefined) patch[side] = { x: tidy(tip.x + d.x * ahead), y: tidy(tip.y + d.y * ahead) }
+    }
+    return Object.keys(patch).length > 0 ? [{ op: 'update_node', id: wall.id, patch }] : []
+  })
+}
+
+/**
+ * Cuts back the part of a wall that sticks out past another: each free end (or only `end`) is
+ * brought back to the nearest wall it has crossed. A wall crossing a single wall with both ends
+ * free loses only its shorter overhang, so that something of it is left.
+ */
+export function trimWallOps(doc: Document, walls: Wall[], end?: 'a' | 'b'): Op[] {
+  return walls.flatMap((wall): Op[] => {
+    const d = sub(wall.b, wall.a)
+    const length = len(d)
+    if (length < 1e-6) return []
+    // Where other walls cross this one, as a share of its length from a to b, ends left out.
+    const cuts = crossings(doc, wall.parent, wall, wall.a, d).filter((t) => t > JOIN_TOLERANCE / length && t < 1 - JOIN_TOLERANCE / length)
+    if (cuts.length === 0) return []
+    const sides = end ? [end] : freeEnds(doc, wall)
+    let from = sides.includes('a') ? cuts[0] : 0
+    let to = sides.includes('b') ? cuts[cuts.length - 1] : 1
+    // One crossing and both ends free: keep the longer side.
+    if (to - from < 1e-9) [from, to] = cuts[0] < 0.5 ? [cuts[0], 1] : [0, cuts[0]]
+    const at = (t: number): Vec2 => ({ x: tidy(wall.a.x + d.x * t), y: tidy(wall.a.y + d.y * t) })
+    const patch = { ...(from > 0 ? { a: at(from) } : {}), ...(to < 1 ? { b: at(to) } : {}) }
+    return Object.keys(patch).length > 0 ? [{ op: 'update_node', id: wall.id, patch }] : []
+  })
 }

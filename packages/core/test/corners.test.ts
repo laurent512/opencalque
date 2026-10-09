@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyOps, boundsOf, buildScene, cornerJoin, cornerJoinOps, createDocument, moveCornerOps, Registry, roomAt, splitWallOps, wallEndsAt, type Document, type Op } from '../src'
+import { applyOps, boundsOf, buildScene, cornerJoin, cornerJoinOps, createDocument, extendWallOps, trimWallOps, moveCornerOps, Registry, roomAt, splitWallOps, wallEndsAt, type Document, type Op } from '../src'
 
 const registry = new Registry()
 const add = (node: Record<string, unknown>): Op => ({ op: 'add_node', node: { parent: 'page_1', ...node } }) as Op
@@ -39,6 +39,25 @@ describe('wall corners', () => {
     // From 60 degrees up the point is short enough to keep: 141 mm at a right angle.
     expect(Math.round(tip(90))).toBe(141)
     expect(Math.round(tip(70))).toBe(174)
+  })
+
+  it('extends a wall to the next wall ahead, and trims what sticks out past one', () => {
+    // A long wall along the top, and a short one below it pointing up at it without reaching.
+    const short = applyOps(createDocument(), [wall('top', 0, 0, 4000, 0), wall('stem', 2000, 3000, 2000, 1000)])
+    const stem = (doc: Document) => doc.nodes.stem as any
+    const extended = applyOps(short, extendWallOps(short, [stem(short)]))
+    // Its far end runs up to the middle line of the wall above; the end with nothing ahead stays.
+    expect(stem(extended)).toMatchObject({ a: { x: 2000, y: 3000 }, b: { x: 2000, y: 0 } })
+    expect(extendWallOps(extended, [stem(extended)])).toEqual([])
+    // The same wall drawn too long, through the one above: what sticks out is cut back to it.
+    const long = applyOps(createDocument(), [wall('top', 0, 0, 4000, 0), wall('stem', 2000, 3000, 2000, -600)])
+    const trimmed = applyOps(long, trimWallOps(long, [stem(long)]))
+    expect(stem(trimmed)).toMatchObject({ a: { x: 2000, y: 3000 }, b: { x: 2000, y: 0 } })
+    expect(trimWallOps(trimmed, [stem(trimmed)])).toEqual([])
+    // An end that another wall already ends at is a corner, not a free end: it is left alone.
+    const corner = applyOps(createDocument(), [wall('top', 0, 0, 4000, 0), wall('side', 4000, 0, 4000, 3000), wall('far', 0, 5000, 8000, 5000)])
+    expect((applyOps(corner, extendWallOps(corner, [corner.nodes.side as any])).nodes.side as any).a).toEqual({ x: 4000, y: 0 })
+    expect((applyOps(corner, extendWallOps(corner, [corner.nodes.side as any])).nodes.side as any).b).toEqual({ x: 4000, y: 5000 })
   })
 
   it('are mitred to a sharp point unless told otherwise', () => {

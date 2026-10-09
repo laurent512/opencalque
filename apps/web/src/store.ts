@@ -55,6 +55,8 @@ interface State {
   placingRotation: number
   activeLayer: string
   wallThickness: number
+  /** Where the points clicked with the wall tool lie on the wall: along its middle, or along its left or right face as it is drawn. */
+  wallJustify: 'left' | 'center' | 'right'
   /** The drawing scale (the N of 1:N) given to the papers the paper tool makes, which sets how large the standard formats are. */
   paperScale: number
   /** The shape tool used last, shown on the toolbar's shape button. */
@@ -129,6 +131,7 @@ function initial(doc: Document, file: StoredFile | null): State {
     placingRotation: 0,
     activeLayer: layersOf(doc)[0].id,
     wallThickness: 200,
+    wallJustify: 'center',
     paperScale: 100,
     shapeTool: 'rect',
     roomTool: 'room',
@@ -269,8 +272,8 @@ export function redo(): void {
 
 export function loadDocument(doc: Document, file: StoredFile | null): void {
   // Tool settings belong to the session, not the document.
-  const { viewport, wallThickness, paperScale, dimensionTemplate, annotationTemplate, extensionsVersion, shapeTool, roomTool, textTool, drawColor, drawWeight, drawDash } = get()
-  set({ ...initial(doc, file), viewport, wallThickness, paperScale, dimensionTemplate, annotationTemplate, extensionsVersion, shapeTool, roomTool, textTool, drawColor, drawWeight, drawDash })
+  const { viewport, wallThickness, wallJustify, paperScale, dimensionTemplate, annotationTemplate, extensionsVersion, shapeTool, roomTool, textTool, drawColor, drawWeight, drawDash } = get()
+  set({ ...initial(doc, file), viewport, wallThickness, wallJustify, paperScale, dimensionTemplate, annotationTemplate, extensionsVersion, shapeTool, roomTool, textTool, drawColor, drawWeight, drawDash })
 }
 
 export function setTool(tool: Tool, placing: Placing | null = null): void {
