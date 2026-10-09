@@ -304,17 +304,15 @@ function Extensions({ catalog }: { catalog: DeclarativeExtension[] }) {
   )
 }
 
-/** Where components and extensions are found and added: those shipped with the app, and those of a web catalog. */
-export function Warehouse() {
-  const tab = useStore((s) => s.warehouse)
+/** What can be added: what ships with the app, and what the web catalog the user gave offers. Read only while `active`. */
+function useCatalog(active: boolean) {
   const catalogUrl = usePrefs((p) => p.catalogUrl)
-  const [url, setUrl] = useState(catalogUrl)
   const [remote, setRemote] = useState<{ libraries: Library[]; extensions: DeclarativeExtension[] }>({ libraries: [], extensions: [] })
   const libraries = useMemo(() => [...bundledLibraries(), ...remote.libraries], [remote])
   const extensions = useMemo(() => [...bundledExtensions(), ...remote.extensions], [remote])
 
   useEffect(() => {
-    if (!tab || !catalogUrl) return setRemote({ libraries: [], extensions: [] })
+    if (!active || !catalogUrl) return setRemote({ libraries: [], extensions: [] })
     let stale = false
     remoteCatalog(catalogUrl).then(
       (catalog) => !stale && setRemote(catalog),
@@ -323,33 +321,59 @@ export function Warehouse() {
     return () => {
       stale = true
     }
-  }, [tab, catalogUrl])
+  }, [active, catalogUrl])
+  return { libraries, extensions }
+}
 
-  if (!tab) return null
+/** The address of a catalog on the web that offers more libraries and extensions. */
+function CatalogAddress() {
+  const catalogUrl = usePrefs((p) => p.catalogUrl)
+  const [url, setUrl] = useState(catalogUrl)
+  return (
+    <form
+      className="warehouse-catalog"
+      onSubmit={(e) => {
+        e.preventDefault()
+        setPrefs({ catalogUrl: url.trim() })
+      }}
+    >
+      <span className="faint">{t('More from a web catalog')}</span>
+      <input placeholder="https://…/catalog.json" value={url} onChange={(e) => setUrl(e.target.value)} />
+      <button className="pill" type="submit">
+        {t('Load')}
+      </button>
+    </form>
+  )
+}
+
+/** The extensions that can be installed, removed and switched off. It is a page of Preferences, not a window of its own. */
+export function ExtensionWarehouse() {
+  const { extensions } = useCatalog(true)
+  return (
+    <div className="prefs-extensions">
+      <Extensions catalog={extensions} />
+      <CatalogAddress />
+    </div>
+  )
+}
+
+/** The component library: everything that can be placed, from the drawing, the app and a web catalog. */
+export function Warehouse() {
+  const open = useStore((s) => s.warehouse) === 'components'
+  const { libraries } = useCatalog(open)
+
+  if (!open) return null
   return (
     <div className="palette-backdrop" onMouseDown={close} onKeyDown={(e) => e.key === 'Escape' && close()}>
-      <div className="dialog warehouse" role="dialog" aria-label={tab === 'components' ? t('Component library') : t('Extensions')} onMouseDown={(e) => e.stopPropagation()}>
+      <div className="dialog warehouse" role="dialog" aria-label={t('Component library')} onMouseDown={(e) => e.stopPropagation()}>
         <header>
-          {/* Two separate windows that share a frame: one to place things, one to add kinds of things. */}
-          <h2>{tab === 'components' ? t('Component library') : t('Extensions')}</h2>
+          <h2>{t('Component library')}</h2>
           <button className="text-button" onClick={close}>
             {t('Done')}
           </button>
         </header>
-        {tab === 'components' ? <Components libraries={libraries} /> : <Extensions catalog={extensions} />}
-        <form
-          className="warehouse-catalog"
-          onSubmit={(e) => {
-            e.preventDefault()
-            setPrefs({ catalogUrl: url.trim() })
-          }}
-        >
-          <span className="faint">{t('More from a web catalog')}</span>
-          <input placeholder="https://…/catalog.json" value={url} onChange={(e) => setUrl(e.target.value)} />
-          <button className="pill" type="submit">
-            {t('Load')}
-          </button>
-        </form>
+        <Components libraries={libraries} />
+        <CatalogAddress />
       </div>
     </div>
   )

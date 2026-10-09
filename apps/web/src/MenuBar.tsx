@@ -23,7 +23,7 @@ const MENUS: [string, (string | null)[]][] = [
   [msg('View'), ['view.zoomToFit', 'view.zoomIn', 'view.zoomOut', null, 'view.toggleGrid', 'view.toggleSnapGrid', 'view.toggleSnapObjects', null, '@Panels', null, 'view.resetLayout']],
   // There is no Insert or Tools menu: the toolbar holds the tools and the component library, and pages
   // and layers are added from their panels. Every command stays in the command list (Ctrl+K).
-  [msg('Preferences'), ['prefs.open', 'warehouse.extensions', null, 'palette.open', null, 'help.welcome']],
+  [msg('Preferences'), ['prefs.open', null, 'palette.open', null, 'help.welcome']],
 ]
 
 function items(entries: (string | null)[], commands: Command[]): (Command | null)[] {

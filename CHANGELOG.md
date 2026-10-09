@@ -4,6 +4,12 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 0.3.2 — 2026-10-09
+
+### Improved
+- Extensions are installed, removed and switched off on the Extensions page of Preferences; they no longer have a window of their own or an entry in the menu.
+- Choosing a colour opens on a picker (a square for how vivid and how bright, a band for the hue, the colour's code to type), then the colours picked lately, then the shared colours, in one window.
+
 ## 0.3.1 — 2026-10-09
 
 ### Improved

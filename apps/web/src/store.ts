@@ -95,8 +95,10 @@ interface State {
    * the drawing yet (it exists only as a preview until the typing ends).
    */
   editingText: { id: string; create?: NodeInput } | null
-  /** Which tab of the warehouse dialog is open, if any. */
-  warehouse: 'components' | 'extensions' | null
+  /** Whether the component library is open. */
+  warehouse: 'components' | null
+  /** The page Preferences opens on next, when something asked for one; otherwise the one it was left on. */
+  preferencesPage: string | null
   /** Bumped whenever the set of extensions in use changes. */
   extensionsVersion: number
   /** Where the right-click menu is open, in window coordinates. */
@@ -145,6 +147,7 @@ function initial(doc: Document, file: StoredFile | null): State {
     aboutOpen: false,
     contextMenu: null,
     warehouse: null,
+    preferencesPage: null,
     editingText: null,
     extensionsVersion: 0,
     view: { x: 320, y: 220, zoom: 0.1 },

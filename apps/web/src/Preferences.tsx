@@ -7,6 +7,7 @@ import { platform } from './platform'
 import { CLAUDE_MODELS, setAiPrefs, setPrefs, usePrefs } from './prefs'
 import { BUILT_IN_EXTENSION, toast, useStore } from './store'
 import { UNITS } from './units'
+import { ExtensionWarehouse } from './WarehouseDialog'
 
 const close = () => useStore.setState({ preferencesOpen: false })
 
@@ -227,50 +228,26 @@ function ShortcutSettings() {
   )
 }
 
-function ExtensionSettings() {
-  const { installed, disabled } = usePrefs((p) => p.extensions)
-  // Read so the list follows extensions being installed or removed.
-  useStore((s) => s.extensionsVersion)
-  const names = Object.values(installed).map((extension) => extension.name)
-  return (
-    <>
-      <p className="hint">{t('Extensions add new kinds of object to the component library. They are data, not programs, so installing one is safe.')}</p>
-      <div className="pref-row">
-        <strong>{t('Architecture')}</strong>
-        <span className="faint">{disabled.includes(BUILT_IN_EXTENSION) ? t('built in, switched off') : t('built in')}</span>
-      </div>
-      {names.map((name) => (
-        <div key={name} className="pref-row">
-          <strong>{name}</strong>
-          <span className="faint">{t('installed')}</span>
-        </div>
-      ))}
-      <button
-        className="text-button"
-        onClick={() => {
-          close()
-          executeById('warehouse.extensions')
-        }}
-      >
-        {t('Add or remove extensions…')}
-      </button>
-    </>
-  )
-}
-
 /** The pages of the preferences, in the order of the list on the left. */
 const PAGES: [id: string, title: string, icon: LucideIcon, page: () => React.ReactNode][] = [
   ['general', msg('General'), Settings2, GeneralSettings],
   ['drawing', msg('Drawing'), PencilRuler, DrawingSettings],
   ['assistant', msg('Assistant'), Bot, AssistantSettings],
   ['shortcuts', msg('Keyboard shortcuts'), Keyboard, ShortcutSettings],
-  ['extensions', msg('Extensions'), Puzzle, ExtensionSettings],
+  ['extensions', msg('Extensions'), Puzzle, ExtensionWarehouse],
 ]
 
 /** The app's settings: a list of pages on the left, the chosen page on the right. */
 export function Preferences() {
   const open = useStore((s) => s.preferencesOpen)
+  const asked = useStore((s) => s.preferencesPage)
   const [current, setCurrent] = useState(PAGES[0][0])
+  // A command that opens Preferences on a given page (Extensions…) says which, once.
+  useEffect(() => {
+    if (!asked) return
+    setCurrent(asked)
+    useStore.setState({ preferencesPage: null })
+  }, [asked])
   if (!open) return null
   const [, title, , Page] = PAGES.find(([id]) => id === current) ?? PAGES[0]
 

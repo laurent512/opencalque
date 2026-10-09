@@ -229,7 +229,7 @@ const STATIC: Command[] = [
   { id: 'tool.calibrate', title: msg('Set the scale of an imported plan'), category: 'Tools', run: () => setTool('calibrate') },
 
   { id: 'warehouse.components', title: msg('Component library…'), category: 'Insert', global: true, run: () => useStore.setState({ warehouse: 'components' }) },
-  { id: 'warehouse.extensions', title: msg('Extension warehouse…'), category: 'General', global: true, run: () => useStore.setState({ warehouse: 'extensions' }) },
+  { id: 'warehouse.extensions', title: msg('Extensions…'), category: 'General', global: true, run: () => useStore.setState({ preferencesOpen: true, preferencesPage: 'extensions' }) },
   { id: 'page.add', title: msg('Add page'), category: 'Pages', run: () => apply([{ op: 'add_node', node: { type: 'page', name: t('Page {n}', { n: pagesOf(get().doc).length + 1 }) } }]) },
   { id: 'layer.add', title: msg('Add layer'), category: 'Layers', run: () => apply([{ op: 'add_layer', layer: { name: t('Layer {n}', { n: Object.keys(get().doc.layers).length + 1 }) } }]) },
 ]

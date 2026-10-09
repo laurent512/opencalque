@@ -187,9 +187,10 @@ A batch is all-or-nothing and every result is validated, so a script or a model 
 | Corners | Click the end of a wall to select the corner: drag it and every wall that meets there follows. In the right panel, choose how two walls are joined: mitred, rounded, cut off, or one running through. Double-click a wall to put a corner in it |
 | Rooms | `A`, then click inside closed walls: the room gets a tinted floor, a name and its area, and follows the walls when they move. Pick it by its name. The arrow beside the button has the divider (`Shift+A`), a dashed line that splits an open space into two rooms |
 | Floor pattern | Select a room (or any closed shape), Object → Hatch or floor pattern, then choose lines, planks or tiles and the spacing under Modifiers |
+| Colours | A colour field opens a picker, the colours you picked lately, and the drawing's shared colours |
 | Shared colours | In any colour field, choose "New shared colour from this one", then link other objects to it from the same list. Change it in the Colours panel and everything linked follows. A linked colour shows its name with a link icon |
 | Crop | Select something (an object, a group, a placed component), Object → Crop: only the part inside the orange rectangle is drawn. Drag its corners to change it. Nothing is cut: switch it off or remove it under Modifiers in the right panel |
-| Extensions | Preferences → Extension warehouse adds new kinds of object |
+| Extensions | Preferences → Extensions adds new kinds of object: install, remove, switch off, or load more from a web catalog |
 | Export | File → Export PDF (`Ctrl+P`) for sheets at true scale: the selected papers, or all of them, one page each. Tick "Title block" on a paper for a border and a cartouche. Also Export SVG, and Export DXF for other CAD programs |
 | Files | `Ctrl+S` save, `Ctrl+O` open, `Ctrl+Z` / `Ctrl+Shift+Z` undo and redo, `Ctrl+D` duplicate |
 
