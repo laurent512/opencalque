@@ -1,6 +1,6 @@
 {
   "name": "opencalque",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "license": "MIT",
   "packageManager": "pnpm@9.14.2",
@@ -16,7 +16,8 @@
     "schema": "tsx packages/cli/src/cli.ts schema --out schema",
     "smoke": "pnpm --filter @opencalque/desktop smoke",
     "warehouse": "tsx packages/cli/src/build-warehouse.ts",
-    "example": "tsx packages/cli/src/build-example.ts"
+    "example": "tsx packages/cli/src/build-example.ts",
+    "dist": "pnpm build && pnpm --filter @opencalque/desktop dist"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

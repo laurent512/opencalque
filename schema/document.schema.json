@@ -52,6 +52,10 @@
           "color": {
             "description": "Default stroke color of nodes on this layer.",
             "type": "string"
+          },
+          "shared": {
+            "description": "When true, what is on this layer shows on every page, not only the page it was drawn on: a title, a legend, a frame. It is edited on its own page.",
+            "type": "boolean"
           }
         },
         "required": [
@@ -191,7 +195,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -336,7 +340,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -484,7 +488,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -629,7 +633,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -749,6 +753,33 @@
                   "y"
                 ],
                 "additionalProperties": false
+              },
+              "startMarker": {
+                "description": "Symbol at a. Defaults to 'none'.",
+                "type": "string",
+                "enum": [
+                  "tick",
+                  "arrow",
+                  "open-arrow",
+                  "dot",
+                  "none"
+                ]
+              },
+              "endMarker": {
+                "description": "Symbol at b. Defaults to 'none'.",
+                "type": "string",
+                "enum": [
+                  "tick",
+                  "arrow",
+                  "open-arrow",
+                  "dot",
+                  "none"
+                ]
+              },
+              "markerSize": {
+                "description": "Length of the end symbols in mm. Defaults to 150.",
+                "type": "number",
+                "exclusiveMinimum": 0
               }
             },
             "required": [
@@ -759,7 +790,8 @@
               "a",
               "b"
             ],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "description": "A straight line from a to b, optionally with an arrow or another symbol at either end."
           },
           {
             "type": "object",
@@ -807,7 +839,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -918,6 +950,33 @@
               },
               "closed": {
                 "type": "boolean"
+              },
+              "startMarker": {
+                "description": "Symbol at the first point of an open polyline. Defaults to 'none'.",
+                "type": "string",
+                "enum": [
+                  "tick",
+                  "arrow",
+                  "open-arrow",
+                  "dot",
+                  "none"
+                ]
+              },
+              "endMarker": {
+                "description": "Symbol at its last point. Defaults to 'none'.",
+                "type": "string",
+                "enum": [
+                  "tick",
+                  "arrow",
+                  "open-arrow",
+                  "dot",
+                  "none"
+                ]
+              },
+              "markerSize": {
+                "description": "Length of the end symbols in mm. Defaults to 150.",
+                "type": "number",
+                "exclusiveMinimum": 0
               }
             },
             "required": [
@@ -927,7 +986,8 @@
               "type",
               "points"
             ],
-            "additionalProperties": false
+            "additionalProperties": false,
+            "description": "A line through several points; closed, it is a polygon."
           },
           {
             "type": "object",
@@ -975,7 +1035,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -1142,7 +1202,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -1304,7 +1364,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -1483,7 +1543,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -1670,7 +1730,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -1836,7 +1896,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -1958,7 +2018,7 @@
               "size"
             ],
             "additionalProperties": false,
-            "description": "Single-line text anchored at the left end of its baseline. Size is the font size in mm."
+            "description": "Text anchored at the left end of the baseline of its first line; a line break in the text starts a new line below. Size is the font size in mm. These fields are filled in when it is drawn: {date}, {page} (name of the page it is on), {page-number}, {pages} (how many pages there are), {document}."
           },
           {
             "type": "object",
@@ -2006,7 +2066,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -2169,8 +2229,17 @@
                 "type": "number",
                 "exclusiveMinimum": 0
               },
+              "shape": {
+                "description": "The path of the leader: 'curve' (the default, see bend), 'straight', or 'elbow', which leaves the text level and then turns square to reach the tip.",
+                "type": "string",
+                "enum": [
+                  "curve",
+                  "straight",
+                  "elbow"
+                ]
+              },
               "bend": {
-                "description": "How much the leader curves, as a fraction of its length: 0 is straight, positive bows one way and negative the other. Defaults to 0.2.",
+                "description": "How much a curved leader bows, as a fraction of its length: 0 is straight, positive bows one way and negative the other. Defaults to 0.2.",
                 "type": "number"
               }
             },
@@ -2232,7 +2301,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -2443,7 +2512,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -2604,7 +2673,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -2738,7 +2807,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -2918,7 +2987,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },
@@ -3089,7 +3158,7 @@
                     "type": "string"
                   },
                   "strokeWidth": {
-                    "description": "Line weight in screen pixels (does not scale with zoom).",
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
                     "type": "number",
                     "exclusiveMinimum": 0
                   },

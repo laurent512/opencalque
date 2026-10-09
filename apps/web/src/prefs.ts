@@ -13,6 +13,8 @@ export interface Prefs {
   unit: 'mm' | 'cm' | 'm' | 'in' | 'ft'
   /** Save a drawing to its file by itself a moment after each change. */
   autosave: boolean
+  /** Offer a new drawing, a file or the example in a window when the app starts. */
+  showWelcome: boolean
   showGrid: boolean
   snapToGrid: boolean
   snapToObjects: boolean
@@ -48,6 +50,7 @@ const DEFAULTS: Prefs = {
   language: 'auto',
   unit: 'mm',
   autosave: true,
+  showWelcome: true,
   showGrid: true,
   snapToGrid: true,
   snapToObjects: true,

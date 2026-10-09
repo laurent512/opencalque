@@ -1,4 +1,4 @@
-import { childrenOf, isLocked, isVisible } from './document'
+import { childrenOf, isLocked, isVisible, pagesOf } from './document'
 import { boundsContain, boundsContainPoint, unionBounds, type Bounds, type Vec2 } from './geometry'
 import { kindOf, nodePrimitives } from './kinds'
 import { distToPrimitive, primitiveBounds, type Primitive } from './primitives'
@@ -12,17 +12,26 @@ export interface SceneItem {
   prims: Primitive[]
   bounds: Bounds | null
   locked: boolean
+  /** Drawn here because its layer is shared, but belonging to another page, where it is edited. */
+  foreign?: boolean
 }
 
 /** Everything visible in a page or component, bottom to top. */
 export function buildScene(doc: Document, containerId: string, registry: Registry): SceneItem[] {
   const ctx = { doc, registry, depth: 0 }
-  return childrenOf(doc, containerId)
-    .filter((node) => isVisible(doc, node))
-    .map((node) => {
-      const prims = nodePrimitives(node, ctx)
-      return { id: node.id, node, prims, bounds: boundsOf(prims), locked: isLocked(doc, node) }
-    })
+  const item = (node: Node, foreign: boolean): SceneItem => {
+    const prims = nodePrimitives(node, ctx)
+    // What comes from another page cannot be picked up here: it is that page's to change.
+    return { id: node.id, node, prims, bounds: boundsOf(prims), locked: foreign || isLocked(doc, node), ...(foreign ? { foreign } : {}) }
+  }
+  // What other pages put on a shared layer shows on this one too, beneath what is drawn here.
+  const shared =
+    doc.nodes[containerId]?.type === 'page'
+      ? pagesOf(doc)
+          .filter((page) => page.id !== containerId)
+          .flatMap((page) => childrenOf(doc, page.id).filter((node) => node.layer !== undefined && doc.layers[node.layer]?.shared && isVisible(doc, node)))
+      : []
+  return [...shared.map((node) => item(node, true)), ...childrenOf(doc, containerId).filter((node) => isVisible(doc, node)).map((node) => item(node, false))]
 }
 
 export function boundsOf(prims: Primitive[]): Bounds | null {

@@ -29,11 +29,16 @@ import {
   modifierKind,
   type Modifier,
   toPDF,
+  duplicatePageOps,
+  movePageOps,
+  pagesOf,
+  type Node,
 } from '@opencalque/core'
 import { gridStep } from './canvas/draw'
 import { t, tn } from './i18n'
 import { platform } from './platform'
-import { apply, cancel, commit, isDirty, loadDocument, registry, replaceDoc, select, setTool, toast, useStore } from './store'
+import { usePrefs } from './prefs'
+import { apply, cancel, commit, isDirty, loadDocument, registry, replaceDoc, select, setTool, toast, useStore, showPage } from './store'
 
 const get = useStore.getState
 /** What a drawing file may be called: the current extension, the one from before the project was renamed, and plain JSON. */
@@ -70,10 +75,40 @@ export const openDocument = () =>
     if (file) loadDocument(parseDocument(JSON.parse(file.content)), file)
   })
 
-export const openInitialDocument = () =>
+let started = false
+
+/**
+ * What happens once when the app starts: the file it was launched with is opened, or, without
+ * one, the welcome window offers where to begin.
+ */
+export const startUp = () =>
   guarded(async () => {
+    // The interface is rebuilt when the language changes; the app starts only once.
+    if (started) return
+    started = true
     const file = await platform.initial()
     if (file) loadDocument(parseDocument(JSON.parse(file.content)), file)
+    else if (usePrefs.getState().showWelcome) useStore.setState({ welcomeOpen: true })
+  })
+
+/** Opens the drawing that comes with the app, as a new one with no file: a furnished flat to explore. */
+export const openExample = () =>
+  guarded(async () => {
+    if (!confirmDiscard()) return
+    // Fetched only when asked for, so that it does not weigh on every start.
+    const example = await import('../../../examples/apartment.opencalque?raw')
+    loadDocument(parseDocument(JSON.parse(example.default)), null)
+    useStore.setState({ welcomeOpen: false })
+  })
+
+/** Reopens a drawing from the list the desktop app keeps. */
+export const openRecent = (path: string) =>
+  guarded(async () => {
+    if (!confirmDiscard()) return
+    const file = await platform.openRecent?.(path)
+    if (!file) return toast(t('This file is no longer there'))
+    loadDocument(parseDocument(JSON.parse(file.content)), file)
+    useStore.setState({ welcomeOpen: false })
   })
 
 export const saveDocument = (saveAs = false) =>
@@ -239,6 +274,77 @@ export function addModifier(type: string): void {
     params: sized ? { width: across.size, height: down.size } : {},
   }
   apply(selection.map((id): Op => ({ op: 'update_node', id, patch: { modifiers: [...(doc.nodes[id].modifiers ?? []), added] } })))
+}
+
+/** Makes a copy of a page, with what is on it, and shows the copy. */
+export function duplicatePage(id: string): void {
+  const { doc } = get()
+  const page = doc.nodes[id]
+  if (!page) return
+  const copy = duplicatePageOps(doc, id, t('{name} (copy)', { name: page.name ?? '' }))
+  if (apply(copy.ops)) showPage(copy.id)
+}
+
+/** Moves a page one place up or down the list of pages. */
+export function movePage(id: string, by: -1 | 1): void {
+  apply(movePageOps(get().doc, id, by))
+}
+
+/** The scene items of the selection, each with the box it takes up. */
+function selectedBoxes() {
+  const { doc, scope, selection } = get()
+  return buildScene(doc, scope, registry).flatMap((item) => (selection.includes(item.id) && item.bounds ? [{ node: item.node, box: item.bounds }] : []))
+}
+
+/** The operations that move one selected object, with what a paper carries, by `d`. */
+const shift = (node: Node, d: { x: number; y: number }): Op[] => (d.x === 0 && d.y === 0 ? [] : withPaperContents([node.id]).flatMap((id) => moveOps(get().doc, get().doc.nodes[id], d)))
+
+/** Lines the selected objects up on one side, or on the middle, of the box around them all. */
+export function alignSelection(to: 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom'): void {
+  const items = selectedBoxes()
+  if (items.length < 2) return
+  const all = sceneBounds(items.map((item) => ({ bounds: item.box }) as never))!
+  apply(
+    items.flatMap(({ node, box }) => {
+      const dx = to === 'left' ? all.minX - box.minX : to === 'right' ? all.maxX - box.maxX : to === 'center' ? (all.minX + all.maxX - box.minX - box.maxX) / 2 : 0
+      const dy = to === 'top' ? all.minY - box.minY : to === 'bottom' ? all.maxY - box.maxY : to === 'middle' ? (all.minY + all.maxY - box.minY - box.maxY) / 2 : 0
+      return shift(node, { x: dx, y: dy })
+    }),
+  )
+}
+
+/** Spaces the selected objects evenly between the first and the last, which stay where they are. */
+export function distributeSelection(along: 'x' | 'y'): void {
+  const [min, max] = along === 'x' ? (['minX', 'maxX'] as const) : (['minY', 'maxY'] as const)
+  const items = selectedBoxes().sort((p, q) => p.box[min] + p.box[max] - q.box[min] - q.box[max])
+  if (items.length < 3) return
+  // The same gap between each object and the next, whatever their sizes.
+  const taken = items.reduce((sum, item) => sum + item.box[max] - item.box[min], 0)
+  const gap = (items[items.length - 1].box[max] - items[0].box[min] - taken) / (items.length - 1)
+  let at = items[0].box[min]
+  apply(
+    items.flatMap(({ node, box }) => {
+      const d = at - box[min]
+      at += box[max] - box[min] + gap
+      return shift(node, along === 'x' ? { x: d, y: 0 } : { x: 0, y: d })
+    }),
+  )
+}
+
+/**
+ * Takes the look of an object (colours, weight, dashes). With objects selected they are given it;
+ * with none, it becomes the look of what is drawn next.
+ */
+export function pickStyle(source: Node): void {
+  const { selection } = get()
+  const targets = selection.filter((id) => id !== source.id)
+  if (targets.length > 0) {
+    if (apply(targets.map((id): Op => ({ op: 'update_node', id, patch: { style: source.style ?? null } })))) toast(tn(targets.length, 'Style given to {n} object', 'Style given to {n} objects'))
+  } else {
+    useStore.setState({ drawColor: source.style?.stroke ?? null, drawWeight: source.style?.strokeWidth ?? null, drawDash: source.style?.dash ?? null })
+    toast(t('Style picked up: the next shapes you draw will have it'))
+  }
+  setTool('select')
 }
 
 /** Moves the selection by whole steps of the grid as it is shown; `dx` and `dy` count steps. */

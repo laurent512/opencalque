@@ -50,6 +50,7 @@ export function transformOps(doc: Document, nodes: Node[], t: Similarity, regist
   const patchOf = (node: Node): Record<string, unknown> | null => {
     switch (node.type) {
       case 'line':
+        return { a: map(node.a), b: map(node.b), ...(node.markerSize === undefined ? {} : { markerSize: tidy(node.markerSize * s) }) }
       case 'divider':
         return { a: map(node.a), b: map(node.b) }
       case 'annotation':
@@ -76,7 +77,7 @@ export function transformOps(doc: Document, nodes: Node[], t: Similarity, regist
           ...(node.extensionGap === undefined ? {} : { extensionGap: tidy(node.extensionGap * s) }),
         }
       case 'polyline':
-        return { points: node.points.map(map) }
+        return { points: node.points.map(map), ...(node.markerSize === undefined ? {} : { markerSize: tidy(node.markerSize * s) }) }
       case 'rect':
       case 'image':
         return { ...box(node, node.width), width: tidy(node.width * s), height: tidy(node.height * s), rotation: angle(node.rotation) }

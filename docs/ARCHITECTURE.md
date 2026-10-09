@@ -34,6 +34,7 @@ Requires Node 22+ and pnpm 9. All commands run from the repository root.
 | `pnpm opencalque <command>` | The CLI (`new`, `validate`, `describe`, `apply`, `svg`, `schema`) |
 | `pnpm schema` | Regenerate `schema/*.json` from the Zod schemas |
 | `pnpm smoke` | Scripted interaction test of the built app (see §7) |
+| `pnpm dist` | Build, then package the installer for this system into `apps/desktop/dist` |
 
 **Gotcha:** terminals spawned by VS Code extensions (including AI agents) have `ELECTRON_RUN_AS_NODE=1`, which makes Electron run as plain Node and crash on `app.whenReady`. Unset it for that command: `env -u ELECTRON_RUN_AS_NODE pnpm dev` in bash, or `Remove-Item Env:ELECTRON_RUN_AS_NODE` in PowerShell. A normal terminal is not affected.
 
@@ -394,6 +395,16 @@ Edit holds only general editing (undo, clipboard, select); what is done to the s
 
 **Component library.** `WarehouseDialog.tsx` is two separate windows sharing a frame, chosen by `warehouse` in the store: the component library and Extensions. There is no Assets panel any more: components of the drawing are renamed, edited and deleted from their card in the library, and a remembered layout that still names a retired panel is cleaned by `withoutUnknownPanels` in `Layout.tsx`. A library's catalog entry may carry `translations` (as extensions do); the bundled ones are generated with French, Spanish and German, and a component is given its translated name when it is copied into the drawing. The library lists everything that can be placed in one searchable grid: the parametric objects of the extensions in use (pictured with their default sizes, doors and windows in a piece of wall), the components of the open drawing, and those of every warehouse library, all loaded when the dialog opens.
 
+### Starting, About and releases (`Welcome.tsx`, `About.tsx`, `release.ts`)
+
+`startUp` in `actions.ts` runs once (the interface is rebuilt on a language change, the app starts once): it opens the file the app was launched with or, without one and with the `showWelcome` preference on, opens the welcome window. That window offers a new drawing, a file, the drawings `platform.recent` lists, and the example, which is `examples/apartment.opencalque` imported as text with `?raw` and only fetched when asked for.
+
+**Versions have one source: `CHANGELOG.md`.** `release.ts` imports it as text and parses it (`parseChangelog`); the newest section gives `VERSION`, and About shows them all. `release.test.ts` fails when the root or the desktop `package.json` carries another version. Notes are plain text lines, in English, not passed through `t()`; only the headings New, Improved and Fixed are translated.
+
+**Releasing.** Pushing a tag `vX.Y.Z` runs `.github/workflows/release.yml`: each system builds its installer with `electron-builder` (configured under `build` in `apps/desktop/package.json`; the app ships no `node_modules`, everything is bundled into `out/`), then one job creates the GitHub release with the text `scripts/release-notes.mjs` extracts from the changelog. A tag without a changelog section fails before anything is built. Builds are unsigned. The icon is `apps/desktop/build/icon.png`, rendered from `apps/web/public/icon.svg`.
+
+**Title bar.** On Windows and macOS the window has no title bar (`titleBarStyle: 'hidden'` with `titleBarOverlay`): `.menubar` is the drag region (`-webkit-app-region`), its buttons opt out, and its padding uses the `titlebar-area-*` CSS environment values to leave room for the system's buttons. The overlay's height in `main/index.ts` must match `.menubar`. Anything placed over the menu bar would not receive clicks where the bar is draggable.
+
 ### Languages (`i18n.ts`, `locales/`)
 
 The English text is the key. `t('Save as…')` returns it in the active language, or unchanged when there is no translation; `{name}` placeholders are filled from a second argument; `tn(count, one, other)` picks a form by count. `msg('…')` only marks a text, for tables built at import time before the language is known (menus, field tables, command titles); whatever displays it later calls `t` on it.
@@ -418,9 +429,9 @@ The drawing is surrounded by panels managed by `dockview-react`: each can be dra
 
 ### Platform seam (`platform.ts`)
 
-`Platform` covers files (`open`, `openBytes`, `save`, `initial`), the unsaved-changes prompt (`setDirty`, `setCloseWarning`), and a `desktop` flag with three capabilities only the desktop app has: `request` (an HTTP request made by the main process, so a local model server need not accept the page's origin), `claudeCli` and `cancelClaudeCli`. Code checks for the capability (`platform.claudeCli`), not for the flag, so a future host can offer some and not others. The browser implementation uses the File System Access API where available and falls back to download. The desktop implementation is the preload script. `token` is an opaque identity for saving back in place (a path on desktop, a file handle in the browser).
+`Platform` covers files (`open`, `openBytes`, `save`, `initial`, and on desktop `recent` and `openRecent`), the unsaved-changes prompt (`setDirty`, `setCloseWarning`), and a `desktop` flag with three capabilities only the desktop app has: `request` (an HTTP request made by the main process, so a local model server need not accept the page's origin), `claudeCli` and `cancelClaudeCli`. Code checks for the capability (`platform.claudeCli`), not for the flag, so a future host can offer some and not others. The browser implementation uses the File System Access API where available and falls back to download. The desktop implementation is the preload script. `token` is an opaque identity for saving back in place (a path on desktop, a file handle in the browser).
 
-On desktop the main process only writes to paths the user picked in a dialog or launched with (`granted`), and the window runs sandboxed with context isolation.
+On desktop the main process only writes to paths the user picked in a dialog or launched with (`granted`), and the window runs sandboxed with context isolation. The list of recent drawings is kept by the main process (`recent.json` in the profile), and `openRecent` refuses a path that is not on it, so the window cannot read arbitrary files. A link to an `https` address opens in the user's browser; nothing else opens a window.
 
 ## 6. How to extend
 
@@ -468,6 +479,7 @@ Verified at the end of the first session:
 
 - Modifiers and step-aware hints (77 tests): a crop added from the panel hides the ends of a line and leaves the line's own coordinates alone; dragging its corner, switching it off and on, nudging the line (the crop follows), Object › Crop on a group, removing it; the hint and the fields at every step of every tool; a digit typed before a wall is started no longer lands in a field.
 
+- Pages, text, line styles and start-up (124 tests): a text typed on two lines with fields; weight, kind of line and arrow set from the panel and from the bar above the tools; two lines selected showing "Mixed" and set together; the eyedropper; three rectangles aligned and spaced; a page duplicated and moved, a layer shared. The welcome window in French, the example opened from it (not marked unsaved), About with both versions, the welcome setting off. The Windows installers built locally (`pnpm dist`) and the unpacked app started with a throwaway profile to look at the merged title bar. Not verified by hand: the recent-files list in a real session, the macOS and Linux builds beyond CI building them, and installing through the setup program.
 - PDF and Preferences (115 tests): the example apartment exported with Ctrl+P through a stand-in save dialog (a 58 kB file starting `%PDF-1.4`), opened in Chromium's PDF viewer and looked at; the five pages of Preferences in French; the wall tool's shortcut changed from W to Q on the shortcuts page and then used.
 - Corners (110 tests): the pointer changing over a corner, a click selecting it with its panel, the four joint types and swapping which wall runs through (screenshots checked), dragging a corner with both walls following and the joint kept, a free end and the foot of a T selected as wall ends, Esc, and a double-click on a wall making it two with the new corner then dragged.
 - Shared colours (101 tests): a colour made shared from an object's fill, a second object linked to it, the shared colour changed from the left panel (the linked one follows, an unlinked one does not), unlinking while keeping the colour, and deleting the shared colour leaving the object its colour.
@@ -522,11 +534,12 @@ Tool versions are unusually new (TypeScript 7, Vite 7 for the apps, Vitest 5, El
 - Panel content is not responsive to very narrow panels, and each panel repeats its own name as a section heading under its tab.
 - Shortcuts are single key presses with modifiers: no chords (`G` then `P`), and no import/export of a shortcut set. Extensions cannot declare default shortcuts yet.
 - Some defaults are awkward on non-US layouts (for example `[` and `]` need AltGr on AZERTY); they can be rebound.
-- No groups, copy/paste, rotate or scale handles, arcs, curves, polyline tool, or typed lengths while drawing.
+- No arcs or curves.
 - Moving objects snaps the movement to the grid, not the object's points to other geometry.
 - Rectangles lose their handles once rotated.
-- Text is single-line and its hit box is estimated from character count.
-- No paper space: no sheet size, scale, title block, viewports, PDF or DXF.
+- A text's hit box is estimated from character count; text has no alignment or bold of its own.
+- No viewports: a paper cannot show part of the plan at another scale.
+- Installers are unsigned and there is no automatic update. On macOS, opening a file by double-click (the `open-file` event) is not handled; on Windows and Linux the path comes as an argument and is.
 - Instances have no overrides and cannot be detached.
 - Imported components lose their layer when no layer of the same name exists.
 - Extensions are compiled in; there is no runtime loading or permission model.
@@ -544,7 +557,7 @@ In rough priority order for making it genuinely usable:
 4. **DXF import/export** for interoperability.
 5. **UI tests**: turn the smoke script into assertions (Playwright against `pnpm dev:web` is the natural fit).
 6. **Runtime extensions**: load from a folder, sandboxed (a Worker with a message API mirroring `ExtensionApi`).
-7. **Packaging**: `electron-builder` installers and CI.
+7. **Packaging**: done (`electron-builder`, release workflow). Next: code signing, automatic updates, a CI run of the tests on every push.
 8. **Hosted version**: see below.
 
 ### Path to collaboration and hosting

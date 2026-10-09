@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { drawing } from './canvas/drawing'
 import { msg, t } from './i18n'
 import { useStore, type Tool } from './store'
+import { dashIndex, DASHES, penOf, PENS, pixelsOf } from './strokes'
 import { scrub } from './ui'
 import { formatNumber, parseLength, parseNumber, unit } from './units'
 
@@ -85,6 +86,8 @@ function Size({ which, label, angle }: { which: 'a' | 'b'; label: string; angle:
 export function QuickBar() {
   const tool = useStore((s) => s.tool)
   const color = useStore((s) => s.drawColor)
+  const weight = useStore((s) => s.drawWeight)
+  const dash = useStore((s) => s.drawDash)
   const wallThickness = useStore((s) => s.wallThickness)
   const paperScale = useStore((s) => s.paperScale)
   const started = useStore((s) => s.drawStep > 0)
@@ -146,6 +149,21 @@ export function QuickBar() {
             onClick={() => useStore.setState({ drawColor: c })}
           />
         ))}
+        <select className="quick-select" title={t('Line weight of the next shapes, as printed')} aria-label={t('Line weight of the next shapes, as printed')} value={weight === null ? '' : String(penOf(weight))} onChange={(e) => useStore.setState({ drawWeight: e.target.value === '' ? null : pixelsOf(Number(e.target.value)) })}>
+          <option value="">{t('Weight')}</option>
+          {(weight !== null && !PENS.includes(penOf(weight)) ? [...PENS, penOf(weight)].sort((p, q) => p - q) : PENS).map((mm) => (
+            <option key={mm} value={mm}>
+              {mm} mm
+            </option>
+          ))}
+        </select>
+        <select className="quick-select" title={t('Kind of line of the next shapes')} aria-label={t('Kind of line of the next shapes')} value={Math.max(0, dashIndex(dash))} onChange={(e) => useStore.setState({ drawDash: DASHES[Number(e.target.value)][1] })}>
+          {DASHES.map(([name], i) => (
+            <option key={name} value={i}>
+              {t(name)}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   )

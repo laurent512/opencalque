@@ -1,12 +1,13 @@
-import { childrenOf, DEFAULT_PAPER_SCALE, layersOf, lengthOf, PAPER_FORMATS, paperFormat, paperSize, type Node, type Op, modifierKind, modifierKinds, modifierParams, type Modifier, roomAt, colorRef, colorRefOf, colorsOf, newId, resolveColor, cornerJoin, cornerJoinOps, moveCornerOps, wallEndsAt } from '@opencalque/core'
+import { childrenOf, DEFAULT_PAPER_SCALE, layersOf, lengthOf, PAPER_FORMATS, paperFormat, paperSize, type Node, type Op, modifierKind, modifierKinds, modifierParams, type Modifier, roomAt, colorRef, colorRefOf, colorsOf, newId, resolveColor, cornerJoin, cornerJoinOps, moveCornerOps, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
 import { executeById } from '../commands'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, FlipHorizontal2, FlipVertical2, RotateCcw, RotateCw, Eye, EyeOff, Trash2, Check, Link2, Plus, Unlink } from 'lucide-react'
-import { reorderSelection, transformSelection, addModifier } from '../actions'
+import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, FlipHorizontal2, FlipVertical2, RotateCcw, RotateCw, Eye, EyeOff, Trash2, Check, Link2, Plus, Unlink, AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalSpaceAround, AlignStartHorizontal, AlignStartVertical, AlignVerticalSpaceAround } from 'lucide-react'
+import { reorderSelection, transformSelection, addModifier, alignSelection, distributeSelection } from '../actions'
 import { applyCalibration } from '../floorplan'
 import { language, msg, t } from '../i18n'
 import { apply, editComponent, registry, toast, useStore, selectCorner } from '../store'
 import { Field, IconButton, labelOf, Section } from '../ui'
+import { dashIndex, DASHES, penOf, PENS, pixelsOf } from '../strokes'
 import { formatLength, parseLength, parseNumber, unit } from '../units'
 
 interface Option {
@@ -19,13 +20,15 @@ interface FieldSpec {
   path: string
   label: string
   /** 'dash' is a checkbox standing for a dash pattern. */
-  type: 'number' | 'string' | 'boolean' | 'color' | 'dash'
+  type: 'number' | 'string' | 'boolean' | 'color' | 'dash' | 'weight'
   /** Heading the field appears under. Defaults to "Geometry". */
   section?: string
   /** Shown when the property is unset. */
   fallback?: number | string | boolean
   /** Allowed values of a string property, shown as a dropdown. An empty value means unset. */
   options?: Option[]
+  /** A text that may run over several lines. */
+  multiline?: boolean
   /** The number is a length in mm, edited in the user's unit. */
   length?: boolean
   /** The property may be cleared by emptying the field. */
@@ -35,8 +38,6 @@ interface FieldSpec {
 }
 
 const GEOMETRY = msg('Geometry')
-const DASH = [6, 4]
-
 const num = (path: string, label: string, fallback?: number, section?: string): FieldSpec => ({ path, label, type: 'number', fallback, section })
 /** A number that is a distance: shown and typed in the user's unit. */
 const len = (path: string, label: string, fallback?: number, section?: string): FieldSpec => ({ ...num(path, label, fallback, section), length: true })
@@ -50,8 +51,8 @@ const PLACEMENT: FieldSpec[] = [len('x', msg('X')), len('y', msg('Y')), num('rot
 
 const stroke = (section: string): FieldSpec[] => [
   { path: 'style.stroke', label: msg('Color'), type: 'color', section, fallback: '#1f1f1f', unset: msg('from layer') },
-  num('style.strokeWidth', msg('Weight'), 1, section),
-  { path: 'style.dash', label: msg('Dashed'), type: 'dash', section },
+  { path: 'style.strokeWidth', label: msg('Weight'), type: 'weight', section, fallback: 1 },
+  { path: 'style.dash', label: msg('Line'), type: 'dash', section },
 ]
 const STYLE: FieldSpec[] = [...stroke(msg('Style')), { path: 'style.fill', label: msg('Fill'), type: 'color', section: msg('Style'), fallback: '#ffffff', unset: msg('default') }]
 
@@ -81,19 +82,27 @@ const DIMENSION: FieldSpec[] = [
 const TIPS = options(['arrow', msg('Arrow')], ['open-arrow', msg('Open arrow')], ['dot', msg('Dot')], ['tick', msg('Tick')], ['none', msg('None')])
 
 const ANNOTATION: FieldSpec[] = [
-  { path: 'text', label: msg('Text'), type: 'string' },
+  { path: 'text', label: msg('Text'), type: 'string', multiline: true },
   ...AB,
   { path: 'startMarker', label: msg('At the tip'), type: 'string', section: msg('Ends'), fallback: 'arrow', options: TIPS },
   { path: 'endMarker', label: msg('At the text'), type: 'string', section: msg('Ends'), fallback: 'none', options: TIPS },
   { ...len('markerSize', msg('Size'), undefined, msg('Ends')), optional: true },
+  { path: 'shape', label: msg('Path'), type: 'string', section: msg('Line'), fallback: 'curve', options: options(['curve', msg('Curved')], ['straight', msg('Straight')], ['elbow', msg('Elbow (square turn)')]) },
   num('bend', msg('Curve'), 0.2, msg('Line')),
   ...stroke(msg('Line')),
   len('size', msg('Size'), 200, msg('Text')),
   { path: 'font', label: msg('Font'), type: 'string', section: msg('Text'), options: FONTS },
 ]
 
+/** The symbols at the ends of a plain line, which has none unless asked. */
+const LINE_ENDS: FieldSpec[] = [
+  { path: 'startMarker', label: msg('Start'), type: 'string', section: msg('Ends'), fallback: 'none', options: TIPS },
+  { path: 'endMarker', label: msg('End'), type: 'string', section: msg('Ends'), fallback: 'none', options: TIPS },
+  len('markerSize', msg('Size'), 150, msg('Ends')),
+]
+
 const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
-  line: [...AB, ...STYLE],
+  line: [...AB, ...LINE_ENDS, ...STYLE],
   wall: [...AB, len('thickness', msg('Thickness')), ...STYLE],
   dimension: DIMENSION,
   annotation: ANNOTATION,
@@ -110,7 +119,7 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
   divider: AB,
   ellipse: [len('cx', msg('X')), len('cy', msg('Y')), len('rx', msg('Radius X')), len('ry', msg('Radius Y')), ...STYLE],
   text: [
-    { path: 'text', label: msg('Text'), type: 'string' },
+    { path: 'text', label: msg('Text'), type: 'string', multiline: true },
     len('x', msg('X')),
     len('y', msg('Y')),
     len('size', msg('Size')),
@@ -118,10 +127,25 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
     { path: 'font', label: msg('Font'), type: 'string', options: FONTS },
     { path: 'style.stroke', label: msg('Color'), type: 'color', section: msg('Style'), fallback: '#1f1f1f', unset: msg('from layer') },
   ],
-  polyline: [{ path: 'closed', label: msg('Closed'), type: 'boolean', fallback: false }, ...STYLE],
+  polyline: [{ path: 'closed', label: msg('Closed'), type: 'boolean', fallback: false }, ...LINE_ENDS, ...STYLE],
   image: [len('x', msg('X')), len('y', msg('Y')), len('width', msg('W')), len('height', msg('H')), num('rotation', msg('Rotation'), 0), num('opacity', msg('Opacity'), 1)],
   instance: [...PLACEMENT, ...STYLE],
   parametric: PLACEMENT,
+}
+
+/** What each field of a text is called. */
+const FIELD_NAMES: Record<(typeof TEXT_FIELDS)[number], string> = {
+  date: msg('Today’s date'),
+  page: msg('Name of the page'),
+  'page-number': msg('Number of the page'),
+  pages: msg('Number of pages'),
+  document: msg('Name of the drawing'),
+}
+
+/** The properties several objects all have, to be set on all of them at once. */
+function commonFields(nodes: Node[]): FieldSpec[] {
+  const [first, ...rest] = nodes.map(fieldsOf)
+  return first.filter((field) => rest.every((fields) => fields.some((other) => other.path === field.path && other.type === field.type && other.label === field.label)))
 }
 
 function fieldsOf(node: Node): FieldSpec[] {
@@ -249,14 +273,20 @@ function ColorChoice({ stored, fallback, unset, commit }: { stored: string | und
   )
 }
 
-function FieldRow({ node, field, update }: { node: Node; field: FieldSpec; update: Update }) {
-  const stored = read(node, field.path)
-  const value = stored ?? field.fallback
+function FieldRow({ node, nodes, field, update }: { node: Node; nodes: Node[]; field: FieldSpec; update: Update }) {
+  // With several objects selected, a property they do not all agree on is shown as mixed, with no
+  // value of its own; setting it gives them all the same.
+  const seen = (n: Node) => JSON.stringify(read(n, field.path) ?? field.fallback ?? null)
+  const mixed = nodes.some((n) => seen(n) !== seen(node))
+  const stored = mixed ? undefined : read(node, field.path)
+  const value = mixed ? undefined : (stored ?? field.fallback)
   const commit = (next: unknown) => update((n) => patchFor(n, field.path, next))
   if (field.type === 'number' || (field.type === 'string' && !field.options)) {
     return (
       <Field
         label={t(field.label)}
+        placeholder={mixed ? t('Mixed') : undefined}
+        multiline={field.multiline}
         numeric={field.type === 'number'}
         length={field.length}
         optional={field.optional}
@@ -270,10 +300,41 @@ function FieldRow({ node, field, update }: { node: Node; field: FieldSpec; updat
   return (
     <label className="field">
       <span>{t(field.label)}</span>
-      {field.type === 'boolean' && <input type="checkbox" checked={value === true} onChange={(e) => commit(e.target.checked)} />}
-      {field.type === 'dash' && <input type="checkbox" checked={Array.isArray(stored)} onChange={(e) => commit(e.target.checked ? DASH : undefined)} />}
+      {field.type === 'boolean' && (
+        <input
+          type="checkbox"
+          checked={value === true}
+          ref={(box) => {
+            if (box) box.indeterminate = mixed
+          }}
+          onChange={(e) => commit(e.target.checked)}
+        />
+      )}
+      {field.type === 'dash' && (
+        <select value={mixed ? 'mixed' : dashIndex(stored)} onChange={(e) => commit(DASHES[Number(e.target.value)][1] ?? undefined)}>
+          {mixed && <option value="mixed">{t('Mixed')}</option>}
+          {dashIndex(stored) < 0 && !mixed && <option value={-1}>{t('Custom')}</option>}
+          {DASHES.map(([name], i) => (
+            <option key={name} value={i}>
+              {t(name)}
+            </option>
+          ))}
+        </select>
+      )}
+      {field.type === 'weight' && (
+        // Chosen as what it prints at; kept in the drawing as pixels of screen.
+        <select value={mixed ? 'mixed' : penOf(value as number)} onChange={(e) => commit(pixelsOf(Number(e.target.value)))}>
+          {mixed && <option value="mixed">{t('Mixed')}</option>}
+          {(mixed || PENS.includes(penOf(value as number)) ? PENS : [...PENS, penOf(value as number)].sort((p, q) => p - q)).map((mm) => (
+            <option key={mm} value={mm}>
+              {mm} mm
+            </option>
+          ))}
+        </select>
+      )}
       {field.type === 'string' && (
-        <select value={(value as string | undefined) ?? ''} onChange={(e) => commit(e.target.value || undefined)}>
+        <select value={mixed ? 'mixed' : ((value as string | undefined) ?? '')} onChange={(e) => commit(e.target.value || undefined)}>
+          {mixed && <option value="mixed">{t('Mixed')}</option>}
           {field.options!.map((option) => (
             <option key={option.value} value={option.value}>
               {t(option.label)}
@@ -281,13 +342,13 @@ function FieldRow({ node, field, update }: { node: Node; field: FieldSpec; updat
           ))}
         </select>
       )}
-      {field.type === 'color' && <ColorChoice key={node.id} stored={stored as string | undefined} fallback={value as string} unset={field.unset} commit={commit} />}
+      {field.type === 'color' && <ColorChoice key={node.id} stored={stored as string | undefined} fallback={(value as string | undefined) ?? '#ffffff'} unset={mixed ? msg('Mixed') : field.unset} commit={commit} />}
     </label>
   )
 }
 
 /** Fields grouped under their section headings, in the order the sections first appear. */
-function Sections({ node, fields, update }: { node: Node; fields: FieldSpec[]; update: Update }) {
+function Sections({ node, nodes = [node], fields, update }: { node: Node; nodes?: Node[]; fields: FieldSpec[]; update: Update }) {
   const titles = [...new Set(fields.map((f) => f.section ?? GEOMETRY))]
   return (
     <>
@@ -296,9 +357,9 @@ function Sections({ node, fields, update }: { node: Node; fields: FieldSpec[]; u
           {fields
             .filter((f) => (f.section ?? GEOMETRY) === title)
             .map((field) => (
-              <FieldRow key={field.path} node={node} field={field} update={update} />
+              <FieldRow key={field.path} node={node} nodes={nodes} field={field} update={update} />
             ))}
-          {title === GEOMETRY && 'a' in node && (
+          {title === GEOMETRY && nodes.length === 1 && 'a' in node && (
             <label className="field">
               <span>{t('Length')}</span>
               <output>{formatLength(lengthOf(node))}</output>
@@ -604,7 +665,57 @@ function Selection({ nodes }: { nodes: Node[] }) {
           </button>
         )}
       </Section>
-      <Sections node={node} fields={single ? fieldsOf(node) : STYLE} update={update} />
+      {single && (node.type === 'text' || node.type === 'annotation') && (
+        <Section title={t('Fields')}>
+          <label className="field">
+            <span>{t('Insert')}</span>
+            <select value="" onChange={(e) => e.target.value && update((n) => ({ text: `${'text' in n ? n.text : ''}{${e.target.value}}` }))}>
+              <option value="">{t('A field…')}</option>
+              {TEXT_FIELDS.map((field) => (
+                <option key={field} value={field}>
+                  {t(FIELD_NAMES[field])}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="hint">{t('A field is filled in by the drawing: written {page} in the text, it shows the name of the page it is on.')}</p>
+        </Section>
+      )}
+      {!single && (
+        <Section title={t('Arrange')}>
+          <div className="field">
+            <span>{t('Align')}</span>
+            <IconButton title={t('Align left')} onClick={() => alignSelection('left')}>
+              <AlignStartVertical size={14} />
+            </IconButton>
+            <IconButton title={t('Align centres, across')} onClick={() => alignSelection('center')}>
+              <AlignCenterVertical size={14} />
+            </IconButton>
+            <IconButton title={t('Align right')} onClick={() => alignSelection('right')}>
+              <AlignEndVertical size={14} />
+            </IconButton>
+            <IconButton title={t('Align top')} onClick={() => alignSelection('top')}>
+              <AlignStartHorizontal size={14} />
+            </IconButton>
+            <IconButton title={t('Align middles, up and down')} onClick={() => alignSelection('middle')}>
+              <AlignCenterHorizontal size={14} />
+            </IconButton>
+            <IconButton title={t('Align bottom')} onClick={() => alignSelection('bottom')}>
+              <AlignEndHorizontal size={14} />
+            </IconButton>
+          </div>
+          <div className="field">
+            <span>{t('Space evenly')}</span>
+            <IconButton title={t('Space evenly, across')} onClick={() => distributeSelection('x')} disabled={nodes.length < 3}>
+              <AlignHorizontalSpaceAround size={14} />
+            </IconButton>
+            <IconButton title={t('Space evenly, up and down')} onClick={() => distributeSelection('y')} disabled={nodes.length < 3}>
+              <AlignVerticalSpaceAround size={14} />
+            </IconButton>
+          </div>
+        </Section>
+      )}
+      <Sections node={node} nodes={nodes} fields={single ? fieldsOf(node) : commonFields(nodes)} update={update} />
       {single && <ModifierStack node={node} />}
       <TransformSection />
     </>

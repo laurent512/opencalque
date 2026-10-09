@@ -58,7 +58,8 @@ export function TypeIcon({ node }: { node: Node }) {
 /** The name shown for a node that the user has not named. */
 export function labelOf(doc: Document, node: Node): string {
   if (node.name) return node.name
-  if (node.type === 'text') return node.text
+  // A text is known by its first line; a note by its words, when it has some.
+  if (node.type === 'text' || (node.type === 'annotation' && node.text.trim())) return node.text.split('\n')[0]
   if (node.type === 'instance') return labelOf(doc, doc.nodes[node.component] ?? node)
   if (node.type === 'parametric') return t(registry.parametric.get(node.kind)?.label ?? node.kind)
   return t(TYPE_LABELS[node.type])
@@ -174,7 +175,7 @@ export function watchScrubKey(): () => void {
   }
 }
 
-export function Field(props: { label: string; value: string | number; numeric?: boolean; length?: boolean; optional?: boolean; step?: number; min?: number; onCommit: (value: any) => void }) {
+export function Field(props: { label: string; value: string | number; numeric?: boolean; length?: boolean; optional?: boolean; step?: number; min?: number; placeholder?: string; multiline?: boolean; onCommit: (value: any) => void }) {
   // A length is kept in mm and shown in the user's unit; any other number is shown as it is.
   const shown = typeof props.value !== 'number' ? props.value : props.length ? formatNumber(props.value) : String(Math.round(props.value * 100) / 100)
   const [text, setText] = useState(shown)
@@ -189,11 +190,21 @@ export function Field(props: { label: string; value: string | number; numeric?: 
     if (props.numeric && (value === null || !Number.isFinite(value))) return setText(shown)
     props.onCommit(value)
   }
+  if (props.multiline) {
+    // A text of several lines: Enter makes a new one, and leaving the box keeps what was typed.
+    return (
+      <label className="field tall">
+        <span>{props.label}</span>
+        <textarea value={text} rows={Math.min(6, Math.max(2, text.split('\n').length))} placeholder={props.placeholder} onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === 'Enter' && (e.ctrlKey || e.metaKey) && e.currentTarget.blur()} />
+      </label>
+    )
+  }
   return (
     <label className={`field${props.numeric ? ' numeric' : ''}`}>
       <span>{props.label}</span>
       <input
         value={text}
+        placeholder={props.placeholder}
         title={props.numeric ? t('Hold Alt and drag sideways to change the value') : undefined}
         {...(props.numeric ? scrub(() => (typeof props.value === 'number' ? props.value : null), props.onCommit, props.step ?? (props.length ? LENGTH_STEP : 1), props.min) : {})}
         onChange={(e) => setText(e.target.value)}

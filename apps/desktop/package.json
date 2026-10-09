@@ -1,7 +1,7 @@
 {
   "name": "@opencalque/desktop",
   "productName": "OpenCalque",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "license": "MIT",
   "main": "./out/main/index.js",
@@ -10,15 +10,63 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit",
-    "smoke": "electron scripts/smoke.cjs"
-  },
-  "dependencies": {
-    "@opencalque/web": "workspace:*"
+    "smoke": "electron scripts/smoke.cjs",
+    "dist": "electron-builder --publish never"
   },
   "devDependencies": {
+    "@opencalque/web": "workspace:*",
     "@vitejs/plugin-react": "^5",
     "electron": "^44.7.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "vite": "^7"
+  },
+  "description": "Open-source 2D architectural editor: floor plans and layouts.",
+  "author": "OpenCalque contributors",
+  "homepage": "https://github.com/laurent512/opencalque",
+  "build": {
+    "appId": "io.github.laurent512.opencalque",
+    "productName": "OpenCalque",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "out/**"
+    ],
+    "npmRebuild": false,
+    "fileAssociations": [
+      {
+        "ext": "opencalque",
+        "name": "OpenCalque drawing",
+        "role": "Editor"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "OpenCalque-${version}-windows-setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "OpenCalque-${version}-windows-portable.${ext}"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.graphics-design",
+      "artifactName": "OpenCalque-${version}-mac-${arch}.${ext}"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Graphics",
+      "executableName": "opencalque",
+      "artifactName": "OpenCalque-${version}-linux-${arch}.${ext}"
+    }
   }
 }

@@ -41,5 +41,6 @@ export function paperContents(scene: SceneItem[], paperId: string): string[] {
   const paper = scene.find((item) => item.id === paperId)?.node
   if (paper?.type !== 'paper') return []
   const sheet = { minX: paper.x, minY: paper.y, maxX: paper.x + paper.width, maxY: paper.y + paper.height }
-  return scene.filter((item) => item.id !== paperId && item.bounds && boundsContain(sheet, item.bounds)).map((item) => item.id)
+  // Not what only shows here from another page's shared layer: that is not this paper's to carry.
+  return scene.filter((item) => item.id !== paperId && !item.foreign && item.bounds && boundsContain(sheet, item.bounds)).map((item) => item.id)
 }

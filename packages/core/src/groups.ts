@@ -1,5 +1,5 @@
 import { generateNKeysBetween } from 'fractional-indexing'
-import { childrenOf, newId } from './document'
+import { childrenOf, newId, orderBetween, pagesOf } from './document'
 import type { Vec2 } from './geometry'
 import { kindOf, movePatch } from './kinds'
 import { applyOps, OpError, type NodeInput, type Op } from './ops'
@@ -52,4 +52,35 @@ export function cloneOps(doc: Document, id: string, offset: Vec2, into?: string)
   const ops: Op[] = [{ op: 'add_node', node: (into ? { ...copy, order } : copy) as NodeInput }]
   if (node.type === 'group') for (const child of childrenOf(doc, id)) ops.push(...cloneOps(doc, child.id, offset, copyId).ops)
   return { ops, id: copyId }
+}
+
+/**
+ * The operations that make a copy of a page, with everything on it, placed right after it. What is
+ * on a shared layer is left out: it already shows on every page, the copy included.
+ */
+export function duplicatePageOps(doc: Document, pageId: string, name: string): { ops: Op[]; id: string } {
+  const page = doc.nodes[pageId]
+  if (page?.type !== 'page') throw new OpError(`"${pageId}" is not a page`)
+  const pages = pagesOf(doc)
+  const next = pages[pages.findIndex((p) => p.id === pageId) + 1]
+  const id = newId('page')
+  const ops: Op[] = [{ op: 'add_node', node: { type: 'page', id, name, order: orderBetween(page.order, next?.order ?? null) } }]
+  for (const child of childrenOf(doc, pageId)) {
+    if (child.layer !== undefined && doc.layers[child.layer]?.shared) continue
+    ops.push(...cloneOps(doc, child.id, { x: 0, y: 0 }, id).ops)
+  }
+  return { ops, id }
+}
+
+/** The operations that move a page one place earlier (-1) or later (+1) in the list of pages. */
+export function movePageOps(doc: Document, pageId: string, by: -1 | 1): Op[] {
+  const pages = pagesOf(doc)
+  const from = pages.findIndex((p) => p.id === pageId)
+  const other = pages[from + by]
+  if (from < 0 || !other) return []
+  // The two pages swap their places in the order.
+  return [
+    { op: 'update_node', id: pageId, patch: { order: other.order } },
+    { op: 'update_node', id: other.id, patch: { order: pages[from].order } },
+  ]
 }

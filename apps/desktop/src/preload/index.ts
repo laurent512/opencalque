@@ -10,6 +10,8 @@ const desktop: Platform = {
   open: (extensions) => ipcRenderer.invoke('file:open', extensions),
   openBytes: (extensions) => ipcRenderer.invoke('file:openBytes', extensions),
   save: (content, suggestedName, token) => ipcRenderer.invoke('file:save', content, suggestedName, token),
+  recent: () => ipcRenderer.invoke('file:recent'),
+  openRecent: (path) => ipcRenderer.invoke('file:openRecent', path),
   initial: () => ipcRenderer.invoke('file:initial'),
   setDirty: (dirty) => ipcRenderer.send('doc:dirty', dirty),
 }

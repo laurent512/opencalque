@@ -15,7 +15,7 @@ export const Vec2Schema = z.object({ x: z.number(), y: z.number() })
 export const StyleSchema = z
   .object({
     stroke: z.string().optional().describe("CSS color of lines and text, or 'none'."),
-    strokeWidth: z.number().positive().optional().describe('Line weight in screen pixels (does not scale with zoom).'),
+    strokeWidth: z.number().positive().optional().describe('Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.'),
     fill: z.string().optional().describe("CSS fill color, or 'none'."),
     dash: z.array(z.number().positive()).optional().describe('Dash pattern in screen pixels.'),
   })
@@ -29,6 +29,7 @@ export const LayerSchema = z
     visible: z.boolean().optional().describe('Defaults to true.'),
     locked: z.boolean().optional().describe('Defaults to false.'),
     color: z.string().optional().describe('Default stroke color of nodes on this layer.'),
+    shared: z.boolean().optional().describe('When true, what is on this layer shows on every page, not only the page it was drawn on: a title, a legend, a frame. It is edited on its own page.'),
   })
   .describe('A drawing layer: a named set of nodes that can be hidden, locked and colored together.')
 
@@ -96,6 +97,9 @@ const font = z.string().optional().describe("CSS font family, e.g. 'serif'. Defa
 export const DIMENSION_MARKERS = ['tick', 'arrow', 'open-arrow', 'dot', 'none'] as const
 const marker = z.enum(DIMENSION_MARKERS).optional().describe("Symbol at this end of the dimension line. Defaults to 'tick'.")
 const tip = z.enum(DIMENSION_MARKERS).optional()
+const markerSize = z.number().positive().optional().describe('Length of the end symbols in mm. Defaults to 150.')
+/** The paths an annotation's leader can take. */
+export const LEADER_SHAPES = ['curve', 'straight', 'elbow'] as const
 
 export const NodeSchema = z
   .discriminatedUnion('type', [
@@ -108,8 +112,20 @@ export const NodeSchema = z
       .describe(
         'Several nodes treated as one object: selected, moved and stacked together. It has no geometry; the nodes whose parent is this group keep their own coordinates. Groups can be nested.',
       ),
-    z.object({ ...base, type: z.literal('line'), a: Vec2Schema, b: Vec2Schema }),
-    z.object({ ...base, type: z.literal('polyline'), points: z.array(Vec2Schema).min(2), closed: z.boolean().optional() }),
+    z
+      .object({ ...base, type: z.literal('line'), a: Vec2Schema, b: Vec2Schema, startMarker: tip.describe("Symbol at a. Defaults to 'none'."), endMarker: tip.describe("Symbol at b. Defaults to 'none'."), markerSize })
+      .describe('A straight line from a to b, optionally with an arrow or another symbol at either end.'),
+    z
+      .object({
+        ...base,
+        type: z.literal('polyline'),
+        points: z.array(Vec2Schema).min(2),
+        closed: z.boolean().optional(),
+        startMarker: tip.describe("Symbol at the first point of an open polyline. Defaults to 'none'."),
+        endMarker: tip.describe("Symbol at its last point. Defaults to 'none'."),
+        markerSize,
+      })
+      .describe('A line through several points; closed, it is a polygon.'),
     z
       .object({
         ...base,
@@ -166,7 +182,9 @@ export const NodeSchema = z
     }),
     z
       .object({ ...base, type: z.literal('text'), x: z.number(), y: z.number(), text: z.string(), size: z.number().positive(), rotation, font })
-      .describe('Single-line text anchored at the left end of its baseline. Size is the font size in mm.'),
+      .describe(
+        'Text anchored at the left end of the baseline of its first line; a line break in the text starts a new line below. Size is the font size in mm. These fields are filled in when it is drawn: {date}, {page} (name of the page it is on), {page-number}, {pages} (how many pages there are), {document}.',
+      ),
     z
       .object({
         ...base,
@@ -179,7 +197,8 @@ export const NodeSchema = z
         startMarker: tip.describe("Symbol at the tip (a). Defaults to 'arrow'."),
         endMarker: tip.describe("Symbol at the text end (b). Defaults to 'none'."),
         markerSize: z.number().positive().optional().describe('Length of the end symbols in mm. Defaults to three quarters of the text size.'),
-        bend: z.number().optional().describe('How much the leader curves, as a fraction of its length: 0 is straight, positive bows one way and negative the other. Defaults to 0.2.'),
+        shape: z.enum(LEADER_SHAPES).optional().describe("The path of the leader: 'curve' (the default, see bend), 'straight', or 'elbow', which leaves the text level and then turns square to reach the tip."),
+        bend: z.number().optional().describe('How much a curved leader bows, as a fraction of its length: 0 is straight, positive bows one way and negative the other. Defaults to 0.2.'),
       })
       .describe('A note pointing at something: a leader line from the tip a to the point b, with text beside b.'),
     z

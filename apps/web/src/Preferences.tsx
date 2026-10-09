@@ -127,6 +127,7 @@ function GeneralSettings() {
           ))}
         </select>
       </label>
+      <Toggle label={t('Show the welcome window when the app starts')} checked={prefs.showWelcome} onChange={(showWelcome) => setPrefs({ showWelcome })} />
       <label className="pref-field">
         <span>{t('Unit')}</span>
         <select value={prefs.unit} onChange={(e) => setPrefs({ unit: e.target.value as typeof prefs.unit })}>

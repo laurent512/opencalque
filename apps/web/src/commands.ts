@@ -23,6 +23,9 @@ import {
   transformSelection,
   addModifier,
   exportPdf,
+  openExample,
+  alignSelection,
+  distributeSelection,
 } from './actions'
 import { apply, editComponent, redo, registry, select, setTool, showPage, toast, undo, useStore, type Tool } from './store'
 import { PANELS, resetLayout, togglePanel, useDock, type PanelId } from './dock'
@@ -106,6 +109,7 @@ const STATIC: Command[] = [
 
   { id: 'file.new', title: msg('New drawing'), category: 'File', keys: ['Mod+N'], global: true, interrupts: true, run: newDocument },
   { id: 'file.open', title: msg('Open…'), category: 'File', keys: ['Mod+O'], global: true, interrupts: true, run: openDocument },
+  { id: 'file.openExample', title: msg('Open the example drawing'), category: 'File', interrupts: true, run: openExample },
   { id: 'file.save', title: msg('Save'), category: 'File', keys: ['Mod+S'], global: true, interrupts: true, run: () => saveDocument() },
   { id: 'file.saveAs', title: msg('Save as…'), category: 'File', keys: ['Mod+Shift+S'], global: true, interrupts: true, run: () => saveDocument(true) },
   { id: 'file.autosave', title: msg('Save automatically'), category: 'File', checked: () => prefs().autosave, run: () => setPrefs({ autosave: !prefs().autosave }) },
@@ -149,6 +153,14 @@ const STATIC: Command[] = [
   { id: 'edit.nudgeUp', title: msg('Move up by one grid step'), category: 'Edit', keys: ['ArrowUp'], when: selected, run: () => nudgeSelection(0, -1) },
   { id: 'edit.nudgeDown', title: msg('Move down by one grid step'), category: 'Edit', keys: ['ArrowDown'], when: selected, run: () => nudgeSelection(0, 1) },
   { id: 'modifier.crop', title: msg('Crop'), category: 'Edit', when: selected, run: () => addModifier('crop') },
+  { id: 'edit.align.left', title: msg('Align left'), category: 'Edit', when: () => get().selection.length > 1, run: () => alignSelection('left') },
+  { id: 'edit.align.center', title: msg('Align centres, across'), category: 'Edit', when: () => get().selection.length > 1, run: () => alignSelection('center') },
+  { id: 'edit.align.right', title: msg('Align right'), category: 'Edit', when: () => get().selection.length > 1, run: () => alignSelection('right') },
+  { id: 'edit.align.top', title: msg('Align top'), category: 'Edit', when: () => get().selection.length > 1, run: () => alignSelection('top') },
+  { id: 'edit.align.middle', title: msg('Align middles, up and down'), category: 'Edit', when: () => get().selection.length > 1, run: () => alignSelection('middle') },
+  { id: 'edit.align.bottom', title: msg('Align bottom'), category: 'Edit', when: () => get().selection.length > 1, run: () => alignSelection('bottom') },
+  { id: 'edit.distribute.x', title: msg('Space evenly, across'), category: 'Edit', when: () => get().selection.length > 2, run: () => distributeSelection('x') },
+  { id: 'edit.distribute.y', title: msg('Space evenly, up and down'), category: 'Edit', when: () => get().selection.length > 2, run: () => distributeSelection('y') },
   { id: 'modifier.hatch', title: msg('Hatch or floor pattern'), category: 'Edit', when: selected, run: () => addModifier('hatch') },
   { id: 'edit.group', title: msg('Group selection'), category: 'Edit', keys: ['Mod+G'], interrupts: true, when: selected, run: groupSelection },
   {
@@ -181,6 +193,8 @@ const STATIC: Command[] = [
   panel('properties'),
   panel('assistant', ['Mod+J']),
   { id: 'view.resetLayout', title: msg('Reset the panel layout'), category: 'View', run: resetLayout },
+  { id: 'help.welcome', title: msg('Welcome window…'), category: 'General', global: true, run: () => useStore.setState({ welcomeOpen: true }) },
+  { id: 'help.about', title: msg('About OpenCalque and what is new…'), category: 'General', global: true, run: () => useStore.setState({ aboutOpen: true }) },
   { id: 'prefs.open', title: msg('Preferences…'), category: 'General', keys: ['Mod+,'], global: true, run: () => useStore.setState({ preferencesOpen: true }) },
   { id: 'view.zoomOut', title: msg('Zoom out'), category: 'View', keys: ['-', 'Mod+-'], run: () => zoomBy(0.8) },
 
@@ -202,6 +216,7 @@ const STATIC: Command[] = [
   tool('wall', msg('Wall'), 'W'),
   tool('dimension', msg('Dimension'), 'D'),
   tool('measure', msg('Measure'), 'M'),
+  tool('eyedropper', msg('Eyedropper: copy the look of an object'), 'I'),
   tool('text', msg('Text'), 'T'),
   tool('annotation', msg('Annotation'), 'Shift+T'),
   tool('paper', msg('Paper'), 'F'),

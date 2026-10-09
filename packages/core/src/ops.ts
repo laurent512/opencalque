@@ -22,6 +22,7 @@ export interface LayerInput {
   visible?: boolean
   locked?: boolean
   color?: string
+  shared?: boolean
 }
 
 export type Op =

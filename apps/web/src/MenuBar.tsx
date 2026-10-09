@@ -6,13 +6,14 @@ import { autosaves } from './autosave'
 import { usePrefs } from './prefs'
 import { apply, isDirty, useStore } from './store'
 import { EditableText } from './ui'
+import { Logo } from './Welcome'
 
 /**
  * What each menu holds: command ids, null for a separator, or "@Category" for every command of a
  * category (used for the lists that depend on the drawing and on extensions).
  */
 const MENUS: [string, (string | null)[]][] = [
-  [msg('File'), ['file.new', 'file.open', 'file.save', 'file.saveAs', 'file.autosave', null, 'file.importPlan', 'tool.calibrate', 'file.importLibrary', null, 'file.exportPdf', 'file.exportSvg', 'file.exportDxf']],
+  [msg('File'), ['file.new', 'file.open', 'file.openExample', 'file.save', 'file.saveAs', 'file.autosave', null, 'file.importPlan', 'tool.calibrate', 'file.importLibrary', null, 'file.exportPdf', 'file.exportSvg', 'file.exportDxf']],
   [msg('Edit'), ['edit.undo', 'edit.redo', null, 'edit.cut', 'edit.copy', 'edit.paste', 'edit.duplicate', 'edit.delete', null, 'edit.selectAll', 'edit.deselect']],
   // What is done to the selection as an object, as against editing in general: arranging, transforming, modifying.
   [
@@ -22,7 +23,7 @@ const MENUS: [string, (string | null)[]][] = [
   [msg('View'), ['view.zoomToFit', 'view.zoomIn', 'view.zoomOut', null, 'view.toggleGrid', 'view.toggleSnapGrid', 'view.toggleSnapObjects', null, '@Panels', null, 'view.resetLayout']],
   // There is no Insert or Tools menu: the toolbar holds the tools and the component library, and pages
   // and layers are added from their panels. Every command stays in the command list (Ctrl+K).
-  [msg('Preferences'), ['prefs.open', 'warehouse.extensions', null, 'palette.open', 'shortcuts.reset']],
+  [msg('Preferences'), ['prefs.open', 'warehouse.extensions', null, 'palette.open', 'shortcuts.reset', null, 'help.welcome']],
 ]
 
 function items(entries: (string | null)[], commands: Command[]): (Command | null)[] {
@@ -67,7 +68,10 @@ export function MenuBar() {
 
   return (
     <header className="menubar" ref={bar}>
-      <strong className="menubar-brand">OpenCalque</strong>
+      <strong className="menubar-brand">
+        <Logo size={16} />
+        OpenCalque
+      </strong>
       {MENUS.map(([title, entries]) => (
         <div key={title} className="menu">
           <button
@@ -105,6 +109,10 @@ export function MenuBar() {
           )}
         </div>
       ))}
+      {/* Not a menu: the one thing behind it is the window that says what this is and what is new. */}
+      <button className="menubar-item" onClick={() => useStore.setState({ aboutOpen: true })}>
+        {t('About')}
+      </button>
       <div className="menubar-name">
         <EditableText value={name} onChange={(next) => apply([{ op: 'set_document', name: next }])} />
         {dirty && <span className="faint" title={autosaves(file) ? t('Saving…') : t('Unsaved changes')}>●</span>}

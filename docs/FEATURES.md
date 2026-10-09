@@ -13,14 +13,17 @@ Last updated: 2026-10-08.
 - Doors and windows that snap onto a wall, cut the opening, adapt to the wall's thickness and slide along it. Door type, hinge side, angle; window panes, glazing, sill.
 - Stairs: straight, L-shaped, U-shaped, spiral, each with its own parameters.
 - Dimensions with configurable line, end markers, extension lines, text, font, unit and decimals; and a separate measure tool that only reads a distance.
-- Text typed directly on the drawing; double-click a text to change it.
+- Text typed directly on the drawing, on several lines; double-click a text to change it. **Fields** (`{date}`, `{page}`, `{page-number}`, `{pages}`, `{document}`) are filled in when drawn and exported.
+- **Line style**: weight chosen as printed millimetres, kinds of line (dashes, dots), and arrows or other ends on lines and polylines; a bar above the tools sets the style of the next shapes.
+- **Eyedropper**: copy the look of an object to the selection or to the next shapes.
+- **Align and space evenly**, and the common properties of several selected objects edited together.
 - A guide line across the view while a segment is exactly horizontal or vertical, and a hint bar with the keys that matter for the tool in use.
 - Lengths shown and typed in millimetres, centimetres, metres, inches or feet.
 - **Papers**: sheets like frames, drawn at a standard format (A5 to A0, upright or lying, at a drawing scale) or any size, named above their corner, carrying what is drawn on them when moved, copied or duplicated.
 - Walls stay joined: moving a wall or a corner stretches the walls that meet it, and its doors and windows follow.
 - Numbers in the panels change by holding Alt and dragging sideways.
 - **Transforming** any selection: turn, flip, scale and nudge, by dragging the grips of the selection box, from the properties panel, the menus or the keyboard.
-- **Annotations**: a note with a curved leader to what it is about, typed in place, with a choice of symbol at each end.
+- **Annotations**: a note with a curved, straight or elbowed leader to what it is about, typed in place, with a choice of symbol at each end.
 - **Corners**: a wall end is a selectable corner shared by the walls that meet there; drag it and they all follow. A corner of two walls can be mitred, rounded, cut off, or have one wall run through. Double-click a wall to put a corner in it.
 - **Rooms**: click inside closed walls to name a space; its floor, outline and area follow the walls. **Dividers** split an open space into rooms without a wall.
 - **Floor patterns**: a Hatch modifier (lines, planks, tiles) for rooms and any closed shape.
@@ -30,7 +33,7 @@ Last updated: 2026-10-08.
 - Snapping to existing points and to the grid, angle constraint, drag handles, exact values in the properties panel.
 
 ### Organising a drawing
-- Pages, and layers with colour, visibility and lock.
+- Pages, which can be duplicated with their contents and reordered, and layers with colour, visibility and lock. A **shared layer** shows what is on it on every page.
 - **Groups**: several objects treated as one (`Ctrl+G`, `Ctrl+Shift+G`), nestable; double-click to edit inside.
 - **Components**: a reusable definition with instances that all update together; double-click an instance to edit the component.
 - **Stacking order**: bring forward or send backward one step or all the way, from the properties panel, the right-click menu, shortcuts, or by dragging rows in the object list.
@@ -53,7 +56,9 @@ Last updated: 2026-10-08.
 - Providers: Claude with an API key, Claude through the Claude Code CLI on the computer (desktop), a local model through Ollama, or any OpenAI-compatible service.
 
 ### Application
-- Desktop app (Windows, macOS, Linux) and web app from the same code.
+- Desktop app (Windows, macOS, Linux) and web app from the same code, with **installers** built and attached to a GitHub release for each version tag.
+- A **welcome window** at start (new drawing, open, recent drawings on desktop, or the bundled example) and an **About** window with the release notes, read from `CHANGELOG.md`.
+- In the desktop app on Windows and macOS the menu bar is the window's title bar.
 - Menu bar, dockable panels that can be moved, tabbed, floated and closed, a command list (`Ctrl+K`) with every command and rebindable shortcuts, a right-click menu, preferences.
 - Autosave to the drawing's file, which can be switched off.
 - English, French, Spanish and German.
@@ -73,7 +78,7 @@ Ranked by how much each one moves the app from "promising" to "usable for real w
 | 5 | **DXF export** | **Done** (lines, circles, text, layers). DXF import is not started. |
 | 6 | **Sheets and printing**: paper size, drawing scale, title block, PDF export to scale | **Done**: papers with format, direction, scale and a title block; vector PDF export at true scale, one page per paper. Views of the plan at another scale on a sheet are in the ideas below. |
 | 7 | **More drawing tools**: polyline and polygon tool, arcs and curves, typed lengths while drawing, room areas | **Partly done**: polyline tool and typed sizes. Arcs, curves and room areas are not started. |
-| 8 | **Transforming**: rotate and scale handles, align and distribute, mirror, array | **Mostly done**: rotate, mirror, uniform scale and nudge for any selection, from grips on the selection box, the panel, menus and shortcuts. Align, distribute and array are not started. |
+| 8 | **Transforming**: rotate and scale handles, align and distribute, mirror, array | **Mostly done**: rotate, mirror, uniform scale and nudge for any selection, from grips on the selection box, the panel, menus and shortcuts. Align and distribute are done; array is not started. |
 | 9 | **Walls as a system**: openings that follow their wall, walls trimmed where they meet mid-span, moving a wall drags its neighbours, rooms detected from walls | **Done**, with selectable corners and joint types. Curved walls and wall types are in the ideas below. |
 | 10 | **Hosted version**: accounts, cloud storage, sharing by link, realtime collaboration | Not started. The data model is prepared for it (see ARCHITECTURE §10). |
 
@@ -95,15 +100,15 @@ Agreed with the owner in October 2026. The first was built straight away.
 
 **Drawing comfort**
 - Smart guides: alignment and equal spacing against other objects while moving
-- Align, distribute, a repeat ("array") modifier and a live mirror modifier
+- ~~Align, distribute~~ (done); a repeat ("array") modifier and a live mirror modifier
 - Snapping to midpoints, perpendiculars and intersections
-- Eyedropper and "paste style"
+- ~~Eyedropper~~ (done)
 - Trim, extend and fillet for lines
 
 **Import and sharing**
 - DXF import
 - PNG export
-- A live demo on GitHub Pages, and downloadable installers
+- A live demo on GitHub Pages; ~~downloadable installers~~ (done, unsigned); signed installers and automatic updates
 
 **Assistant**
 - A preview of its changes to accept or refuse before they are applied

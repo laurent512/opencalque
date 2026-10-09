@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, LockOpen, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, LockOpen, Plus, Trash2, ArrowDown, ArrowUp, Copy, Files } from 'lucide-react'
 import { childrenOf, layersOf, pagesOf, type Node, type Op, colorsOf, colorUses } from '@opencalque/core'
-import { moveInOrder } from '../actions'
+import { moveInOrder, duplicatePage, movePage } from '../actions'
 import { t } from '../i18n'
 import { apply, editComponent, select, showPage, useStore } from '../store'
 import { EditableText, IconButton, labelOf, Section, TypeIcon } from '../ui'
@@ -48,9 +48,18 @@ export function Pages() {
   const add = () => apply([{ op: 'add_node', node: { type: 'page', name: t('Page {n}', { n: pages.length + 1 }) } }])
   return (
     <Section title={t('Pages')} action={<IconButton title={t('Add page')} onClick={add}><Plus size={14} /></IconButton>}>
-      {pages.map((page) => (
+      {pages.map((page, index) => (
         <div key={page.id} className={`row${page.id === scope ? ' selected' : ''}`} onClick={() => showPage(page.id)}>
           <EditableText value={labelOf(doc, page)} onChange={rename(page.id)} />
+          <IconButton title={t('Move up')} onClick={() => movePage(page.id, -1)} disabled={index === 0}>
+            <ArrowUp size={13} />
+          </IconButton>
+          <IconButton title={t('Move down')} onClick={() => movePage(page.id, 1)} disabled={index === pages.length - 1}>
+            <ArrowDown size={13} />
+          </IconButton>
+          <IconButton title={t('Duplicate this page, with what is on it')} onClick={() => duplicatePage(page.id)}>
+            <Copy size={13} />
+          </IconButton>
           {pages.length > 1 && (
             <IconButton title={t('Delete page')} onClick={() => apply([{ op: 'remove_node', id: page.id }])}>
               <Trash2 size={13} />
@@ -91,6 +100,9 @@ export function Layers() {
               <Trash2 size={13} />
             </IconButton>
           )}
+          <IconButton title={layer.shared ? t('Shown on every page. Click to show it only on the page it is drawn on') : t('Show what is on this layer on every page')} onClick={() => update(layer.id, { shared: !layer.shared })}>
+            <Files size={13} className={layer.shared ? 'on' : 'faint'} />
+          </IconButton>
           <IconButton title={layer.locked ? t('Unlock layer') : t('Lock layer')} onClick={() => update(layer.id, { locked: !layer.locked })}>
             {layer.locked ? <Lock size={13} /> : <LockOpen size={13} className="faint" />}
           </IconButton>

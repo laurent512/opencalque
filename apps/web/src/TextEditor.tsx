@@ -14,15 +14,16 @@ function wording(node: Node | undefined): { x: number; y: number; size: number; 
 }
 
 /**
- * Words being typed in place. An input sits exactly where they are drawn, at the same size, while
+ * Words being typed in place. A box sits exactly where they are drawn, at the same size, while
  * the canvas leaves them out; every keystroke goes into the drawing, so what is typed is what is
- * there. Enter, Esc or clicking elsewhere ends it.
+ * there. Enter starts a new line; Esc, Ctrl+Enter or a click elsewhere ends the typing. What is
+ * shown while typing is the text as written, with its fields ({date}, {page}…) not yet filled in.
  */
 export function TextEditor() {
   const editing = useStore((s) => s.editingText)
   const node = useStore((s) => (s.editingText ? s.doc.nodes[s.editingText.id] : undefined))
   const view = useStore((s) => s.view)
-  const input = useRef<HTMLInputElement>(null)
+  const input = useRef<HTMLTextAreaElement>(null)
 
   // Focus after the click that placed the text has finished, or the browser takes focus back.
   useEffect(() => {
@@ -37,32 +38,35 @@ export function TextEditor() {
   const words = wording(node)
   if (!editing || !node || !words) return null
   const size = words.size * view.zoom
+  const lines = words.text.split('\n')
   const write = (text: string) =>
     preview([editing.create ? { op: 'add_node', node: { ...editing.create, text } as NodeInput } : { op: 'update_node', id: editing.id, patch: { text } }])
 
   return (
-    <input
+    <textarea
       ref={input}
       className="text-editor"
       value={words.text}
       spellCheck={false}
+      wrap="off"
+      rows={lines.length}
       style={{
         left: words.x * view.zoom + view.x,
-        // The anchor is the baseline; the box starts one ascent above it.
+        // The anchor is the baseline of the first line; the box starts one ascent above it.
         top: words.y * view.zoom + view.y - size * 0.95,
-        height: size * 1.25,
+        height: size * 1.25 * lines.length,
         font: `${size}px/1.25 ${words.font ?? FONT}`,
-        width: `calc(${Math.max(words.text.length, 4) + 1}ch + 8px)`,
+        width: `calc(${Math.max(4, ...lines.map((line) => line.length)) + 1}ch + 8px)`,
         color: node.style?.stroke ?? undefined,
         textAlign: words.right ? 'right' : undefined,
         // Words that end at their anchor grow leftwards from it.
         transform: words.right ? 'translateX(-100%)' : words.rotation ? `rotate(${words.rotation}deg)` : undefined,
-        transformOrigin: `0 ${(0.95 / 1.25) * 100}%`,
+        transformOrigin: `0 ${size * 0.95}px`,
       }}
       onChange={(e) => write(e.target.value)}
       onBlur={finishTextEdit}
       onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === 'Escape') {
+        if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) {
           e.preventDefault()
           finishTextEdit()
         }

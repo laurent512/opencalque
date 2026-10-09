@@ -1,6 +1,7 @@
 import { childrenOf, isVisible } from './document'
 import { add, dist, len, mid, norm, perp, rotate, scale, sub, type Vec2 } from './geometry'
 import { resolveColor } from './colors'
+import { fillFields } from './fields'
 import { applyModifiers, movedModifiers } from './modifiers'
 import { transformPrimitive, type Primitive } from './primitives'
 import type { Op } from './ops'
@@ -108,7 +109,10 @@ function dimensionMarker(type: NodeOf<'dimension'>['startMarker'], at: Vec2, out
  * (a 10 mm margin, a 100 × 30 mm block), multiplied by the paper's scale to stand on the drawing.
  * It has no captions, only values, so it reads the same in any language.
  */
-function titleBlock(node: NodeOf<'paper'>, documentName: string): Primitive[] {
+function titleBlock(node: NodeOf<'paper'>, doc: Document): Primitive[] {
+  const documentName = doc.name
+  // Its entries may hold fields, such as {date} or {page-number}.
+  const fill = (text: string) => fillFields(text, doc, node.parent)
   const block = node.titleBlock
   const s = node.scale ?? DEFAULT_PAPER_SCALE
   // A sheet too small to hold it goes without.
@@ -130,13 +134,13 @@ function titleBlock(node: NodeOf<'paper'>, documentName: string): Primitive[] {
     line(left + 30 * s, top + 21 * s, left + 30 * s, bottom),
     line(left + 52 * s, top + 21 * s, left + 52 * s, bottom),
     line(left + 80 * s, top + 21 * s, left + 80 * s, bottom),
-    ...words(block.project || documentName, left + 3 * s, top + 8.5 * s, 5),
+    ...words(fill(block.project || documentName), left + 3 * s, top + 8.5 * s, 5),
     ...words(node.name ?? '', left + 3 * s, top + 18 * s, 3.5),
-    ...words(block.author ?? '', right - 3 * s, top + 18 * s, 3, 'right'),
+    ...words(fill(block.author ?? ''), right - 3 * s, top + 18 * s, 3, 'right'),
     ...words(`1:${s}`, left + 3 * s, top + 27 * s, 3.5),
     ...words(format, left + 33 * s, top + 27 * s, 3.5),
-    ...words(block.date ?? '', left + 55 * s, top + 27 * s, 3),
-    ...words(block.number ?? '', right - 3 * s, top + 27 * s, 3.5, 'right'),
+    ...words(fill(block.date ?? ''), left + 55 * s, top + 27 * s, 3),
+    ...words(fill(block.number ?? ''), right - 3 * s, top + 27 * s, 3.5, 'right'),
   ]
 }
 
@@ -144,14 +148,40 @@ function titleBlock(node: NodeOf<'paper'>, documentName: string): Primitive[] {
 export const ANNOTATION_TEXT_SIZE = 200
 export const ANNOTATION_BEND = 0.2
 
+/** The length of the symbols at the ends of a line that does not give one, in mm. */
+export const LINE_MARKER_SIZE = 150
+
+/** The symbols at the two ends of a line through `points`, each pointing the way the line arrives there. */
+function endMarkers(points: Vec2[], node: { startMarker?: NodeOf<'dimension'>['startMarker']; endMarker?: NodeOf<'dimension'>['endMarker']; markerSize?: number }): Primitive[] {
+  if (points.length < 2 || (!node.startMarker && !node.endMarker)) return []
+  const size = node.markerSize ?? LINE_MARKER_SIZE
+  const atStart = norm(sub(points[0], points[1]))
+  const atEnd = norm(sub(points[points.length - 1], points[points.length - 2]))
+  return [...dimensionMarker(node.startMarker ?? 'none', points[0], atStart, atStart, size, {}), ...dimensionMarker(node.endMarker ?? 'none', points[points.length - 1], atEnd, atEnd, size, {})]
+}
+
+/** A text as one primitive per line, each a line height below the one before, turned with the text. */
+function textLines(text: string, at: Vec2, size: number, look: { rotation?: number; font?: string; align?: 'left' | 'center' | 'right' }): Primitive[] {
+  return text.split('\n').flatMap((line, i): Primitive[] => {
+    if (line === '') return []
+    const down = rotate({ x: 0, y: i * size * 1.25 }, look.rotation ?? 0)
+    return [{ kind: 'text', x: at.x + down.x, y: at.y + down.y, text: line, size, ...look }]
+  })
+}
+
 /**
  * The leader of an annotation as points from its tip to its text: a straight line, or a curve that
  * bows to one side by `bend` times its length, like a line drawn by hand.
  */
-export function annotationCurve(node: { a: Vec2; b: Vec2; bend?: number }): Vec2[] {
+export function annotationCurve(node: { a: Vec2; b: Vec2; bend?: number; shape?: 'curve' | 'straight' | 'elbow' }): Vec2[] {
   const length = dist(node.a, node.b)
   const bend = node.bend ?? ANNOTATION_BEND
-  if (length < 1e-6 || Math.abs(bend) < 1e-6) return [node.a, node.b]
+  if (node.shape === 'elbow') {
+    // Level from the text, then square down or up to the tip; with nothing to turn, a straight line.
+    const corner = { x: node.a.x, y: node.b.y }
+    return dist(corner, node.a) < 1e-6 || dist(corner, node.b) < 1e-6 ? [node.a, node.b] : [node.a, corner, node.b]
+  }
+  if (length < 1e-6 || Math.abs(bend) < 1e-6 || node.shape === 'straight') return [node.a, node.b]
   const control = add(mid(node.a, node.b), scale(perp(norm(sub(node.b, node.a))), bend * length))
   return Array.from({ length: 21 }, (_, i) => {
     const t = i / 20
@@ -168,10 +198,10 @@ export function annotationText(node: { a: Vec2; b: Vec2; size?: number }): { x: 
   return { x: node.b.x + (right ? -1 : 1) * size * 0.3, y: node.b.y + size * 0.35, size, right }
 }
 
-function annotationPrimitives(node: NodeOf<'annotation'>): Primitive[] {
+function annotationPrimitives(node: NodeOf<'annotation'>, ctx: KindContext): Primitive[] {
   const curve = annotationCurve(node)
   const words = annotationText(node)
-  const text: Primitive[] = node.text === '' ? [] : [{ kind: 'text', x: words.x, y: words.y, text: node.text, size: words.size, align: words.right ? 'right' : 'left', font: node.font }]
+  const text = textLines(fillFields(node.text, ctx.doc, node.parent), words, words.size, { align: words.right ? 'right' : 'left', font: node.font })
   if (curve.length < 2 || dist(node.a, node.b) < 1e-6) return text
   const markerSize = node.markerSize ?? words.size * 0.75
   // Each end symbol points the way the leader is heading as it arrives there.
@@ -287,13 +317,13 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     move: () => ({}),
   },
   line: {
-    primitives: (node) => [{ kind: 'path', points: [node.a, node.b] }],
+    primitives: (node) => [{ kind: 'path', points: [node.a, node.b] }, ...endMarkers([node.a, node.b], node)],
     move: moveAB,
     handles: handlesAB,
     moveHandle: moveHandleAB,
   },
   polyline: {
-    primitives: (node) => [{ kind: 'path', points: node.points, closed: node.closed }],
+    primitives: (node) => [{ kind: 'path', points: node.points, closed: node.closed }, ...(node.closed ? [] : endMarkers(node.points, node))],
     move: (node, d) => ({ points: node.points.map((p) => add(p, d)) }),
     handles: (node) => node.points,
     moveHandle: (node, index, p) => ({ points: node.points.map((q, i) => (i === index ? p : q)) }),
@@ -329,7 +359,7 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     moveHandle: moveHandleAB,
   },
   paper: {
-    primitives: (node, ctx) => [{ kind: 'path', points: boxCorners(node), closed: true, fill: PAPER_FILL, stroke: PAPER_EDGE, backdrop: true }, ...titleBlock(node, ctx.doc.name)],
+    primitives: (node, ctx) => [{ kind: 'path', points: boxCorners(node), closed: true, fill: PAPER_FILL, stroke: PAPER_EDGE, backdrop: true }, ...titleBlock(node, ctx.doc)],
     move: moveXY,
     handles: boxCorners,
     moveHandle: (node, index, p) => {
@@ -343,7 +373,7 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     snapPoints: (node) => [{ x: node.cx, y: node.cy }],
   },
   text: {
-    primitives: (node) => [{ kind: 'text', x: node.x, y: node.y, text: node.text, size: node.size, rotation: node.rotation, font: node.font }],
+    primitives: (node, ctx) => textLines(fillFields(node.text, ctx.doc, node.parent), node, node.size, { rotation: node.rotation, font: node.font }),
     move: moveXY,
     snapPoints: (node) => [{ x: node.x, y: node.y }],
   },
@@ -353,7 +383,8 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     // The two ends, and the middle of the leader, which is dragged to bend it.
     handles: (node) => {
       const curve = annotationCurve(node)
-      return [node.a, node.b, curve[Math.floor(curve.length / 2)]]
+      // Only a curved leader has a middle to pull on.
+      return (node.shape ?? 'curve') === 'curve' ? [node.a, node.b, curve[Math.floor(curve.length / 2)]] : [node.a, node.b]
     },
     moveHandle: (node, index, p) => {
       if (index < 2) return moveHandleAB(node, index, p)

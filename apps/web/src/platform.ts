@@ -28,6 +28,10 @@ export interface Platform {
   openBytes(extensions: string[]): Promise<{ name: string; bytes: Uint8Array } | null>
   /** Saves to `token` when given, otherwise asks where. Resolves to null when the user cancels. */
   save(content: string | Uint8Array, suggestedName: string, token?: unknown): Promise<StoredFile | null>
+  /** Desktop only: the drawings opened or saved lately, newest first, that are still where they were. */
+  recent?(): Promise<{ name: string; path: string }[]>
+  /** Desktop only: opens one of the drawings `recent` listed. */
+  openRecent?(path: string): Promise<OpenedFile | null>
   /** The file the app was launched with, if any. */
   initial(): Promise<OpenedFile | null>
   setDirty(dirty: boolean): void

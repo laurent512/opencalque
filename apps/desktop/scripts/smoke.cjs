@@ -6,6 +6,8 @@ const fs = require('fs'), os = require('os'), path = require('path')
 // for a 1400x900 window and assume the current panel layout; update them if the layout changes.
 const root = path.resolve(__dirname, '../../..')
 const out = fs.mkdtempSync(path.join(os.tmpdir(), 'opencalque-smoke-'))
+// A profile of its own, so the test never reads or changes the settings of the real app.
+app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'opencalque-smoke-profile-')))
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 app.whenReady().then(async () => {
   const win = new BrowserWindow({ width: 1400, height: 900, show: true })
@@ -13,6 +15,8 @@ app.whenReady().then(async () => {
   wc.on('console-message', (e) => console.log('console:', e.message))
   await win.loadFile(path.join(root, 'apps/desktop/out/renderer/index.html'))
   await sleep(800)
+  // Straight to the drawing: the welcome window would be in the way of the clicks.
+  await wc.executeJavaScript(`localStorage.setItem('opencalque.prefs', JSON.stringify({ showWelcome: false })); 0`); wc.reload(); await sleep(1200)
   const key = async (keyCode, modifiers = []) => { wc.sendInputEvent({ type: 'keyDown', keyCode, modifiers }); if (keyCode.length === 1 && !modifiers.length) wc.sendInputEvent({ type: 'char', keyCode }); wc.sendInputEvent({ type: 'keyUp', keyCode, modifiers }); await sleep(120) }
   const move = async (x, y) => { wc.sendInputEvent({ type: 'mouseMove', x, y }); await sleep(60) }
   const click = async (x, y, modifiers = []) => { await move(x, y); wc.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1, modifiers }); wc.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1, modifiers }); await sleep(120) }

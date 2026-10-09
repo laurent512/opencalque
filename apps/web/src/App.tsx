@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { openInitialDocument } from './actions'
+import { About } from './About'
+import { startUp } from './actions'
 import { startAutosave } from './autosave'
 import { carriesFiles, openDropped } from './drop'
 import { CommandPalette } from './CommandPalette'
@@ -12,6 +13,7 @@ import { platform } from './platform'
 import { Preferences } from './Preferences'
 import { isDirty, useStore } from './store'
 import { watchScrubKey } from './ui'
+import { Welcome } from './Welcome'
 import { Warehouse } from './WarehouseDialog'
 
 /**
@@ -75,7 +77,7 @@ export function App() {
   const fileName = useStore((s) => s.file?.name)
 
   useEffect(() => {
-    openInitialDocument()
+    startUp()
     // The desktop app asks before closing with unsaved changes; it needs the words in this language.
     platform.setCloseWarning({ message: t('You have unsaved changes.'), discard: t('Discard changes'), cancel: t('Cancel') })
   }, [])
@@ -100,6 +102,8 @@ export function App() {
       <Preferences />
       <ContextMenu />
       <Warehouse />
+      <Welcome />
+      <About />
       <DropTarget />
     </div>
   )

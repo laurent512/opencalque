@@ -35,7 +35,7 @@ import {
   splitWallOps,
   wallEndsAt,
 } from '@opencalque/core'
-import { finishTextEdit, zoomToFit, withPaperContents } from '../actions'
+import { finishTextEdit, zoomToFit, withPaperContents, pickStyle } from '../actions'
 import { onCommand } from '../commands'
 import { t } from '../i18n'
 import { usePrefs } from '../prefs'
@@ -173,10 +173,20 @@ function boxLabels(box: { x: number; y: number; width: number; height: number })
   ]
 }
 
+/**
+ * The look given to what is drawn next, as chosen in the bar above the tools: a colour, a line
+ * weight, a kind of line. Nothing at all when each is left to the layer and the defaults.
+ */
+function currentStyle(inkOnly = false): { style?: { stroke?: string; strokeWidth?: number; dash?: number[] } } {
+  const { drawColor, drawWeight, drawDash } = get()
+  const style = { ...(drawColor ? { stroke: drawColor } : {}), ...(!inkOnly && drawWeight ? { strokeWidth: drawWeight } : {}), ...(!inkOnly && drawDash ? { dash: drawDash } : {}) }
+  return Object.keys(style).length > 0 ? { style } : {}
+}
+
 /** The node a two-point tool makes from its two points. */
 function shape(tool: Tool, id: string, a: Vec2, b: Vec2, offset = 0): NodeInput {
-  const { scope, activeLayer, wallThickness, dimensionTemplate, annotationTemplate, drawColor, paperScale, base, doc } = get()
-  const common = { id, parent: scope, layer: activeLayer, ...(drawColor && tool !== 'dimension' && tool !== 'paper' ? { style: { stroke: drawColor } } : {}) }
+  const { scope, activeLayer, wallThickness, dimensionTemplate, annotationTemplate, paperScale, base, doc } = get()
+  const common = { id, parent: scope, layer: activeLayer, ...(tool !== 'dimension' && tool !== 'paper' ? currentStyle() : {}) }
   switch (tool) {
     case 'paper': {
       // Counted in the drawing as it was before this paper started to be drawn.
@@ -445,8 +455,8 @@ export function CanvasView() {
   }
 
   const polyline = (id: string, points: Vec2[], closed: boolean): NodeInput => {
-    const { scope, activeLayer, drawColor } = get()
-    return { id, type: 'polyline', parent: scope, layer: activeLayer, points, closed, ...(drawColor ? { style: { stroke: drawColor } } : {}) }
+    const { scope, activeLayer } = get()
+    return { id, type: 'polyline', parent: scope, layer: activeLayer, points, closed, ...currentStyle() }
   }
 
   /** Where the next point of a polyline goes: on its own first point when the pointer is near it (to close), else snapped and constrained. */
@@ -512,6 +522,12 @@ export function CanvasView() {
     // A click while a text is being typed ends the typing and does nothing else.
     if (s.editingText) return finishTextEdit()
 
+    if (s.tool === 'eyedropper') {
+      // The look of what is clicked goes to the selection, or to what is drawn next.
+      const source = hitTest(sceneRef.current, world, 5 / s.view.zoom)
+      if (source) pickStyle(source.node)
+      return
+    }
     if (s.tool === 'select') {
       const cropped = frameCornerAt(at)
       if (cropped) {
@@ -562,7 +578,7 @@ export function CanvasView() {
     } else if (s.tool === 'text') {
       // The text starts empty and is typed in place; see TextEditor.
       const { p } = snap(world, e, [])
-      const create: NodeInput & { id: string } = { id: newId(), type: 'text', parent: s.scope, layer: s.activeLayer, x: p.x, y: p.y, text: '', size: 200, ...(s.drawColor ? { style: { stroke: s.drawColor } } : {}) }
+      const create: NodeInput & { id: string } = { id: newId(), type: 'text', parent: s.scope, layer: s.activeLayer, x: p.x, y: p.y, text: '', size: 200, ...currentStyle(true) }
       if (preview([{ op: 'add_node', node: create }])) useStore.setState({ editingText: { id: create.id, create } })
     } else if (s.tool === 'place' || s.tool === 'room') {
       if (s.base) {

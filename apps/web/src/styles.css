@@ -62,44 +62,48 @@ select {
   --dv-active-sash-color: var(--accent);
 }
 
-/* Tabs: a tinted strip, so the row of tabs reads as separate from the panel beneath it, with the
-   tab in front shown as a raised white pill and the others lighting up under the pointer. */
+/* Tabs: like the tabs of a folder. The row is a tinted strip; the tab in front is a flat piece of
+   the panel beneath it, joined to it, with a line of colour along its top. */
 
 .dock {
   --dv-tabs-and-actions-container-background-color: #f4f4f4;
-  --dv-tabs-and-actions-container-height: 36px;
+  --dv-tabs-and-actions-container-height: 34px;
   --dv-activegroup-visiblepanel-tab-background-color: transparent;
   --dv-activegroup-hiddenpanel-tab-background-color: transparent;
   --dv-inactivegroup-visiblepanel-tab-background-color: transparent;
   --dv-inactivegroup-hiddenpanel-tab-background-color: transparent;
 }
 
+/* The line under the strip is drawn inside it, so that the tab in front can cover it. */
 .dock .dv-tabs-and-actions-container {
-  border-bottom: 1px solid var(--border);
+  box-shadow: inset 0 -1px 0 var(--border);
 }
 
 .dock .dv-tabs-container {
-  gap: 2px;
-  padding: 0 6px;
+  gap: 0;
+  padding: 0;
 }
 
 .dock .dv-tab {
-  height: 26px;
-  margin: 5px 0;
-  padding: 0 4px 0 10px;
-  border-radius: 6px;
-  font-weight: 600;
-  transition: background-color 80ms;
+  height: 100%;
+  margin: 0;
+  padding: 0 6px 0 12px;
+  border-right: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--muted);
+  font-weight: 500;
+  transition: background-color 80ms, color 80ms;
 }
 
 .dock .dv-tab.dv-inactive-tab:hover {
-  background-color: #e6e6e6;
+  background-color: #ececec;
   color: var(--text);
 }
 
 .dock .dv-tab.dv-active-tab {
   background-color: var(--bg);
-  box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgb(0 0 0 / 6%);
+  box-shadow: inset 0 2px 0 var(--accent);
+  color: var(--text);
 }
 
 /* The close button only on the tab in front or under the pointer, so the others stay compact. */
@@ -130,11 +134,24 @@ select {
   height: 36px;
   align-items: center;
   gap: 2px;
-  padding: 0 8px;
+  /* In the desktop app this bar is also the top of the window: it is what the window is dragged
+     by, and it leaves room for the system's buttons, wherever the system puts them. */
+  padding: 0 calc(8px + 100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)) 0 calc(8px + env(titlebar-area-x, 0px));
   border-bottom: 1px solid var(--border);
+  -webkit-app-region: drag;
+}
+
+.menubar button,
+.menubar .menu,
+.menubar .editable,
+.menubar input {
+  -webkit-app-region: no-drag;
 }
 
 .menubar-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
   padding: 0 10px 0 4px;
   font-size: 13px;
 }
@@ -404,6 +421,34 @@ select {
 
 .section-add:hover {
   background: var(--hover);
+}
+
+.field.tall {
+  align-items: flex-start;
+}
+
+.field.tall > span {
+  padding-top: 5px;
+}
+
+.field > textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  outline: 0;
+  background: var(--hover);
+  font: inherit;
+  resize: vertical;
+}
+
+.field > textarea:focus {
+  border-color: var(--accent);
+}
+
+.row svg.on {
+  color: var(--accent);
 }
 
 /* While Alt is held, a number can be dragged sideways to change it. */
@@ -1588,6 +1633,18 @@ body.scrubbing .quick-field input[title] {
   cursor: pointer;
 }
 
+.quick-select {
+  height: 24px;
+  margin-left: 6px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--hover);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
 .quick-color.active {
   box-shadow: 0 0 0 2px var(--accent);
 }
@@ -1605,6 +1662,9 @@ body.scrubbing .quick-field input[title] {
   min-width: 2ch;
   padding: 0;
   border: 0;
+  overflow: hidden;
+  resize: none;
+  white-space: pre;
   outline: 1px dashed var(--accent);
   outline-offset: 3px;
   background: none;
@@ -1635,4 +1695,222 @@ body.scrubbing .quick-field input[title] {
   color: var(--accent);
   font-size: 14px;
   font-weight: 600;
+}
+
+/* Welcome window: where to begin */
+
+.dialog.welcome {
+  width: min(660px, calc(100vw - 32px));
+  max-height: 84vh;
+}
+
+.welcome-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 24px 6px;
+}
+
+.welcome-head h2 {
+  font-size: 18px;
+}
+
+.welcome-head p {
+  margin: 3px 0 0;
+}
+
+.logo {
+  flex: none;
+}
+
+.welcome-choices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 16px 24px;
+}
+
+.welcome-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  text-align: left;
+  cursor: pointer;
+}
+
+.welcome-choice:hover,
+.welcome-choice:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  outline: none;
+}
+
+.welcome-choice svg {
+  margin-bottom: 4px;
+  color: var(--accent);
+}
+
+.welcome-choice span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.welcome-recent {
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px 10px;
+}
+
+.welcome-recent h3 {
+  margin: 4px 8px 6px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.welcome-recent button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.welcome-recent button:hover {
+  background: var(--hover);
+}
+
+.welcome-recent button span {
+  white-space: nowrap;
+}
+
+.welcome-recent button .faint {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  /* A long path keeps its end, where the folder that tells files apart is. */
+  direction: rtl;
+}
+
+.dialog.welcome footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 10px 24px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.dialog.welcome footer label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .welcome-choices {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* About window: the version, and what changed in each */
+
+.dialog.about {
+  display: flex;
+  flex-direction: column;
+  width: min(600px, calc(100vw - 32px));
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+.about-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 22px 12px 16px 24px;
+}
+
+.about-head > div {
+  flex: 1;
+}
+
+.about-head h2 {
+  font-size: 18px;
+}
+
+.about-head p {
+  margin: 3px 0 0;
+}
+
+.about-links {
+  display: flex;
+  gap: 16px;
+  padding-top: 6px;
+}
+
+.about-links a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.about-links a:hover {
+  text-decoration: underline;
+}
+
+.about-notes {
+  flex: 1;
+  min-height: 0;
+  padding: 6px 24px 20px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+}
+
+.about-notes h3 {
+  margin: 12px 0 4px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.about-notes h4 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 14px 0 4px;
+  font-size: 14px;
+}
+
+.about-notes h4 .faint {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.about-notes h5 {
+  margin: 10px 0 4px;
+  font-size: 12px;
+}
+
+.about-notes .latest h5 {
+  color: var(--accent);
+}
+
+.about-notes ul {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.5;
+}
+
+.about-notes li {
+  margin: 2px 0;
+}
+
+.dialog.about .text-button {
+  padding: 4px 8px;
 }

@@ -1,6 +1,6 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, net } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, net, shell } from 'electron'
 import { spawn, type ChildProcess } from 'node:child_process'
-import { cpSync, existsSync } from 'node:fs'
+import { cpSync, existsSync, readFileSync } from 'node:fs'
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
@@ -52,13 +52,36 @@ async function runClaude(input: { prompt: string; session?: string; model?: stri
   })
 }
 
+// The drawings opened or saved lately, newest first. Kept here, not in the window, so that the
+// window can only ask to reopen a file the user already chose once.
+const recentFile = join(app.getPath('userData'), 'recent.json')
+let recent: string[] = []
+try {
+  const stored = JSON.parse(readFileSync(recentFile, 'utf8'))
+  if (Array.isArray(stored)) recent = stored.filter((path) => typeof path === 'string')
+} catch {
+  // No list yet.
+}
+
+function remember(path: string): void {
+  recent = [path, ...recent.filter((other) => other !== path)].slice(0, 8)
+  writeFile(recentFile, JSON.stringify(recent)).catch(() => {})
+}
+
 async function read(path: string) {
   granted.add(path)
+  remember(path)
   return { name: basename(path), content: await readFile(path, 'utf8'), token: path }
 }
 
 function createWindow(): void {
+  // On Windows and macOS the window has no title bar of its own: the app's menu bar is the top of
+  // the window, with the system's buttons drawn over its end. Linux keeps its usual frame.
+  const merged = process.platform === 'win32' || process.platform === 'darwin'
   const win = new BrowserWindow({
+    titleBarStyle: merged ? 'hidden' : 'default',
+    // The height is that of `.menubar` in the web app.
+    titleBarOverlay: merged ? { color: '#ffffff', symbolColor: '#1e1e1e', height: 36 } : false,
     width: 1440,
     height: 900,
     minWidth: 900,
@@ -67,7 +90,11 @@ function createWindow(): void {
     backgroundColor: '#ffffff',
     webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true },
   })
-  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  // A link never opens a window of the app: a web address goes to the user's browser.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://')) shell.openExternal(url)
+    return { action: 'deny' }
+  })
   win.webContents.on('before-input-event', (_, input) => {
     if (input.type === 'keyDown' && input.key === 'F12') win.webContents.toggleDevTools()
   })
@@ -126,8 +153,14 @@ app.whenReady().then(() => {
       granted.add(path)
     }
     await writeFile(path, content, 'utf8')
+    // Exports (PDF, SVG, DXF) are saved this way too; only drawings are worth reopening.
+    if (/\.(opencalque|opencad)$/i.test(path)) remember(path)
     return { name: basename(path), token: path }
   })
+
+  ipcMain.handle('file:recent', () => recent.filter((path) => existsSync(path)).map((path) => ({ name: basename(path), path })))
+
+  ipcMain.handle('file:openRecent', (_, path: string) => (recent.includes(path) && existsSync(path) ? read(path) : null))
 
   ipcMain.handle('file:initial', () => {
     const file = process.argv.slice(1).find((arg) => arg.endsWith('.opencalque') || arg.endsWith('.opencad'))

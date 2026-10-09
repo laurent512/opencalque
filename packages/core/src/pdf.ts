@@ -1,5 +1,5 @@
 import { rotate, type Vec2 } from './geometry'
-import type { Primitive } from './primitives'
+import { PRINT_MM_PER_PIXEL, type Primitive } from './primitives'
 import type { Registry } from './registry'
 import { buildScene, paintOrder, type PaintStep } from './scene'
 import type { Document, NodeOf } from './schema'
@@ -15,8 +15,8 @@ import type { Document, NodeOf } from './schema'
 
 /** Points per millimetre: a PDF measures in 1/72 of an inch. */
 const POINT = 72 / 25.4
-/** What one screen pixel of line weight becomes on paper, in points. A 1 px line prints at 0.25 mm. */
-const WEIGHT = 0.7
+/** What one screen pixel of line weight becomes on paper, in points. */
+const WEIGHT = PRINT_MM_PER_PIXEL * POINT
 
 /** Widths of the printable ASCII characters in Helvetica, in thousandths of the font size. */
 const WIDTHS = [

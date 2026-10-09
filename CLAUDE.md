@@ -12,6 +12,7 @@ pnpm dev:web      # editor in a browser
 pnpm test         # core tests
 pnpm typecheck
 pnpm build && pnpm smoke   # scripted interaction test; prints a folder of screenshots to inspect
+pnpm dist         # package the installer for this system (apps/desktop/dist)
 pnpm schema       # regenerate schema/*.json after changing packages/core/src/schema.ts
 ```
 
@@ -43,6 +44,8 @@ Agent terminals have `ELECTRON_RUN_AS_NODE=1`, which breaks Electron. Prefix Ele
 - There is no Assets panel: everything that can be placed is in the component library (`WarehouseDialog.tsx`).
 - Exports (SVG, DXF, PDF) draw from primitives through `paintOrder`; a new kind of primitive or style needs handling in `svg.ts`, `dxf.ts`, `pdf.ts` and `apps/web/src/canvas/draw.ts`.
 - A wall corner is a position, not a node. Use `wallEndsAt`, `moveCornerOps`, `cornerJoin` and `cornerJoinOps` (`packages/core/src/walls.ts`); how a corner is joined lives on each wall end, in `joins`.
+- Every change a user would notice gets a line in `CHANGELOG.md`, under the version being worked on. To release: new `## x.y.z — date` section, same version in the `package.json` files, then push a `vx.y.z` tag; the workflow builds the installers and publishes the GitHub release with that section as its text.
+- The desktop menu bar is the window's title bar. Keep its height in step with `titleBarOverlay` in `apps/desktop/src/main/index.ts`.
 - Doors and windows are tied to walls by position, not by reference. Wall geometry lives in `packages/core/src/walls.ts`.
 
 ## Open questions for the owner

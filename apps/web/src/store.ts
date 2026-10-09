@@ -13,7 +13,7 @@ export const BUILT_IN_EXTENSION = architecture.id
  */
 export const registry = new Registry()
 
-export type Tool = 'select' | 'hand' | 'line' | 'rect' | 'ellipse' | 'polyline' | 'wall' | 'dimension' | 'measure' | 'calibrate' | 'text' | 'annotation' | 'paper' | 'room' | 'divider' | 'place'
+export type Tool = 'select' | 'hand' | 'line' | 'rect' | 'ellipse' | 'polyline' | 'wall' | 'dimension' | 'measure' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'paper' | 'room' | 'divider' | 'place'
 /** The plain shapes, which share one toolbar button. */
 export const SHAPE_TOOLS: Tool[] = ['line', 'rect', 'ellipse', 'polyline']
 /** The tools for naming spaces, which share another. */
@@ -78,6 +78,9 @@ interface State {
   drawStep: number
   /** Stroke colour given to the shapes drawn next, or null for the layer's colour. */
   drawColor: string | null
+  /** Likewise their line weight, in pixels, and their pattern of dashes; null leaves each as it comes. */
+  drawWeight: number | null
+  drawDash: number[] | null
   /** Look of the dimensions the dimension tool draws next: any dimension property except its points. */
   dimensionTemplate: Record<string, unknown>
   /** Likewise for the annotations the annotation tool draws next: their ends, curve and text size. */
@@ -85,6 +88,8 @@ interface State {
   /** The two points picked with the calibrate tool, waiting for their real distance. */
   calibration: { a: Vec2; b: Vec2 } | null
   preferencesOpen: boolean
+  welcomeOpen: boolean
+  aboutOpen: boolean
   /**
    * The text being typed in place. `create` is the node to add when it is a new text that is not in
    * the drawing yet (it exists only as a preview until the typing ends).
@@ -131,9 +136,13 @@ function initial(doc: Document, file: StoredFile | null): State {
     drawLive: null,
     drawStep: 0,
     drawColor: null,
+    drawWeight: null,
+    drawDash: null,
     dimensionTemplate: {},
     calibration: null,
     preferencesOpen: false,
+    welcomeOpen: false,
+    aboutOpen: false,
     contextMenu: null,
     warehouse: null,
     editingText: null,
@@ -255,8 +264,8 @@ export function redo(): void {
 
 export function loadDocument(doc: Document, file: StoredFile | null): void {
   // Tool settings belong to the session, not the document.
-  const { viewport, wallThickness, paperScale, dimensionTemplate, annotationTemplate, extensionsVersion, shapeTool, roomTool, textTool, drawColor } = get()
-  set({ ...initial(doc, file), viewport, wallThickness, paperScale, dimensionTemplate, annotationTemplate, extensionsVersion, shapeTool, roomTool, textTool, drawColor })
+  const { viewport, wallThickness, paperScale, dimensionTemplate, annotationTemplate, extensionsVersion, shapeTool, roomTool, textTool, drawColor, drawWeight, drawDash } = get()
+  set({ ...initial(doc, file), viewport, wallThickness, paperScale, dimensionTemplate, annotationTemplate, extensionsVersion, shapeTool, roomTool, textTool, drawColor, drawWeight, drawDash })
 }
 
 export function setTool(tool: Tool, placing: Placing | null = null): void {

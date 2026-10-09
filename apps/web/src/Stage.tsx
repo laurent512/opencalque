@@ -12,6 +12,7 @@ import {
   MessageSquare,
   Minus,
   MousePointer2,
+  Pipette,
   Redo2,
   Ruler,
   RulerDimensionLine,
@@ -44,6 +45,7 @@ const ICONS: Partial<Record<Tool, [title: string, icon: LucideIcon]>> = {
   wall: [msg('Wall'), BrickWall],
   dimension: [msg('Dimension: annotate a distance on the drawing'), RulerDimensionLine],
   measure: [msg('Measure: read a distance without drawing anything'), Ruler],
+  eyedropper: [msg('Eyedropper: copy the look of an object'), Pipette],
   text: [msg('Text'), Type],
   annotation: [msg('Annotation: a note with an arrow to what it is about'), MessageSquare],
   paper: [msg('Paper: a sheet that frames what goes on one page'), StickyNote],
@@ -186,13 +188,15 @@ function Hints() {
   const tool = useStore((s) => s.tool)
   const step = useStore((s) => s.drawStep)
   const typing = useStore((s) => s.editingText !== null)
+  const selected = useStore((s) => s.selection.length > 0)
   const measured = useStore((s) => s.calibration !== null)
   const opening = useStore((s) => s.placing?.type === 'parametric' && Boolean(registry.parametric.get(s.placing.kind)?.opening))
   // With the select tool, a preview in progress is an object being moved, reshaped, scaled or turned.
   const dragging = useStore((s) => s.tool === 'select' && s.base !== null && !s.editingText)
   const walls = useStore((s) => s.selection.some((id) => s.doc.nodes[id]?.type === 'wall'))
   let hints: Hint[]
-  if (typing) hints = [['', t('Type the text')], ['Enter', t('finishes')]]
+  if (typing) hints = [['', t('Type the text')], ['Enter', t('starts a new line')], ['Esc', t('finishes')]]
+  else if (tool === 'eyedropper') hints = [['', selected ? t('Click an object to give its look to what is selected') : t('Click an object to draw the next shapes with its look')]]
   else if (tool === 'calibrate') {
     // Two points on the plan, then their real distance, which is typed in the panel.
     hints = measured
@@ -239,6 +243,7 @@ function Toolbar() {
       <hr />
       <ToolButton id="dimension" />
       <ToolButton id="measure" />
+      <ToolButton id="eyedropper" />
       <ToolGroup tools={TEXT_TOOLS} current={textTool} more={t('Annotation')} />
       <ToolButton id="paper" />
       <hr />

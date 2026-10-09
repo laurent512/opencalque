@@ -13,6 +13,9 @@ import {
  * Primitives are the only thing renderers and exporters understand. Every node kind, built-in or
  * contributed by an extension, describes itself as a list of primitives in world millimetres.
  */
+/** Line weights are in screen pixels; on paper one pixel is this many millimetres. A weight of 2 prints as a 0.5 mm line. */
+export const PRINT_MM_PER_PIXEL = 0.25
+
 export interface PrimStyle {
   /** CSS color, or 'none'. Also the ink color of text. */
   stroke?: string
