@@ -21,8 +21,10 @@ Last updated: 2026-10-08.
 - Numbers in the panels change by holding Alt and dragging sideways.
 - **Transforming** any selection: turn, flip, scale and nudge, by dragging the grips of the selection box, from the properties panel, the menus or the keyboard.
 - **Annotations**: a note with a curved leader to what it is about, typed in place, with a choice of symbol at each end.
+- **Corners**: a wall end is a selectable corner shared by the walls that meet there; drag it and they all follow. A corner of two walls can be mitred, rounded, cut off, or have one wall run through. Double-click a wall to put a corner in it.
 - **Rooms**: click inside closed walls to name a space; its floor, outline and area follow the walls. **Dividers** split an open space into rooms without a wall.
 - **Floor patterns**: a Hatch modifier (lines, planks, tiles) for rooms and any closed shape.
+- **Shared colours**: named colours that objects and layers link to; change one and everything linked follows.
 - **Modifiers**: non-destructive changes to how an object is drawn, stacked and applied in order, that can be switched off or removed at any time. Crop is the first; extensions can add more.
 - Hints and size fields that follow what you are doing: only the next step and the keys usable right now are shown.
 - Snapping to existing points and to the grid, angle constraint, drag handles, exact values in the properties panel.
@@ -72,8 +74,41 @@ Ranked by how much each one moves the app from "promising" to "usable for real w
 | 6 | **Sheets and printing**: paper size, drawing scale, title block, PDF export to scale | **Started**: papers exist (format, direction, scale, contents by position). Title block and PDF export are not started. |
 | 7 | **More drawing tools**: polyline and polygon tool, arcs and curves, typed lengths while drawing, room areas | **Partly done**: polyline tool and typed sizes. Arcs, curves and room areas are not started. |
 | 8 | **Transforming**: rotate and scale handles, align and distribute, mirror, array | **Mostly done**: rotate, mirror, uniform scale and nudge for any selection, from grips on the selection box, the panel, menus and shortcuts. Align, distribute and array are not started. |
-| 9 | **Walls as a system**: openings that follow their wall, walls trimmed where they meet mid-span, moving a wall drags its neighbours, rooms detected from walls | **Mostly done**: neighbours stretch and openings follow when a wall or corner is moved; rooms are found from walls and dividers, with area. T-junctions are not trimmed on screen. |
+| 9 | **Walls as a system**: openings that follow their wall, walls trimmed where they meet mid-span, moving a wall drags its neighbours, rooms detected from walls | **Done**, with selectable corners and joint types. Curved walls and wall types are in the ideas below. |
 | 10 | **Hosted version**: accounts, cloud storage, sharing by link, realtime collaboration | Not started. The data model is prepared for it (see ARCHITECTURE §10). |
+
+## Ideas, in the order they seem worth doing
+
+Agreed with the owner in October 2026. The first was built straight away.
+
+**Walls and structure**
+- ~~Corners as selectable nodes, joint types~~ (done)
+- Reusable wall types (load-bearing, partition, insulated) with thickness and fill, shared the way colours are
+- Curved walls and arcs
+- Automatic dimensions for a room or a run of walls
+
+**Sheets and output**
+- PDF export to scale, with a title block
+- Views on a paper: part of the plan, cropped and at another scale (details)
+- Generated tables: rooms with areas, a schedule of doors and windows
+- Levels (storeys), with the one below shown faintly
+
+**Drawing comfort**
+- Smart guides: alignment and equal spacing against other objects while moving
+- Align, distribute, a repeat ("array") modifier and a live mirror modifier
+- Snapping to midpoints, perpendiculars and intersections
+- Eyedropper and "paste style"
+- Trim, extend and fillet for lines
+
+**Import and sharing**
+- DXF import
+- PNG export
+- A live demo on GitHub Pages, and downloadable installers
+
+**Assistant**
+- A preview of its changes to accept or refuse before they are applied
+- "Trace this scanned plan": finding the walls in a picture
+- An MCP server, so outside agents can drive a drawing
 
 ## 3. Backlog, by area
 

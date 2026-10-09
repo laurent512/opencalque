@@ -2,7 +2,7 @@ import { childrenOf, isVisible, leavesOf, rootOf } from './document'
 import { add, applyTransform, dist, distToSegment, mid, norm, perp, scale, sub, type Vec2 } from './geometry'
 import type { Op } from './ops'
 import type { Registry } from './registry'
-import type { Document, Node, NodeOf } from './schema'
+import type { Document, Node, NodeOf, WALL_JOINS } from './schema'
 
 type Wall = NodeOf<'wall'>
 
@@ -32,13 +32,26 @@ interface Ray {
   length: number
   angle: number
   self: boolean
+  /** How this end asks to be joined, if it says. */
+  join?: WallJoin
+}
+
+export type WallJoin = (typeof WALL_JOINS)[number]
+
+/** How two wall ends that meet are joined, from what each of them asks for. Rounded wins over cut off, which wins over one running through. */
+function styleOf(a: WallJoin | undefined, b: WallJoin | undefined): 'miter' | 'round' | 'bevel' | 'butt' {
+  const asked = [a, b]
+  if (asked.includes('round')) return 'round'
+  if (asked.includes('bevel')) return 'bevel'
+  if (asked.includes('through') || asked.includes('butt')) return 'butt'
+  return 'miter'
 }
 
 /**
  * Where the "plus" face of ray `a` meets the "minus" face of ray `b`, its neighbour going around
  * the joint. Returns the outline points each wall takes, ordered from its own face towards the joint.
  */
-function meet(p: Vec2, a: Ray, b: Ray): { a: Vec2[]; b: Vec2[] } {
+function meet(p: Vec2, a: Ray, b: Ray, style: 'miter' | 'round' | 'bevel' = 'miter'): { a: Vec2[]; b: Vec2[] } {
   const qa = add(p, scale(perp(a.d), a.h))
   const qb = sub(p, scale(perp(b.d), b.h))
   const square = { a: [qa], b: [qb] }
@@ -50,7 +63,22 @@ function meet(p: Vec2, a: Ray, b: Ray): { a: Vec2[]; b: Vec2[] } {
   // The faces would cross beyond the far end of a wall: too short to mitre.
   if (s > a.length || u > b.length) return square
   const c = add(qa, scale(a.d, s))
-  if (s < 0 && dist(c, p) > MITER_LIMIT * Math.max(a.h, b.h)) {
+  // Only the outer side of a corner, where the faces cross beyond the joint, has a point to round or cut off.
+  if (s < 0 && style === 'round') {
+    // An arc around the joint from one face to the other, each wall taking the half on its side.
+    const from = Math.atan2(qa.y - p.y, qa.x - p.x)
+    let sweep = Math.atan2(qb.y - p.y, qb.x - p.x) - from
+    if (sweep > Math.PI) sweep -= 2 * Math.PI
+    if (sweep < -Math.PI) sweep += 2 * Math.PI
+    const steps = Math.max(2, Math.ceil(Math.abs(sweep) / (Math.PI / 16)))
+    const at = (t: number): Vec2 => {
+      const r = a.h + (b.h - a.h) * t
+      return { x: tidy(p.x + r * Math.cos(from + sweep * t)), y: tidy(p.y + r * Math.sin(from + sweep * t)) }
+    }
+    const half = Array.from({ length: steps + 1 }, (_, i) => i / (2 * steps))
+    return { a: half.map((t) => at(t)), b: half.map((t) => at(1 - t)) }
+  }
+  if (s < 0 && (style === 'bevel' || dist(c, p) > MITER_LIMIT * Math.max(a.h, b.h))) {
     const m = mid(qa, qb)
     return { a: [qa, m], b: [qb, m] }
   }
@@ -62,7 +90,7 @@ function meet(p: Vec2, a: Ray, b: Ray): { a: Vec2[]; b: Vec2[] } {
  * square. Where other walls end at the same point, the faces are mitred with their neighbours and
  * the outline passes through `p`, so the walls around a joint tile it exactly.
  */
-function cap(p: Vec2, wall: Wall, away: Vec2, walls: Wall[]): Vec2[] {
+function cap(p: Vec2, wall: Wall, away: Vec2, walls: Wall[], seams?: [Vec2, Vec2][]): Vec2[] {
   const rays: Ray[] = []
   for (const w of walls) {
     const length = dist(w.a, w.b)
@@ -71,7 +99,7 @@ function cap(p: Vec2, wall: Wall, away: Vec2, walls: Wall[]): Vec2[] {
       const self = w.id === wall.id
       if (self ? end !== p : dist(end, p) > JOIN_TOLERANCE) continue
       const d = self ? away : norm(sub(other, end))
-      rays.push({ d, h: w.thickness / 2, length, angle: Math.atan2(d.y, d.x), self })
+      rays.push({ d, h: w.thickness / 2, length, angle: Math.atan2(d.y, d.x), self, join: end === w.a ? w.joins?.a : w.joins?.b })
     }
   }
   const h = wall.thickness / 2
@@ -81,7 +109,22 @@ function cap(p: Vec2, wall: Wall, away: Vec2, walls: Wall[]): Vec2[] {
   const me = rays[i]
   const next = rays[(i + 1) % rays.length]
   const prev = rays[(i + rays.length - 1) % rays.length]
-  return [...meet(p, prev, me).b, p, ...meet(p, me, next).a.reverse()]
+  // A choice of joint only means something between two walls; where more meet they are mitred.
+  const style = rays.length === 2 ? styleOf(me.join, next.join) : 'miter'
+  if (style === 'butt') {
+    // One wall runs on to the far face of the other, which stops against its near face. How far
+    // that is along each wall depends on the angle they meet at.
+    const other = next
+    const slant = Math.abs(cross(me.d, other.d))
+    const reach = slant < 1e-6 ? 0 : Math.min(other.h / slant, MITER_LIMIT * other.h)
+    const passes = me.join === 'through' || (me.join !== 'butt' && other.join === 'butt')
+    const end = passes ? sub(p, scale(away, reach)) : add(p, scale(away, reach))
+    const square = [sub(end, scale(perp(away), h)), add(end, scale(perp(away), h))]
+    // Walls are painted as one mass, which would hide where this one stops: the line of its end is kept to be drawn.
+    if (!passes) seams?.push([square[0], square[1]])
+    return square
+  }
+  return [...meet(p, prev, me, style).b, p, ...meet(p, me, next, style).a.reverse()]
 }
 
 /** The stretch a parametric node cuts out of a wall, as two world points, or null if it cuts nothing. */
@@ -151,6 +194,20 @@ export function wallPolygons(wall: Wall, doc: Document, registry: Registry): Vec
   }
   if (start < length - 1e-6) piece(start, length)
   return polygons
+}
+
+/**
+ * The lines to draw across a wall where it stops against another that runs through: the one place
+ * where two joined walls show the line between them.
+ */
+export function wallSeams(wall: Wall, doc: Document): [Vec2, Vec2][] {
+  if (!wall.joins || dist(wall.a, wall.b) < 1e-6) return []
+  const d = norm(sub(wall.b, wall.a))
+  const walls = wallsIn(doc, wall.parent)
+  const seams: [Vec2, Vec2][] = []
+  cap(wall.a, wall, d, walls, seams)
+  cap(wall.b, wall, scale(d, -1), walls, seams)
+  return seams
 }
 
 /**
@@ -247,4 +304,66 @@ export function wallEndFollowOps(doc: Document, wall: Node, index: number, p: Ve
       const patch = { ...(dist(other.a, joint) < JOIN_TOLERANCE ? { a: p } : {}), ...(dist(other.b, joint) < JOIN_TOLERANCE ? { b: p } : {}) }
       return patch.a || patch.b ? [{ op: 'update_node', id: other.id, patch }] : []
     })
+}
+
+/** One end of a wall. */
+export interface WallEnd {
+  wall: Wall
+  end: 'a' | 'b'
+}
+
+/** The wall ends that are at a point: a corner of the plan, or the free end of one wall. */
+export function wallEndsAt(doc: Document, parentId: string | null, p: Vec2): WallEnd[] {
+  return wallsIn(doc, parentId).flatMap((wall): WallEnd[] => [
+    ...(dist(wall.a, p) < JOIN_TOLERANCE ? [{ wall, end: 'a' as const }] : []),
+    ...(dist(wall.b, p) < JOIN_TOLERANCE ? [{ wall, end: 'b' as const }] : []),
+  ])
+}
+
+/** How the walls at a corner are joined, as one choice: 'butt' covers the through and butt pair. */
+export function cornerJoin(ends: WallEnd[]): 'miter' | 'round' | 'bevel' | 'butt' {
+  const asked = ends.map(({ wall, end }) => wall.joins?.[end])
+  return styleOf(asked.find((j) => j === 'round') ?? asked.find((j) => j === 'bevel') ?? asked.find((j) => j === 'through' || j === 'butt'), undefined)
+}
+
+/**
+ * The operations that give a corner one kind of joint. For 'butt', the wall at `through` (an index
+ * into `ends`) is the one that runs past; the others stop against it.
+ */
+export function cornerJoinOps(ends: WallEnd[], join: 'miter' | 'round' | 'bevel' | 'butt', through = 0): Op[] {
+  return ends.map(({ wall, end }, i): Op => {
+    const value: WallJoin | undefined = join === 'miter' ? undefined : join === 'butt' ? (i === through ? 'through' : 'butt') : join
+    const joins = { ...wall.joins, [end]: value }
+    if (value === undefined) delete joins[end]
+    return { op: 'update_node', id: wall.id, patch: { joins: Object.keys(joins).length > 0 ? joins : null } }
+  })
+}
+
+/** The operations that move a corner: every wall end at `from` goes to `to`. */
+export function moveCornerOps(doc: Document, parentId: string | null, from: Vec2, to: Vec2): Op[] {
+  const patches = new Map<string, Record<string, Vec2>>()
+  for (const { wall, end } of wallEndsAt(doc, parentId, from)) patches.set(wall.id, { ...patches.get(wall.id), [end]: to })
+  return [...patches].map(([id, patch]): Op => ({ op: 'update_node', id, patch }))
+}
+
+/**
+ * The operations that put a corner in the middle of a wall: the wall stops at `p` (brought onto
+ * its centerline) and a second one carries on from there. Returns nothing when `p` is at an end.
+ */
+export function splitWallOps(wall: Node, p: Vec2, newWallId: string): { ops: Op[]; at: Vec2 } | null {
+  if (wall.type !== 'wall') return null
+  const length = dist(wall.a, wall.b)
+  const d = norm(sub(wall.b, wall.a))
+  const along = dot(sub(p, wall.a), d)
+  if (along < JOIN_TOLERANCE * 2 || along > length - JOIN_TOLERANCE * 2) return null
+  const at = { x: tidy(wall.a.x + d.x * along), y: tidy(wall.a.y + d.y * along) }
+  const { id: _, order: __, joins, ...rest } = wall
+  return {
+    at,
+    ops: [
+      // Each half keeps the joint of the end it keeps.
+      { op: 'update_node', id: wall.id, patch: { b: at, joins: joins?.a ? { a: joins.a } : null } },
+      { op: 'add_node', node: { ...rest, id: newWallId, a: at, b: wall.b, ...(joins?.b ? { joins: { b: joins.b } } : {}) } },
+    ],
+  }
 }

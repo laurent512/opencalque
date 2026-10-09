@@ -1,3 +1,4 @@
+import { colorRefsIn } from './colors'
 import { childrenOf, componentsOf, layersOf, leavesOf, newId } from './document'
 import { moveOps, nodePrimitives } from './kinds'
 import { applyOps, OpError, type NodeInput, type Op } from './ops'
@@ -72,6 +73,11 @@ export function transplantOps(
       const asset = child.type === 'image' ? source.assets?.[child.asset] : undefined
       if (asset && !target.assets?.[asset.id] && !ops.some((o) => o.op === 'add_asset' && o.asset.id === asset.id)) {
         ops.push({ op: 'add_asset', asset })
+      }
+      // So does a shared colour it refers to, which also keeps its id.
+      for (const id of colorRefsIn(child)) {
+        const color = source.colors?.[id]
+        if (color && !target.colors?.[id] && !ops.some((o) => o.op === 'add_color' && o.color.id === id)) ops.push({ op: 'add_color', color })
       }
       const sourceLayer = child.layer === undefined ? undefined : source.layers[child.layer]
       const layer = (sourceLayer && layerByName.get(sourceLayer.name)) ?? options.fallbackLayer

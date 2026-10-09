@@ -42,6 +42,21 @@ export const AssetSchema = z
   })
   .describe('A binary file embedded in the document, referenced by image nodes.')
 
+/** How a wall end is finished where it meets one other wall. */
+export const WALL_JOINS = ['miter', 'round', 'bevel', 'through', 'butt'] as const
+const join = z.enum(WALL_JOINS).optional()
+
+export const SharedColorSchema = z
+  .object({
+    id: Id,
+    name: z.string(),
+    value: z.string().describe('A CSS color, e.g. "#2563eb".'),
+  })
+  .describe(
+    'A named colour that belongs to the drawing. A stroke, a fill or a layer colour refers to it by writing "var(--<id>)" in place of a colour; changing the value here then changes everything that refers to it.',
+  )
+export type SharedColor = z.infer<typeof SharedColorSchema>
+
 export const ModifierSchema = z
   .object({
     type: z.string().describe("The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."),
@@ -162,7 +177,19 @@ export const NodeSchema = z
       })
       .describe('A note pointing at something: a leader line from the tip a to the point b, with text beside b.'),
     z
-      .object({ ...base, type: z.literal('wall'), a: Vec2Schema, b: Vec2Schema, thickness: z.number().positive() })
+      .object({
+        ...base,
+        type: z.literal('wall'),
+        a: Vec2Schema,
+        b: Vec2Schema,
+        thickness: z.number().positive(),
+        joins: z
+          .object({ a: join, b: join })
+          .optional()
+          .describe(
+            "How each end is finished where it meets exactly one other wall. 'miter' (the default) brings both to a sharp corner, 'round' and 'bevel' round or cut that corner off, and 'through' with 'butt' on the other wall's end lets this wall run past while the other stops against it. Give both ends of a corner the same value, or the through/butt pair.",
+          ),
+      })
       .describe('A wall along the centerline a-b. Walls sharing an endpoint are drawn joined.'),
     z
       .object({
@@ -239,6 +266,7 @@ export const DocumentSchema = z
     name: z.string(),
     unit: z.literal('mm'),
     layers: z.record(Id, LayerSchema).describe('Layers by id.'),
+    colors: z.record(Id, SharedColorSchema).optional().describe('Shared colours by id, referred to from colour properties as "var(--<id>)".'),
     assets: z.record(Id, AssetSchema).optional().describe('Embedded files by id. Large; tools that only need the drawing can ignore it.'),
     nodes: z
       .record(Id, NodeSchema)

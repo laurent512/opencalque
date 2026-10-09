@@ -1,4 +1,5 @@
 export * from './clipboard'
+export * from './colors'
 export * from './components'
 export * from './declarative'
 export * from './document'

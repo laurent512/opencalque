@@ -1,6 +1,7 @@
 import * as z from 'zod'
+import { withoutColorRef } from './colors'
 import { componentUses, holdsChildren, isContainer, layersOf, newId, orderAfter, rootOf } from './document'
-import { AssetSchema, LayerSchema, NodeSchema, type Asset, type ContainerNode, type Document, type Node } from './schema'
+import { AssetSchema, LayerSchema, NodeSchema, type Asset, type ContainerNode, type Document, type Node, SharedColorSchema, type SharedColor } from './schema'
 
 /**
  * Operations are the only way a document changes. Each one touches a single node or layer and is
@@ -30,6 +31,9 @@ export type Op =
   | { op: 'add_layer'; layer: LayerInput }
   | { op: 'update_layer'; id: string; patch: Record<string, unknown> }
   | { op: 'remove_layer'; id: string }
+  | { op: 'add_color'; color: Omit<SharedColor, 'id'> & { id?: string } }
+  | { op: 'update_color'; id: string; patch: Record<string, unknown> }
+  | { op: 'remove_color'; id: string }
   | { op: 'add_asset'; asset: Omit<Asset, 'id'> & { id?: string } }
   | { op: 'set_document'; name: string }
 
@@ -56,6 +60,11 @@ export const OpSchema = z.discriminatedUnion('op', [
     .object({ op: z.literal('remove_layer'), id: z.string() })
     .describe('Removes a layer. Its nodes move to the first remaining layer.'),
   z
+    .object({ op: z.literal('add_color'), color: z.looseObject({ name: z.string(), value: z.string() }) })
+    .describe('Adds a shared colour. Use it by setting a colour property (style.stroke, style.fill, a layer color) to "var(--<id>)".'),
+  z.object({ op: z.literal('update_color'), id: z.string(), patch }).describe('Changes a shared colour; everything that refers to it changes with it.'),
+  z.object({ op: z.literal('remove_color'), id: z.string() }).describe('Removes a shared colour. What referred to it keeps the colour it had, as a plain colour.'),
+  z
     .object({ op: z.literal('add_asset'), asset: z.looseObject({ mime: z.string(), data: z.string() }) })
     .describe('Embeds a file (base64) so image nodes can show it. Assets are dropped on save once nothing uses them.'),
   z.object({ op: z.literal('set_document'), name: z.string() }).describe('Renames the document.'),
@@ -75,6 +84,7 @@ export function applyOps(doc: Document, ops: Op[]): Document {
   if (ops.length === 0) return doc
   const next: Document = { ...doc, nodes: { ...doc.nodes }, layers: { ...doc.layers } }
   if (doc.assets) next.assets = { ...doc.assets }
+  if (doc.colors) next.colors = { ...doc.colors }
   for (const op of ops) applyOp(next, op)
   return next
 }
@@ -187,6 +197,28 @@ function applyOp(d: Document, op: Op): void {
       const fallback = layersOf(d)[0]
       if (!fallback) throw new OpError('Cannot remove the last layer')
       for (const n of Object.values(d.nodes)) if (n.layer === op.id) d.nodes[n.id] = { ...n, layer: fallback.id }
+      return
+    }
+    case 'add_color': {
+      const id = op.color.id ?? newId('color')
+      if (d.colors?.[id]) throw new OpError(`Colour "${id}" already exists`)
+      d.colors = { ...d.colors, [id]: parse(SharedColorSchema, { ...op.color, id }, 'colour') }
+      return
+    }
+    case 'update_color': {
+      const color = d.colors?.[op.id]
+      if (!color) throw new OpError(`Unknown colour "${op.id}"`)
+      d.colors = { ...d.colors, [op.id]: parse(SharedColorSchema, merge(color, op.patch, ['id']), 'colour') }
+      return
+    }
+    case 'remove_color': {
+      const color = d.colors?.[op.id]
+      if (!color) throw new OpError(`Unknown colour "${op.id}"`)
+      const { [op.id]: _, ...rest } = d.colors!
+      d.colors = rest
+      // What used it keeps how it looks: the reference becomes the colour it stood for.
+      for (const n of Object.values(d.nodes)) d.nodes[n.id] = withoutColorRef(n, op.id, color.value)
+      for (const l of Object.values(d.layers)) d.layers[l.id] = withoutColorRef(l, op.id, color.value)
       return
     }
     case 'add_asset': {

@@ -44,6 +44,11 @@ interface State {
   /** The page, component or group whose direct children are shown and edited. */
   scope: string
   selection: string[]
+  /**
+   * The wall corner that is selected, as the point where the wall ends are: a corner is not an
+   * object of its own, so it is known by where it is. It and `selection` are never both set.
+   */
+  corner: Vec2 | null
   tool: Tool
   placing: Placing | null
   /** Rotation, in degrees, of the object following the cursor in the place tool. */
@@ -111,6 +116,7 @@ function initial(doc: Document, file: StoredFile | null): State {
     page,
     scope: page,
     selection: [],
+    corner: null,
     tool: 'select',
     placing: null,
     placingRotation: 0,
@@ -257,11 +263,16 @@ export function setTool(tool: Tool, placing: Placing | null = null): void {
   const shapeTool = SHAPE_TOOLS.includes(tool) ? tool : get().shapeTool
   const roomTool = ROOM_TOOLS.includes(tool) ? tool : get().roomTool
   const textTool = TEXT_TOOLS.includes(tool) ? tool : get().textTool
-  set({ tool, placing, shapeTool, roomTool, textTool, placingRotation: 0, calibration: null, drawLocks: {}, drawLive: null, drawStep: 0, status: '' })
+  set({ tool, placing, shapeTool, roomTool, textTool, corner: null, placingRotation: 0, calibration: null, drawLocks: {}, drawLive: null, drawStep: 0, status: '' })
 }
 
 export function select(ids: string[]): void {
-  set({ selection: ids })
+  set({ selection: ids, corner: null })
+}
+
+/** Selects the wall corner at a point, in place of any objects. */
+export function selectCorner(at: Vec2 | null): void {
+  set({ selection: [], corner: at })
 }
 
 export function showPage(id: string): void {

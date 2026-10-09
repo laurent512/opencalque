@@ -432,6 +432,114 @@ body.scrubbing .quick-field input[title] {
   border-radius: 2px;
 }
 
+/* A colour property: what it is, and the list to change it from */
+
+.color-choice {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.color-now {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px 0 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: var(--hover);
+  cursor: pointer;
+}
+
+.color-now:hover {
+  border-color: var(--border);
+}
+
+.color-now > i,
+.color-option > i {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgb(0 0 0 / 18%);
+  border-radius: 3px;
+}
+
+.color-now > span,
+.color-option > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Linked to a shared colour: said with the accent colour and a link, so it is not taken for a plain colour. */
+.color-now.linked {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.color-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  left: -40px;
+  z-index: 20;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 14%);
+}
+
+.color-menu h4 {
+  margin: 6px 6px 2px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.color-menu .hint {
+  margin: 2px 6px 6px;
+}
+
+.color-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 26px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.color-option:hover {
+  background: var(--hover);
+}
+
+.color-option.active {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.color-option > span {
+  flex: 1;
+}
+
+.row .uses {
+  min-width: 16px;
+  font-size: 11px;
+  text-align: right;
+}
+
 /* Main menu */
 
 .menu {

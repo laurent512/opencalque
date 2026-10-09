@@ -31,13 +31,16 @@ import {
   modifierParams,
   type Modifier,
   roomAt,
+  moveCornerOps,
+  splitWallOps,
+  wallEndsAt,
 } from '@opencalque/core'
 import { finishTextEdit, zoomToFit, withPaperContents } from '../actions'
 import { onCommand } from '../commands'
 import { t } from '../i18n'
 import { usePrefs } from '../prefs'
 import { formatLength, formatNumber, unit } from '../units'
-import { apply, cancel, commit, editComponent, preview, registry, select, setTool, useStore, type Tool, type View } from '../store'
+import { apply, cancel, commit, editComponent, preview, registry, select, setTool, useStore, type Tool, type View, selectCorner } from '../store'
 import { drawScene, gridStep, onPictureReady, type AngleMark, type Overlay, type SizeLabel, boxGrips } from './draw'
 import { drawing } from './drawing'
 
@@ -47,6 +50,8 @@ type Gesture =
   | { kind: 'press'; at: Vec2; start: Vec2; nodes: Node[] }
   | { kind: 'move'; start: Vec2; nodes: Node[] }
   | { kind: 'handle'; node: Node; index: number }
+  /** A wall corner being dragged: every wall end at `from` follows, or with `only` just that wall's. */
+  | { kind: 'corner'; from: Vec2; only?: string }
   /** A corner of a crop being dragged; `fixed` is the opposite corner, which stays where it is. */
   | { kind: 'crop'; node: Node; index: number; fixed: Vec2 }
   /** A corner of the box around the selection being dragged: everything scales about the opposite corner. */
@@ -210,6 +215,7 @@ export function CanvasView() {
   const [overlay, setOverlay] = useState<Overlay>({})
   const showGrid = usePrefs((p) => p.showGrid)
   const editingId = useStore((s) => s.editingText?.id)
+  const corner = useStore((s) => s.corner)
   // Bumped when an imported picture finishes decoding, to paint it.
   const [pictures, setPictures] = useState(0)
   useEffect(() => {
@@ -287,6 +293,16 @@ export function CanvasView() {
     return null
   }
 
+  /** The wall corner (or free wall end) under a point of the canvas, as the point it is at. */
+  const cornerAt = (at: Vec2): Vec2 | null => {
+    const { view } = get()
+    for (const item of [...sceneRef.current].reverse()) {
+      if (item.node.type !== 'wall' || item.locked) continue
+      for (const end of [item.node.a, item.node.b]) if (dist({ x: end.x * view.zoom + view.x, y: end.y * view.zoom + view.y }, at) < 7) return end
+    }
+    return null
+  }
+
   /** The box around the selection, when it is one that carries grips: a single object with handles of its own has none. */
   const gripBox = () => {
     const s = get()
@@ -350,8 +366,8 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, editingId ? scene.map((item) => (item.id === editingId ? { ...item, prims: item.prims.filter((p) => p.kind !== 'text') } : item)) : scene, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, grips: tool === 'select' }, showGrid)
-  }, [scene, view, viewport, selection, handles, selectionLabels, titles, frames, overlay, showGrid, pictures, editingId, tool])
+    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, editingId ? scene.map((item) => (item.id === editingId ? { ...item, prims: item.prims.filter((p) => p.kind !== 'text') } : item)) : scene, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' }, showGrid)
+  }, [scene, view, viewport, selection, handles, selectionLabels, titles, frames, corner, overlay, showGrid, pictures, editingId, tool])
 
   /**
    * Where a point lands after snapping: on a nearby point of existing geometry, else on the grid.
@@ -515,6 +531,15 @@ export function CanvasView() {
             : { kind: 'scale', nodes, pivot: points[(corner + 2) % 4], corner: points[corner] }
         return
       }
+      // A wall end is a corner of the plan, shared by the walls that meet there: pressing on one
+      // selects the corner, and dragging takes them all. With Alt, only the wall that was selected.
+      const corner = cornerAt(at)
+      if (corner) {
+        const alone = e.altKey && s.selection.length === 1 && s.doc.nodes[s.selection[0]]?.type === 'wall' ? s.selection[0] : undefined
+        selectCorner(corner)
+        gesture.current = { kind: 'corner', from: corner, only: alone }
+        return
+      }
       const index = handles.findIndex((h) => dist({ x: h.x * s.view.zoom + s.view.x, y: h.y * s.view.zoom + s.view.y }, at) < 7)
       if (index >= 0) {
         gesture.current = { kind: 'handle', node: s.doc.nodes[s.selection[0]], index }
@@ -647,6 +672,21 @@ export function CanvasView() {
         previewed = preview([{ op: 'update_node', id: g.node.id, patch: kindOf(g.node).moveHandle!(g.node, g.index, target.p) }, ...joined])
         break
       }
+      case 'corner': {
+        // Nothing has moved until the pointer has: a press on a corner only selects it.
+        const before = s.base ?? s.doc
+        const ends = wallEndsAt(before, s.scope, g.from)
+        const target = snap(world, e, ends.map((end) => end.wall.id))
+        marker = target.marker
+        if (dist(target.p, g.from) < 1e-6) {
+          cancel()
+          break
+        }
+        const ops = moveCornerOps(before, s.scope, g.from, target.p).filter((op) => !g.only || (op.op === 'update_node' && op.id === g.only))
+        previewed = preview(ops)
+        if (previewed) useStore.setState({ corner: g.only ? null : target.p })
+        break
+      }
       case 'crop': {
         const target = snap(world, e, [g.node.id])
         marker = target.marker
@@ -721,7 +761,8 @@ export function CanvasView() {
         {
           // The pointer says what a press here would do: resize along a diagonal, turn, or move a point.
           const grip = frameCornerAt(at) ?? gripAt(at)
-          const own = s.tool === 'select' ? handles.findIndex((h) => dist({ x: h.x * s.view.zoom + s.view.x, y: h.y * s.view.zoom + s.view.y }, at) < 7) : -1
+          const onCorner = s.tool === 'select' && !grip && cornerAt(at) !== null
+          const own = onCorner ? 0 : s.tool === 'select' ? handles.findIndex((h) => dist({ x: h.x * s.view.zoom + s.view.x, y: h.y * s.view.zoom + s.view.y }, at) < 7) : -1
           const boxed = ['rect', 'paper'].includes(s.doc.nodes[s.selection[0]]?.type ?? '')
           const diagonal = (corner: number) => (corner % 2 === 0 ? 'nwse-resize' : 'nesw-resize')
           const pointer = grip ? (grip.corner === 'knob' ? 'grab' : diagonal(grip.corner)) : own >= 0 ? (boxed ? diagonal(own) : 'move') : null
@@ -786,6 +827,7 @@ export function CanvasView() {
         break
       case 'move':
       case 'handle':
+      case 'corner':
       case 'crop':
       case 'scale':
       case 'rotate':
@@ -814,6 +856,12 @@ export function CanvasView() {
     const s = get()
     if (s.tool !== 'select') return
     const hit = hitTest(sceneRef.current, toWorld(local(e), s.view), 5 / s.view.zoom)
+    // A double-click on a wall puts a corner there: the wall becomes two, which can then be bent.
+    if (hit?.node.type === 'wall' && !cornerAt(local(e))) {
+      const split = splitWallOps(hit.node, snap(toWorld(local(e), s.view), e, []).p, newId())
+      if (split && apply(split.ops)) selectCorner(split.at)
+      return
+    }
     if (hit?.node.type === 'instance') editComponent(hit.node.component)
     else if (hit?.node.type === 'group') editComponent(hit.id)
     else if (hit?.node.type === 'text' || hit?.node.type === 'annotation') useStore.setState({ editingText: { id: hit.id } })
@@ -855,7 +903,7 @@ export function CanvasView() {
       } else if (e.key === 'Escape') {
         if (gesture.current.kind !== 'idle') reset()
         else if (s.tool !== 'select') setTool('select')
-        else if (s.selection.length > 0) select([])
+        else if (s.selection.length > 0 || s.corner) select([])
         else if (s.scope !== s.page) editComponent(null)
       } else if (e.key === 'Enter') reset()
     }

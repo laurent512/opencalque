@@ -52,13 +52,14 @@ Then drag `examples/apartment.opencalque` onto the window.
 ```sh
 pnpm dev:web      # the same editor in a browser
 pnpm build && pnpm start   # the built desktop app
-pnpm test         # 95 tests
+pnpm test         # 110 tests
 ```
 
 ## What you can do
 
 **Draw**
 - Walls by centerline and thickness, joined cleanly at any angle; a double-click closes a room.
+- Corners you can select and drag, with a choice of joint: mitred, rounded, cut off, or one wall running through.
 - Doors, windows and four kinds of stairs, each with its own parameters.
 - Lines, rectangles, ellipses, polylines, text typed in place, and annotations with curved leaders.
 - Exact sizes: type a length or an angle while drawing, in mm, cm, m, inches or feet.
@@ -68,6 +69,7 @@ pnpm test         # 95 tests
 - Rooms that follow their walls, with name and area; dividers to split an open space.
 - Papers: sheets at a standard format and drawing scale (A5 to A0) that carry what is drawn on them.
 - Pages, layers, groups and reusable components.
+- Shared colours: link objects to a named colour and recolour them all at once.
 - Rotate, flip, scale and nudge any selection, from handles, the keyboard or exact values.
 
 **Reuse**
@@ -149,8 +151,10 @@ A batch is all-or-nothing and every result is validated, so a script or a model 
 | Drag a number | Hold `Alt` over a number in the panels and drag sideways to change it; `Shift` goes ten times faster |
 | Transform | Select, then drag a corner of the box to scale or the round handle above it to turn (`Shift` for 15° steps). `Shift+R` turns a quarter, `Shift+H` and `Shift+V` flip, the arrow keys move by one grid step. Exact angles and percentages are in the right panel, under Transform |
 | Annotation | The arrow beside the text button, or `Shift+T`: click what the note is about, click where the note goes, type it. Ends (arrow, open arrow, dot, tick, none), curve and text size are in the right panel; drag the middle of the line to bend it |
+| Corners | Click the end of a wall to select the corner: drag it and every wall that meets there follows. In the right panel, choose how two walls are joined: mitred, rounded, cut off, or one running through. Double-click a wall to put a corner in it |
 | Rooms | `A`, then click inside closed walls: the room gets a tinted floor, a name and its area, and follows the walls when they move. Pick it by its name. The arrow beside the button has the divider (`Shift+A`), a dashed line that splits an open space into two rooms |
 | Floor pattern | Select a room (or any closed shape), Object → Hatch or floor pattern, then choose lines, planks or tiles and the spacing under Modifiers |
+| Shared colours | In any colour field, choose "New shared colour from this one", then link other objects to it from the same list. Change it under Shared colours in the Layers panel and everything linked follows. A linked colour shows its name with a link icon |
 | Crop | Select something (an object, a group, a placed component), Object → Crop: only the part inside the orange rectangle is drawn. Drag its corners to change it. Nothing is cut: switch it off or remove it under Modifiers in the right panel |
 | Extensions | Preferences → Extension warehouse adds new kinds of object |
 | Export | File → Export SVG, or Export DXF for other CAD programs |
@@ -319,7 +323,7 @@ Extensions are currently compiled in: add yours to the registry in [`apps/web/sr
 - **Installers.** There is no packaged download; you run from source.
 - **Printing.** Papers exist with format and scale, but there is no title block or PDF export to scale yet.
 - **Drawing.** No arcs or curves, no align, distribute or array, and scaling is uniform only.
-- **Walls.** A wall ending against the middle of another is not trimmed on screen.
+- **Walls.** No curved walls yet. In a DXF export, a wall ending against the middle of another keeps the line across its end.
 - **Import.** Only the first page of a PDF is taken; there is no DXF or DWG import.
 - **Hosted version.** Accounts, cloud storage and realtime collaboration are planned; the data model is prepared for them, nothing is built.
 - **Extensions.** Those installed at runtime can add objects and modifiers as data. Extensions that add tools must be compiled in.

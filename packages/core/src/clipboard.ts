@@ -1,4 +1,5 @@
 import { importComponents, transplantOps } from './components'
+import { colorsOf } from './colors'
 import { childrenOf, createDocument, layersOf, leavesOf, pagesOf } from './document'
 import type { Vec2 } from './geometry'
 import { moveOps } from './kinds'
@@ -24,6 +25,8 @@ export function copyNodes(doc: Document, nodeIds: string[]): Document {
   let clip = createDocument('Clipboard')
   clip = applyOps(clip, [
     { op: 'update_layer', id: 'layer_1', patch: { name: '' } },
+    // Shared colours go along whole: they are small, and a layer or a copied node may refer to any of them.
+    ...colorsOf(doc).map((color): Op => ({ op: 'add_color', color })),
     ...layersOf(doc)
       .filter((l) => layers.has(l.id))
       .map((l): Op => ({ op: 'add_layer', layer: { name: l.name, color: l.color } })),

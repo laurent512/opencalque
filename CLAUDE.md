@@ -36,10 +36,12 @@ Agent terminals have `ELECTRON_RUN_AS_NODE=1`, which breaks Electron. Prefix Ele
 - A provider's `ChatSession` must implement `snapshot()` and accept it back as `history`, without picture data, so conversations can be stored and resumed.
 - A paper has no children: what lies inside its rectangle is on it, by position (`paperContents`). Anything that moves or copies nodes for the user goes through `withPaperContents` in `apps/web/src/actions.ts`. Moves on the canvas also add `wallFollowOps` so joined walls stay joined.
 - A room stores a point, never an outline: its floor comes from `roomAt` (`packages/core/src/rooms.ts`) each time it is drawn. Do not cache a room's shape in the document.
+- A colour property may be a reference to a shared colour, `var(--<id>)`. Resolve it with `resolveColor` before using it as a colour; never write the resolved value back into a node.
 - Modifiers (`packages/core/src/modifiers.ts`) are pure functions from primitives to primitives, run in list order at the end of `nodePrimitives`. Positions in a modifier are relative to its `frame`, which is all that moving and transforming code touches. Never make a modifier read or change the document.
 - Hints and the size fields depend on `drawStep` in the store; show nothing that cannot be used at the current step.
 - Rotate, mirror and scale nodes with `transformOps` (`packages/core/src/transform.ts`), which knows what each type means; a new node type needs a case there.
 - There is no Assets panel: everything that can be placed is in the component library (`WarehouseDialog.tsx`).
+- A wall corner is a position, not a node. Use `wallEndsAt`, `moveCornerOps`, `cornerJoin` and `cornerJoinOps` (`packages/core/src/walls.ts`); how a corner is joined lives on each wall end, in `joins`.
 - Doors and windows are tied to walls by position, not by reference. Wall geometry lives in `packages/core/src/walls.ts`.
 
 ## Open questions for the owner

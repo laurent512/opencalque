@@ -1,12 +1,13 @@
 import { childrenOf, isVisible } from './document'
 import { add, dist, len, mid, norm, perp, rotate, scale, sub, type Vec2 } from './geometry'
+import { resolveColor } from './colors'
 import { applyModifiers, movedModifiers } from './modifiers'
 import { transformPrimitive, type Primitive } from './primitives'
 import type { Op } from './ops'
 import type { Registry } from './registry'
 import type { Asset, Document, Node, NodeOf, NodeType } from './schema'
 import { roomAt } from './rooms'
-import { hostWall, wallPolygons } from './walls'
+import { hostWall, wallPolygons, wallSeams } from './walls'
 
 export const DEFAULT_INK = '#1f1f1f'
 export const WALL_FILL = '#ffffff'
@@ -328,8 +329,10 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     snapPoints: (node) => [node.a, node.b],
   },
   wall: {
-    primitives: (node, ctx) =>
-      wallPolygons(node, ctx.doc, ctx.registry).map((points) => ({ kind: 'path', closed: true, union: 'wall', fill: WALL_FILL, points })),
+    primitives: (node, ctx) => [
+      ...wallPolygons(node, ctx.doc, ctx.registry).map((points): Primitive => ({ kind: 'path', closed: true, union: 'wall', fill: WALL_FILL, points })),
+      ...wallSeams(node, ctx.doc).map((points): Primitive => ({ kind: 'path', points })),
+    ],
     move: moveAB,
     handles: handlesAB,
     moveHandle: moveHandleAB,
@@ -387,13 +390,15 @@ export function kindOf(node: Node): NodeKind<any> {
  * specified, then the layer color, then the default ink. Primitives marked `own` skip the first step.
  */
 export function nodePrimitives(node: Node, ctx: KindContext): Primitive[] {
-  const layerColor = node.layer === undefined ? undefined : ctx.doc.layers[node.layer]?.color
+  // References to shared colours are followed here, once, for whatever the kind and the style say.
+  const paint = (value: string | undefined) => resolveColor(ctx.doc, value)
+  const layerColor = paint(node.layer === undefined ? undefined : ctx.doc.layers[node.layer]?.color)
   const style = node.style
   const styled = kindOf(node)
     .primitives(node, ctx)
     .map((p) => {
-      const stroke = (p.own ? p.stroke : (style?.stroke ?? p.stroke)) ?? layerColor ?? DEFAULT_INK
-      const fill = p.own ? p.fill : (style?.fill ?? p.fill)
+      const stroke = paint(p.own ? p.stroke : (style?.stroke ?? p.stroke)) ?? layerColor ?? DEFAULT_INK
+      const fill = paint(p.own ? p.fill : (style?.fill ?? p.fill))
       return {
         ...p,
         stroke,

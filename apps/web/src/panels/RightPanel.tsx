@@ -1,11 +1,11 @@
-import { childrenOf, DEFAULT_PAPER_SCALE, layersOf, lengthOf, PAPER_FORMATS, paperFormat, paperSize, type Node, type Op, modifierKind, modifierKinds, modifierParams, type Modifier, roomAt } from '@opencalque/core'
+import { childrenOf, DEFAULT_PAPER_SCALE, layersOf, lengthOf, PAPER_FORMATS, paperFormat, paperSize, type Node, type Op, modifierKind, modifierKinds, modifierParams, type Modifier, roomAt, colorRef, colorRefOf, colorsOf, newId, resolveColor, cornerJoin, cornerJoinOps, moveCornerOps, wallEndsAt } from '@opencalque/core'
 import { executeById } from '../commands'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, FlipHorizontal2, FlipVertical2, RotateCcw, RotateCw, Eye, EyeOff, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, FlipHorizontal2, FlipVertical2, RotateCcw, RotateCw, Eye, EyeOff, Trash2, Check, Link2, Plus, Unlink } from 'lucide-react'
 import { reorderSelection, transformSelection, addModifier } from '../actions'
 import { applyCalibration } from '../floorplan'
 import { language, msg, t } from '../i18n'
-import { apply, editComponent, registry, toast, useStore } from '../store'
+import { apply, editComponent, registry, toast, useStore, selectCorner } from '../store'
 import { Field, IconButton, labelOf, Section } from '../ui'
 import { formatLength, parseLength, parseNumber, unit } from '../units'
 
@@ -160,6 +160,95 @@ type Update = (patch: (node: Node) => Record<string, unknown>) => void
 /** Properties that are sizes, which dragging must not take below zero. */
 const SIZES = /(^|\.)(width|height|thickness|rx|ry|size|markerSize|extensionGap|strokeWidth|opacity|decimals)$/
 
+/**
+ * A colour property: what it is now, and a list to change it from. It can hold a colour of its
+ * own, or be linked to one of the drawing's shared colours, in which case it shows that colour's
+ * name with a link and follows it whenever it changes.
+ */
+function ColorChoice({ stored, fallback, unset, commit }: { stored: string | undefined; fallback: string; unset?: string; commit: (value: unknown) => void }) {
+  const doc = useStore((s) => s.doc)
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLSpanElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onPointerDown = (e: PointerEvent) => {
+      if (!box.current?.contains(e.target as HTMLElement)) setOpen(false)
+    }
+    window.addEventListener('pointerdown', onPointerDown, true)
+    return () => window.removeEventListener('pointerdown', onPointerDown, true)
+  }, [open])
+
+  const linked = colorRefOf(stored)
+  const shared = linked === null ? undefined : doc.colors?.[linked]
+  // What is painted: the shared colour's value, the property's own colour, or what it falls back on.
+  const shown = resolveColor(doc, stored) ?? fallback
+  const colors = colorsOf(doc)
+
+  /** Makes a shared colour out of the one shown and links this property to it. */
+  const share = () => {
+    const id = newId('color')
+    if (apply([{ op: 'add_color', color: { id, name: t('Colour {n}', { n: colors.length + 1 }), value: shown } }])) commit(colorRef(id))
+    setOpen(false)
+  }
+
+  return (
+    <span className="color-choice" ref={box}>
+      <button type="button" className={`color-now${linked ? ' linked' : ''}`} title={linked ? t('Linked to a shared colour: it changes when that colour does') : t('Choose a colour')} onClick={() => setOpen(!open)}>
+        <i style={{ background: shown }} />
+        {linked ? (
+          <>
+            <Link2 size={12} />
+            <span>{shared?.name ?? t('Missing colour')}</span>
+          </>
+        ) : stored === undefined ? (
+          <em className="faint">{unset && t(unset)}</em>
+        ) : (
+          <span>{shown}</span>
+        )}
+      </button>
+      {open && (
+        <div className="color-menu">
+          <h4>{t('Shared colours')}</h4>
+          {colors.length === 0 && <p className="hint">{t('None yet. A shared colour is used by reference: change it once and everything linked to it changes.')}</p>}
+          {colors.map((color) => (
+            <button key={color.id} type="button" className={`color-option${color.id === linked ? ' active' : ''}`} title={t('Link to this shared colour')} onClick={() => (commit(colorRef(color.id)), setOpen(false))}>
+              <i style={{ background: color.value }} />
+              <span>{color.name}</span>
+              {color.id === linked && <Check size={12} />}
+            </button>
+          ))}
+          <button type="button" className="color-option" onClick={share}>
+            <Plus size={12} />
+            <span>{t('New shared colour from this one')}</span>
+          </button>
+          {shared && (
+            <label className="color-option" title={t('Changes every object linked to it')}>
+              <input type="color" className="swatch" value={shared.value} onChange={(e) => apply([{ op: 'update_color', id: shared.id, patch: { value: e.target.value } }])} />
+              <span>{t('Change “{name}” everywhere', { name: shared.name })}</span>
+            </label>
+          )}
+          <h4>{t('This object only')}</h4>
+          <label className="color-option">
+            <input type="color" className="swatch" value={shown} onChange={(e) => commit(e.target.value)} />
+            <span>{linked ? t('Unlink and pick a colour') : t('Pick a colour')}</span>
+          </label>
+          {linked && (
+            <button type="button" className="color-option" onClick={() => (commit(shown), setOpen(false))}>
+              <Unlink size={12} />
+              <span>{t('Unlink, keeping the colour')}</span>
+            </button>
+          )}
+          {stored !== undefined && (
+            <button type="button" className="color-option" onClick={() => (commit(undefined), setOpen(false))}>
+              <span>{t('Reset')}{unset ? ` (${t(unset)})` : ''}</span>
+            </button>
+          )}
+        </div>
+      )}
+    </span>
+  )
+}
+
 function FieldRow({ node, field, update }: { node: Node; field: FieldSpec; update: Update }) {
   const stored = read(node, field.path)
   const value = stored ?? field.fallback
@@ -192,18 +281,7 @@ function FieldRow({ node, field, update }: { node: Node; field: FieldSpec; updat
           ))}
         </select>
       )}
-      {field.type === 'color' && (
-        <>
-          <input type="color" className="swatch" value={value as string} onChange={(e) => commit(e.target.value)} />
-          {stored === undefined ? (
-            <em className="faint">{field.unset && t(field.unset)}</em>
-          ) : (
-            <button className="text-button" onClick={() => commit(undefined)}>
-              {t('Reset')}
-            </button>
-          )}
-        </>
-      )}
+      {field.type === 'color' && <ColorChoice key={node.id} stored={stored as string | undefined} fallback={value as string} unset={field.unset} commit={commit} />}
     </label>
   )
 }
@@ -542,6 +620,58 @@ function AnnotationTool() {
   )
 }
 
+/** The kinds of joint a corner of two walls can have. */
+const JOINS = options(['miter', msg('Mitred (sharp corner)')], ['round', msg('Rounded')], ['bevel', msg('Cut off')], ['butt', msg('One wall runs through')])
+
+/**
+ * A wall corner: the point where wall ends meet. It is not an object of the drawing, so what is
+ * shown and changed here is written to the walls that meet there.
+ */
+function CornerPanel({ at }: { at: { x: number; y: number } }) {
+  const doc = useStore((s) => s.doc)
+  const scope = useStore((s) => s.scope)
+  const ends = wallEndsAt(doc, scope, at)
+  if (ends.length === 0) return null
+  const join = cornerJoin(ends)
+  const passing = Math.max(0, ends.findIndex(({ wall, end }) => wall.joins?.[end] === 'through'))
+  const move = (to: { x: number; y: number }) => {
+    if (apply(moveCornerOps(doc, scope, at, to))) selectCorner(to)
+  }
+  return (
+    <>
+      <Section title={ends.length > 1 ? t('Corner') : t('Wall end')}>
+        <p className="hint">{ends.length > 1 ? t('{n} walls meet here. Drag the corner, or type where it should be: they all follow.', { n: ends.length }) : t('The free end of a wall. Bring it onto another wall’s end to join them.')}</p>
+        <Field label={t('X')} numeric length value={at.x} onCommit={(x) => move({ x, y: at.y })} />
+        <Field label={t('Y')} numeric length value={at.y} onCommit={(y) => move({ x: at.x, y })} />
+      </Section>
+      {ends.length === 2 && (
+        <Section title={t('Joint')}>
+          <label className="field">
+            <span>{t('Type')}</span>
+            <select value={join} onChange={(e) => apply(cornerJoinOps(ends, e.target.value as typeof join, passing))}>
+              {JOINS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {t(option.label)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {join === 'butt' && (
+            <button className="text-button" onClick={() => apply(cornerJoinOps(ends, 'butt', passing === 0 ? 1 : 0))}>
+              {t('Let the other wall run through')}
+            </button>
+          )}
+        </Section>
+      )}
+      {ends.length > 2 && (
+        <Section title={t('Joint')}>
+          <p className="hint">{t('Where more than two walls meet, they are mitred together.')}</p>
+        </Section>
+      )}
+    </>
+  )
+}
+
 /** Sets the scale of an imported plan from two picked points and the real distance between them. */
 function CalibrateTool() {
   const calibration = useStore((s) => s.calibration)
@@ -594,10 +724,15 @@ export function Properties() {
   const tool = useStore((s) => s.tool)
   const wallThickness = useStore((s) => s.wallThickness)
   const nodes = selection.map((id) => doc.nodes[id]).filter(Boolean)
+  const corner = useStore((s) => s.corner)
+  // A corner that is no longer one (its walls were moved or undone) shows as nothing selected.
+  const onCorner = corner !== null && wallEndsAt(doc, useStore.getState().scope, corner).length > 0
   return (
     <div className="panel-body">
         {tool === 'calibrate' ? (
           <CalibrateTool />
+        ) : onCorner ? (
+          <CornerPanel at={corner} />
         ) : nodes.length > 0 ? (
           <Selection nodes={nodes} />
         ) : tool === 'dimension' ? (

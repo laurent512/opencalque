@@ -151,6 +151,82 @@
         "properties": {
           "op": {
             "type": "string",
+            "const": "add_color"
+          },
+          "color": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "op",
+          "color"
+        ],
+        "additionalProperties": false,
+        "description": "Adds a shared colour. Use it by setting a colour property (style.stroke, style.fill, a layer color) to \"var(--<id>)\"."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "update_color"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {},
+            "description": "Shallow merge patch: each key replaces that property, and a null value removes it."
+          }
+        },
+        "required": [
+          "op",
+          "id",
+          "patch"
+        ],
+        "additionalProperties": false,
+        "description": "Changes a shared colour; everything that refers to it changes with it."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "remove_color"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "op",
+          "id"
+        ],
+        "additionalProperties": false,
+        "description": "Removes a shared colour. What referred to it keeps the colour it had, as a plain colour."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
             "const": "add_asset"
           },
           "asset": {

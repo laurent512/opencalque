@@ -4,7 +4,7 @@ import 'dockview-react/dist/styles/dockview.css'
 import { PANELS, registerDock, useDock, type PanelId } from './dock'
 import { t } from './i18n'
 import { AssistantPanel } from './panels/AssistantPanel'
-import { Layers, Objects, Pages } from './panels/LeftPanel'
+import { Colors, Layers, Objects, Pages } from './panels/LeftPanel'
 import { Properties } from './panels/RightPanel'
 import { Stage } from './Stage'
 
@@ -34,7 +34,13 @@ const scrolling = (id: PanelId, Panel: FunctionComponent) => () => (
 const COMPONENTS: Record<PanelId | typeof CANVAS, FunctionComponent> = {
   canvas: Stage,
   pages: scrolling('pages', Pages),
-  layers: scrolling('layers', Layers),
+  // Shared colours sit with the layers: both say how things look across the whole drawing.
+  layers: scrolling('layers', () => (
+    <>
+      <Layers />
+      <Colors />
+    </>
+  )),
   objects: scrolling('objects', Objects),
   properties: scrolling('properties', Properties),
   assistant: AssistantPanel,

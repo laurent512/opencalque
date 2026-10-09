@@ -64,6 +64,37 @@
       },
       "description": "Layers by id."
     },
+    "colors": {
+      "description": "Shared colours by id, referred to from colour properties as \"var(--<id>)\".",
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string",
+            "description": "A CSS color, e.g. \"#2563eb\"."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "value"
+        ],
+        "additionalProperties": false,
+        "description": "A named colour that belongs to the drawing. A stroke, a fill or a layer colour refers to it by writing \"var(--<id>)\" in place of a colour; changing the value here then changes everything that refers to it."
+      }
+    },
     "assets": {
       "description": "Embedded files by id. Large; tools that only need the drawing can ignore it.",
       "type": "object",
@@ -2306,6 +2337,33 @@
               "thickness": {
                 "type": "number",
                 "exclusiveMinimum": 0
+              },
+              "joins": {
+                "description": "How each end is finished where it meets exactly one other wall. 'miter' (the default) brings both to a sharp corner, 'round' and 'bevel' round or cut that corner off, and 'through' with 'butt' on the other wall's end lets this wall run past while the other stops against it. Give both ends of a corner the same value, or the through/butt pair.",
+                "type": "object",
+                "properties": {
+                  "a": {
+                    "type": "string",
+                    "enum": [
+                      "miter",
+                      "round",
+                      "bevel",
+                      "through",
+                      "butt"
+                    ]
+                  },
+                  "b": {
+                    "type": "string",
+                    "enum": [
+                      "miter",
+                      "round",
+                      "bevel",
+                      "through",
+                      "butt"
+                    ]
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "required": [

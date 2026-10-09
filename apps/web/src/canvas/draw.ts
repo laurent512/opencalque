@@ -43,6 +43,8 @@ export interface Overlay {
   titles?: { at: Vec2; text: string; selected: boolean }[]
   /** The outlines of the selected object's modifiers (a crop's rectangle), with corner handles on those that can be dragged. */
   frames?: { outline: Vec2[]; handles: boolean }[]
+  /** The selected wall corner: a point, drawn as a filled dot so it reads as a thing that is selected. */
+  corner?: Vec2 | null
   /** Whether the box around the selection gets its grips: corners to scale by, a knob to turn by. */
   grips?: boolean
   /** A guide across the whole view through `at`, shown while the line being drawn is exactly horizontal or vertical. */
@@ -270,6 +272,21 @@ export function drawScene(
     ctx.fillStyle = 'rgba(13, 153, 255, 0.08)'
     ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y)
     ctx.strokeRect(a.x + 0.5, a.y + 0.5, b.x - a.x, b.y - a.y)
+  }
+  if (overlay.corner) {
+    const p = toScreen(overlay.corner)
+    ctx.setLineDash([])
+    ctx.fillStyle = 'rgb(13 153 255 / 18%)'
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, 11, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = ACCENT
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, 5.5, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.stroke()
   }
   for (const frame of overlay.frames ?? []) {
     const points = frame.outline.map(toScreen)

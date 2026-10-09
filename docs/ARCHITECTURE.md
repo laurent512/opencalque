@@ -166,6 +166,15 @@ A `paper` node is a sheet laid on the drawing, in the spirit of a frame: `x`, `y
 - The name above the corner is editor chrome (`Overlay.titles`, drawn in screen-size text and hit-tested by `titleAt` in the canvas), not part of the drawing or of exports. Once a scene has a backdrop the canvas paints the surroundings as a grey desk; the grid is drawn over the sheets.
 - **Paper tool** (`F`). The first click sets a corner and, if needed, zooms out until an A3 fits half the view. While pulling, `paperFormats` offers A5 to A0 at `paperScale` (store), upright or lying according to where the pointer is, as `Overlay.ghosts`; within 14 px of a format's corner the paper takes it (`constrain`), Alt gives any size. The properties panel sets format, direction and scale.
 
+### Shared colours (`colors.ts`)
+
+A drawing may hold named colours in `colors` (id, name, value). Any colour property (a style's stroke or fill, a layer's colour, a dimension's text colour) refers to one by holding `var(--<id>)` in place of a colour. Nothing is copied, so `update_color` recolours everything that refers to it with one operation and without touching a node.
+
+- References are followed in one place, `nodePrimitives`, after the kind has drawn and the style is resolved; renderers and exporters only ever see plain colours.
+- `remove_color` replaces every reference with the colour it stood for, so nothing changes appearance; a reference to a colour that is not there draws in plain ink.
+- Copying to another drawing brings the colours along (`transplantOps`, `copyNodes`); they keep their ids, so pasting twice adds them once.
+- In the editor a colour field (`ColorChoice` in `RightPanel.tsx`) shows a linked colour by name, in the accent colour with a link icon, and its list separates "Shared colours" from "This object only". The list of shared colours, with how many things use each, is under the layers (`Colors` in `LeftPanel.tsx`).
+
 ### Annotations
 
 An `annotation` is a note with a leader: `a` is the tip on what it is about, `b` where the text sits, plus `text`, the symbol at each end (`startMarker`, `endMarker`: the same set as dimensions) and `bend`, how much the leader curves as a fraction of its length. The curve is a quadratic drawn as a polyline (`annotationCurve` in `kinds.ts`); its third handle is the middle of the curve, and dragging it sets `bend`. The text runs away from the tip, so text primitives gained `align: 'right'`.
@@ -252,6 +261,16 @@ A wall draws as one polygon per solid stretch (`wallPolygons`). Two mechanisms c
 - **Everything else is a paint-order trick.** Wall paths carry `union: 'wall'`. `paintOrder` paints all union outlines first, then all union fills, so outline segments that fall inside another wall are covered. This is what hides the shared edges at joints, and what makes a wall ending on another wall's *body* (a T-junction) or crossing it look merged. Fills are grown by a 0.8 px seam in their own colour to hide antialiasing hairlines between touching fills, and the outlines are widened by the same amount to keep their weight; merged outlines use round line joins so they do not spike at joints.
 
 Consequences: walls always paint beneath everything else, wall fill must be opaque (it is white by default, `WALL_FILL`; a see-through wall would show the outlines hidden inside joints), and a wall whose end lies on another wall's body is not trimmed geometrically (it just overlaps).
+
+### Corners and joints
+
+A corner is the point where wall ends meet. **It is not a node**: like everything else about walls it is known by position, so it cannot fall out of step with the walls. `wallEndsAt(doc, parent, point)` gives the ends there, `moveCornerOps` moves them together, and `splitWallOps` puts a corner in the middle of a wall by making it two.
+
+How two walls are joined is written on the walls, in `joins: { a?, b? }`, one value per end: `round` or `bevel` on both ends of the corner, or `through` on the wall that runs past with `butt` on the one that stops. `cornerJoin` reads a corner's joint as one choice and `cornerJoinOps` writes it to every end. In `cap()` the choice only changes the outer side of the corner (`meet` returns an arc or a cut in place of the mitre point); a butt joint returns square ends, and `wallSeams` gives the line of the stopping wall's end, drawn as an ordinary path because walls are painted as one mass. Where three or more walls meet they are always mitred. Rooms are unaffected: they are found from centerlines.
+
+In the editor the selected corner is `corner` in the store (a point, never set together with `selection`). A press on a wall end selects it and a drag moves it (gesture `corner`; with Alt and a wall selected, only that wall's end); a double-click on a wall splits it there; `CornerPanel` in `RightPanel.tsx` shows its position and joint.
+
+A wall that ends against the middle of another needs nothing: the merged painting of walls already hides the lines between them.
 
 ### Staying joined (`wallFollowOps`, `wallEndFollowOps`)
 
@@ -438,6 +457,8 @@ Verified at the end of the first session:
 
 - Modifiers and step-aware hints (77 tests): a crop added from the panel hides the ends of a line and leaves the line's own coordinates alone; dragging its corner, switching it off and on, nudging the line (the crop follows), Object › Crop on a group, removing it; the hint and the fields at every step of every tool; a digit typed before a wall is started no longer lands in a field.
 
+- Corners (110 tests): the pointer changing over a corner, a click selecting it with its panel, the four joint types and swapping which wall runs through (screenshots checked), dragging a corner with both walls following and the joint kept, a free end and the foot of a T selected as wall ends, Esc, and a double-click on a wall making it two with the new corner then dragged.
+- Shared colours (101 tests): a colour made shared from an object's fill, a second object linked to it, the shared colour changed from the left panel (the linked one follows, an unlinked one does not), unlinking while keeping the colour, and deleting the shared colour leaving the object its colour.
 - Annotations (94 tests): drawn in two clicks and typed in place, ends changed from the panel, the middle of the leader dragged to bend it the other way, one with no words kept as an arrow, the tool's own settings applied to the next one, double-click to change the words.
 - Rooms (88 tests): a room placed in a 6 × 4 m house reads 22.04 m²; a divider splits it into 14.82 and 7.22; dragging a wall out by 1 m grows the room beside it to 11.02; deleting a wall leaves that room with a name and no floor, and undo restores it; a Planks hatch on a room.
 

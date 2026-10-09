@@ -75,6 +75,8 @@ ${JSON.stringify(nodeJsonSchema())}
 
 # Things that are not obvious from the schema
 
+A wall may carry "joins": {"a": …, "b": …} to choose how an end meets one other wall: "round" or "bevel" on both ends at the corner, or "through" on the wall that runs past and "butt" on the one that stops against it. Without it the corner is mitred.
+
 Walls are defined by their centerline from "a" to "b" plus a thickness. Two walls join cleanly only when their endpoints are exactly the same point, so reuse the same coordinates for a shared corner. A typical interior wall is 100 mm thick and an exterior one 200 to 300 mm.
 
 A "parametric" node is an object drawn from parameters. These kinds are available:
@@ -86,6 +88,8 @@ Kinds with "cutsWalls" are doors and windows. One cuts an opening when it lies o
 A "group" holds several nodes so they are selected, moved and stacked as one. It has no coordinates of its own: to group nodes, add a group and set their "parent" to its id; to move a group, move the nodes inside it.
 
 A "component" is a reusable definition and an "instance" places it. To repeat the same furniture or symbol several times, create one component and place instances of it.
+
+A drawing can have shared colours ("colors" in the document, managed with add_color, update_color and remove_color). A colour property such as style.stroke, style.fill or a layer's color refers to one by being set to "var(--<id>)" instead of a colour; changing the shared colour then recolours everything that refers to it. Use them when several things must stay the same colour.
 
 Any node may carry "modifiers": a list of non-destructive changes to how it is drawn, applied in order. The one built-in kind is {"type":"crop","frame":{"x":…,"y":…},"params":{"width":…,"height":…}}, which shows only what is inside that rectangle; on a group or an instance it crops everything inside. Setting "modifiers" replaces the whole list.
 

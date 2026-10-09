@@ -1,12 +1,43 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Eye, EyeOff, Lock, LockOpen, Plus, Trash2 } from 'lucide-react'
-import { childrenOf, layersOf, pagesOf, type Node, type Op } from '@opencalque/core'
+import { childrenOf, layersOf, pagesOf, type Node, type Op, colorsOf, colorUses } from '@opencalque/core'
 import { moveInOrder } from '../actions'
 import { t } from '../i18n'
 import { apply, editComponent, select, showPage, useStore } from '../store'
 import { EditableText, IconButton, labelOf, Section, TypeIcon } from '../ui'
 
 const rename = (id: string) => (name: string) => apply([{ op: 'update_node', id, patch: { name } }])
+/**
+ * The drawing's shared colours: named colours that objects are linked to instead of having a
+ * colour of their own. Changing one here changes everything linked to it.
+ */
+export function Colors() {
+  const doc = useStore((s) => s.doc)
+  const colors = colorsOf(doc)
+  const update = (id: string, patch: Record<string, unknown>) => apply([{ op: 'update_color', id, patch }])
+  const add = () => apply([{ op: 'add_color', color: { name: t('Colour {n}', { n: colors.length + 1 }), value: '#0d99ff' } }])
+  return (
+    <Section title={t('Shared colours')} action={<IconButton title={t('Add a shared colour')} onClick={add}><Plus size={14} /></IconButton>}>
+      {colors.length === 0 && <p className="hint">{t('A shared colour is used by reference: link objects to it from any colour in their properties, then change it here and they all follow.')}</p>}
+      {colors.map((color) => {
+        const uses = colorUses(doc, color.id)
+        return (
+          <div key={color.id} className="row">
+            <input type="color" className="swatch" title={t('Changes every object linked to it')} value={color.value} onChange={(e) => update(color.id, { value: e.target.value })} />
+            <EditableText value={color.name} onChange={(name) => update(color.id, { name })} />
+            <span className="faint uses" title={t('Objects and layers linked to this colour')}>
+              {uses}
+            </span>
+            <IconButton title={t('Delete this shared colour. What used it keeps the colour, unlinked')} onClick={() => apply([{ op: 'remove_color', id: color.id }])}>
+              <Trash2 size={13} />
+            </IconButton>
+          </div>
+        )
+      })}
+    </Section>
+  )
+}
+
 /** Marks a drag as one of our object rows, so nothing else reacts to it. */
 const ROW_DRAG = 'application/x-opencalque-node'
 
