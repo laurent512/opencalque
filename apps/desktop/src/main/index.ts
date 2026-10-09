@@ -116,7 +116,7 @@ app.whenReady().then(() => {
     return { name: basename(result.filePaths[0]), bytes: new Uint8Array(await readFile(result.filePaths[0])) }
   })
 
-  ipcMain.handle('file:save', async (event, content: string, suggestedName: string, token?: string) => {
+  ipcMain.handle('file:save', async (event, content: string | Uint8Array, suggestedName: string, token?: string) => {
     let path = token
     if (!path || !granted.has(path)) {
       const win = BrowserWindow.fromWebContents(event.sender)!

@@ -145,6 +145,12 @@ export const NodeSchema = z
         width: z.number().nonnegative(),
         height: z.number().nonnegative(),
         scale: z.number().positive().optional().describe('The drawing scale of the sheet, as the N of 1:N. Default 100. An A3 sheet (420 × 297 mm of paper) at 1:100 is 42000 × 29700 here.'),
+        titleBlock: z
+          .object({ project: z.string().optional(), author: z.string().optional(), date: z.string().optional(), number: z.string().optional() })
+          .optional()
+          .describe(
+            'When present (even empty), the sheet gets a border and a title block in its bottom right corner showing the project (the document name unless given here), the name of the paper, its scale and format, and the author, date and sheet number given here.',
+          ),
       })
       .describe(
         'A sheet of paper laid on the drawing, with its top-left corner at (x, y): it frames the part of the drawing meant for one printed sheet. Width and height are in drawing millimetres like everything else. It has no children: whatever lies entirely inside its rectangle is on it, and is moved and copied with it in the editor.',

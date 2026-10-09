@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
-import { executeById } from './commands'
+import { useEffect, useMemo, useState } from 'react'
+import { Bot, Keyboard, PencilRuler, Puzzle, Settings2, type LucideIcon } from 'lucide-react'
+import { allCommands, eventKey, executeById, formatKey, isCustomised, keysOf, RESERVED_KEYS, resetShortcut, setShortcut, useCommands, type Command } from './commands'
 import { resetLayout } from './dock'
-import { LANGUAGES, t } from './i18n'
+import { LANGUAGES, msg, t } from './i18n'
 import { platform } from './platform'
 import { CLAUDE_MODELS, setAiPrefs, setPrefs, usePrefs } from './prefs'
-import { useStore } from './store'
+import { BUILT_IN_EXTENSION, toast, useStore } from './store'
 import { UNITS } from './units'
 
 const close = () => useStore.setState({ preferencesOpen: false })
@@ -44,8 +45,7 @@ function AssistantSettings() {
   const ai = usePrefs((p) => p.ai)
   const custom = !CLAUDE_MODELS.some(([id]) => id === ai.anthropic.model)
   return (
-    <section>
-      <h3>{t('Assistant')}</h3>
+    <>
       <label className="pref-field">
         <span>{t('Provider')}</span>
         <select value={ai.provider} onChange={(e) => setAiPrefs({ provider: e.target.value as typeof ai.provider })}>
@@ -108,81 +108,194 @@ function AssistantSettings() {
       )}
 
       <p className="hint">{t('When you use the assistant, your drawing is sent to the provider you chose. Imported pictures are left out unless the assistant asks to look at one.')}</p>
-    </section>
+    </>
   )
 }
 
+function GeneralSettings() {
+  const prefs = usePrefs()
+  return (
+    <>
+      <label className="pref-field">
+        <span>{t('Language')}</span>
+        <select value={prefs.language} onChange={(e) => setPrefs({ language: e.target.value })}>
+          <option value="auto">{t('Same as the system')}</option>
+          {LANGUAGES.map(([code, name]) => (
+            <option key={code} value={code}>
+              {name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="pref-field">
+        <span>{t('Unit')}</span>
+        <select value={prefs.unit} onChange={(e) => setPrefs({ unit: e.target.value as typeof prefs.unit })}>
+          {UNITS.map(([code, name]) => (
+            <option key={code} value={code}>
+              {t(name)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="hint">{t('Lengths are shown and typed in this unit. A different unit can always be typed after a number, such as 350 cm.')}</p>
+      <Toggle label={t('Save automatically')} checked={prefs.autosave} onChange={(autosave) => setPrefs({ autosave })} />
+      <p className="hint">{t('A drawing is saved to its file a moment after each change. A new drawing has to be saved once first, to give it a file.')}</p>
+      <button className="text-button" onClick={resetLayout}>
+        {t('Reset the panel layout')}
+      </button>
+    </>
+  )
+}
+
+function DrawingSettings() {
+  const prefs = usePrefs()
+  return (
+    <>
+      <Toggle label={t('Show the grid')} checked={prefs.showGrid} onChange={(showGrid) => setPrefs({ showGrid })} />
+      <Toggle label={t('Snap to the grid')} checked={prefs.snapToGrid} onChange={(snapToGrid) => setPrefs({ snapToGrid })} />
+      <Toggle label={t('Snap to points of existing objects')} checked={prefs.snapToObjects} onChange={(snapToObjects) => setPrefs({ snapToObjects })} />
+      <p className="hint">{t('Holding Alt while drawing or moving turns snapping off for that moment.')}</p>
+    </>
+  )
+}
+
+const matches = (command: Command, query: string) => {
+  const text = `${t(command.category)} ${t(command.title)} ${command.category} ${command.title} ${command.keywords ?? ''} ${keysOf(command).map(formatKey).join(' ')}`.toLowerCase()
+  return query.toLowerCase().split(/\s+/).every((word) => text.includes(word))
+}
+
+/** Every command with its shortcut, to look through and to change. */
+function ShortcutSettings() {
+  const overrides = useCommands((s) => s.overrides)
+  const [query, setQuery] = useState('')
+  /** Id of the command whose shortcut is being recorded. */
+  const [recording, setRecording] = useState<string | null>(null)
+  // `overrides` is a dependency so that the shortcuts shown stay current after a change.
+  const commands = useMemo(() => allCommands().filter((c) => matches(c, query)), [query, overrides])
+
+  const record = (e: React.KeyboardEvent, id: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const key = eventKey(e.nativeEvent)
+    if (!key) return
+    if (key === 'Escape') return setRecording(null)
+    if (key === 'Backspace' || key === 'Delete') setShortcut(id, null)
+    else if (RESERVED_KEYS.includes(key)) return toast(t('{key} is reserved and cannot be reassigned', { key: formatKey(key) }))
+    else {
+      const taken = setShortcut(id, key)
+      if (taken.length > 0) toast(t('{key} was removed from: {commands}', { key: formatKey(key), commands: taken.map((title) => t(title)).join(', ') }))
+    }
+    setRecording(null)
+  }
+
+  return (
+    <>
+      <p className="hint">{t('Click a shortcut, then press the keys you want for it. Backspace removes it; Esc leaves it as it is.')}</p>
+      <div className="shortcut-bar">
+        <input placeholder={t('Search a command or a key…')} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <button className="text-button" onClick={() => executeById('shortcuts.reset')}>
+          {t('Reset all shortcuts')}
+        </button>
+      </div>
+      <div className="shortcut-list">
+        {commands.length === 0 && <p className="hint">{t('Nothing matches.')}</p>}
+        {commands.map((command) => {
+          const keys = keysOf(command, overrides)
+          return (
+            <div key={command.id} className="shortcut-row">
+              <span className="faint">{t(command.category)}</span>
+              <span className="shortcut-title">{t(command.title)}</span>
+              {isCustomised(command.id) && (
+                <button className="text-button" title={t('Back to the default shortcut')} onClick={() => resetShortcut(command.id)}>
+                  {t('Reset')}
+                </button>
+              )}
+              <button
+                className={`palette-keys${recording === command.id ? ' recording' : ''}`}
+                onClick={() => setRecording(recording === command.id ? null : command.id)}
+                onKeyDown={(e) => recording === command.id && record(e, command.id)}
+                onBlur={() => recording === command.id && setRecording(null)}
+              >
+                {recording === command.id ? t('Press keys…') : keys.length > 0 ? keys.map(formatKey).join('  ') : t('Set shortcut')}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+function ExtensionSettings() {
+  const { installed, disabled } = usePrefs((p) => p.extensions)
+  // Read so the list follows extensions being installed or removed.
+  useStore((s) => s.extensionsVersion)
+  const names = Object.values(installed).map((extension) => extension.name)
+  return (
+    <>
+      <p className="hint">{t('Extensions add new kinds of object to the component library. They are data, not programs, so installing one is safe.')}</p>
+      <div className="pref-row">
+        <strong>{t('Architecture')}</strong>
+        <span className="faint">{disabled.includes(BUILT_IN_EXTENSION) ? t('built in, switched off') : t('built in')}</span>
+      </div>
+      {names.map((name) => (
+        <div key={name} className="pref-row">
+          <strong>{name}</strong>
+          <span className="faint">{t('installed')}</span>
+        </div>
+      ))}
+      <button
+        className="text-button"
+        onClick={() => {
+          close()
+          executeById('warehouse.extensions')
+        }}
+      >
+        {t('Add or remove extensions…')}
+      </button>
+    </>
+  )
+}
+
+/** The pages of the preferences, in the order of the list on the left. */
+const PAGES: [id: string, title: string, icon: LucideIcon, page: () => React.ReactNode][] = [
+  ['general', msg('General'), Settings2, GeneralSettings],
+  ['drawing', msg('Drawing'), PencilRuler, DrawingSettings],
+  ['assistant', msg('Assistant'), Bot, AssistantSettings],
+  ['shortcuts', msg('Keyboard shortcuts'), Keyboard, ShortcutSettings],
+  ['extensions', msg('Extensions'), Puzzle, ExtensionSettings],
+]
+
+/** The app's settings: a list of pages on the left, the chosen page on the right. */
 export function Preferences() {
   const open = useStore((s) => s.preferencesOpen)
-  const prefs = usePrefs()
+  const [current, setCurrent] = useState(PAGES[0][0])
   if (!open) return null
+  const [, title, , Page] = PAGES.find(([id]) => id === current) ?? PAGES[0]
 
   return (
     <div className="palette-backdrop" onMouseDown={close} onKeyDown={(e) => e.key === 'Escape' && close()}>
-      <div className="dialog" role="dialog" aria-label={t('Preferences')} onMouseDown={(e) => e.stopPropagation()}>
-        <header>
+      <div className="dialog prefs" role="dialog" aria-label={t('Preferences')} onMouseDown={(e) => e.stopPropagation()}>
+        <nav className="prefs-nav" aria-label={t('Preferences')}>
           <h2>{t('Preferences')}</h2>
-          <button className="text-button" onClick={close}>
-            {t('Done')}
-          </button>
-        </header>
-
-        <section>
-          <h3>{t('General')}</h3>
-          <label className="pref-field">
-            <span>{t('Language')}</span>
-            <select value={prefs.language} onChange={(e) => setPrefs({ language: e.target.value })}>
-              <option value="auto">{t('Same as the system')}</option>
-              {LANGUAGES.map(([code, name]) => (
-                <option key={code} value={code}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="pref-field">
-            <span>{t('Unit')}</span>
-            <select value={prefs.unit} onChange={(e) => setPrefs({ unit: e.target.value as typeof prefs.unit })}>
-              {UNITS.map(([code, name]) => (
-                <option key={code} value={code}>
-                  {t(name)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="hint">{t('Lengths are shown and typed in this unit. A different unit can always be typed after a number, such as 350 cm.')}</p>
-          <Toggle label={t('Save automatically')} checked={prefs.autosave} onChange={(autosave) => setPrefs({ autosave })} />
-          <p className="hint">{t('A drawing is saved to its file a moment after each change. A new drawing has to be saved once first, to give it a file.')}</p>
-          <button className="text-button" onClick={resetLayout}>
-            {t('Reset the panel layout')}
-          </button>
-        </section>
-
-        <section>
-          <h3>{t('Drawing')}</h3>
-          <Toggle label={t('Show the grid')} checked={prefs.showGrid} onChange={(showGrid) => setPrefs({ showGrid })} />
-          <Toggle label={t('Snap to the grid')} checked={prefs.snapToGrid} onChange={(snapToGrid) => setPrefs({ snapToGrid })} />
-          <Toggle label={t('Snap to points of existing objects')} checked={prefs.snapToObjects} onChange={(snapToObjects) => setPrefs({ snapToObjects })} />
-        </section>
-
-        <AssistantSettings />
-
-        <section>
-          <h3>{t('Keyboard shortcuts')}</h3>
-          <p className="hint">{t('Every command and its shortcut is in the command list. Click a shortcut there to change it.')}</p>
-          <button
-            className="text-button"
-            onClick={() => {
-              close()
-              executeById('palette.open')
-            }}
-          >
-            {t('Open the command list')}
-          </button>
-          <button className="text-button" onClick={() => executeById('shortcuts.reset')}>
-            {t('Reset all shortcuts')}
-          </button>
-        </section>
+          {PAGES.map(([id, name, Icon]) => (
+            <button key={id} className={id === current ? 'active' : ''} aria-current={id === current ? 'page' : undefined} onClick={() => setCurrent(id)}>
+              <Icon size={15} />
+              {t(name)}
+            </button>
+          ))}
+        </nav>
+        <div className="prefs-page">
+          <header>
+            <h2>{t(title)}</h2>
+            <button className="text-button" onClick={close}>
+              {t('Done')}
+            </button>
+          </header>
+          <div className="prefs-content">
+            <Page />
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -27,7 +27,7 @@ export interface Platform {
   /** Like `open`, for files that are not text (pictures, PDFs). */
   openBytes(extensions: string[]): Promise<{ name: string; bytes: Uint8Array } | null>
   /** Saves to `token` when given, otherwise asks where. Resolves to null when the user cancels. */
-  save(content: string, suggestedName: string, token?: unknown): Promise<StoredFile | null>
+  save(content: string | Uint8Array, suggestedName: string, token?: unknown): Promise<StoredFile | null>
   /** The file the app was launched with, if any. */
   initial(): Promise<OpenedFile | null>
   setDirty(dirty: boolean): void
@@ -83,7 +83,7 @@ function createBrowserPlatform(): Platform {
         }
       }
       const link = document.createElement('a')
-      link.href = URL.createObjectURL(new Blob([content]))
+      link.href = URL.createObjectURL(new Blob([content as BlobPart]))
       link.download = suggestedName
       link.click()
       URL.revokeObjectURL(link.href)

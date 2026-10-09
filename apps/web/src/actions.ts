@@ -28,6 +28,7 @@ import {
   wallFollowOps,
   modifierKind,
   type Modifier,
+  toPDF,
 } from '@opencalque/core'
 import { gridStep } from './canvas/draw'
 import { t, tn } from './i18n'
@@ -82,6 +83,21 @@ export const saveDocument = (saveAs = false) =>
     const token = saveAs ? undefined : (file?.token ?? undefined)
     const stored = await platform.save(serializeDocument(doc), file?.name ?? `${baseName()}.opencalque`, token)
     if (stored) useStore.setState({ saved: doc, file: stored })
+  })
+
+/**
+ * Exports papers as a PDF at their real size and scale: the selected ones, or every paper of the
+ * drawing, one page each.
+ */
+export const exportPdf = () =>
+  guarded(async () => {
+    const { doc, selection } = get()
+    const papers = Object.values(doc.nodes).filter((node) => node.type === 'paper')
+    if (papers.length === 0) return toast(t('Add a paper first (F): it sets the size and the scale of the printed sheet.'))
+    const chosen = papers.filter((paper) => selection.includes(paper.id))
+    const pdf = toPDF(doc, registry, chosen.length > 0 ? chosen.map((paper) => paper.id) : undefined)
+    const stored = await platform.save(pdf, `${baseName()}.pdf`)
+    if (stored) toast(tn(chosen.length || papers.length, 'Exported {n} sheet as PDF, to scale', 'Exported {n} sheets as PDF, to scale'))
   })
 
 export const exportDxf = () =>

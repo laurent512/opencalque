@@ -473,6 +473,7 @@ function RoomFacts({ node }: { node: Extract<Node, { type: 'room' }> }) {
 
 /** The sheet a paper stands for: a standard format or a custom size, which way up, and at what drawing scale. */
 function PaperSheet({ node, update }: { node: Extract<Node, { type: 'paper' }>; update: Update }) {
+  const doc = useStore((s) => s.doc)
   const scale = node.scale ?? DEFAULT_PAPER_SCALE
   const format = paperFormat(node)
   const landscape = node.width > node.height
@@ -503,6 +504,43 @@ function PaperSheet({ node, update }: { node: Extract<Node, { type: 'paper' }>; 
       {/* Changing the scale of a standard sheet keeps it that sheet, so its size in the drawing changes. */}
       <Field label={t('Scale 1:')} numeric min={1} value={scale} onCommit={(v) => v > 0 && resize(format?.name ?? '', landscape, v)} />
       <p className="hint">{t('Moving, copying or duplicating a paper takes along everything that lies on it. Deleting it leaves the drawing in place.')}</p>
+      <label className="field">
+        <span>{t('Title block')}</span>
+        <input type="checkbox" checked={node.titleBlock !== undefined} onChange={(e) => update(() => ({ titleBlock: e.target.checked ? {} : null }))} />
+      </label>
+      {node.titleBlock && (
+        <>
+          {(
+            [
+              ['project', t('Project'), doc.name],
+              ['author', t('Author'), ''],
+              ['date', t('Date'), new Date().toLocaleDateString()],
+              ['number', t('Sheet no.'), ''],
+            ] as const
+          ).map(([key, label, suggestion]) => (
+            <label key={key} className="field">
+              <span>{label}</span>
+              <input
+                key={`${node.id} ${node.titleBlock?.[key] ?? ''}`}
+                defaultValue={node.titleBlock?.[key] ?? ''}
+                placeholder={suggestion}
+                onBlur={(e) => {
+                  const value = e.target.value.trim()
+                  if (value === (node.titleBlock?.[key] ?? '')) return
+                  const next: Record<string, string> = { ...node.titleBlock, [key]: value }
+                  if (!value) delete next[key]
+                  update(() => ({ titleBlock: next }))
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              />
+            </label>
+          ))}
+          <p className="hint">{t('The sheet also shows its name, its scale and its format. Left empty, the project is the name of the drawing.')}</p>
+        </>
+      )}
+      <button className="text-button" onClick={() => executeById('file.exportPdf')}>
+        {t('Export this sheet as PDF…')}
+      </button>
     </Section>
   )
 }

@@ -26,7 +26,7 @@ const room = (name: string, x: number, y: number, pattern?: Record<string, unkno
 
 doc = applyOps(doc, [
   // The sheet first: an A3 lying, at 1:50.
-  add({ type: 'paper', name: 'Ground floor, 1:50', x: -5500, y: -4200, width: 21000, height: 14850, scale: 50 }),
+  add({ type: 'paper', name: 'Ground floor', x: -5500, y: -4200, width: 21000, height: 14850, scale: 50, titleBlock: { author: 'OpenCalque', date: '2026-10-09', number: '01' } }),
   // Outside walls, then the partitions.
   wall(0, 0, 10000, 0, 250),
   wall(10000, 0, 10000, 7000, 250),

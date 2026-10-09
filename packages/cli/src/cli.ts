@@ -18,6 +18,7 @@ import {
   toDXF,
   toSVG,
   type Document,
+  toPDF,
 } from '@opencalque/core'
 import { architecture } from '@opencalque/ext-architecture'
 
@@ -29,6 +30,7 @@ const USAGE = `opencalque <command>
   apply <file> <ops.json>      Apply a JSON array of operations and save the file
   svg <file> [--page <id>] [--out <file.svg>]
                                Render a page (default: the first) to SVG
+  pdf <file> [--out <file.pdf>] Export every paper as a page of a PDF, at its real size and scale
   dxf <file> [--page <id>] [--out <file.dxf>]
                                Export a page to DXF for other CAD programs
   schema [--out <dir>]         Print or write the JSON Schemas of documents and operations
@@ -87,6 +89,13 @@ function main(): void {
       const svg = toSVG(doc, page ?? pagesOf(doc)[0].id, registry)
       if (out) writeFileSync(out, svg)
       else process.stdout.write(svg)
+      return
+    }
+    case 'pdf': {
+      const doc = read(file)
+      const pdf = toPDF(doc, registry)
+      if (out) writeFileSync(out, pdf)
+      else process.stdout.write(pdf)
       return
     }
     case 'dxf': {

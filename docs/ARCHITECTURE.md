@@ -213,6 +213,17 @@ Not there yet: baking a modifier into ordinary objects ("apply"), a crop that re
 
 In the editor, `transformSelection` and `nudgeSelection` (`actions.ts`) are behind the commands (Shift+R, Shift+H, Shift+V, arrow keys), the Object and right-click menus and the Transform section of the properties panel. On the canvas the box around a selection carries grips (`boxGrips` in `draw.ts`, gestures `scale` and `rotate`): corners scale about the opposite corner in 5 % steps, the knob turns in whole degrees, Shift in steps of 15, Alt freely. A single object with handles of its own (line, wall, rectangle, paper) shows those instead and is transformed from the panel or the keyboard. Scaling is uniform only; there is no align, distribute or array yet.
 
+### PDF export (`pdf.ts`)
+
+`toPDF(doc, registry, paperIds?)` writes one page per paper, at the paper's real size and scale: a page is the paper's width and height divided by its scale, in points, and everything on it goes through the same `paintOrder` steps the canvas and the SVG export use. The file is written from scratch (objects, cross-reference table) with no library, so the CLI has it too (`opencalque pdf`).
+
+- Text is Helvetica, a font every reader has, so nothing is embedded; `WIDTHS` gives its character widths for centred and right-aligned text. Characters outside Latin-1 print as "?".
+- Fills with an alpha and pictures with an opacity use graphics states; clip outlines become clipping paths; JPEG pictures are embedded as they are (imported plans are always stored as JPEG). Other picture formats are left out.
+- Line weights are screen pixels on the canvas; on paper one pixel is `WEIGHT` points.
+- A paper's **title block** is part of what the paper draws (`titleBlock` in `kinds.ts`), so the screen, the SVG and the PDF agree. It is language-neutral: values only, no captions.
+
+`apps/web/src/pdf.test.ts` opens the result with pdf.js, the reader the app uses for import, to check that it is a real PDF with the right page sizes and text.
+
 ### Groups (`groups.ts`)
 
 A group is a node with no geometry. Its members keep their own coordinates, so grouping never changes what is drawn; it changes what is selected, moved and stacked together. Consequences worth knowing:
@@ -373,7 +384,7 @@ The production Content-Security-Policy (`apps/web/csp.ts`) therefore allows `con
 
 ### Menu bar and preferences
 
-Edit holds only general editing (undo, clipboard, select); what is done to the selection as an object (group, order, turn and flip, modifiers, components) is in the Object menu, and the right-click menu offers just the most used of those. `MenuBar.tsx` defines each menu as a list of command ids (null for a separator, `@Category` for every command of a category), so menus need no logic of their own: a command's `when` disables its item and `checked` shows a tick. Preferences live in `prefs.ts` (`localStorage` key `opencalque.prefs`); each AI provider keeps its own key there so that switching providers can never send one provider's key to another.
+Edit holds only general editing (undo, clipboard, select); what is done to the selection as an object (group, order, turn and flip, modifiers, components) is in the Object menu, and the right-click menu offers just the most used of those. `Preferences.tsx` is a list of pages on the left (`PAGES`: general, drawing, assistant, keyboard shortcuts, extensions) and the chosen page on the right; adding a page is adding a line there. The shortcuts page lists every command and records new keys in place, with the same rules as the command list. `MenuBar.tsx` defines each menu as a list of command ids (null for a separator, `@Category` for every command of a category), so menus need no logic of their own: a command's `when` disables its item and `checked` shows a tick. Preferences live in `prefs.ts` (`localStorage` key `opencalque.prefs`); each AI provider keeps its own key there so that switching providers can never send one provider's key to another.
 
 **Dragging numbers.** `scrub()` in `ui.tsx` lets any numeric `Field` (and the quick bar's thickness) be changed by holding Alt and dragging sideways; Shift is ten times faster, `min` stops sizes at zero, and `collapseHistory` makes the whole drag one undo step. `watchScrubKey` sets a class on `body` while Alt is down so those fields show a sideways arrow.
 
@@ -457,6 +468,7 @@ Verified at the end of the first session:
 
 - Modifiers and step-aware hints (77 tests): a crop added from the panel hides the ends of a line and leaves the line's own coordinates alone; dragging its corner, switching it off and on, nudging the line (the crop follows), Object › Crop on a group, removing it; the hint and the fields at every step of every tool; a digit typed before a wall is started no longer lands in a field.
 
+- PDF and Preferences (115 tests): the example apartment exported with Ctrl+P through a stand-in save dialog (a 58 kB file starting `%PDF-1.4`), opened in Chromium's PDF viewer and looked at; the five pages of Preferences in French; the wall tool's shortcut changed from W to Q on the shortcuts page and then used.
 - Corners (110 tests): the pointer changing over a corner, a click selecting it with its panel, the four joint types and swapping which wall runs through (screenshots checked), dragging a corner with both walls following and the joint kept, a free end and the foot of a T selected as wall ends, Esc, and a double-click on a wall making it two with the new corner then dragged.
 - Shared colours (101 tests): a colour made shared from an object's fill, a second object linked to it, the shared colour changed from the left panel (the linked one follows, an unlinked one does not), unlinking while keeping the colour, and deleting the shared colour leaving the object its colour.
 - Annotations (94 tests): drawn in two clicks and typed in place, ends changed from the panel, the middle of the leader dragged to bend it the other way, one with no words kept as an arrow, the tool's own settings applied to the next one, double-click to change the words.

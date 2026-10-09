@@ -58,7 +58,7 @@ Last updated: 2026-10-08.
 - Autosave to the drawing's file, which can be switched off.
 - English, French, Spanish and German.
 - Files are readable JSON with a published schema; a command-line tool creates, validates, edits and exports drawings.
-- Export to SVG and to DXF.
+- Export to PDF at true scale (one page per paper, with a title block), to SVG and to DXF.
 
 ## 2. The next ten big features
 
@@ -71,7 +71,7 @@ Ranked by how much each one moves the app from "promising" to "usable for real w
 | 3 | **Groups, stacking order, right-click menu** | **Done.** |
 | 4 | **Cut, copy, paste** | **Done**, including across drawings. |
 | 5 | **DXF export** | **Done** (lines, circles, text, layers). DXF import is not started. |
-| 6 | **Sheets and printing**: paper size, drawing scale, title block, PDF export to scale | **Started**: papers exist (format, direction, scale, contents by position). Title block and PDF export are not started. |
+| 6 | **Sheets and printing**: paper size, drawing scale, title block, PDF export to scale | **Done**: papers with format, direction, scale and a title block; vector PDF export at true scale, one page per paper. Views of the plan at another scale on a sheet are in the ideas below. |
 | 7 | **More drawing tools**: polyline and polygon tool, arcs and curves, typed lengths while drawing, room areas | **Partly done**: polyline tool and typed sizes. Arcs, curves and room areas are not started. |
 | 8 | **Transforming**: rotate and scale handles, align and distribute, mirror, array | **Mostly done**: rotate, mirror, uniform scale and nudge for any selection, from grips on the selection box, the panel, menus and shortcuts. Align, distribute and array are not started. |
 | 9 | **Walls as a system**: openings that follow their wall, walls trimmed where they meet mid-span, moving a wall drags its neighbours, rooms detected from walls | **Done**, with selectable corners and joint types. Curved walls and wall types are in the ideas below. |
@@ -88,7 +88,7 @@ Agreed with the owner in October 2026. The first was built straight away.
 - Automatic dimensions for a room or a run of walls
 
 **Sheets and output**
-- PDF export to scale, with a title block
+- ~~PDF export to scale, with a title block~~ (done)
 - Views on a paper: part of the plan, cropped and at another scale (details)
 - Generated tables: rooms with areas, a schedule of doors and windows
 - Levels (storeys), with the one below shown faintly

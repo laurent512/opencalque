@@ -6,6 +6,7 @@ import { transformPrimitive, type Primitive } from './primitives'
 import type { Op } from './ops'
 import type { Registry } from './registry'
 import type { Asset, Document, Node, NodeOf, NodeType } from './schema'
+import { DEFAULT_PAPER_SCALE, paperFormat } from './papers'
 import { roomAt } from './rooms'
 import { hostWall, wallPolygons, wallSeams } from './walls'
 
@@ -100,6 +101,43 @@ function dimensionMarker(type: NodeOf<'dimension'>['startMarker'], at: Vec2, out
     case 'none':
       return []
   }
+}
+
+/**
+ * The border and title block of a paper that asks for one. Sizes are those of the printed sheet
+ * (a 10 mm margin, a 100 × 30 mm block), multiplied by the paper's scale to stand on the drawing.
+ * It has no captions, only values, so it reads the same in any language.
+ */
+function titleBlock(node: NodeOf<'paper'>, documentName: string): Primitive[] {
+  const block = node.titleBlock
+  const s = node.scale ?? DEFAULT_PAPER_SCALE
+  // A sheet too small to hold it goes without.
+  if (!block || node.width < 130 * s || node.height < 60 * s) return []
+  const ink = { stroke: '#1f1f1f', own: true }
+  const margin = 10 * s
+  const right = node.x + node.width - margin
+  const bottom = node.y + node.height - margin
+  const left = right - 100 * s
+  const top = bottom - 30 * s
+  const line = (x1: number, y1: number, x2: number, y2: number): Primitive => ({ kind: 'path', points: [{ x: x1, y: y1 }, { x: x2, y: y2 }], ...ink, strokeWidth: 0.6 })
+  const words = (text: string, x: number, y: number, size: number, align: 'left' | 'right' = 'left'): Primitive[] => (text ? [{ kind: 'text', x, y, text, size: size * s, align, ...ink }] : [])
+  const format = paperFormat(node)?.name ?? `${Math.round(node.width / s)} × ${Math.round(node.height / s)}`
+  return [
+    { kind: 'path', closed: true, ...ink, strokeWidth: 1.2, points: boxCorners({ x: node.x + margin, y: node.y + margin, width: node.width - 2 * margin, height: node.height - 2 * margin }) },
+    { kind: 'path', closed: true, ...ink, strokeWidth: 1.2, points: boxCorners({ x: left, y: top, width: 100 * s, height: 30 * s }) },
+    line(left, top + 12 * s, right, top + 12 * s),
+    line(left, top + 21 * s, right, top + 21 * s),
+    line(left + 30 * s, top + 21 * s, left + 30 * s, bottom),
+    line(left + 52 * s, top + 21 * s, left + 52 * s, bottom),
+    line(left + 80 * s, top + 21 * s, left + 80 * s, bottom),
+    ...words(block.project || documentName, left + 3 * s, top + 8.5 * s, 5),
+    ...words(node.name ?? '', left + 3 * s, top + 18 * s, 3.5),
+    ...words(block.author ?? '', right - 3 * s, top + 18 * s, 3, 'right'),
+    ...words(`1:${s}`, left + 3 * s, top + 27 * s, 3.5),
+    ...words(format, left + 33 * s, top + 27 * s, 3.5),
+    ...words(block.date ?? '', left + 55 * s, top + 27 * s, 3),
+    ...words(block.number ?? '', right - 3 * s, top + 27 * s, 3.5, 'right'),
+  ]
 }
 
 /** Text size of an annotation that does not give one, and how much its leader curves by default. */
@@ -291,7 +329,7 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     moveHandle: moveHandleAB,
   },
   paper: {
-    primitives: (node) => [{ kind: 'path', points: boxCorners(node), closed: true, fill: PAPER_FILL, stroke: PAPER_EDGE, backdrop: true }],
+    primitives: (node, ctx) => [{ kind: 'path', points: boxCorners(node), closed: true, fill: PAPER_FILL, stroke: PAPER_EDGE, backdrop: true }, ...titleBlock(node, ctx.doc.name)],
     move: moveXY,
     handles: boxCorners,
     moveHandle: (node, index, p) => {

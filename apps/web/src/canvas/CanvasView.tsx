@@ -182,7 +182,7 @@ function shape(tool: Tool, id: string, a: Vec2, b: Vec2, offset = 0): NodeInput 
       // Counted in the drawing as it was before this paper started to be drawn.
       const count = Object.values((base ?? doc).nodes).filter((n) => n.type === 'paper').length
       const name = t('Paper {n}', { n: String(count + 1).padStart(2, '0') })
-      return { ...common, type: 'paper', name, scale: paperScale, x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) }
+      return { ...common, type: 'paper', name, scale: paperScale, titleBlock: {}, x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) }
     }
     case 'wall':
       return { ...common, type: 'wall', a, b, thickness: wallThickness }

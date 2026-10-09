@@ -99,7 +99,7 @@ A "room" names the space enclosed by the walls around its point (x, y): add one 
 
 An "instance" may carry "scale" (a size multiplier) and "flipX"; an "ellipse" may carry "rotation".
 
-A "paper" is a sheet laid on the drawing that frames what goes on one printed page. Its width and height are in drawing millimetres: the sheet's real size times its "scale" (an A3 lying at 1:100 is 42000 × 29700). It has no children; whatever lies inside its rectangle is on it. To move a paper with its contents, move those nodes too.
+A "paper" is a sheet laid on the drawing that frames what goes on one printed page. Its width and height are in drawing millimetres: the sheet's real size times its "scale" (an A3 lying at 1:100 is 42000 × 29700). It has no children; whatever lies inside its rectangle is on it. To move a paper with its contents, move those nodes too. Give it "titleBlock": {} (optionally with "project", "author", "date", "number") for a border and a title block; the person exports papers to PDF at their true scale from the File menu.
 
 A "dimension" annotates the distance between two points; "offset" is how far its line stands off from them.
 

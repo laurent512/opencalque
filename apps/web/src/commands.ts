@@ -22,6 +22,7 @@ import {
   nudgeSelection,
   transformSelection,
   addModifier,
+  exportPdf,
 } from './actions'
 import { apply, editComponent, redo, registry, select, setTool, showPage, toast, undo, useStore, type Tool } from './store'
 import { PANELS, resetLayout, togglePanel, useDock, type PanelId } from './dock'
@@ -111,6 +112,7 @@ const STATIC: Command[] = [
   { id: 'file.importPlan', title: msg('Import floor plan (PDF or picture)…'), category: 'File', interrupts: true, run: importFloorPlan },
   { id: 'file.importLibrary', title: msg('Import component library…'), category: 'File', interrupts: true, run: importLibrary },
   { id: 'file.exportDxf', title: msg('Export DXF (for other CAD programs)…'), category: 'File', run: exportDxf },
+  { id: 'file.exportPdf', title: msg('Export PDF (sheets, to scale)…'), category: 'File', keys: ['Mod+P'], global: true, run: exportPdf },
   { id: 'file.exportSvg', title: msg('Export SVG…'), category: 'File', run: exportSvg },
 
   { id: 'edit.undo', title: msg('Undo'), category: 'Edit', keys: ['Mod+Z'], interrupts: true, run: undo },

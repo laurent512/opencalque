@@ -12,7 +12,7 @@ import { EditableText } from './ui'
  * category (used for the lists that depend on the drawing and on extensions).
  */
 const MENUS: [string, (string | null)[]][] = [
-  [msg('File'), ['file.new', 'file.open', 'file.save', 'file.saveAs', 'file.autosave', null, 'file.importPlan', 'tool.calibrate', 'file.importLibrary', null, 'file.exportSvg', 'file.exportDxf']],
+  [msg('File'), ['file.new', 'file.open', 'file.save', 'file.saveAs', 'file.autosave', null, 'file.importPlan', 'tool.calibrate', 'file.importLibrary', null, 'file.exportPdf', 'file.exportSvg', 'file.exportDxf']],
   [msg('Edit'), ['edit.undo', 'edit.redo', null, 'edit.cut', 'edit.copy', 'edit.paste', 'edit.duplicate', 'edit.delete', null, 'edit.selectAll', 'edit.deselect']],
   // What is done to the selection as an object, as against editing in general: arranging, transforming, modifying.
   [

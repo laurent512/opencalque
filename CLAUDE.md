@@ -41,6 +41,7 @@ Agent terminals have `ELECTRON_RUN_AS_NODE=1`, which breaks Electron. Prefix Ele
 - Hints and the size fields depend on `drawStep` in the store; show nothing that cannot be used at the current step.
 - Rotate, mirror and scale nodes with `transformOps` (`packages/core/src/transform.ts`), which knows what each type means; a new node type needs a case there.
 - There is no Assets panel: everything that can be placed is in the component library (`WarehouseDialog.tsx`).
+- Exports (SVG, DXF, PDF) draw from primitives through `paintOrder`; a new kind of primitive or style needs handling in `svg.ts`, `dxf.ts`, `pdf.ts` and `apps/web/src/canvas/draw.ts`.
 - A wall corner is a position, not a node. Use `wallEndsAt`, `moveCornerOps`, `cornerJoin` and `cornerJoinOps` (`packages/core/src/walls.ts`); how a corner is joined lives on each wall end, in `joins`.
 - Doors and windows are tied to walls by position, not by reference. Wall geometry lives in `packages/core/src/walls.ts`.
 

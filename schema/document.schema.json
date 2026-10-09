@@ -1590,6 +1590,25 @@
                 "description": "The drawing scale of the sheet, as the N of 1:N. Default 100. An A3 sheet (420 × 297 mm of paper) at 1:100 is 42000 × 29700 here.",
                 "type": "number",
                 "exclusiveMinimum": 0
+              },
+              "titleBlock": {
+                "description": "When present (even empty), the sheet gets a border and a title block in its bottom right corner showing the project (the document name unless given here), the name of the paper, its scale and format, and the author, date and sheet number given here.",
+                "type": "object",
+                "properties": {
+                  "project": {
+                    "type": "string"
+                  },
+                  "author": {
+                    "type": "string"
+                  },
+                  "date": {
+                    "type": "string"
+                  },
+                  "number": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
               }
             },
             "required": [
