@@ -11,7 +11,7 @@ Last updated: 2026-10-08.
 - Exact sizes while drawing: a bar above the tools takes typed lengths, angles, widths and heights, and the shape shows its sizes as you draw.
 - Walls defined by centerline and thickness, joined cleanly at any angle where their ends meet. A run of walls closes with a double-click.
 - Doors and windows that snap onto a wall, cut the opening, adapt to the wall's thickness and slide along it. Door type, hinge side, angle; window panes, glazing, sill.
-- Stairs: straight, L-shaped, U-shaped, spiral, each with its own parameters.
+- Stairs: straight, L-shaped, U-shaped, spiral, each with its own parameters. A compass rose for north.
 - Dimensions with configurable line, end markers, extension lines, text, font, unit and decimals; and a separate measure tool that only reads a distance.
 - Text typed directly on the drawing, on several lines; double-click a text to change it. **Fields** (`{date}`, `{page}`, `{page-number}`, `{pages}`, `{document}`) are filled in when drawn and exported.
 - **Line style**: weight chosen as printed millimetres, kinds of line (dashes, dots), and arrows or other ends on lines and polylines; a bar above the tools sets the style of the next shapes.
@@ -37,7 +37,7 @@ Last updated: 2026-10-08.
 - **Groups**: several objects treated as one (`Ctrl+G`, `Ctrl+Shift+G`), nestable; double-click to edit inside.
 - **Components**: a reusable definition with instances that all update together; double-click an instance to edit the component.
 - **Stacking order**: bring forward or send backward one step or all the way, from the properties panel, the right-click menu, shortcuts, or by dragging rows in the object list.
-- An object list with an icon per kind of object, expandable groups, lock and hide per object.
+- A Structure panel listing the objects, with an icon per kind of object, expandable groups, lock and hide per object.
 - Cut, copy and paste, including between drawings and windows.
 
 ### Reusing and extending

@@ -179,6 +179,20 @@ describe('scene', () => {
     expect(hitTest(buildScene(doc, 'page_1', registry), { x: 500, y: 500 }, 1)).toBeNull()
   })
 
+  it('picks an object by its inside even when it is only an outline, and a plain shape by its line', () => {
+    const doc = applyOps(createDocument(), [
+      { op: 'add_node', node: { type: 'rect', id: 'frame', parent: 'page_1', x: -500, y: -500, width: 1000, height: 1000 } },
+      { op: 'add_node', node: { type: 'parametric', id: 'box', parent: 'page_1', kind: 'test.box', props: {}, x: 0, y: 0 } },
+    ])
+    const scene = buildScene(doc, 'page_1', registry)
+    const box = scene.find((item) => item.id === 'box')!.bounds!
+    const middle = { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 }
+    expect(hitTest(scene, middle, 1)?.id).toBe('box')
+    // The unfilled rectangle around it is picked by its edge only.
+    expect(hitTest(scene, { x: -400, y: -400 }, 1)).toBeNull()
+    expect(hitTest(scene, { x: -500, y: -400 }, 1)?.id).toBe('frame')
+  })
+
   it('draws parametric objects from extensions and keeps unknown kinds as placeholders', () => {
     const doc = applyOps(createDocument(), [
       { op: 'add_node', node: { type: 'parametric', id: 's', parent: 'page_1', kind: 'test.box', props: {}, x: 50, y: 0, rotation: 90 } },

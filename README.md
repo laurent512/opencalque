@@ -65,7 +65,7 @@ The welcome window offers a new drawing, a file, or the example: a furnished fla
 ```sh
 pnpm dev:web      # the same editor in a browser
 pnpm build && pnpm start   # the built desktop app
-pnpm test         # 124 tests
+pnpm test         # 125 tests
 pnpm dist         # build the installer for the system you are on, into apps/desktop/dist
 ```
 
@@ -74,7 +74,7 @@ pnpm dist         # build the installer for the system you are on, into apps/des
 **Draw**
 - Walls by centerline and thickness, joined cleanly at any angle; a double-click closes a room.
 - Corners you can select and drag, with a choice of joint: mitred, rounded, cut off, or one wall running through.
-- Doors, windows and four kinds of stairs, each with its own parameters.
+- Doors, windows, four kinds of stairs and a compass for north, each with its own parameters.
 - Lines, rectangles, ellipses, polylines, and annotations with curved, straight or elbowed leaders.
 - Text typed in place, on several lines, with fields such as `{date}` or `{page}` that fill themselves in.
 - Line weights in printed millimetres, dashed and dotted lines, arrows at the ends.
@@ -161,15 +161,17 @@ A batch is all-or-nothing and every result is validated, so a script or a model 
 | Fields | In a text, `{date}`, `{page}`, `{page-number}`, `{pages}` and `{document}` are replaced by the drawing's own values. Insert them from Fields in the right panel |
 | Lines | Weight (as printed, 0.13 to 1.4 mm), kind of line (solid, dashed, long dashes, dotted, dash and dot) and arrows at each end are in the right panel. While a drawing tool is in use, the bar above the tools sets them for the next shapes |
 | Several objects | With several selected, the right panel shows what they have in common; a value that differs reads "Mixed", and changing it changes them all |
-| Eyedropper | `I`, then click an object: its colours, weight and kind of line go to the selection, or to the next shapes when nothing is selected |
+| Eyedropper | The pipette in the Style section of the right panel, or `I`, then click an object: its colours, weight and kind of line go to the selection, or to the next shapes when nothing is selected |
 | Align | With two or more selected, Arrange in the right panel aligns them left, centre, right, top, middle or bottom; with three or more it spaces them evenly |
 | Pages | In the Pages panel: add, rename, duplicate with everything on it, move up or down |
 | Shared layers | In the Layers panel, the pages icon on a layer shows what is on it on every page: a frame, a logo, a title. It is changed on the page it was drawn on |
 | Component library | The books button in the toolbar: every object and component, pictured, with a search. Click one, then click on the drawing |
 | Doors and windows | The Door or Window button in the toolbar, then click on a wall: it snaps on, turns to follow the wall, opens towards your cursor and cuts the opening. Drag it to slide it along the wall. Type, hinge side, width and more are in the right panel |
+| Compass | Component library → Compass (north). Turn it with the round handle above it, or type its rotation; size and letter are in the right panel |
+| Select | Click an object. A component or a library object is picked anywhere inside its outline; a plain shape with no fill by its line. A room is picked by its name, so what stands on its floor stays easy to click |
 | Stairs | Component library → straight, L-shaped, U-shaped or spiral. `R` rotates before placing. Steps, tread, width and turn direction are in the right panel |
 | Groups | `Ctrl+G` groups the selection, `Ctrl+Shift+G` ungroups. Double-click a group to edit inside it |
-| Order | `]` to front, `[` to back, `Ctrl+]` and `Ctrl+[` one step. Also in the properties panel, the right-click menu, or drag rows in the object list |
+| Order | `]` to front, `[` to back, `Ctrl+]` and `Ctrl+[` one step. Also in the properties panel, the right-click menu, or drag rows in the Structure panel |
 | Right-click | On an object or the drawing, for order, grouping, copy and paste |
 | Copy and paste | `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, also between drawings |
 | Paper | `F`, click a corner, pull: the standard formats (A5 to A0) appear at the scale shown in the bar, upright or lying as you move; come close to one to take it, or hold `Alt` for any size. A paper carries what is drawn on it when moved, copied or duplicated; grab it by its edge or its name |

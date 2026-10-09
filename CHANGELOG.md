@@ -4,6 +4,20 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 0.2.1 — 2026-10-09
+
+### New
+- Compass (north) in the component library: a compass rose to place and turn, with its size and letter.
+
+### Improved
+- A component or an object is picked by clicking anywhere inside it, even when it is drawn as an outline; a floor pattern underneath no longer takes the click.
+- Menus are light, like the rest of the app.
+- A lighter toolbar: the zoom reading is in the corner of the drawing beside the pointer's position, the command list is under Preferences (Ctrl+K), and the eyedropper is in the Style section of the right panel (still I on the keyboard).
+- The list of a colour field has a width of its own, so its choices are read whole; it opens above the field when there is no room below and stays inside the window.
+- Resetting the keyboard shortcuts is offered on the shortcuts page of Preferences only, not in the menu.
+- The Objects panel is called Structure and no longer repeats its name under its tab.
+- The cross that closes a panel tab is smaller and shows only under the pointer.
+
 ## 0.2.0 — 2026-10-09
 
 ### New

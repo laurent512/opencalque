@@ -106,15 +106,26 @@ select {
   color: var(--text);
 }
 
-/* The close button only on the tab in front or under the pointer, so the others stay compact. */
+/* The close cross is small and shows only on the tab under the pointer. */
 .dock .dv-tab .dv-default-tab-action {
+  padding: 3px;
   border-radius: 4px;
+  color: var(--muted);
   visibility: hidden;
 }
 
-.dock .dv-tab.dv-active-tab .dv-default-tab-action,
+.dock .dv-tab .dv-default-tab-action svg {
+  width: 8px;
+  height: 8px;
+}
+
 .dock .dv-tab:hover .dv-default-tab-action {
   visibility: visible;
+}
+
+/* The library shows it on the tab in front; said again with more weight. */
+.dock .dv-tab.dv-active-tab:not(:hover) .dv-default-tab-action {
+  visibility: hidden;
 }
 
 .dock .dv-tab .dv-default-tab-action:hover {
@@ -513,6 +524,7 @@ body.scrubbing .quick-field input[title] {
   border-radius: 3px;
 }
 
+.color-now > em,
 .color-now > span,
 .color-option > span {
   overflow: hidden;
@@ -527,11 +539,12 @@ body.scrubbing .quick-field input[title] {
 }
 
 .color-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  left: -40px;
+  position: fixed;
   z-index: 20;
+  width: 248px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -579,6 +592,12 @@ body.scrubbing .quick-field input[title] {
   flex: 1;
 }
 
+/* In the list a name is read whole, on two lines if need be; only the field cuts it short. */
+.color-menu .color-option > span {
+  overflow: visible;
+  white-space: normal;
+}
+
 .row .uses {
   min-width: 16px;
   font-size: 11px;
@@ -607,8 +626,9 @@ body.scrubbing .quick-field input[title] {
   overflow-y: auto;
   padding: 6px;
   border-radius: 8px;
-  background: #1e1e1e;
-  box-shadow: 0 6px 24px rgb(0 0 0 / 25%);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 16%);
   font-weight: 400;
   font-size: 12px;
 }
@@ -621,13 +641,14 @@ body.scrubbing .quick-field input[title] {
   border: 0;
   border-radius: 4px;
   background: none;
-  color: #fff;
+  color: var(--text);
   text-align: left;
   cursor: pointer;
 }
 
 .menu-list button:hover:not(:disabled) {
   background: var(--accent);
+  color: #fff;
 }
 
 .menu-list button:disabled {
@@ -652,7 +673,7 @@ body.scrubbing .quick-field input[title] {
 .menu-list hr {
   margin: 6px 0;
   border: 0;
-  border-top: 1px solid #444;
+  border-top: 1px solid var(--border);
 }
 
 /* Canvas area */
@@ -710,6 +731,8 @@ body.scrubbing .quick-field input[title] {
   position: absolute;
   bottom: 8px;
   left: 12px;
+  display: flex;
+  gap: 14px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
@@ -1913,4 +1936,9 @@ body.scrubbing .quick-field input[title] {
 
 .dialog.about .text-button {
   padding: 4px 8px;
+}
+
+/* A panel whose tab already says what it is: no heading, just a little room above the rows. */
+.section.untitled {
+  padding-top: 8px;
 }

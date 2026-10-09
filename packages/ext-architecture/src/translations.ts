@@ -10,6 +10,10 @@ export const translations: Record<string, Record<string, string>> = {
     'Stair, L-shaped': 'Escalier en L',
     'Stair, U-shaped': 'Escalier en U',
     'Stair, spiral': 'Escalier en colimaçon',
+    'Compass (north)': 'Boussole (nord)',
+    'Shows where north is. Turn it with its round handle, or type its rotation.': 'Indique le nord. Tournez-la par sa poignée ronde, ou saisissez sa rotation.',
+    Letter: 'Lettre',
+    Size: 'Taille',
     'Place it on a wall: it cuts the opening and follows the wall. Off a wall it stands alone.':
       'Placez-la sur un mur : elle perce l’ouverture et suit le mur. Hors d’un mur, elle reste isolée.',
     'Place it on a wall: it cuts the opening and follows the wall. The sill marks the outside.':
@@ -50,6 +54,10 @@ export const translations: Record<string, Record<string, string>> = {
     'Stair, L-shaped': 'Escalera en L',
     'Stair, U-shaped': 'Escalera en U',
     'Stair, spiral': 'Escalera de caracol',
+    'Compass (north)': 'Brújula (norte)',
+    'Shows where north is. Turn it with its round handle, or type its rotation.': 'Indica el norte. Gírela con su tirador redondo o escriba su rotación.',
+    Letter: 'Letra',
+    Size: 'Tamaño',
     'Place it on a wall: it cuts the opening and follows the wall. Off a wall it stands alone.':
       'Colóquela sobre un muro: abre el hueco y sigue el muro. Fuera de un muro queda suelta.',
     'Place it on a wall: it cuts the opening and follows the wall. The sill marks the outside.':
@@ -90,6 +98,10 @@ export const translations: Record<string, Record<string, string>> = {
     'Stair, L-shaped': 'Treppe, L-förmig',
     'Stair, U-shaped': 'Treppe, U-förmig',
     'Stair, spiral': 'Wendeltreppe',
+    'Compass (north)': 'Kompass (Norden)',
+    'Shows where north is. Turn it with its round handle, or type its rotation.': 'Zeigt, wo Norden ist. Am runden Griff drehen oder die Drehung eingeben.',
+    Letter: 'Buchstabe',
+    Size: 'Größe',
     'Place it on a wall: it cuts the opening and follows the wall. Off a wall it stands alone.':
       'Auf eine Wand setzen: Sie schneidet die Öffnung aus und folgt der Wand. Abseits einer Wand steht sie frei.',
     'Place it on a wall: it cuts the opening and follows the wall. The sill marks the outside.':

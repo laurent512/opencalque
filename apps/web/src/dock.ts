@@ -11,7 +11,7 @@ import { msg } from './i18n'
 export const PANELS = {
   pages: msg('Pages'),
   layers: msg('Layers'),
-  objects: msg('Objects'),
+  objects: msg('Structure'),
   properties: msg('Properties'),
   assistant: msg('Assistant'),
 } as const

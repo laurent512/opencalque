@@ -1,11 +1,11 @@
 import { childrenOf, DEFAULT_PAPER_SCALE, layersOf, lengthOf, PAPER_FORMATS, paperFormat, paperSize, type Node, type Op, modifierKind, modifierKinds, modifierParams, type Modifier, roomAt, colorRef, colorRefOf, colorsOf, newId, resolveColor, cornerJoin, cornerJoinOps, moveCornerOps, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
 import { executeById } from '../commands'
-import { useEffect, useRef, useState } from 'react'
-import { ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, FlipHorizontal2, FlipVertical2, RotateCcw, RotateCw, Eye, EyeOff, Trash2, Check, Link2, Plus, Unlink, AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalSpaceAround, AlignStartHorizontal, AlignStartVertical, AlignVerticalSpaceAround } from 'lucide-react'
+import { useEffect, useRef, useState, useLayoutEffect } from 'react'
+import { Pipette, ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, FlipHorizontal2, FlipVertical2, RotateCcw, RotateCw, Eye, EyeOff, Trash2, Check, Link2, Plus, Unlink, AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalSpaceAround, AlignStartHorizontal, AlignStartVertical, AlignVerticalSpaceAround } from 'lucide-react'
 import { reorderSelection, transformSelection, addModifier, alignSelection, distributeSelection } from '../actions'
 import { applyCalibration } from '../floorplan'
 import { language, msg, t } from '../i18n'
-import { apply, editComponent, registry, toast, useStore, selectCorner } from '../store'
+import { apply, editComponent, registry, setTool, toast, useStore, selectCorner } from '../store'
 import { Field, IconButton, labelOf, Section } from '../ui'
 import { dashIndex, DASHES, penOf, PENS, pixelsOf } from '../strokes'
 import { formatLength, parseLength, parseNumber, unit } from '../units'
@@ -193,14 +193,39 @@ function ColorChoice({ stored, fallback, unset, commit }: { stored: string | und
   const doc = useStore((s) => s.doc)
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
+  const menu = useRef<HTMLDivElement>(null)
+  const [place, setPlace] = useState<{ left: number; top: number } | null>(null)
   useEffect(() => {
     if (!open) return
     const onPointerDown = (e: PointerEvent) => {
       if (!box.current?.contains(e.target as HTMLElement)) setOpen(false)
     }
+    // The list is placed against the field once; when the panel scrolls under it, it closes.
+    const onScroll = (e: Event) => {
+      if (!(e.target instanceof Element) || !menu.current?.contains(e.target)) setOpen(false)
+    }
+    const onResize = () => setOpen(false)
     window.addEventListener('pointerdown', onPointerDown, true)
-    return () => window.removeEventListener('pointerdown', onPointerDown, true)
+    window.addEventListener('scroll', onScroll, true)
+    window.addEventListener('resize', onResize)
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown, true)
+      window.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('resize', onResize)
+    }
   }, [open])
+  // The list has a width of its own, whatever the width of the field: it hangs under the field,
+  // ending where the field ends, goes above it when there is no room below, and stays in the window.
+  useLayoutEffect(() => {
+    if (!open || !box.current || !menu.current) return setPlace(null)
+    const field = box.current.getBoundingClientRect()
+    const list = menu.current.getBoundingClientRect()
+    const margin = 8
+    const left = Math.min(Math.max(margin, field.right - list.width), window.innerWidth - list.width - margin)
+    const below = field.bottom + 4
+    const top = below + list.height + margin <= window.innerHeight ? below : Math.max(margin, field.top - 4 - list.height)
+    setPlace({ left, top })
+  }, [open, stored, doc.colors])
 
   const linked = colorRefOf(stored)
   const shared = linked === null ? undefined : doc.colors?.[linked]
@@ -231,7 +256,7 @@ function ColorChoice({ stored, fallback, unset, commit }: { stored: string | und
         )}
       </button>
       {open && (
-        <div className="color-menu">
+        <div className="color-menu" ref={menu} style={place ? { left: place.left, top: place.top } : { visibility: 'hidden' }}>
           <h4>{t('Shared colours')}</h4>
           {colors.length === 0 && <p className="hint">{t('None yet. A shared colour is used by reference: change it once and everything linked to it changes.')}</p>}
           {colors.map((color) => (
@@ -348,12 +373,23 @@ function FieldRow({ node, nodes, field, update }: { node: Node; nodes: Node[]; f
 }
 
 /** Fields grouped under their section headings, in the order the sections first appear. */
-function Sections({ node, nodes = [node], fields, update }: { node: Node; nodes?: Node[]; fields: FieldSpec[]; update: Update }) {
+function Sections({ node, nodes = [node], fields, update, pick }: { node: Node; nodes?: Node[]; fields: FieldSpec[]; update: Update; pick?: boolean }) {
   const titles = [...new Set(fields.map((f) => f.section ?? GEOMETRY))]
   return (
     <>
       {titles.map((title) => (
-        <Section key={title} title={t(title)}>
+        <Section
+          key={title}
+          title={t(title)}
+          // Where the look of the selection is changed is where it can be taken from another object.
+          action={
+            pick && title === 'Style' ? (
+              <IconButton title={t('Copy the look of another object: click it on the drawing')} onClick={() => setTool('eyedropper')}>
+                <Pipette size={13} />
+              </IconButton>
+            ) : undefined
+          }
+        >
           {fields
             .filter((f) => (f.section ?? GEOMETRY) === title)
             .map((field) => (
@@ -715,7 +751,7 @@ function Selection({ nodes }: { nodes: Node[] }) {
           </div>
         </Section>
       )}
-      <Sections node={node} nodes={nodes} fields={single ? fieldsOf(node) : commonFields(nodes)} update={update} />
+      <Sections node={node} nodes={nodes} fields={single ? fieldsOf(node) : commonFields(nodes)} update={update} pick />
       {single && <ModifierStack node={node} />}
       <TransformSection />
     </>

@@ -1,7 +1,7 @@
 import { childrenOf, isLocked, isVisible, pagesOf } from './document'
 import { boundsContain, boundsContainPoint, unionBounds, type Bounds, type Vec2 } from './geometry'
 import { kindOf, nodePrimitives } from './kinds'
-import { distToPrimitive, primitiveBounds, type Primitive } from './primitives'
+import { distToPrimitive, insidePrimitive, primitiveBounds, type Primitive } from './primitives'
 import type { Registry } from './registry'
 import type { Document, Node } from './schema'
 
@@ -47,7 +47,9 @@ export function hitTest(scene: SceneItem[], p: Vec2, tolerance: number): SceneIt
   for (let i = scene.length - 1; i >= 0; i--) {
     const item = scene[i]
     if (item.locked || !item.bounds || !boundsContainPoint(item.bounds, p, tolerance)) continue
-    if (item.prims.some((prim) => distToPrimitive(prim, p) <= tolerance)) return item
+    // A component or an object is a thing, not a set of lines: inside one of its closed shapes is on it.
+    const solid = item.node.type === 'instance' || item.node.type === 'parametric'
+    if (item.prims.some((prim) => distToPrimitive(prim, p) <= tolerance || (solid && insidePrimitive(prim, p)))) return item
   }
   return null
 }

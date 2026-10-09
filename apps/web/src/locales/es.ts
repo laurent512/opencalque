@@ -64,7 +64,6 @@ export const es: Record<string, string> = {
   "Undo": "Deshacer",
   "Redo": "Rehacer",
   "Zoom to fit": "Ajustar a la ventana",
-  "All commands and shortcuts": "Todos los comandos y atajos",
   "Screen pixels per metre": "Píxeles de pantalla por metro",
   "Editing component “{name}”. The red and green axes cross at its insertion point.": "Editando el componente «{name}». Los ejes rojo y verde se cruzan en su punto de inserción.",
   "Untitled": "Sin título",
@@ -132,7 +131,6 @@ export const es: Record<string, string> = {
   "Place: {name}": "Colocar: {name}",
   "Place component: {name}": "Colocar el componente: {name}",
   "Go to page: {name}": "Ir a la página: {name}",
-  "Objects": "Objetos",
   "Properties": "Propiedades",
   "This PDF has {n} pages; the first one was imported.": "Este PDF tiene {n} páginas; se importó la primera.",
   "Reference": "Referencia",
@@ -559,4 +557,6 @@ export const es: Record<string, string> = {
   "A free, open-source drawing tool for plans and layouts. No account, nothing sent anywhere.": "Una herramienta de dibujo libre y gratuita para planos y composiciones. Sin cuenta, nada se envía a ninguna parte.",
   "What is new": "Novedades",
   "Show the welcome window when the app starts": "Mostrar la ventana de bienvenida al iniciar",
+  "Structure": "Estructura",
+  "Copy the look of another object: click it on the drawing": "Copiar el aspecto de otro objeto: haga clic en él en el dibujo",
 }

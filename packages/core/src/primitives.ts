@@ -170,7 +170,24 @@ function geometryBounds(p: Primitive): Bounds | null {
 const filled = (p: PrimStyle) => p.fill !== undefined && p.fill !== 'none'
 
 /** Distance from a point to what the primitive paints; 0 when the point is on a filled area. */
+/**
+ * Whether a point lies inside a closed shape, filled or not. Components and objects are picked
+ * this way: a cabinet drawn as an outline is still a thing one clicks in the middle of.
+ */
+export function insidePrimitive(p: Primitive, pt: Vec2): boolean {
+  if (p.backdrop || p.clip?.some((outline) => !pointInPolygon(pt, outline))) return false
+  if (p.kind === 'path') return !!p.closed && p.points.length > 2 && pointInPolygon(pt, p.points)
+  if (p.kind === 'ellipse') {
+    if (p.rx <= 0 || p.ry <= 0) return false
+    const q = rotate({ x: pt.x - p.cx, y: pt.y - p.cy }, -(p.rotation ?? 0))
+    return Math.hypot(q.x / p.rx, q.y / p.ry) < 1
+  }
+  return false
+}
+
 export function distToPrimitive(p: Primitive, pt: Vec2): number {
+  // A floor and its pattern lie under everything: a click there is for what stands on it.
+  if (p.backdrop === 'floor') return Infinity
   // What is clipped away cannot be clicked.
   if (p.clip?.some((outline) => !pointInPolygon(pt, outline))) return Infinity
   switch (p.kind) {

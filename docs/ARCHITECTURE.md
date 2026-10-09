@@ -523,7 +523,7 @@ Tool versions are unusually new (TypeScript 7, Vite 7 for the apps, Vitest 5, El
 - Snapping treats a group as its outline: wall centerlines inside a group are not snap targets from outside it.
 - Openings are linked to walls by position only, so they do not follow a wall that moves (see §4, Openings).
 - A wall ending on another wall's body overlaps it rather than being trimmed.
-- Doors and windows are hard to pick: only their lines are clickable, not the empty opening.
+- Picking (`hitTest`): a component instance or a parametric object is hit anywhere inside one of its closed shapes, filled or not (`insidePrimitive`); other nodes by their lines and fills. Floors (`backdrop: 'floor'`, with their hatch) are never hit: a room is picked by its name. An object made only of open lines (a door's leaf and arc) is still picked by its lines.
 - Stairs have no break line, handrails or winders; the L and U landings are square.
 - Dimensions are linear and aligned to their two points only: no horizontal/vertical-only, angular, radius or chained dimensions, and they do not follow the geometry they measure. Text width is estimated, so the gap for on-line text is approximate. Fonts are limited to generic families available without downloads.
 - Dimension tool defaults are not persisted between sessions.
@@ -531,7 +531,7 @@ Tool versions are unusually new (TypeScript 7, Vite 7 for the apps, Vitest 5, El
 - The assistant edits without asking first (undo is the safety net), keeps its conversation only in memory, and shows replies as plain text. The whole drawing is resent with every request up to 40 000 characters, which costs tokens on large drawings.
 - API keys are stored unencrypted in localStorage. The desktop app should move them to the OS keychain (Electron `safeStorage`) through the platform seam.
 - Translation covers the interface only; see Languages above for what stays in English. Right-to-left languages are not supported by the layout.
-- Panel content is not responsive to very narrow panels, and each panel repeats its own name as a section heading under its tab.
+- Panel content is not responsive to very narrow panels. Pages and Layers keep a heading under their tab because it carries the add button; Structure has none.
 - Shortcuts are single key presses with modifiers: no chords (`G` then `P`), and no import/export of a shortcut set. Extensions cannot declare default shortcuts yet.
 - Some defaults are awkward on non-US layouts (for example `[` and `]` need AltGr on AZERTY); they can be rebound.
 - No arcs or curves.

@@ -217,12 +217,12 @@ export function Objects() {
   const scope = useStore((s) => s.scope)
   const nodes = [...childrenOf(doc, scope)].reverse()
   return (
-    <Section title={t('Objects')}>
+    <section className="section untitled">
       {nodes.length === 0 && <p className="hint">{t('Nothing here yet. Pick a tool below the drawing and draw.')}</p>}
       {nodes.map((node) => (
         <ObjectRow key={node.id} node={node} depth={0} />
       ))}
       {nodes.length > 1 && <p className="hint">{t('Topmost first. Drag a row to change what is drawn over what.')}</p>}
-    </Section>
+    </section>
   )
 }

@@ -16,7 +16,6 @@ import {
   Redo2,
   Ruler,
   RulerDimensionLine,
-  Search,
   Spline,
   SeparatorVertical,
   Square,
@@ -221,7 +220,6 @@ function Hints() {
 }
 
 function Toolbar() {
-  const zoom = useStore((s) => s.view.zoom)
   const canUndo = useStore((s) => s.past.length > 0)
   const canRedo = useStore((s) => s.future.length > 0)
   const shapeTool = useStore((s) => s.shapeTool)
@@ -243,7 +241,6 @@ function Toolbar() {
       <hr />
       <ToolButton id="dimension" />
       <ToolButton id="measure" />
-      <ToolButton id="eyedropper" />
       <ToolGroup tools={TEXT_TOOLS} current={textTool} more={t('Annotation')} />
       <ToolButton id="paper" />
       <hr />
@@ -257,12 +254,6 @@ function Toolbar() {
       <CommandButton command="view.zoomToFit" title={t('Zoom to fit')} onClick={zoomToFit}>
         <Maximize size={18} />
       </CommandButton>
-      <CommandButton command="palette.open" title={t('All commands and shortcuts')} onClick={() => executeById('palette.open')}>
-        <Search size={18} />
-      </CommandButton>
-      <span className="zoom" title={t('Screen pixels per metre')}>
-        {Math.round(zoom * 1000)} px/m
-      </span>
     </div>
   )
 }
@@ -274,6 +265,7 @@ export function Stage() {
   const page = useStore((s) => s.page)
   const status = useStore((s) => s.status)
   const toast = useStore((s) => s.toast)
+  const zoom = useStore((s) => s.view.zoom)
   return (
     <main className="stage">
       <CanvasView />
@@ -285,7 +277,11 @@ export function Stage() {
           <button onClick={() => editComponent(null)}>{t('Done')}</button>
         </div>
       )}
-      <div className="status">{status}</div>
+      {/* Readings, out of the way in the corner: how far the view is zoomed, and where the pointer is. */}
+      <div className="status">
+        <span title={t('Screen pixels per metre')}>{Math.round(zoom * 1000)} px/m</span>
+        <span>{status}</span>
+      </div>
       {toast && <div className="toast">{toast}</div>}
       <Hints />
       <TextEditor />
