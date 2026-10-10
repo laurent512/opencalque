@@ -41,9 +41,10 @@ import { finishTextEdit, zoomToFit, withPaperContents, pickStyle } from '../acti
 import { onCommand } from '../commands'
 import { t } from '../i18n'
 import { usePrefs } from '../prefs'
+import { useTheme } from '../theme'
 import { formatLength, formatNumber, unit } from '../units'
 import { apply, cancel, commit, editComponent, preview, registry, select, setTool, useStore, type Tool, type View, selectCorner } from '../store'
-import { drawScene, gridStep, onPictureReady, type AngleMark, type Overlay, type SizeLabel, boxGrips } from './draw'
+import { DARK_AROUND_CANVAS, DARK_CANVAS, drawScene, gridStep, LIGHT_CANVAS, onPictureReady, type AngleMark, type Overlay, type SizeLabel, boxGrips } from './draw'
 import { drawing } from './drawing'
 
 type Gesture =
@@ -273,6 +274,7 @@ export function CanvasView() {
   const placing = useStore((s) => s.placing)
   const [overlay, setOverlay] = useState<Overlay>({})
   const showGrid = usePrefs((p) => p.showGrid)
+  const palette = useTheme((s) => (s.darkCanvas ? DARK_CANVAS : s.dark ? DARK_AROUND_CANVAS : LIGHT_CANVAS))
   const editingId = useStore((s) => s.editingText?.id)
   const corner = useStore((s) => s.corner)
   // Bumped when an imported picture finishes decoding, to paint it.
@@ -425,8 +427,8 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, editingId ? scene.map((item) => (item.id === editingId ? { ...item, prims: item.prims.filter((p) => p.kind !== 'text') } : item)) : scene, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' }, showGrid)
-  }, [scene, view, viewport, selection, handles, selectionLabels, titles, frames, corner, overlay, showGrid, pictures, editingId, tool])
+    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, editingId ? scene.map((item) => (item.id === editingId ? { ...item, prims: item.prims.filter((p) => p.kind !== 'text') } : item)) : scene, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' }, showGrid, palette)
+  }, [scene, view, viewport, selection, handles, selectionLabels, titles, frames, corner, overlay, showGrid, palette, pictures, editingId, tool])
 
   /**
    * Where a point lands after snapping: on a nearby point of existing geometry, else on the grid.

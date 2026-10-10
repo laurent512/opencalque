@@ -590,4 +590,10 @@ export const fr: Record<string, string> = {
   "Points along the left face of the wall": "Points sur la face gauche du mur",
   "Points along the middle of the wall": "Points sur l’axe du mur",
   "Points along the right face of the wall": "Points sur la face droite du mur",
+  "Dark theme": "Thème sombre",
+  "Theme": "Thème",
+  "Light": "Clair",
+  "Dark": "Sombre",
+  "Dark drawing area": "Zone de dessin sombre",
+  "In the dark theme, the drawing is shown light on dark. Turned off, it keeps the colours it will have on paper. Exports are never changed.": "Avec le thème sombre, le dessin s’affiche en clair sur fond sombre. Désactivé, il garde les couleurs qu’il aura sur papier. Les exports ne sont jamais modifiés.",
 }

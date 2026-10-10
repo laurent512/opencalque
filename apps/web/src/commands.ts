@@ -35,6 +35,7 @@ import { PANELS, resetLayout, togglePanel, useDock, type PanelId } from './dock'
 import { importFloorPlan } from './floorplan'
 import { msg, t } from './i18n'
 import { setPrefs, usePrefs } from './prefs'
+import { toggleTheme, useTheme } from './theme'
 import { labelOf } from './ui'
 
 /**
@@ -185,6 +186,7 @@ const STATIC: Command[] = [
 
   { id: 'view.zoomToFit', title: msg('Zoom to fit'), category: 'View', keys: ['Shift+1'], run: zoomToFit },
   { id: 'view.zoomIn', title: msg('Zoom in'), category: 'View', keys: ['+', 'Shift++', 'Mod+='], run: () => zoomBy(1.25) },
+  { id: 'view.toggleTheme', title: msg('Dark theme'), category: 'View', keywords: 'dark light mode appearance colours', checked: () => useTheme.getState().dark, run: toggleTheme },
   { id: 'view.toggleGrid', title: msg('Show grid'), category: 'View', checked: () => prefs().showGrid, run: () => setPrefs({ showGrid: !prefs().showGrid }) },
   { id: 'view.toggleSnapGrid', title: msg('Snap to grid'), category: 'View', checked: () => prefs().snapToGrid, run: () => setPrefs({ snapToGrid: !prefs().snapToGrid }) },
   {

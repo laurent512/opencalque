@@ -21,6 +21,8 @@ export interface Platform {
   claudeCli?(input: { prompt: string; session?: string; model?: string }): Promise<{ text: string; session: string }>
   /** Desktop only: stops the CLI request in progress. */
   cancelClaudeCli?(): void
+  /** Desktop only: tells the window whether the interface is dark, for the system's buttons and dialogs. */
+  setTheme?(dark: boolean): void
   /** The words of the "unsaved changes" question the desktop app asks before closing. */
   setCloseWarning(labels: { message: string; discard: string; cancel: string }): void
   open(extensions: string[]): Promise<OpenedFile | null>

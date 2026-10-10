@@ -3,11 +3,52 @@
   --border: #e6e6e6;
   --text: #1e1e1e;
   --muted: #8a8a8a;
+  --faint: #bdbdbd;
   --hover: #f3f3f3;
+  --pressed: #dcdcdc;
   --accent: #0d99ff;
   --accent-soft: #e5f4ff;
+  --on-accent: #ffffff;
+  /* The tinted strip behind panel tabs, and a tab in it under the pointer. */
+  --strip: #f4f4f4;
+  --strip-hover: #ececec;
+  /* Components and banners. */
+  --special: #7b61ff;
+  --danger: #e5484d;
+  --danger-text: #c2272d;
+  /* Dark notes over the drawing: toasts, badges. */
+  --note: #1e1e1e;
+  /* The edge of a colour swatch, so white shows on white and black on black. */
+  --swatch-edge: rgb(0 0 0 / 18%);
+  /* What dims the app behind a window. */
+  --veil: rgb(0 0 0 / 18%);
+  /* A hairline round what floats over the drawing. */
+  --ring: rgb(0 0 0 / 6%);
+  color-scheme: light;
   font: 12px/16px system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--text);
+}
+
+/* The dark theme changes only the colours above; `theme.ts` sets the attribute. */
+:root[data-theme='dark'] {
+  --bg: #2c2c2c;
+  --border: #444444;
+  --text: #e8e8e8;
+  --muted: #a0a0a0;
+  --faint: #6b6b6b;
+  --hover: #383838;
+  --pressed: #505050;
+  --accent-soft: #1d3a52;
+  --strip: #232323;
+  --strip-hover: #303030;
+  --special: #9d8bff;
+  --danger: #ff6369;
+  --danger-text: #ff8a8f;
+  --note: #454545;
+  --swatch-edge: rgb(255 255 255 / 22%);
+  --veil: rgb(0 0 0 / 45%);
+  --ring: rgb(255 255 255 / 10%);
+  color-scheme: dark;
 }
 
 * {
@@ -66,7 +107,7 @@ select {
    the panel beneath it, joined to it, with a line of colour along its top. */
 
 .dock {
-  --dv-tabs-and-actions-container-background-color: #f4f4f4;
+  --dv-tabs-and-actions-container-background-color: var(--strip);
   --dv-tabs-and-actions-container-height: 34px;
   --dv-activegroup-visiblepanel-tab-background-color: transparent;
   --dv-activegroup-hiddenpanel-tab-background-color: transparent;
@@ -96,7 +137,7 @@ select {
 }
 
 .dock .dv-tab.dv-inactive-tab:hover {
-  background-color: #ececec;
+  background-color: var(--strip-hover);
   color: var(--text);
 }
 
@@ -129,7 +170,7 @@ select {
 }
 
 .dock .dv-tab .dv-default-tab-action:hover {
-  background-color: #dcdcdc;
+  background-color: var(--pressed);
 }
 
 .dock-panel {
@@ -303,7 +344,7 @@ select {
 }
 
 .faint {
-  color: #bdbdbd;
+  color: var(--faint);
   font-style: normal;
 }
 
@@ -334,7 +375,7 @@ select {
 
 .icon-button.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 /* The tool in use stays in its colour under the pointer, a shade darker; the plain hover would leave a white icon on a pale button. */
@@ -520,7 +561,7 @@ body.scrubbing .quick-field input[title] {
   flex: none;
   width: 14px;
   height: 14px;
-  border: 1px solid rgb(0 0 0 / 18%);
+  border: 1px solid var(--swatch-edge);
   border-radius: 3px;
 }
 
@@ -648,7 +689,7 @@ body.scrubbing .quick-field input[title] {
 
 .menu-list button:hover:not(:disabled) {
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .menu-list button:disabled {
@@ -702,7 +743,7 @@ body.scrubbing .quick-field input[title] {
   padding: 6px;
   border-radius: 12px;
   background: var(--bg);
-  box-shadow: 0 2px 14px rgb(0 0 0 / 15%), 0 0 0 1px rgb(0 0 0 / 6%);
+  box-shadow: 0 2px 14px rgb(0 0 0 / 15%), 0 0 0 1px var(--ring);
   transform: translateX(-50%);
 }
 
@@ -754,7 +795,7 @@ body.scrubbing .quick-field input[title] {
 
 .banner {
   top: 12px;
-  background: #7b61ff;
+  background: var(--special);
 }
 
 /* Keys worth knowing for the tool in use */
@@ -790,7 +831,7 @@ body.scrubbing .quick-field input[title] {
 
 /* The first hint is what to do next; it reads as the instruction, the rest as asides. */
 .hint-bar .next {
-  color: var(--text, #1f1f1f);
+  color: var(--text);
   font-weight: 600;
 }
 
@@ -813,14 +854,14 @@ body.scrubbing .quick-field input[title] {
   border: 0;
   border-radius: 5px;
   background: #fff;
-  color: #7b61ff;
+  color: var(--special);
   font-weight: 600;
   cursor: pointer;
 }
 
 .toast {
   bottom: 72px;
-  background: #1e1e1e;
+  background: var(--note);
   white-space: pre-line;
 }
 
@@ -834,7 +875,7 @@ body.scrubbing .quick-field input[title] {
   align-items: flex-start;
   justify-content: center;
   padding-top: 14vh;
-  background: rgb(0 0 0 / 18%);
+  background: var(--veil);
 }
 
 .palette {
@@ -923,7 +964,7 @@ body.scrubbing .quick-field input[title] {
 .palette-keys.recording {
   border-color: var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .palette-footer {
@@ -1013,7 +1054,7 @@ body.scrubbing .quick-field input[title] {
 }
 
 .prefs-nav button:hover {
-  background: rgb(0 0 0 / 5%);
+  background: var(--strip-hover);
 }
 
 .prefs-nav button.active {
@@ -1164,8 +1205,8 @@ body.scrubbing .quick-field input[title] {
 }
 
 .assistant-entry.error {
-  border-color: #e5484d;
-  color: #c2272d;
+  border-color: var(--danger);
+  color: var(--danger-text);
 }
 
 .assistant-example {
@@ -1345,7 +1386,7 @@ body.scrubbing .quick-field input[title] {
   padding: 0;
   border: 0;
   border-radius: 50%;
-  background: #1f1f1f;
+  background: var(--note);
   color: #fff;
   cursor: pointer;
 }
@@ -1370,7 +1411,7 @@ body.scrubbing .quick-field input[title] {
 
 .type-icon.component,
 .type-icon.instance {
-  color: #7b61ff;
+  color: var(--special);
 }
 
 .twist {
@@ -1461,7 +1502,7 @@ body.scrubbing .quick-field input[title] {
 .pill.active {
   border-color: var(--accent);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .warehouse-grid {
@@ -1606,7 +1647,7 @@ body.scrubbing .quick-field input[title] {
   padding: 5px;
   border-radius: 10px;
   background: var(--bg);
-  box-shadow: 0 2px 14px rgb(0 0 0 / 15%), 0 0 0 1px rgb(0 0 0 / 6%);
+  box-shadow: 0 2px 14px rgb(0 0 0 / 15%), 0 0 0 1px var(--ring);
 }
 
 .quick-field {
@@ -2114,7 +2155,7 @@ body.scrubbing .quick-field input[title] {
   flex: none;
   width: 24px;
   height: 24px;
-  border: 1px solid rgb(0 0 0 / 18%);
+  border: 1px solid var(--swatch-edge);
   border-radius: 5px;
 }
 
@@ -2145,7 +2186,7 @@ body.scrubbing .quick-field input[title] {
 .color-swatches button {
   aspect-ratio: 1;
   padding: 0;
-  border: 1px solid rgb(0 0 0 / 18%);
+  border: 1px solid var(--swatch-edge);
   border-radius: 4px;
   cursor: pointer;
 }

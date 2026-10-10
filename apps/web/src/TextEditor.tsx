@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { annotationText, type Node, type NodeInput } from '@opencalque/core'
 import { finishTextEdit } from './actions'
+import { darkInk } from './canvas/draw'
 import { preview, useStore } from './store'
+import { useTheme } from './theme'
 
 /** The font the canvas draws text in when a text has none of its own. */
 const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif'
@@ -23,6 +25,7 @@ export function TextEditor() {
   const editing = useStore((s) => s.editingText)
   const node = useStore((s) => (s.editingText ? s.doc.nodes[s.editingText.id] : undefined))
   const view = useStore((s) => s.view)
+  const darkCanvas = useTheme((s) => s.darkCanvas)
   const input = useRef<HTMLTextAreaElement>(null)
 
   // Focus after the click that placed the text has finished, or the browser takes focus back.
@@ -57,7 +60,8 @@ export function TextEditor() {
         height: size * 1.25 * lines.length,
         font: `${size}px/1.25 ${words.font ?? FONT}`,
         width: `calc(${Math.max(4, ...lines.map((line) => line.length)) + 1}ch + 8px)`,
-        color: node.style?.stroke ?? undefined,
+        // The words in the colour the canvas will draw them in.
+        color: darkCanvas ? darkInk(node.style?.stroke ?? '#1f1f1f', true) : (node.style?.stroke ?? undefined),
         fontWeight: words.bold ? 'bold' : undefined,
         textAlign: words.right ? 'right' : words.align,
         // Words that end at their anchor grow leftwards from it; centred ones, both ways.

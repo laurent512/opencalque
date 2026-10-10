@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, net, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, net, shell } from 'electron'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { cpSync, existsSync, readFileSync } from 'node:fs'
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
@@ -170,6 +170,14 @@ app.whenReady().then(() => {
 
   ipcMain.on('doc:dirty', (_, value: boolean) => {
     dirty = value
+  })
+
+  // The web app chooses light or dark; the system's buttons over the menu bar and its dialogs follow.
+  ipcMain.on('app:theme', (event, dark: boolean) => {
+    nativeTheme.themeSource = dark ? 'dark' : 'light'
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (win && process.platform === 'win32') win.setTitleBarOverlay({ color: '#00000000', symbolColor: dark ? '#e6e6e6' : '#1e1e1e', height: 36 })
+    win?.setBackgroundColor(dark ? '#1e1e1e' : '#ffffff')
   })
 
   ipcMain.on('doc:closeWarning', (_, labels: typeof closeWarning) => {

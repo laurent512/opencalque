@@ -4,6 +4,11 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 0.4.2 — 2026-10-10
+
+### New
+- A dark theme. Preferences › General › Theme chooses light, dark, or the same as the system (the default); View › Dark theme switches between them. The drawing is shown light on dark too, which can be turned off to keep its paper colours. Exports and printing are never affected.
+
 ## 0.4.1 — 2026-10-09
 
 ### New

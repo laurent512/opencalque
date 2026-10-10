@@ -23,10 +23,86 @@ import type { View } from '../store'
 import { formatLength } from '../units'
 
 const ACCENT = '#0d99ff'
-const DESK = '#f3f4f6'
 /** The colour of what belongs to a modifier rather than to the object. */
 const MODIFIER = '#f08c00'
 const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif'
+
+/** The colours of the canvas itself, as opposed to those of the drawing. */
+export interface CanvasPalette {
+  /** Behind a drawing without sheets of paper. */
+  surface: string
+  /** Around sheets of paper. */
+  desk: string
+  grid: [minor: string, major: string]
+  axes: [x: string, y: string]
+  title: string
+  label: { fill: string; text: string }
+  guide: string
+  /** What every colour of the drawing goes through on screen. Exports never use it. */
+  ink: (color: string, line?: boolean) => string
+}
+
+const same = (color: string) => color
+
+export const LIGHT_CANVAS: CanvasPalette = {
+  surface: '#ffffff',
+  desk: '#f3f4f6',
+  grid: ['rgb(0 0 0 / 5.5%)', 'rgb(0 0 0 / 11%)'],
+  axes: ['#f0b4b4', '#a9d8b0'],
+  title: '#8b9099',
+  label: { fill: '#dbe7ff', text: '#1d4ed8' },
+  guide: 'rgb(29 78 216 / 40%)',
+  ink: same,
+}
+
+export const DARK_CANVAS: CanvasPalette = {
+  // White paper as `darkInk` turns it.
+  surface: '#1f1f1f',
+  desk: '#141414',
+  grid: ['rgb(255 255 255 / 5%)', 'rgb(255 255 255 / 10%)'],
+  axes: ['#7a3a3a', '#3a6b44'],
+  title: '#8b9099',
+  label: { fill: '#1d3a6b', text: '#c6d8ff' },
+  guide: 'rgb(110 160 255 / 50%)',
+  ink: darkInk,
+}
+
+/** A dark theme around a drawing that keeps its paper colours. */
+export const DARK_AROUND_CANVAS: CanvasPalette = { ...LIGHT_CANVAS, desk: '#1a1a1a' }
+
+// Colours are normalised by the browser, which reads every CSS colour syntax there is.
+let normaliser: CanvasRenderingContext2D | null = null
+const inked = new Map<string, string>()
+
+/**
+ * A drawing's colour as it shows on a dark canvas: its lightness turned over, its hue and
+ * saturation kept, so black ink reads light, white paper dark, and red stays red. Lightness is
+ * folded into 12–92 % so that nothing is quite black or quite white. Lines and words are kept at
+ * least 62 % light, or a dark blue line would stay dark on the dark ground.
+ */
+export function darkInk(color: string, line = false): string {
+  const key = line ? `line ${color}` : color
+  const known = inked.get(key)
+  if (known !== undefined) return known
+  normaliser ??= document.createElement('canvas').getContext('2d')
+  if (!normaliser) return color
+  normaliser.fillStyle = '#000'
+  normaliser.fillStyle = color
+  const value = String(normaliser.fillStyle)
+  const parts = value.startsWith('#') ? [1, 3, 5].map((i) => parseInt(value.slice(i, i + 2), 16)) : (value.match(/[\d.]+/g) ?? []).map(Number)
+  const [r, g, b] = parts.slice(0, 3).map((v) => v / 255)
+  const alpha = parts[3] ?? 1
+  const max = Math.max(r, g, b)
+  const min = Math.min(r, g, b)
+  const l = (max + min) / 2
+  const d = max - min
+  const sat = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1))
+  const hue = d === 0 ? 0 : max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4
+  const lightness = line ? Math.max(0.62, 0.92 - l * 0.8) : 0.92 - l * 0.8
+  const result = `hsl(${Math.round(hue * 60)} ${Math.round(sat * 100)}% ${Math.round(lightness * 1000) / 10}% / ${alpha})`
+  inked.set(key, result)
+  return result
+}
 
 export interface Overlay {
   marquee?: { a: Vec2; b: Vec2 }
@@ -94,9 +170,9 @@ export function gridStep(zoom: number): number {
 }
 
 /** Paints one step, inside the outlines its primitive is clipped to, if any. */
-function paint(ctx: CanvasRenderingContext2D, step: PaintStep, zoom: number): void {
+function paint(ctx: CanvasRenderingContext2D, step: PaintStep, zoom: number, ink: CanvasPalette['ink'] = same): void {
   const clip = step.prim.clip
-  if (!clip?.length) return paintWhole(ctx, step, zoom)
+  if (!clip?.length) return paintWhole(ctx, step, zoom, ink)
   ctx.save()
   // Each clip narrows the last, so what shows is inside all of them.
   for (const outline of clip) {
@@ -105,11 +181,11 @@ function paint(ctx: CanvasRenderingContext2D, step: PaintStep, zoom: number): vo
     ctx.closePath()
     ctx.clip()
   }
-  paintWhole(ctx, step, zoom)
+  paintWhole(ctx, step, zoom, ink)
   ctx.restore()
 }
 
-function paintWhole(ctx: CanvasRenderingContext2D, { prim, stroke, fill, widthScale, widthExtra, seam }: PaintStep, zoom: number): void {
+function paintWhole(ctx: CanvasRenderingContext2D, { prim, stroke, fill, widthScale, widthExtra, seam }: PaintStep, zoom: number, ink: CanvasPalette['ink']): void {
   if (prim.kind === 'image') {
     const picture = pictureFor(prim.href)
     if (!picture) return
@@ -127,7 +203,7 @@ function paintWhole(ctx: CanvasRenderingContext2D, { prim, stroke, fill, widthSc
     if (prim.rotation) ctx.rotate((prim.rotation * Math.PI) / 180)
     ctx.font = `${prim.bold ? 'bold ' : ''}${prim.size}px ${prim.font ?? FONT}`
     ctx.textAlign = prim.align ?? 'left'
-    ctx.fillStyle = prim.stroke ?? 'black'
+    ctx.fillStyle = ink(prim.stroke ?? 'black', true)
     ctx.fillText(prim.text, 0, 0)
     ctx.restore()
     return
@@ -140,17 +216,17 @@ function paintWhole(ctx: CanvasRenderingContext2D, { prim, stroke, fill, widthSc
     if (prim.closed) ctx.closePath()
   }
   if (fill && prim.fill && prim.fill !== 'none') {
-    ctx.fillStyle = prim.fill
+    ctx.fillStyle = ink(prim.fill)
     ctx.fill()
     if (seam > 0) {
-      ctx.strokeStyle = prim.fill
+      ctx.strokeStyle = ink(prim.fill)
       ctx.lineWidth = seam / zoom
       ctx.setLineDash([])
       ctx.stroke()
     }
   }
   if (stroke && prim.stroke !== 'none') {
-    ctx.strokeStyle = prim.stroke ?? 'black'
+    ctx.strokeStyle = ink(prim.stroke ?? 'black', true)
     ctx.lineWidth = ((prim.strokeWidth ?? 1) * widthScale + widthExtra) / zoom
     // Merged outlines turn sharply at joints; a mitre there would spike out past the corner.
     ctx.lineJoin = widthExtra > 0 ? 'round' : 'miter'
@@ -159,10 +235,10 @@ function paintWhole(ctx: CanvasRenderingContext2D, { prim, stroke, fill, widthSc
   }
 }
 
-function drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number, view: View): void {
+function drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number, view: View, palette: CanvasPalette): void {
   const minor = gridStep(view.zoom)
   // Translucent, so the grid reads the same over the desk and over a sheet of paper.
-  for (const [step, color] of [[minor, 'rgb(0 0 0 / 5.5%)'], [minor * 10, 'rgb(0 0 0 / 11%)']] as const) {
+  for (const [step, color] of [[minor, palette.grid[0]], [minor * 10, palette.grid[1]]] as const) {
     ctx.beginPath()
     for (let x = Math.ceil(-view.x / view.zoom / step) * step; x * view.zoom + view.x < width; x += step) {
       const sx = Math.round(x * view.zoom + view.x) + 0.5
@@ -180,7 +256,7 @@ function drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number, 
   }
   // Axes through the origin, which is also the insertion point when editing a component.
   ctx.lineWidth = 1
-  for (const [color, horizontal] of [['#f0b4b4', true], ['#a9d8b0', false]] as const) {
+  for (const [color, horizontal] of [[palette.axes[0], true], [palette.axes[1], false]] as const) {
     ctx.beginPath()
     if (horizontal) {
       ctx.moveTo(0, Math.round(view.y) + 0.5)
@@ -203,6 +279,7 @@ export function drawScene(
   handles: Vec2[],
   overlay: Overlay,
   showGrid: boolean,
+  palette: CanvasPalette = LIGHT_CANVAS,
 ): void {
   const { width, height, dpr } = size
   const toScreen = (p: Vec2) => ({ x: p.x * view.zoom + view.x, y: p.y * view.zoom + view.y })
@@ -214,15 +291,15 @@ export function drawScene(
   const steps = paintOrder(scene.flatMap((item) => item.prims))
   const sheets = steps.filter((step) => step.prim.backdrop === true)
   // Once there are sheets of paper, what surrounds them is the desk they lie on.
-  ctx.fillStyle = sheets.length > 0 ? DESK : '#ffffff'
+  ctx.fillStyle = sheets.length > 0 ? palette.desk : palette.surface
   ctx.fillRect(0, 0, width, height)
   world()
-  for (const step of sheets) paint(ctx, step, view.zoom)
+  for (const step of sheets) paint(ctx, step, view.zoom, palette.ink)
   screen()
-  if (showGrid) drawGrid(ctx, width, height, view)
+  if (showGrid) drawGrid(ctx, width, height, view, palette)
 
   world()
-  for (const step of steps) if (step.prim.backdrop !== true) paint(ctx, step, view.zoom)
+  for (const step of steps) if (step.prim.backdrop !== true) paint(ctx, step, view.zoom, palette.ink)
 
   const selected = scene.filter((item) => selection.includes(item.id))
   for (const item of selected) {
@@ -315,7 +392,7 @@ export function drawScene(
   ctx.textAlign = 'left'
   for (const title of overlay.titles ?? []) {
     const p = toScreen(title.at)
-    ctx.fillStyle = title.selected ? ACCENT : '#8b9099'
+    ctx.fillStyle = title.selected ? ACCENT : palette.title
     ctx.fillText(title.text, Math.round(p.x), Math.round(p.y) - 7)
   }
   for (const ghost of overlay.ghosts ?? []) {
@@ -334,7 +411,7 @@ export function drawScene(
   ctx.textAlign = 'left'
   if (overlay.axis) {
     const p = toScreen(overlay.axis.at)
-    ctx.strokeStyle = 'rgb(29 78 216 / 40%)'
+    ctx.strokeStyle = palette.guide
     ctx.lineWidth = 1
     ctx.setLineDash([])
     ctx.beginPath()
@@ -406,11 +483,11 @@ export function drawScene(
     if (label.rotation) ctx.rotate((label.rotation * Math.PI) / 180)
     ctx.font = `600 11px ${FONT}`
     const width = ctx.measureText(label.text).width + 12
-    ctx.fillStyle = '#dbe7ff'
+    ctx.fillStyle = palette.label.fill
     ctx.beginPath()
     ctx.roundRect(-width / 2, -9, width, 18, 4)
     ctx.fill()
-    ctx.fillStyle = '#1d4ed8'
+    ctx.fillStyle = palette.label.text
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     ctx.fillText(label.text, 0, 0.5)

@@ -20,7 +20,7 @@ const MENUS: [string, (string | null)[]][] = [
     msg('Object'),
     ['edit.group', 'edit.ungroup', null, 'edit.bringToFront', 'edit.bringForward', 'edit.sendBackward', 'edit.sendToBack', null, 'edit.rotateRight', 'edit.rotateLeft', 'edit.flipHorizontal', 'edit.flipVertical', null, 'wall.extend', 'wall.trim', null, 'modifier.crop', 'modifier.hatch', 'modifier.array', null, 'component.create', 'component.finish'],
   ],
-  [msg('View'), ['view.zoomToFit', 'view.zoomIn', 'view.zoomOut', null, 'view.toggleGrid', 'view.toggleSnapGrid', 'view.toggleSnapObjects', null, '@Panels', null, 'view.resetLayout']],
+  [msg('View'), ['view.zoomToFit', 'view.zoomIn', 'view.zoomOut', null, 'view.toggleGrid', 'view.toggleSnapGrid', 'view.toggleSnapObjects', null, '@Panels', null, 'view.toggleTheme', 'view.resetLayout']],
   // There is no Insert or Tools menu: the toolbar holds the tools and the component library, and pages
   // and layers are added from their panels. Every command stays in the command list (Ctrl+K).
   [msg('Preferences'), ['prefs.open', null, 'palette.open', null, 'help.welcome']],

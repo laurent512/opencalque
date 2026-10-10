@@ -128,6 +128,20 @@ function GeneralSettings() {
           ))}
         </select>
       </label>
+      <label className="pref-field">
+        <span>{t('Theme')}</span>
+        <select value={prefs.theme} onChange={(e) => setPrefs({ theme: e.target.value as typeof prefs.theme })}>
+          <option value="system">{t('Same as the system')}</option>
+          <option value="light">{t('Light')}</option>
+          <option value="dark">{t('Dark')}</option>
+        </select>
+      </label>
+      {prefs.theme !== 'light' && (
+        <>
+          <Toggle label={t('Dark drawing area')} checked={prefs.darkCanvas} onChange={(darkCanvas) => setPrefs({ darkCanvas })} />
+          <p className="hint">{t('In the dark theme, the drawing is shown light on dark. Turned off, it keeps the colours it will have on paper. Exports are never changed.')}</p>
+        </>
+      )}
       <Toggle label={t('Show the welcome window when the app starts')} checked={prefs.showWelcome} onChange={(showWelcome) => setPrefs({ showWelcome })} />
       <label className="pref-field">
         <span>{t('Unit')}</span>

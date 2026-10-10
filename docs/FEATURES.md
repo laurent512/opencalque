@@ -152,7 +152,7 @@ Not ranked within an area.
 - Tracing an imported plan into walls with a review step; checking a plan against rules (door widths, room sizes).
 
 **Application**
-- Dark theme; touch and pen input; high-contrast mode.
+- ~~Dark theme~~ (done); touch and pen input; high-contrast mode.
 - Autosave and crash recovery; version history; recent files.
 - Installers and automatic updates; file association for `.opencalque`.
 - Performance on drawings with tens of thousands of objects (caching per object, then GPU rendering).

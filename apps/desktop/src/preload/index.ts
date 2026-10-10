@@ -6,6 +6,7 @@ const desktop: Platform = {
   request: (url, init) => ipcRenderer.invoke('net:request', url, init),
   claudeCli: (input) => ipcRenderer.invoke('claude:run', input),
   cancelClaudeCli: () => ipcRenderer.send('claude:cancel'),
+  setTheme: (dark) => ipcRenderer.send('app:theme', dark),
   setCloseWarning: (labels) => ipcRenderer.send('doc:closeWarning', labels),
   open: (extensions) => ipcRenderer.invoke('file:open', extensions),
   openBytes: (extensions) => ipcRenderer.invoke('file:openBytes', extensions),

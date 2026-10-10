@@ -67,7 +67,8 @@ apps/web
   src/platform.ts     Platform interface + browser implementation.
   src/store.ts        Zustand store, history, preview/commit, the extension registry instance.
   src/actions.ts      File actions, duplicate, make component, reorder, zoom, run extension command.
-  src/prefs.ts        Per-user settings (language, grid, snapping, AI provider and key), kept in localStorage.
+  src/prefs.ts        Per-user settings (language, theme, grid, snapping, AI provider and key), kept in localStorage.
+  src/theme.ts        Light or dark: resolves the preference, sets data-theme, tells the canvas and the desktop window.
   src/i18n.ts         Translation: t(), tn(), msg(). Language files are in src/locales/.
   src/dock.ts         Which panels exist and how to show them; no components, safe to import anywhere.
   src/Layout.tsx      The dockable panel layout (dockview) around the drawing.
@@ -448,6 +449,12 @@ The drawing is surrounded by panels managed by `dockview-react`: each can be dra
 - **Adding a panel**: add it to `PANELS` in `dock.ts`, to `COMPONENTS`, `SIDE` and `PARTNER` in `Layout.tsx`, and a `panel('id')` command in `commands.ts`. It then appears in View and in the palette.
 - Toggling a panel that is open but behind another tab brings it forward; only a visible panel is closed.
 
+### Theme (`theme.ts`)
+
+The `theme` preference is `system`, `light` or `dark`; `theme.ts` resolves it against `prefers-color-scheme`, sets `data-theme` on `<html>` and keeps the result in `useTheme` (`dark`, and `darkCanvas` when the drawing is to be dark too, the `darkCanvas` preference). The interface takes every colour from the variables at the top of `styles.css`, which `:root[data-theme='dark']` redefines: **use a variable, never a literal colour, in new CSS**, or add one to both blocks. On desktop the optional `Platform.setTheme` passes the choice to the window (system buttons, dialogs, background).
+
+The canvas gets a `CanvasPalette` (`LIGHT_CANVAS`, `DARK_CANVAS`, `DARK_AROUND_CANVAS` in `draw.ts`) for its own colours (surface, desk, grid, axes, labels) and an `ink` function every colour of the drawing goes through when painted. On a dark canvas that is `darkInk`: lightness turned over with hue and saturation kept, lines and words held at least 62 % light. It exists only in `draw.ts` (and the in-place text editor): the document, the panels' colour fields and every export keep the real colours, and the assistant's pictures are rendered light.
+
 ### Platform seam (`platform.ts`)
 
 `Platform` covers files (`open`, `openBytes`, `save`, `initial`, and on desktop `recent` and `openRecent`), the unsaved-changes prompt (`setDirty`, `setCloseWarning`), and a `desktop` flag with three capabilities only the desktop app has: `request` (an HTTP request made by the main process, so a local model server need not accept the page's origin), `claudeCli` and `cancelClaudeCli`. Code checks for the capability (`platform.claudeCli`), not for the flag, so a future host can offer some and not others. The browser implementation uses the File System Access API where available and falls back to download. The desktop implementation is the preload script. `token` is an opaque identity for saving back in place (a path on desktop, a file handle in the browser).
@@ -567,7 +574,7 @@ Tool versions are unusually new (TypeScript 7, Vite 7 for the apps, Vitest 5, El
 - Imported components lose their layer when no layer of the same name exists.
 - Extensions are compiled in; there is no runtime loading or permission model.
 - `scene` is rebuilt for the whole container on every change, and each wall scans all its siblings for joints and openings (O(n²)).
-- Light theme only. The app menu is removed on desktop, so macOS has no standard menu bar; closing the window quits on every platform.
+- The dark theme changes only how things look on screen; a picture imported as a plan is drawn as it is, so a white scan stays white on the dark canvas. The app menu is removed on desktop, so macOS has no standard menu bar; closing the window quits on every platform.
 - The name "OpenCalque" is used by unrelated projects; check before publishing.
 
 ## 10. Suggested next steps
