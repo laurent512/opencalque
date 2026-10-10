@@ -204,7 +204,7 @@ function Hints() {
         ? [['', t('Click the first of two points whose real distance you know')]]
         : [['', t('Click the second point')], ['Shift', t('keeps it level, upright or at 45°')]]
   }
-  else if (dragging) hints = walls ? [['', t('Joined walls stretch to stay joined')], ['Alt', t('moves it alone, off the grid')]] : [['Alt', t('ignores the grid and snapping')]]
+  else if (dragging) hints = walls ? [['', t('Joined walls stretch to stay joined')], ['Alt', t('moves it alone, off the grid')]] : [['Shift', t('keeps an end on its own line')], ['Alt', t('ignores the grid and snapping')]]
   else hints = hintsFor(tool, step, opening)
   if (hints.length === 0) return null
   return (

@@ -125,6 +125,8 @@ export interface Overlay {
   grips?: boolean
   /** A guide across the whole view through `at`, shown while the line being drawn is exactly horizontal or vertical. */
   axis?: { at: Vec2; vertical: boolean }
+  /** The line something is being kept on while it is dragged: through a point, at an angle in radians, shown across the whole view. */
+  guide?: { at: Vec2; angle: number }
 }
 
 /**
@@ -423,6 +425,20 @@ export function drawScene(
       ctx.lineTo(width, Math.round(p.y) + 0.5)
     }
     ctx.stroke()
+  }
+  if (overlay.guide) {
+    const p = toScreen(overlay.guide.at)
+    // Long enough to leave the view both ways from wherever the point is.
+    const far = Math.hypot(width, height) + Math.hypot(p.x, p.y)
+    const [dx, dy] = [Math.cos(overlay.guide.angle) * far, Math.sin(overlay.guide.angle) * far]
+    ctx.strokeStyle = 'rgb(13 153 255 / 75%)'
+    ctx.lineWidth = 1
+    ctx.setLineDash([7, 4])
+    ctx.beginPath()
+    ctx.moveTo(p.x - dx, p.y - dy)
+    ctx.lineTo(p.x + dx, p.y + dy)
+    ctx.stroke()
+    ctx.setLineDash([])
   }
   if (overlay.measure) {
     const a = toScreen(overlay.measure.a)

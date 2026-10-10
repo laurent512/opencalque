@@ -434,20 +434,15 @@ export function CanvasView() {
    * Where a point lands after snapping: on a nearby point of existing geometry, else on the grid.
    * Shift constrains to 45° steps from `from`; Alt turns snapping off.
    */
-  const snap = (world: Vec2, e: { altKey: boolean; shiftKey: boolean }, exclude: string[], from?: Vec2, own: number[] = []) => {
+  const snap = (world: Vec2, e: { altKey: boolean; shiftKey: boolean }, exclude: string[], from?: Vec2) => {
     const { zoom } = get().view
     const { snapToGrid, snapToObjects } = usePrefs.getState()
     if (e.altKey) return { p: world, marker: null }
     const step = gridStep(zoom)
     if (e.shiftKey && from) {
       const d = sub(world, from)
-      const pointed = Math.atan2(d.y, d.x)
-      // The directions on offer: every 45°, and those given (the line a wall already lies on), whichever is nearest.
-      const apart = (angle: number) => Math.abs(Math.atan2(Math.sin(angle - pointed), Math.cos(angle - pointed)))
-      const angle = [Math.round(pointed / (Math.PI / 4)) * (Math.PI / 4), ...own.flatMap((a) => [a, a + Math.PI])].reduce((best, a) => (apart(a) < apart(best) ? a : best))
-      // On a line of its own the length is where the pointer falls on it; on the usual ones it keeps to the grid.
-      const along = d.x * Math.cos(angle) + d.y * Math.sin(angle)
-      const length = Math.abs(angle - Math.round(angle / (Math.PI / 4)) * (Math.PI / 4)) < 1e-9 ? Math.round(len(d) / step) * step : Math.max(0, Math.round(along / step) * step)
+      const angle = Math.round(Math.atan2(d.y, d.x) / (Math.PI / 4)) * (Math.PI / 4)
+      const length = Math.round(len(d) / step) * step
       return { p: { x: round(from.x + Math.cos(angle) * length), y: round(from.y + Math.sin(angle) * length) }, marker: null }
     }
     let best: Vec2 | null = null
@@ -465,6 +460,38 @@ export function CanvasView() {
     if (best) return { p: best, marker: best }
     if (!snapToGrid) return { p: world, marker: null }
     return { p: { x: Math.round(world.x / step) * step, y: Math.round(world.y / step) * step }, marker: null }
+  }
+
+  /**
+   * Keeps a point on the line through `from` at `angle`, whatever the grid says: the pointer only
+   * chooses how far along. That distance goes by grid steps, except near a wall the line crosses,
+   * where it stops on that wall's middle line. `forward` keeps it on the side the angle points to.
+   */
+  const alongLine = (world: Vec2, from: Vec2, angle: number, exclude: string[], forward = false) => {
+    const { zoom } = get().view
+    const step = gridStep(zoom)
+    const dir = { x: Math.cos(angle), y: Math.sin(angle) }
+    const pointed = (world.x - from.x) * dir.x + (world.y - from.y) * dir.y
+    let length = Math.round(pointed / step) * step
+    if (forward) length = Math.max(step, length)
+    let crossing = false
+    let reach = 10 / zoom
+    for (const item of sceneRef.current) {
+      const wall = item.node
+      if (wall.type !== 'wall' || exclude.includes(item.id)) continue
+      const e = sub(wall.b, wall.a)
+      const denom = dir.x * e.y - dir.y * e.x
+      if (Math.abs(denom) < 1e-9) continue
+      const between = sub(wall.a, from)
+      const t = (between.x * e.y - between.y * e.x) / denom
+      const u = (between.x * dir.y - between.y * dir.x) / denom
+      if (u < 0 || u > 1 || (forward && t <= 0) || Math.abs(t - pointed) >= reach) continue
+      reach = Math.abs(t - pointed)
+      length = t
+      crossing = true
+    }
+    const p = { x: round(from.x + dir.x * length), y: round(from.y + dir.y * length) }
+    return { p, marker: crossing ? p : null }
   }
 
   const local = (e: { clientX: number; clientY: number }): Vec2 => {
@@ -709,6 +736,7 @@ export function CanvasView() {
     let labels: SizeLabel[] | undefined
     let angle: AngleMark | undefined
     let axis: Overlay['axis']
+    let guide: Overlay['guide']
     let ghosts: Overlay['ghosts']
     let live: { a: number; b: number } | null = null
     let measure: Overlay['measure']
@@ -738,10 +766,12 @@ export function CanvasView() {
         break
       }
       case 'handle': {
-        // Shift keeps a wall or a line on course: its end slides along the line it already lies on,
-        // or swings to level, upright or 45° about its other end.
+        // Shift locks a wall or a line to the line it already lies on: its end only slides along it,
+        // and that line is shown running across the view.
         const ends = 'a' in g.node && 'b' in g.node && g.index < 2 ? { moved: g.index === 0 ? g.node.a : g.node.b, fixed: g.index === 0 ? g.node.b : g.node.a } : null
-        const target = e.shiftKey && ends ? snap(world, e, [g.node.id], ends.fixed, [Math.atan2(ends.moved.y - ends.fixed.y, ends.moved.x - ends.fixed.x)]) : snap(world, e, [g.node.id])
+        const line = e.shiftKey && ends && dist(ends.moved, ends.fixed) > 1e-6 ? Math.atan2(ends.moved.y - ends.fixed.y, ends.moved.x - ends.fixed.x) : null
+        const target = line !== null && ends ? alongLine(world, ends.fixed, line, [g.node.id], true) : snap(world, e, [g.node.id])
+        if (line !== null && ends) guide = { at: ends.fixed, angle: line }
         marker = target.marker
         // The other walls that end at a wall's corner come along with it, unless Alt is held.
         const joined = e.altKey ? [] : wallEndFollowOps(s.base ?? s.doc, g.node, g.index, target.p)
@@ -752,9 +782,13 @@ export function CanvasView() {
         // Nothing has moved until the pointer has: a press on a corner only selects it.
         const before = s.base ?? s.doc
         const ends = wallEndsAt(before, s.scope, g.from)
-        // Shift moves the corner along one of the walls that meet there, or level, upright or at 45° from where it was.
+        // Shift locks the corner to the line of one of the walls that meet there (of the wall itself,
+        // for a free end), whichever the pointer is nearest to. That line is shown across the view.
         const lines = ends.map(({ wall }) => Math.atan2(wall.b.y - wall.a.y, wall.b.x - wall.a.x))
-        const target = e.shiftKey ? snap(world, e, ends.map((end) => end.wall.id), g.from, lines) : snap(world, e, ends.map((end) => end.wall.id))
+        const off = (angle: number) => Math.abs((world.x - g.from.x) * Math.sin(angle) - (world.y - g.from.y) * Math.cos(angle))
+        const line = e.shiftKey ? lines.reduce((best, angle) => (off(angle) < off(best) - 1e-9 ? angle : best)) : null
+        const target = line !== null ? alongLine(world, g.from, line, ends.map((end) => end.wall.id)) : snap(world, e, ends.map((end) => end.wall.id))
+        if (line !== null) guide = { at: g.from, angle: line }
         marker = target.marker
         if (dist(target.p, g.from) < 1e-6) {
           cancel()
@@ -883,7 +917,7 @@ export function CanvasView() {
       const next = [...new Set([...g.keep, ...inside])]
       if (next.length !== s.selection.length || next.some((id, i) => id !== s.selection[i])) select(next)
     }
-    setOverlay((o) => ({ marker, labels, angle, axis, ghosts, marquee: g.kind === 'marquee' ? { a: g.start, b: world } : undefined, measure: measure ?? o.measure }))
+    setOverlay((o) => ({ marker, labels, angle, axis, guide, ghosts, marquee: g.kind === 'marquee' ? { a: g.start, b: world } : undefined, measure: measure ?? o.measure }))
     // A failed preview has put its reason in the status bar; keep it there.
     if (previewed) useStore.setState({ status, drawLive: live })
   }

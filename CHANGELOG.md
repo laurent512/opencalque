@@ -9,6 +9,9 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 ### New
 - A dark theme. Preferences › General › Theme chooses light, dark, or the same as the system (the default); View › Dark theme switches between them. The drawing is shown light on dark too, which can be turned off to keep its paper colours. Exports and printing are never affected.
 
+### Improved
+- Shift while dragging the end of a wall or a line now holds it firmly on the line it lies on, at any angle: the grid no longer pulls it off, a dashed line across the view shows the line it is kept on, and the end stops on walls that line crosses. Shift on a corner keeps it on the line of one of its walls.
+
 ## 0.4.1 — 2026-10-09
 
 ### New

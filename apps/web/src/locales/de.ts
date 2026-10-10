@@ -590,6 +590,7 @@ export const de: Record<string, string> = {
   "Points along the left face of the wall": "Punkte entlang der linken Wandseite",
   "Points along the middle of the wall": "Punkte entlang der Wandachse",
   "Points along the right face of the wall": "Punkte entlang der rechten Wandseite",
+  "keeps an end on its own line": "hält ein Ende auf seiner eigenen Linie",
   "Dark theme": "Dunkles Design",
   "Theme": "Design",
   "Light": "Hell",
