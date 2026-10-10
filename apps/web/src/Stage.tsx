@@ -15,6 +15,7 @@ import {
   Pipette,
   Redo2,
   Ruler,
+  Triangle,
   RulerDimensionLine,
   Spline,
   SeparatorVertical,
@@ -30,7 +31,7 @@ import { CanvasView } from './canvas/CanvasView'
 import { executeById, useShortcutLabel } from './commands'
 import { msg, t } from './i18n'
 import { QuickBar } from './QuickBar'
-import { editComponent, redo, registry, ROOM_TOOLS, setTool, SHAPE_TOOLS, TEXT_TOOLS, undo, useStore, type Tool } from './store'
+import { editComponent, redo, registry, MEASURE_TOOLS, ROOM_TOOLS, setTool, SHAPE_TOOLS, TEXT_TOOLS, undo, useStore, type Tool } from './store'
 import { TextEditor } from './TextEditor'
 import { IconButton, labelOf } from './ui'
 
@@ -44,6 +45,7 @@ const ICONS: Partial<Record<Tool, [title: string, icon: LucideIcon]>> = {
   wall: [msg('Wall'), BrickWall],
   dimension: [msg('Dimension: annotate a distance on the drawing'), RulerDimensionLine],
   measure: [msg('Measure: read a distance without drawing anything'), Ruler],
+  angle: [msg('Angle: read the angle between two directions'), Triangle],
   eyedropper: [msg('Eyedropper: copy the look of an object'), Pipette],
   text: [msg('Text'), Type],
   annotation: [msg('Annotation: a note with an arrow to what it is about'), MessageSquare],
@@ -172,6 +174,8 @@ function hintsFor(tool: Tool, step: number, opening: boolean): Hint[] {
       return step === 0 ? [['', t('Click the first point to measure from')]] : step === 1 ? [['', t('Click the second point')], angles, free] : [['', t('Click where the dimension line should sit')], free]
     case 'measure':
       return step === 0 ? [['', t('Click the first point')]] : [['', t('Click the second point')], angles, free]
+    case 'angle':
+      return step === 0 ? [['', t('Click the corner of the angle')]] : step === 1 ? [['', t('Click a point along its first side')], free] : [['', t('Click a point along its second side')], free]
     case 'text':
       return [['', t('Click where the text starts, then type')]]
     case 'annotation':
@@ -225,6 +229,7 @@ function Toolbar() {
   const shapeTool = useStore((s) => s.shapeTool)
   const roomTool = useStore((s) => s.roomTool)
   const textTool = useStore((s) => s.textTool)
+  const measureTool = useStore((s) => s.measureTool)
   return (
     <div className="toolbar">
       <ToolButton id="select" />
@@ -240,7 +245,7 @@ function Toolbar() {
       </CommandButton>
       <hr />
       <ToolButton id="dimension" />
-      <ToolButton id="measure" />
+      <ToolGroup tools={MEASURE_TOOLS} current={measureTool} more={t('Measure an angle')} />
       <ToolGroup tools={TEXT_TOOLS} current={textTool} more={t('Annotation')} />
       <ToolButton id="paper" />
       <hr />

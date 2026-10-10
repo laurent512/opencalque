@@ -2295,3 +2295,213 @@ body.scrubbing .quick-field input[title] {
   gap: 6px;
   padding: 6px 12px 2px 16px;
 }
+
+/* Export: the format, then what goes in it */
+
+.dialog.export {
+  width: min(600px, calc(100vw - 32px));
+}
+
+.dialog.export:focus {
+  outline: none;
+}
+
+.export-formats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 12px 20px 4px;
+}
+
+.welcome-choice.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.export-options {
+  min-height: 96px;
+  padding: 10px 20px 4px;
+}
+
+.export-options h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0;
+}
+
+.export-options .pref-row .faint {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.dialog.export footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px 16px;
+}
+
+.dialog.export footer .pill {
+  padding: 6px 18px;
+}
+
+.pill:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Four formats to export as */
+.export-formats {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.dialog.export {
+  width: min(720px, calc(100vw - 32px));
+}
+
+.export-options .field {
+  padding-left: 0;
+}
+
+/* A wall type: its row, then what it is made of */
+.wall-type {
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.wall-type .field > em {
+  font-style: normal;
+}
+
+/* A property of a wall type: a tick to define it, its name, its value */
+
+.type-prop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 2px 12px 2px 16px;
+}
+
+.type-prop > span {
+  flex: none;
+  width: 84px;
+  color: var(--muted);
+}
+
+.type-prop > em {
+  flex: 1;
+  font-style: normal;
+}
+
+.type-prop > select {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: var(--hover);
+  font: inherit;
+}
+
+/* The value is a field without a name of its own: the row already says what it is. */
+.type-prop > .field {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+}
+
+.type-prop > .field > span {
+  display: none;
+}
+
+.type-prop.off > span {
+  opacity: 0.6;
+}
+
+/* A property of a wall that its type defines: the field, then where its value comes from */
+
+.typed-row {
+  display: flex;
+  align-items: center;
+}
+
+.typed-row > .field {
+  flex: 1;
+  min-width: 0;
+  padding-right: 4px;
+}
+
+.typed-row > .icon-button,
+.typed-row > .typed-mark {
+  flex: none;
+  margin-right: 8px;
+}
+
+.typed-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  color: var(--accent);
+  opacity: 0.7;
+}
+
+/* An exception to the type: said with the colour of a warning, on the name and on the way back. */
+.typed-row.own > .field > span,
+.typed-row.own > .icon-button {
+  color: #c2410c;
+}
+
+/* What something is filled with: a plain colour, or a pattern over it */
+
+.fill-modes {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 8px;
+  padding: 2px;
+  border-radius: 6px;
+  background: var(--hover);
+}
+
+.fill-modes button {
+  flex: 1;
+  height: 24px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.fill-modes button.active {
+  background: var(--bg);
+  box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgb(0 0 0 / 8%);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pattern-controls {
+  margin-bottom: 4px;
+}
+
+.pattern-controls .field {
+  padding: 2px 0;
+}
+
+.pattern-controls .field > span {
+  width: 64px;
+}
+
+.pattern-picker {
+  margin-bottom: 4px;
+}
+
+/* A patterned fill shows its swatch hatched over its colour. */
+.color-now > i.patterned {
+  background-image: repeating-linear-gradient(45deg, rgb(0 0 0 / 55%) 0 1px, transparent 1px 4px);
+}

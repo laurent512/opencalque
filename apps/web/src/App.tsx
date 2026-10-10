@@ -6,6 +6,7 @@ import { carriesFiles, openDropped } from './drop'
 import { CommandPalette } from './CommandPalette'
 import { ContextMenu } from './ContextMenu'
 import { handleKeyDown } from './commands'
+import { ExportDialog } from './ExportDialog'
 import { t } from './i18n'
 import { Layout } from './Layout'
 import { MenuBar } from './MenuBar'
@@ -103,6 +104,7 @@ export function App() {
       <ContextMenu />
       <Warehouse />
       <Welcome />
+      <ExportDialog />
       <About />
       <DropTarget />
     </div>

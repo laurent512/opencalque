@@ -13,6 +13,7 @@ export const PANELS = {
   layers: msg('Layers'),
   objects: msg('Structure'),
   colors: msg('Colours'),
+  wallTypes: msg('Wall types'),
   properties: msg('Properties'),
   assistant: msg('Assistant'),
 } as const

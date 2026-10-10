@@ -1,7 +1,7 @@
 import * as z from 'zod'
 import { withoutColorRef } from './colors'
 import { componentUses, holdsChildren, isContainer, layersOf, newId, orderAfter, rootOf } from './document'
-import { AssetSchema, LayerSchema, NodeSchema, type Asset, type ContainerNode, type Document, type Node, SharedColorSchema, type SharedColor } from './schema'
+import { AssetSchema, LayerSchema, NodeSchema, type Asset, type ContainerNode, type Document, type Node, SharedColorSchema, type SharedColor, WallTypeSchema, type WallType } from './schema'
 
 /**
  * Operations are the only way a document changes. Each one touches a single node or layer and is
@@ -35,6 +35,9 @@ export type Op =
   | { op: 'add_color'; color: Omit<SharedColor, 'id'> & { id?: string } }
   | { op: 'update_color'; id: string; patch: Record<string, unknown> }
   | { op: 'remove_color'; id: string }
+  | { op: 'add_wall_type'; wallType: Omit<WallType, 'id'> & { id?: string } }
+  | { op: 'update_wall_type'; id: string; patch: Record<string, unknown> }
+  | { op: 'remove_wall_type'; id: string }
   | { op: 'add_asset'; asset: Omit<Asset, 'id'> & { id?: string } }
   | { op: 'set_document'; name?: string; info?: Record<string, string | null> }
 
@@ -63,6 +66,11 @@ export const OpSchema = z.discriminatedUnion('op', [
   z
     .object({ op: z.literal('add_color'), color: z.looseObject({ name: z.string(), value: z.string() }) })
     .describe('Adds a shared colour. Use it by setting a colour property (style.stroke, style.fill, a layer color) to "var(--<id>)".'),
+  z
+    .object({ op: z.literal('add_wall_type'), wallType: z.looseObject({ name: z.string() }) })
+    .describe('Adds a wall type: a name and whichever of thickness, height, fill, stroke, strokeWidth, dash and layers it defines. Walls take it with "wallType": "<id>".'),
+  z.object({ op: z.literal('update_wall_type'), id: z.string(), patch }).describe('Changes a wall type; every wall of that type follows, except where it has a value of its own. A null in the patch makes the type stop defining that property.'),
+  z.object({ op: z.literal('remove_wall_type'), id: z.string() }).describe('Removes a wall type. Its walls stay as they are, of no type.'),
   z.object({ op: z.literal('update_color'), id: z.string(), patch }).describe('Changes a shared colour; everything that refers to it changes with it.'),
   z.object({ op: z.literal('remove_color'), id: z.string() }).describe('Removes a shared colour. What referred to it keeps the colour it had, as a plain colour.'),
   z
@@ -88,8 +96,39 @@ export function applyOps(doc: Document, ops: Op[]): Document {
   const next: Document = { ...doc, nodes: { ...doc.nodes }, layers: { ...doc.layers } }
   if (doc.assets) next.assets = { ...doc.assets }
   if (doc.colors) next.colors = { ...doc.colors }
+  if (doc.wallTypes) next.wallTypes = { ...doc.wallTypes }
   for (const op of ops) applyOp(next, op)
+  followWallTypes(next)
   return next
+}
+
+/** A wall type as it is kept: when every one of its layers has a thickness, its own is theirs added up. */
+function wallType(value: unknown): WallType {
+  const type = parse(WallTypeSchema, value, 'wall type')
+  const layers = type.layers ?? []
+  if (layers.length === 0 || layers.some((layer) => layer.thickness === undefined)) return type
+  return { ...type, thickness: layers.reduce((total, layer) => total + layer.thickness!, 0) }
+}
+
+/**
+ * Keeps every wall in step with its type: as thick as the type says, when the type defines a
+ * thickness and the wall does not list it among its exceptions. A wall naming a type that does
+ * not exist is refused; a list of exceptions on a wall of no type means nothing and is dropped.
+ */
+function followWallTypes(d: Document): void {
+  for (const node of Object.values(d.nodes)) {
+    if (node.type !== 'wall') continue
+    if (node.wallType === undefined) {
+      if (node.overrides) {
+        const { overrides: _, ...plain } = node
+        d.nodes[node.id] = plain
+      }
+      continue
+    }
+    const type = d.wallTypes?.[node.wallType]
+    if (!type) throw new OpError(`Unknown wall type "${node.wallType}"`)
+    if (type.thickness !== undefined && !node.overrides?.includes('thickness') && node.thickness !== type.thickness) d.nodes[node.id] = { ...node, thickness: type.thickness }
+  }
 }
 
 function parse<T>(schema: z.ZodType<T>, value: unknown, what: string): T {
@@ -154,7 +193,18 @@ function applyOp(d: Document, op: Op): void {
     case 'update_node': {
       const node = d.nodes[op.id]
       if (!node) throw new OpError(`Unknown node "${op.id}"`)
-      const next = parse(NodeSchema, merge(node, op.patch, ['id', 'type']), 'node')
+      let next = parse(NodeSchema, merge(node, op.patch, ['id', 'type']), 'node')
+      // A thickness given to a wall whose type defines one is an exception to its type, and is kept
+      // as such; a wall that changes type starts again from what the new type says.
+      if (next.type === 'wall' && node.type === 'wall') {
+        const defined = next.wallType ? d.wallTypes?.[next.wallType]?.thickness : undefined
+        if ('wallType' in op.patch && !('overrides' in op.patch) && next.overrides) {
+          const { overrides: _, ...fresh } = next
+          next = fresh
+        } else if (typeof op.patch.thickness === 'number' && defined !== undefined && op.patch.thickness !== defined && !('overrides' in op.patch)) {
+          next = { ...next, overrides: [...new Set([...(next.overrides ?? []), 'thickness' as const])] }
+        }
+      }
       checkNode(d, next)
       d.nodes[op.id] = next
       return
@@ -222,6 +272,30 @@ function applyOp(d: Document, op: Op): void {
       // What used it keeps how it looks: the reference becomes the colour it stood for.
       for (const n of Object.values(d.nodes)) d.nodes[n.id] = withoutColorRef(n, op.id, color.value)
       for (const l of Object.values(d.layers)) d.layers[l.id] = withoutColorRef(l, op.id, color.value)
+      return
+    }
+    case 'add_wall_type': {
+      const id = op.wallType.id ?? newId('walltype')
+      if (d.wallTypes?.[id]) throw new OpError(`Wall type "${id}" already exists`)
+      d.wallTypes = { ...d.wallTypes, [id]: wallType({ ...op.wallType, id }) }
+      return
+    }
+    case 'update_wall_type': {
+      const type = d.wallTypes?.[op.id]
+      if (!type) throw new OpError(`Unknown wall type "${op.id}"`)
+      d.wallTypes = { ...d.wallTypes, [op.id]: wallType(merge(type, op.patch, ['id'])) }
+      return
+    }
+    case 'remove_wall_type': {
+      if (!d.wallTypes?.[op.id]) throw new OpError(`Unknown wall type "${op.id}"`)
+      const { [op.id]: _, ...rest } = d.wallTypes
+      d.wallTypes = rest
+      // Its walls stay as thick as they were, of no type.
+      for (const n of Object.values(d.nodes)) {
+        if (n.type !== 'wall' || n.wallType !== op.id) continue
+        const { wallType: __, ...plain } = n
+        d.nodes[n.id] = plain
+      }
       return
     }
     case 'add_asset': {

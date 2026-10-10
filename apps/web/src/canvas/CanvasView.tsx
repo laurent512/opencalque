@@ -44,7 +44,7 @@ import { usePrefs } from '../prefs'
 import { useTheme } from '../theme'
 import { formatLength, formatNumber, unit } from '../units'
 import { apply, cancel, commit, editComponent, preview, registry, select, setTool, useStore, type Tool, type View, selectCorner } from '../store'
-import { DARK_AROUND_CANVAS, DARK_CANVAS, drawScene, gridStep, LIGHT_CANVAS, onPictureReady, type AngleMark, type Overlay, type SizeLabel, boxGrips } from './draw'
+import { DARK_AROUND_CANVAS, DARK_CANVAS, drawScene, gridStep, LIGHT_CANVAS, onPictureReady, type AngleMark, type Overlay, type SizeLabel, boxGrips, angleBetween } from './draw'
 import { drawing } from './drawing'
 
 type Gesture =
@@ -72,6 +72,7 @@ type Gesture =
   | { kind: 'offset'; id: string; a: Vec2; b: Vec2 }
   /** A live reading from `start`. Nothing is added to the drawing. */
   | { kind: 'measure'; start: Vec2 }
+  | { kind: 'angle'; vertex: Vec2; a?: Vec2 }
   /** A polyline with the points clicked so far; `since` is when the last one was added. */
   | { kind: 'poly'; id: string; points: Vec2[]; since: number }
 
@@ -235,7 +236,7 @@ function wallOps(id: string, a: Vec2, b: Vec2, prev?: WallRun, first?: WallRun):
 
 /** The node a two-point tool makes from its two points. */
 function shape(tool: Tool, id: string, a: Vec2, b: Vec2, offset = 0): NodeInput {
-  const { scope, activeLayer, wallThickness, dimensionTemplate, annotationTemplate, paperScale, base, doc } = get()
+  const { scope, activeLayer, wallThickness, wallType, dimensionTemplate, annotationTemplate, paperScale, base, doc } = get()
   const common = { id, parent: scope, layer: activeLayer, ...(tool !== 'dimension' && tool !== 'paper' ? currentStyle() : {}) }
   switch (tool) {
     case 'paper': {
@@ -245,7 +246,8 @@ function shape(tool: Tool, id: string, a: Vec2, b: Vec2, offset = 0): NodeInput 
       return { ...common, type: 'paper', name, scale: paperScale, titleBlock: {}, x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) }
     }
     case 'wall':
-      return { ...common, type: 'wall', a, b, thickness: wallThickness }
+      // A type that is still in the drawing: one chosen in another drawing is not.
+      return { ...common, type: 'wall', a, b, thickness: wallThickness, ...(wallType && doc.wallTypes?.[wallType] ? { wallType } : {}) }
     case 'divider':
       return { id, parent: scope, layer: activeLayer, type: 'divider', a, b }
     case 'annotation':
@@ -385,7 +387,7 @@ export function CanvasView() {
   /** Tells the rest of the interface how far the shape in progress has got. Called after anything that may have changed it. */
   const syncStep = () => {
     const g = gesture.current
-    const step = g.kind === 'draw' ? 1 + g.segments : g.kind === 'poly' ? g.points.length : g.kind === 'offset' ? 2 : g.kind === 'measure' ? 1 : 0
+    const step = g.kind === 'draw' ? 1 + g.segments : g.kind === 'poly' ? g.points.length : g.kind === 'offset' ? 2 : g.kind === 'measure' ? 1 : g.kind === 'angle' ? (g.a ? 2 : 1) : 0
     if (get().drawStep !== step) useStore.setState({ drawStep: step })
   }
 
@@ -669,6 +671,18 @@ export function CanvasView() {
         commit()
         placed.current = newId()
       }
+    } else if (s.tool === 'angle') {
+      // The corner, then a point along each side; the third click freezes the reading until the next one.
+      const p = snap(world, e, []).p
+      if (g.kind !== 'angle') {
+        gesture.current = { kind: 'angle', vertex: p }
+        setOverlay({ angleReading: { vertex: p } })
+      } else if (!g.a) {
+        if (dist(p, g.vertex) > 1e-6) gesture.current = { ...g, a: p }
+      } else {
+        setOverlay({ angleReading: { vertex: g.vertex, a: g.a, b: p } })
+        gesture.current = { kind: 'idle' }
+      }
     } else if (s.tool === 'measure' || s.tool === 'calibrate') {
       // First click starts a reading, the second freezes it on screen until the next one.
       // Calibration picks points on a picture, which has nothing to snap to.
@@ -740,6 +754,7 @@ export function CanvasView() {
     let ghosts: Overlay['ghosts']
     let live: { a: number; b: number } | null = null
     let measure: Overlay['measure']
+    let angleReading: Overlay['angleReading']
     let status = `${formatNumber(world.x)}, ${formatNumber(world.y)} ${unit()}`
     let previewed = true
     switch (g.kind) {
@@ -859,6 +874,16 @@ export function CanvasView() {
         status = t('Offset {value}', { value: formatLength(Math.abs(offset)) })
         break
       }
+      case 'angle': {
+        const target = snap(world, e, [])
+        marker = target.marker
+        angleReading = g.a ? { vertex: g.vertex, a: g.a, b: target.p } : { vertex: g.vertex, a: target.p }
+        if (g.a) {
+          const turn = angleBetween(g.vertex, g.a, target.p)
+          status = `${t('Angle {value}', { value: `${formatNumber(turn)}°` })} · ${formatNumber(Math.round((360 - turn) * 10) / 10)}°`
+        }
+        break
+      }
       case 'measure': {
         const target = s.tool === 'calibrate' ? { p: e.shiftKey ? straighten(g.start, world) : world, marker: null } : snap(world, e, [], g.start)
         marker = target.marker
@@ -906,7 +931,7 @@ export function CanvasView() {
               ? { ...common, type: 'instance', component: s.placing.component }
               : { ...common, ...onWall, type: 'parametric', kind: s.placing.kind, props: {} }
           previewed = preview([{ op: 'add_node', node }])
-        } else if (TWO_POINT.includes(s.tool) || s.tool === 'measure') {
+        } else if (TWO_POINT.includes(s.tool) || s.tool === 'measure' || s.tool === 'angle') {
           marker = snap(world, e, []).marker
         }
     }
@@ -917,7 +942,7 @@ export function CanvasView() {
       const next = [...new Set([...g.keep, ...inside])]
       if (next.length !== s.selection.length || next.some((id, i) => id !== s.selection[i])) select(next)
     }
-    setOverlay((o) => ({ marker, labels, angle, axis, guide, ghosts, marquee: g.kind === 'marquee' ? { a: g.start, b: world } : undefined, measure: measure ?? o.measure }))
+    setOverlay((o) => ({ marker, labels, angle, axis, guide, ghosts, marquee: g.kind === 'marquee' ? { a: g.start, b: world } : undefined, measure: measure ?? o.measure, angleReading: angleReading ?? o.angleReading }))
     // A failed preview has put its reason in the status bar; keep it there.
     if (previewed) useStore.setState({ status, drawLive: live })
   }

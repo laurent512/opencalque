@@ -4,6 +4,21 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 0.5.0 — 2026-10-10
+
+### New
+- OpenCalque in a browser, with nothing to install: https://opencalque.com always runs the latest version.
+- Quantities: File → Export → CSV writes a table for a spreadsheet with the rooms and their areas, the walls (length, ground covered and, once a wall height is given, the area of their face less doors and windows, and their volume), the doors and windows counted by kind and size, and the wall types layer by layer.
+- Wall types, in their own panel. A type defines what you tick, and only that: what the wall is made of ("Plaster 15, Brick 200", or just a material), its thickness, height, fill, outline colour, weight and kind of line. Give a type to walls in their properties or choose it in the bar above the tools; its walls take what it defines, and changing the type changes them all. A wall can still be given a value of its own: it is marked as an exception, with a button to go back to the type. Measured layers are drawn as lines inside the wall.
+- Dimension the selected walls (Object menu): a chain of dimensions along each wall, through each side of its doors and windows, with the whole length beyond, on the outside of the plan.
+- Patterned fills. The window that chooses a fill now starts with Plain or Pattern: lines, cross-hatch, planks, tiles, dots for concrete, zigzag for insulation, each with its spacing, angle and stroke colour, over the fill's colour. A wall type can define one, so a material is read from its hatching.
+- Measure an angle (the arrow beside the measure tool, or Shift+M): click the corner, then a point along each side, and read the angle between them.
+- Walls can have a height, and doors and windows too. Nothing of the plan is drawn with them; they are what the quantities measure with.
+
+### Improved
+- One Export in the File menu (Ctrl+P or Ctrl+E): a window where you choose the format, PDF, SVG or DXF, then what goes in it, the sheets to print or the page to export.
+- One Import in the File menu (Ctrl+I) for everything: a picture or a PDF to trace, a DXF, another drawing for its components, or an extension. The app sends the file where its kind belongs.
+
 ## 0.4.2 — 2026-10-10
 
 ### New

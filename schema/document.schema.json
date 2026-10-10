@@ -99,6 +99,109 @@
         "description": "A named colour that belongs to the drawing. A stroke, a fill or a layer colour refers to it by writing \"var(--<id>)\" in place of a colour; changing the value here then changes everything that refers to it."
       }
     },
+    "wallTypes": {
+      "description": "Wall types by id, referred to from walls by \"wallType\".",
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "thickness": {
+            "description": "In mm. When every layer gives a thickness, their sum.",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "height": {
+            "description": "How high walls of this type stand, in mm. Used to measure their faces; nothing is drawn with it.",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "fill": {
+            "description": "The colour walls of this type are filled with. A CSS colour or a shared colour reference.",
+            "type": "string"
+          },
+          "pattern": {
+            "description": "The pattern drawn over that fill, such as the hatching of a material.",
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+              },
+              "spacing": {
+                "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "angle": {
+                "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                "type": "number"
+              },
+              "stroke": {
+                "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "kind"
+            ],
+            "additionalProperties": false
+          },
+          "stroke": {
+            "description": "The colour of their outline. A CSS colour or a shared colour reference.",
+            "type": "string"
+          },
+          "strokeWidth": {
+            "description": "The weight of their outline, in screen pixels as in a style.",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "dash": {
+            "description": "The dash pattern of their outline, as in a style.",
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "layers": {
+            "description": "What the wall is made of, from its left face to its right face as it is drawn from a to b: each layer a material and, when known, its thickness in mm. Layers with thicknesses are drawn as lines inside the wall and counted in the quantities.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "thickness": {
+                  "type": "number",
+                  "exclusiveMinimum": 0
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "additionalProperties": false,
+        "description": "A way of building walls that belongs to the drawing. It defines whichever properties it gives a value to, and only those: one type may be no more than a material, another a thickness, a fill and an outline. A wall refers to it by \"wallType\" and takes what it defines; what it leaves out stays the wall's own. A wall may still differ from its type on a property: by its own \"height\" or \"style\" for those, and by listing \"thickness\" in its \"overrides\" for that one."
+      }
+    },
     "assets": {
       "description": "Embedded files by id. Large; tools that only need the drawing can ignore it.",
       "type": "object",
@@ -203,6 +306,33 @@
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
                   },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
                     "type": "array",
@@ -283,6 +413,11 @@
               "type": {
                 "type": "string",
                 "const": "page"
+              },
+              "wallHeight": {
+                "description": "How high the walls of this page stand, in mm, unless a wall gives its own. Used to measure wall faces; nothing is drawn with it.",
+                "type": "number",
+                "exclusiveMinimum": 0
               }
             },
             "required": [
@@ -347,6 +482,33 @@
                   "fill": {
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
+                  },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
                   },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
@@ -496,6 +658,33 @@
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
                   },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
                     "type": "array",
@@ -640,6 +829,33 @@
                   "fill": {
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
+                  },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
                   },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
@@ -847,6 +1063,33 @@
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
                   },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
                     "type": "array",
@@ -1047,6 +1290,33 @@
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
                   },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
                     "type": "array",
@@ -1214,6 +1484,33 @@
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
                   },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
                     "type": "array",
@@ -1375,6 +1672,33 @@
                   "fill": {
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
+                  },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
                   },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
@@ -1554,6 +1878,33 @@
                   "fill": {
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
+                  },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
                   },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
@@ -1751,6 +2102,33 @@
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
                   },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
                     "type": "array",
@@ -1924,6 +2302,33 @@
                   "fill": {
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
+                  },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
                   },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
@@ -2106,6 +2511,33 @@
                   "fill": {
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
+                  },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
                   },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
@@ -2342,6 +2774,33 @@
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
                   },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
                     "type": "array",
@@ -2457,7 +2916,28 @@
               },
               "thickness": {
                 "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "In mm. For a wall of a type that defines a thickness it is kept equal to the type's, unless \"overrides\" lists it."
+              },
+              "height": {
+                "description": "How high it stands, in mm, when that differs from its page. Used to measure its face; nothing is drawn with it.",
+                "type": "number",
                 "exclusiveMinimum": 0
+              },
+              "wallType": {
+                "description": "The id of the wall type it is built as, among the document's \"wallTypes\". It takes what the type defines.",
+                "type": "string",
+                "minLength": 1
+              },
+              "overrides": {
+                "description": "The properties this wall keeps its own value for although its type defines them. Only the thickness needs listing: a height or a style of its own is an exception by being there.",
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "thickness"
+                  ]
+                }
               },
               "joins": {
                 "description": "How each end is finished where it meets exactly one other wall. 'miter' (the default) brings both to a sharp corner, 'round' and 'bevel' round or cut that corner off, and 'through' with 'butt' on the other wall's end lets this wall run past while the other stops against it. Give both ends of a corner the same value, or the through/butt pair.",
@@ -2552,6 +3032,33 @@
                   "fill": {
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
+                  },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
                   },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
@@ -2848,6 +3355,33 @@
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
                   },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
                     "type": "array",
@@ -3028,6 +3562,33 @@
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
                   },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",
                     "type": "array",
@@ -3198,6 +3759,33 @@
                   "fill": {
                     "description": "CSS fill color, or 'none'.",
                     "type": "string"
+                  },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
                   },
                   "dash": {
                     "description": "Dash pattern in screen pixels.",

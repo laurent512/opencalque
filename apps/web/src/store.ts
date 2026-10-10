@@ -13,13 +13,15 @@ export const BUILT_IN_EXTENSION = architecture.id
  */
 export const registry = new Registry()
 
-export type Tool = 'select' | 'hand' | 'line' | 'rect' | 'ellipse' | 'polyline' | 'wall' | 'dimension' | 'measure' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'paper' | 'room' | 'divider' | 'place'
+export type Tool = 'select' | 'hand' | 'line' | 'rect' | 'ellipse' | 'polyline' | 'wall' | 'dimension' | 'measure' | 'angle' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'paper' | 'room' | 'divider' | 'place'
 /** The plain shapes, which share one toolbar button. */
 export const SHAPE_TOOLS: Tool[] = ['line', 'rect', 'ellipse', 'polyline']
 /** The tools for naming spaces, which share another. */
 export const ROOM_TOOLS: Tool[] = ['room', 'divider']
 /** The tools for writing on the drawing, which share a third. */
 export const TEXT_TOOLS: Tool[] = ['text', 'annotation']
+/** The tools that read something off the drawing without adding to it. */
+export const MEASURE_TOOLS: Tool[] = ['measure', 'angle']
 
 export type Placing = { type: 'instance'; component: string } | { type: 'parametric'; kind: string }
 
@@ -55,6 +57,8 @@ interface State {
   placingRotation: number
   activeLayer: string
   wallThickness: number
+  /** The wall type the wall tool draws next, or null for walls of no type. */
+  wallType: string | null
   /** Where the points clicked with the wall tool lie on the wall: along its middle, or along its left or right face as it is drawn. */
   wallJustify: 'left' | 'center' | 'right'
   /** The drawing scale (the N of 1:N) given to the papers the paper tool makes, which sets how large the standard formats are. */
@@ -65,6 +69,7 @@ interface State {
   roomTool: Tool
   /** And for the text button. */
   textTool: Tool
+  measureTool: Tool
   /**
    * Sizes typed in the quick bar for the shape being drawn; they win over the pointer. For a
    * rectangle or ellipse `a` is the width and `b` the height; for a line, wall or polyline segment
@@ -91,6 +96,7 @@ interface State {
   calibration: { a: Vec2; b: Vec2 } | null
   preferencesOpen: boolean
   welcomeOpen: boolean
+  exportOpen: boolean
   aboutOpen: boolean
   /**
    * The text being typed in place. `create` is the node to add when it is a new text that is not in
@@ -131,11 +137,13 @@ function initial(doc: Document, file: StoredFile | null): State {
     placingRotation: 0,
     activeLayer: layersOf(doc)[0].id,
     wallThickness: 200,
+    wallType: null,
     wallJustify: 'center',
     paperScale: 100,
     shapeTool: 'rect',
     roomTool: 'room',
     textTool: 'text',
+    measureTool: 'measure',
     annotationTemplate: {},
     drawLocks: {},
     drawLive: null,
@@ -147,6 +155,7 @@ function initial(doc: Document, file: StoredFile | null): State {
     calibration: null,
     preferencesOpen: false,
     welcomeOpen: false,
+    exportOpen: false,
     aboutOpen: false,
     contextMenu: null,
     warehouse: null,
@@ -272,15 +281,16 @@ export function redo(): void {
 
 export function loadDocument(doc: Document, file: StoredFile | null): void {
   // Tool settings belong to the session, not the document.
-  const { viewport, wallThickness, wallJustify, paperScale, dimensionTemplate, annotationTemplate, extensionsVersion, shapeTool, roomTool, textTool, drawColor, drawWeight, drawDash } = get()
-  set({ ...initial(doc, file), viewport, wallThickness, wallJustify, paperScale, dimensionTemplate, annotationTemplate, extensionsVersion, shapeTool, roomTool, textTool, drawColor, drawWeight, drawDash })
+  const { viewport, wallThickness, wallJustify, paperScale, dimensionTemplate, annotationTemplate, extensionsVersion, shapeTool, roomTool, textTool, measureTool, drawColor, drawWeight, drawDash } = get()
+  set({ ...initial(doc, file), viewport, wallThickness, wallJustify, paperScale, dimensionTemplate, annotationTemplate, extensionsVersion, shapeTool, roomTool, textTool, measureTool, drawColor, drawWeight, drawDash })
 }
 
 export function setTool(tool: Tool, placing: Placing | null = null): void {
   const shapeTool = SHAPE_TOOLS.includes(tool) ? tool : get().shapeTool
   const roomTool = ROOM_TOOLS.includes(tool) ? tool : get().roomTool
   const textTool = TEXT_TOOLS.includes(tool) ? tool : get().textTool
-  set({ tool, placing, shapeTool, roomTool, textTool, corner: null, placingRotation: 0, calibration: null, drawLocks: {}, drawLive: null, drawStep: 0, status: '' })
+  const measureTool = MEASURE_TOOLS.includes(tool) ? tool : get().measureTool
+  set({ tool, placing, shapeTool, roomTool, textTool, measureTool, corner: null, placingRotation: 0, calibration: null, drawLocks: {}, drawLive: null, drawStep: 0, status: '' })
 }
 
 export function select(ids: string[]): void {

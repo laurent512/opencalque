@@ -156,6 +156,17 @@ function overlap(wall: Wall, span: [Vec2, Vec2]): [number, number] | null {
   return to - from > 1e-6 ? [from, to] : null
 }
 
+/** The doors and windows set in a wall, each with the stretch of the wall's middle line it takes (distances from `a`), in order along it. */
+export function wallOpenings(doc: Document, wall: Wall, registry: Registry): { node: Extract<Node, { type: 'parametric' }>; from: number; to: number }[] {
+  return drawnWith(doc, wall.parent)
+    .flatMap((node) => {
+      const span = openingSpan(node, registry)
+      const taken = span && overlap(wall, span)
+      return taken && node.type === 'parametric' ? [{ node, from: taken[0], to: taken[1] }] : []
+    })
+    .sort((p, q) => p.from - q.from)
+}
+
 /** The wall an opening sits in, if any. */
 export function hostWall(doc: Document, node: Node, registry: Registry): Wall | null {
   const span = openingSpan(node, registry)

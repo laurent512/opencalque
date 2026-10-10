@@ -67,7 +67,7 @@ The welcome window offers a new drawing, a file, or the example: a furnished fla
 ```sh
 pnpm dev:web      # the same editor in a browser
 pnpm build && pnpm start   # the built desktop app
-pnpm test         # 141 tests
+pnpm test         # 148 tests
 pnpm dist         # build the installer for the system you are on, into apps/desktop/dist
 ```
 
@@ -81,7 +81,8 @@ pnpm dist         # build the installer for the system you are on, into apps/des
 - Text typed in place, on several lines, bold or not, aligned left, centred or right, with fields such as `{date}` or `{page}` that fill themselves in.
 - Line weights in printed millimetres, dashed and dotted lines, arrows at the ends.
 - Exact sizes: type a length or an angle while drawing, in mm, cm, m, inches or feet.
-- Dimensions with configurable ends, text and units; a measure tool that only reads.
+- Wall types with a thickness, a fill and layers, shared by the walls built as them.
+- Dimensions with configurable ends, text and units, and chains of them along walls and their openings; a measure tool that only reads.
 
 **Organise**
 - Rooms that follow their walls, with name and area; dividers to split an open space.
@@ -101,6 +102,7 @@ pnpm dist         # build the installer for the system you are on, into apps/des
 - Drop a PDF or a picture to trace it, and set its scale from one known distance.
 - Import a DXF from another CAD program: lines, polylines, circles, arcs and text, on their layers.
 - Export a vector PDF at true scale, one page per paper, with a title block. Also SVG and DXF.
+- Export the quantities as a CSV for a spreadsheet: room areas, wall lengths and faces less openings, doors and windows by kind, wall types layer by layer.
 
 The full inventory and roadmap are in [docs/FEATURES.md](docs/FEATURES.md).
 
@@ -145,7 +147,7 @@ A batch is all-or-nothing and every result is validated, so a script or a model 
 | Language | English, French, Spanish and German. The app follows your system language; change it under Preferences |
 | Panels | Drag a panel's tab to another edge, onto another panel to share its tabs, or out to float. Close and reopen panels from View. Preferences → Reset the panel layout puts everything back |
 | Drop files | Drag a picture or a PDF from your file manager onto the drawing to trace it, a `.dxf` to add its geometry, an `.opencalque` file to open it, or an extension `.json` to install it |
-| Trace a floor plan | File → Import floor plan, and pick a PDF or a picture (PNG, JPG, WebP…). Then set its scale: click two points whose real distance you know and type that distance (`3500`, `350 cm`, `3.5 m`). The plan is then locked so you can draw over it |
+| Trace a floor plan | File → Import, and pick a PDF or a picture (PNG, JPG, WebP…). Then set its scale: click two points whose real distance you know and type that distance (`3500`, `350 cm`, `3.5 m`). The plan is then locked so you can draw over it |
 | Assistant | The Assistant tab on the right (`Ctrl+J`) changes the drawing from a description, such as "draw a 5 × 4 m room with a door on the bottom wall". Each request is undone with one undo. It needs an AI provider, set up in Preferences |
 | Conversations | The assistant keeps your conversations: pick one at the top of its panel, or type `/resume`. `/new` starts one, `/model` changes the model (also the list under the message), `/clear` deletes. Paste a picture (`Ctrl+V`) or use the paperclip to show it a sketch |
 | Units | Preferences → Unit: millimetres, centimetres, metres, inches or feet. A different unit can always be typed after a number (`350 cm`) |
@@ -160,7 +162,7 @@ A batch is all-or-nothing and every result is validated, so a script or a model 
 | Components | Select objects, `Ctrl+Alt+K`. Place, rename, edit and delete them from the component library. Double-click an instance to edit the component; every instance updates |
 | Walls | Walls that end at the same point join cleanly, at any angle. Double-click the last corner to close the walls back to the first one |
 | Dimensions | `D`, click the two points, then click where the dimension line should sit. End markers, line, extension lines, text, font, unit and decimals are in the right panel; set them before drawing to change the defaults |
-| Measure | `M`, click two points for a live reading. Nothing is added to the drawing |
+| Measure | `M`, click two points for a live reading. Nothing is added to the drawing. The arrow beside the button, or `Shift+M`, measures an angle: click its corner, then a point along each side |
 | Text | `T`, click, and type: the text is written on the drawing as you type. Enter starts a new line; `Esc`, `Ctrl+Enter` or a click elsewhere finishes; double-click a text to change it |
 | Fields | In a text, `{date}`, `{page}`, `{page-number}`, `{pages}` and `{document}` are replaced by the drawing's own values. Insert them from Fields in the right panel |
 | Lines | Weight (as printed, 0.13 to 1.4 mm), kind of line (solid, dashed, long dashes, dotted, dash and dot) and arrows at each end are in the right panel. While a drawing tool is in use, the bar above the tools sets them for the next shapes |
@@ -175,7 +177,7 @@ A batch is all-or-nothing and every result is validated, so a script or a model 
 | Select | Click an object. A component or a library object is picked anywhere inside its outline; a plain shape with no fill by its line. A room is picked by its name, so what stands on its floor stays easy to click |
 | Arcs and curves | Draw an ellipse (`O`), then type a start and an end angle under "Arc from" and "Arc to" in the right panel: angles run clockwise from the right. Tick Curved on a polyline to make it flow through its points |
 | Repeat | Select something, Object → Repeat in rows and columns, then set how many across, how many rows and the steps under Modifiers. The copies are drawn, not made: change the object and they all follow |
-| Import DXF | File → Import DXF, or drop the file. It must be a text (ASCII) DXF; a DWG has to be saved as DXF first. Blocks, hatches and dimensions are not read |
+| Import DXF | File → Import, or drop the file. It must be a text (ASCII) DXF; a DWG has to be saved as DXF first. Blocks, hatches and dimensions are not read |
 | Stairs | Component library → straight, L-shaped, U-shaped or spiral. `R` rotates before placing. Steps, tread, width and turn direction are in the right panel |
 | Groups | `Ctrl+G` groups the selection, `Ctrl+Shift+G` ungroups. Double-click a group to edit inside it |
 | Order | `]` to front, `[` to back, `Ctrl+]` and `Ctrl+[` one step. Also in the properties panel, the right-click menu, or drag rows in the Structure panel |
@@ -191,15 +193,18 @@ A batch is all-or-nothing and every result is validated, so a script or a model 
 | Annotation | The arrow beside the text button, or `Shift+T`: click what the note is about, click where the note goes, type it. Ends (arrow, open arrow, dot, tick, none), path (curved, straight or elbow) and text size are in the right panel; drag the middle of the line to bend it |
 | Corners | Click the end of a wall to select the corner: drag it and every wall that meets there follows. In the right panel, choose how two walls are joined: mitred, rounded, cut off, or one running through. Double-click a wall to put a corner in it |
 | Rooms | `A`, then click inside closed walls: the room gets a tinted floor, a name and its area, and follows the walls when they move. Pick it by its name. The arrow beside the button has the divider (`Shift+A`), a dashed line that splits an open space into two rooms |
-| Floor pattern | Select a room (or any closed shape), Object → Hatch or floor pattern, then choose lines, planks or tiles and the spacing under Modifiers |
+| Patterns | Open the Fill of any closed shape (or of a wall type) and choose Pattern: lines, cross-hatch, planks, tiles, dots for concrete, zigzag for insulation, with their spacing, angle and stroke colour over the fill's colour. A room's floor takes one from Add… → Hatch under Modifiers |
 | Colours | A colour field opens a picker, the colours you picked lately, and the drawing's shared colours |
 | Shared colours | In any colour field, choose "New shared colour from this one", then link other objects to it from the same list. Change it in the Colours panel and everything linked follows. A linked colour shows its name with a link icon |
 | Crop | Select something (an object, a group, a placed component), Object → Crop: only the part inside the orange rectangle is drawn. Drag its corners to change it. Nothing is cut: switch it off or remove it under Modifiers in the right panel |
 | Extensions | Preferences → Extensions adds new kinds of object: install, remove, switch off, or load more from a web catalog |
-| Export | File → Export PDF (`Ctrl+P`) for sheets at true scale: the selected papers, or all of them, one page each. Tick "Title block" on a paper for a border and a cartouche, then tick what it shows: project, client, address, sheet and page names, author, scale, format, date, number. Empty entries take no room; project, client, address and author are typed once for all the sheets. Also Export SVG, and Export DXF for other CAD programs |
+| Quantities | File → Export → CSV: rooms and areas, walls, doors and windows, wall types. Give the wall height there (it is kept on the page; a wall can have its own) to get the area of wall faces less openings |
+| Wall types | The Wall types panel: add a type and tick what it defines: its build-up ("Plaster 15, Brick 200", or just a material), thickness, height, fill, outline. Select walls and choose their type in the right panel, or pick it in the bar above the tools before drawing. In a wall's properties, what comes from its type shows a small link; type another value to make an exception (marked in orange), and click the arrow beside it to go back to the type |
+| Dimension walls | Select walls, Object → Dimension the selected walls: a chain along each through its doors and windows. They are ordinary dimensions in a group; after changing the wall, delete the group and make it again |
+| Import and export | File → Import (`Ctrl+I`) takes any file the app understands: a picture or a PDF to trace, a DXF, another drawing for its components, an extension. File → Export (`Ctrl+P`) opens one window: choose PDF (tick the sheets; each paper is a page at true scale, with its title block), SVG or DXF (choose the page) |
 | Files | `Ctrl+S` save, `Ctrl+O` open, `Ctrl+Z` / `Ctrl+Shift+Z` undo and redo, `Ctrl+D` duplicate |
 
-A component library is just another `.opencalque` file: **File → Import component library** copies its components in.
+A component library is just another `.opencalque` file: **File → Import** copies its components in.
 
 </details>
 

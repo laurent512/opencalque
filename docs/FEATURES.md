@@ -28,6 +28,9 @@ Last updated: 2026-10-08.
 - **Rooms**: click inside closed walls to name a space; its floor, outline and area follow the walls. **Dividers** split an open space into rooms without a wall.
 - **Floor patterns**: a Hatch modifier (lines, planks, tiles) for rooms and any closed shape.
 - **Shared colours**: named colours that objects and layers link to; change one and everything linked follows.
+- **Wall types**: a thickness, a fill and layers, shared by the walls built as them and drawn as lines inside the wall.
+- **Dimension chains** along a wall through its doors and windows, made on demand.
+- **Quantities** exported as CSV: room areas, wall lengths, faces less openings and volumes, doors and windows by kind, wall types by layer.
 - **Modifiers**: non-destructive changes to how an object is drawn, stacked and applied in order, that can be switched off or removed at any time: crop, hatch, and repeat (copies in rows and columns); extensions can add more.
 - Text can be bold and aligned left, centred or right.
 - Hints and size fields that follow what you are doing: only the next step and the keys usable right now are shown.
@@ -90,14 +93,15 @@ Agreed with the owner in October 2026. The first was built straight away.
 
 **Walls and structure**
 - ~~Corners as selectable nodes, joint types~~ (done)
-- Reusable wall types (load-bearing, partition, insulated) with thickness and fill, shared the way colours are
+- ~~Reusable wall types with thickness, fill and layers~~ (done)
 - Curved walls and arcs
-- Automatic dimensions for a room or a run of walls
+- ~~Automatic dimensions for a run of walls~~ (done, not live); dimensions that follow the wall
+- IFC export (walls, slabs from rooms, openings), now that walls have heights and types
 
 **Sheets and output**
 - ~~PDF export to scale, with a title block~~ (done)
 - Views on a paper: part of the plan, cropped and at another scale (details)
-- Generated tables: rooms with areas, a schedule of doors and windows
+- ~~Quantities as CSV~~ (done); the same tables placed on a sheet
 - Levels (storeys), with the one below shown faintly
 
 **Drawing comfort**

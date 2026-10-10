@@ -1,8 +1,9 @@
-import { childrenOf, DEFAULT_PAPER_SCALE, layersOf, lengthOf, PAPER_FORMATS, paperFormat, paperSize, type Node, type Op, modifierKind, modifierKinds, modifierParams, type Modifier, roomAt, colorRef, colorRefOf, colorsOf, newId, resolveColor, cornerJoin, cornerJoinOps, moveCornerOps, wallEndsAt, TEXT_FIELDS, titleBlockHidden, titleBlockValues, type TitleField } from '@opencalque/core'
+import { childrenOf, DEFAULT_PAPER_SCALE, layersOf, lengthOf, PAPER_FORMATS, paperFormat, paperSize, type Node, type Op, modifierKind, modifierKinds, modifierParams, type Modifier, roomAt, colorRef, colorRefOf, colorsOf, newId, resolveColor, cornerJoin, cornerJoinOps, moveCornerOps, wallEndsAt, TEXT_FIELDS, titleBlockHidden, titleBlockValues, type TitleField, type WallType, type Pattern } from '@opencalque/core'
 import { executeById } from '../commands'
 import { useEffect, useRef, useState, useLayoutEffect } from 'react'
-import { Pipette, ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, FlipHorizontal2, FlipVertical2, RotateCcw, RotateCw, Eye, EyeOff, Trash2, Check, Link2, Plus, Unlink, AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalSpaceAround, AlignStartHorizontal, AlignStartVertical, AlignVerticalSpaceAround } from 'lucide-react'
+import { Pipette, ArrowDown, ArrowDownToLine, ArrowUp, ArrowUpToLine, FlipHorizontal2, FlipVertical2, RotateCcw, RotateCw, Eye, EyeOff, Trash2, Check, Link2, Plus, Unlink, AlignCenterHorizontal, AlignCenterVertical, AlignEndHorizontal, AlignEndVertical, AlignHorizontalSpaceAround, AlignStartHorizontal, AlignStartVertical, AlignVerticalSpaceAround, Undo2 } from 'lucide-react'
 import { reorderSelection, transformSelection, addModifier, alignSelection, distributeSelection } from '../actions'
+import { showPanel } from '../dock'
 import { applyCalibration } from '../floorplan'
 import { language, msg, t } from '../i18n'
 import { apply, editComponent, registry, setTool, toast, useStore, selectCorner } from '../store'
@@ -36,6 +37,8 @@ interface FieldSpec {
   optional?: boolean
   /** For a color: what an unset value means, e.g. "from layer". */
   unset?: string
+  /** For a fill: the pattern it takes from elsewhere (its wall type) when it has none of its own. */
+  pattern?: Pattern
   /** The options are the symbols of a line's end, shown as pictures to pick from: of its first end or of its last. */
   ends?: 'start' | 'end'
 }
@@ -106,7 +109,7 @@ const LINE_ENDS: FieldSpec[] = [
 
 const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
   line: [...AB, ...LINE_ENDS, ...STYLE],
-  wall: [...AB, len('thickness', msg('Thickness')), ...STYLE],
+  wall: [...AB, len('thickness', msg('Thickness')), { ...len('height', msg('Height')), optional: true }, ...STYLE],
   dimension: DIMENSION,
   annotation: ANNOTATION,
   rect: [len('x', msg('X')), len('y', msg('Y')), len('width', msg('W')), len('height', msg('H')), num('rotation', msg('Rotation'), 0), ...STYLE],
@@ -227,7 +230,7 @@ function FieldRow({ node, nodes, field, update }: { node: Node; nodes: Node[]; f
     return (
       <div className="field">
         <span>{t(field.label)}</span>
-        <DashPicker value={stored} none={mixed} onPick={(pattern) => commit(pattern ?? undefined)} />
+        <DashPicker value={stored ?? field.fallback} none={mixed} onPick={(pattern) => commit(pattern ?? undefined)} />
       </div>
     )
   }
@@ -274,8 +277,70 @@ function FieldRow({ node, nodes, field, update }: { node: Node; nodes: Node[]; f
           ))}
         </select>
       )}
-      {field.type === 'color' && <ColorChoice key={node.id} stored={stored as string | undefined} fallback={(value as string | undefined) ?? '#ffffff'} unset={mixed ? msg('Mixed') : field.unset} commit={commit} />}
+      {field.type === 'color' && (
+        <ColorChoice
+          key={node.id}
+          stored={stored as string | undefined}
+          fallback={(value as string | undefined) ?? '#ffffff'}
+          unset={mixed ? msg('Mixed') : field.unset}
+          commit={commit}
+          // A fill may be patterned; the pattern is kept beside its colour, in the style.
+          pattern={field.path === 'style.fill' ? { value: (read(node, 'style.pattern') as Pattern | undefined) ?? field.pattern, inherited: field.pattern !== undefined, commit: (next) => update((n) => patchFor(n, 'style.pattern', next)) } : undefined}
+        />
+      )}
     </label>
+  )
+}
+
+/** What a wall type says for a property of a wall, by the path of that property; undefined when it leaves it to the wall. */
+function typeValue(type: WallType, path: string): unknown {
+  switch (path) {
+    case 'thickness':
+      return type.thickness
+    case 'height':
+      return type.height
+    case 'style.fill':
+      return type.fill
+    case 'style.stroke':
+      return type.stroke
+    case 'style.strokeWidth':
+      return type.strokeWidth
+    case 'style.dash':
+      return type.dash
+  }
+  return undefined
+}
+
+/**
+ * A property row that knows about wall types. For a wall whose type defines the property, the
+ * row shows the type's value with a small link, as something the wall takes rather than has. A
+ * wall may still be given a value of its own: the row is then marked as an exception, with a
+ * button that gives the property back to the type.
+ */
+function TypedRow(props: { node: Node; nodes: Node[]; field: FieldSpec; update: Update }) {
+  const { node, nodes, field, update } = props
+  const types = useStore((s) => s.doc.wallTypes)
+  const type = nodes.length === 1 && node.type === 'wall' && node.wallType ? types?.[node.wallType] : undefined
+  const fromType = type ? typeValue(type, field.path) : undefined
+  // A type that gives only a pattern still gives the fill something to show.
+  if (node.type === 'wall' && fromType === undefined && field.path === 'style.fill' && type?.pattern) return <FieldRow {...props} field={{ ...field, pattern: type.pattern }} />
+  if (node.type !== 'wall' || fromType === undefined) return <FieldRow {...props} />
+  const own = field.path === 'thickness' ? (node.overrides ?? []).includes('thickness') : read(node, field.path) !== undefined
+  // Giving it back: the thickness by taking it off the list of exceptions, the others by having none of their own.
+  const giveBack = () => update((n) => (field.path === 'thickness' ? { overrides: null } : patchFor(n, field.path, undefined)))
+  return (
+    <div className={`typed-row${own ? ' own' : ''}`}>
+      <FieldRow {...props} field={{ ...(own ? field : { ...field, fallback: fromType as FieldSpec['fallback'], unset: msg('from its type') }), ...(field.path === 'style.fill' && type?.pattern ? { pattern: type.pattern } : {}) }} />
+      {own ? (
+        <IconButton title={t('Differs from its wall type. Click to take the type’s value again')} onClick={giveBack}>
+          <Undo2 size={12} />
+        </IconButton>
+      ) : (
+        <i className="typed-mark" title={t('From its wall type: change it there, or type a value here to make an exception')}>
+          <Link2 size={11} />
+        </i>
+      )}
+    </div>
   )
 }
 
@@ -337,7 +402,7 @@ function Sections({ node, nodes = [node], fields, update, pick }: { node: Node; 
           {fields
             .filter((f) => (f.section ?? GEOMETRY) === title)
             .map((field) => (
-              <FieldRow key={field.path} node={node} nodes={nodes} field={field} update={update} />
+              <TypedRow key={field.path} node={node} nodes={nodes} field={field} update={update} />
             ))}
           {title === GEOMETRY && nodes.length === 1 && 'a' in node && (
             <label className="field">
@@ -360,8 +425,11 @@ export const MODIFIER_TEXTS = [
   msg('Pattern'),
   msg('Spacing'),
   msg('Lines'),
+  msg('Cross'),
   msg('Planks'),
   msg('Tiles'),
+  msg('Dots'),
+  msg('Zigzag'),
   msg('Repeat'),
   msg('Draws copies at a steady step: in a row, or in rows and columns.'),
   msg('Across'),
@@ -501,6 +569,44 @@ function TransformSection() {
       <ActionField label={t('Scale to')} placeholder={t('percent, then Enter')} run={(percent) => transformSelection({ scale: percent / 100 })} />
       <p className="hint">{t('On the drawing, drag a corner of the box around the selection to scale it and the round handle to turn it. The arrow keys move it by one grid step.')}</p>
     </Section>
+  )
+}
+
+/**
+ * The wall type of the selected walls: one of the drawing's types, none, or a new type made from
+ * the wall as it is. A wall of a type is as thick as its type, whatever is typed for it.
+ */
+function WallTypeChoice({ walls }: { walls: Extract<Node, { type: 'wall' }>[] }) {
+  const doc = useStore((s) => s.doc)
+  const types = Object.values(doc.wallTypes ?? {})
+  const current = walls.every((wall) => wall.wallType === walls[0].wallType) ? (walls[0].wallType ?? '') : 'mixed'
+  const give = (value: string) => {
+    if (value === 'new') {
+      const id = newId('walltype')
+      apply([
+        { op: 'add_wall_type', wallType: { id, name: t('Wall type {n}', { n: types.length + 1 }), thickness: walls[0].thickness } },
+        ...walls.map((wall): Op => ({ op: 'update_node', id: wall.id, patch: { wallType: id } })),
+      ])
+      showPanel('wallTypes')
+    } else apply(walls.map((wall): Op => ({ op: 'update_node', id: wall.id, patch: { wallType: value || null } })))
+  }
+  return (
+    <>
+      <label className="field">
+        <span>{t('Wall type')}</span>
+        <select value={current} onChange={(e) => give(e.target.value)}>
+          {current === 'mixed' && <option value="mixed">{t('Mixed')}</option>}
+          <option value="">{t('No type')}</option>
+          {types.map((type) => (
+            <option key={type.id} value={type.id}>
+              {type.name}
+            </option>
+          ))}
+          <option value="new">{t('New type from this wall…')}</option>
+        </select>
+      </label>
+      {current !== '' && current !== 'mixed' && <p className="hint">{t('It takes what its type defines, shown with a link. A value typed here instead is an exception, and the arrow beside it gives it back to the type.')}</p>}
+    </>
   )
 }
 
@@ -678,6 +784,7 @@ function Selection({ nodes }: { nodes: Node[] }) {
             <ArrowDownToLine size={14} />
           </IconButton>
         </div>
+        {nodes.every((n) => n.type === 'wall') && <WallTypeChoice walls={nodes as Extract<Node, { type: 'wall' }>[]} />}
         {single && node.type === 'paper' && <PaperSheet node={node} update={update} />}
         {single && node.type === 'room' && <RoomFacts node={node} />}
         {single && node.type === 'image' && (

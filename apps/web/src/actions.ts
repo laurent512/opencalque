@@ -19,6 +19,10 @@ import {
   sceneBounds,
   serializeDocument,
   toDXF,
+  dimensionChainOps,
+  quantities,
+  quantitiesCsv,
+  type QuantityLabels,
   extendWallOps,
   trimWallOps,
   wallEndsAt,
@@ -39,7 +43,7 @@ import {
   type Node,
 } from '@opencalque/core'
 import { gridStep } from './canvas/draw'
-import { t, tn } from './i18n'
+import { language, t, tn } from './i18n'
 import { platform } from './platform'
 import { usePrefs } from './prefs'
 import { apply, cancel, commit, isDirty, loadDocument, registry, replaceDoc, select, selectCorner, setTool, toast, useStore, showPage } from './store'
@@ -127,22 +131,24 @@ export const saveDocument = (saveAs = false) =>
 /**
  * Exports papers as a PDF at their real size and scale: the selected ones, or every paper of the
  * drawing, one page each.
+ * `only` gives the papers to take, in order; without it, the selected ones, or every paper.
  */
-export const exportPdf = () =>
+export const exportPdf = (only?: string[]) =>
   guarded(async () => {
     const { doc, selection } = get()
     const papers = Object.values(doc.nodes).filter((node) => node.type === 'paper')
     if (papers.length === 0) return toast(t('Add a paper first (F): it sets the size and the scale of the printed sheet.'))
-    const chosen = papers.filter((paper) => selection.includes(paper.id))
-    const pdf = toPDF(doc, registry, chosen.length > 0 ? chosen.map((paper) => paper.id) : undefined)
+    const chosen = only ?? papers.filter((paper) => selection.includes(paper.id)).map((paper) => paper.id)
+    const pdf = toPDF(doc, registry, chosen.length > 0 ? chosen : undefined)
     const stored = await platform.save(pdf, `${baseName()}.pdf`)
     if (stored) toast(tn(chosen.length || papers.length, 'Exported {n} sheet as PDF, to scale', 'Exported {n} sheets as PDF, to scale'))
   })
 
-export const exportDxf = () =>
+/** Exports one page (or, without one given, what is being edited) for other CAD programs. */
+export const exportDxf = (container?: string) =>
   guarded(async () => {
     const { doc, scope } = get()
-    await platform.save(toDXF(doc, scope, registry), `${baseName()}.dxf`)
+    await platform.save(toDXF(doc, container ?? scope, registry), `${baseName()}.dxf`)
   })
 
 // Kept as well as the system clipboard, which a browser may refuse to let a page read.
@@ -189,10 +195,56 @@ export const paste = () =>
     select(result.ids)
   })
 
-export const exportSvg = () =>
+/**
+ * Exports what a page holds as a table for a spreadsheet: rooms and their areas, walls with their
+ * lengths and faces, doors and windows by kind, wall types layer by layer. It is written the way
+ * spreadsheets expect where the app's language is spoken: with a decimal comma, cells are
+ * separated by semicolons.
+ */
+export const exportQuantities = (pageId?: string) =>
+  guarded(async () => {
+    const { doc, page } = get()
+    // Whether numbers are written with a decimal comma where the app's language is spoken.
+    const comma = new Intl.NumberFormat(language()).format(1.5).includes(',')
+    const labels: QuantityLabels = {
+      rooms: t('Rooms'),
+      walls: t('Walls'),
+      openings: t('Doors and windows'),
+      types: t('Wall types'),
+      layer: t('Layer of the wall'),
+      name: t('Name'),
+      type: t('Type'),
+      kind: t('Kind'),
+      count: t('Count'),
+      total: t('Total'),
+      area: t('Area (m²)'),
+      length: t('Length (m)'),
+      thickness: t('Thickness (mm)'),
+      height: t('Height (m)'),
+      width: t('Width (m)'),
+      footprint: t('Footprint (m²)'),
+      gross: t('Face area, gross (m²)'),
+      cut: t('Openings (m²)'),
+      net: t('Face area, net (m²)'),
+      volume: t('Volume (m³)'),
+    }
+    const csv = quantitiesCsv(quantities(doc, pageId ?? page, registry), { separator: comma ? ';' : ',', decimal: comma ? ',' : '.', labels, name: (label) => t(label) })
+    await platform.save(csv, `${baseName()}.csv`)
+  })
+
+/** Dimensions the selected walls: a chain along each, through its doors and windows, on the outside of the plan. */
+export function dimensionWalls(): void {
+  const { doc, selection, dimensionTemplate } = get()
+  const walls = selection.flatMap((id) => (doc.nodes[id]?.type === 'wall' ? [doc.nodes[id] as Extract<Node, { type: 'wall' }>] : []))
+  if (walls.length === 0) return toast(t('Select the walls to dimension first.'))
+  apply(dimensionChainOps(doc, walls, registry, dimensionTemplate, t('Dimensions')))
+}
+
+/** Exports one page (or, without one given, what is being edited) as a picture. */
+export const exportSvg = (container?: string) =>
   guarded(async () => {
     const { doc, scope } = get()
-    await platform.save(toSVG(doc, scope, registry), `${baseName()}.svg`)
+    await platform.save(toSVG(doc, container ?? scope, registry), `${baseName()}.svg`)
   })
 
 /** Any OpenCalque document can be used as a library: this copies all of its components in. */
@@ -215,15 +267,20 @@ export const importDxf = () =>
     if (file) placeDxf(file.name, file.content)
   })
 
+/** Copies the components of another drawing, given as the text of its file, into this one. */
+export function importLibraryFrom(name: string, content: string): void {
+  const before = componentsOf(get().doc).length
+  const { doc } = importComponents(get().doc, parseDocument(JSON.parse(content)))
+  replaceDoc(doc)
+  const count = componentsOf(doc).length - before
+  if (count === 0) return toast(t('{file} has no components to import. To work on that drawing, open it instead (File → Open).', { file: name }))
+  toast(tn(count, 'Imported {n} component from {file}', 'Imported {n} components from {file}', { file: name }))
+}
+
 export const importLibrary = () =>
   guarded(async () => {
     const file = await platform.open(DRAWING_EXTENSIONS)
-    if (!file) return
-    const before = componentsOf(get().doc).length
-    const { doc } = importComponents(get().doc, parseDocument(JSON.parse(file.content)))
-    replaceDoc(doc)
-    const count = componentsOf(doc).length - before
-    toast(tn(count, 'Imported {n} component from {file}', 'Imported {n} components from {file}', { file: file.name }))
+    if (file) importLibraryFrom(file.name, file.content)
   })
 
 /**

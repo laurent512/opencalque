@@ -20,7 +20,7 @@ function pictureFor(href: string): HTMLImageElement | null {
   return picture.complete && picture.naturalWidth > 0 ? picture : null
 }
 import type { View } from '../store'
-import { formatLength } from '../units'
+import { formatLength, formatNumber } from '../units'
 
 const ACCENT = '#0d99ff'
 /** The colour of what belongs to a modifier rather than to the object. */
@@ -125,8 +125,17 @@ export interface Overlay {
   grips?: boolean
   /** A guide across the whole view through `at`, shown while the line being drawn is exactly horizontal or vertical. */
   axis?: { at: Vec2; vertical: boolean }
+  /** An angle being read: its corner, a point along its first side and, once chosen, one along its second. */
+  angleReading?: { vertex: Vec2; a?: Vec2; b?: Vec2 }
   /** The line something is being kept on while it is dragged: through a point, at an angle in radians, shown across the whole view. */
   guide?: { at: Vec2; angle: number }
+}
+
+/** The angle at `vertex` between the directions to `a` and to `b`, in degrees from 0 to 180, to one decimal. */
+export function angleBetween(vertex: Vec2, a: Vec2, b: Vec2): number {
+  const turn = Math.atan2(b.y - vertex.y, b.x - vertex.x) - Math.atan2(a.y - vertex.y, a.x - vertex.x)
+  const degrees = Math.abs((Math.atan2(Math.sin(turn), Math.cos(turn)) * 180) / Math.PI)
+  return Math.round(degrees * 10) / 10
 }
 
 /**
@@ -439,6 +448,51 @@ export function drawScene(
     ctx.lineTo(p.x + dx, p.y + dy)
     ctx.stroke()
     ctx.setLineDash([])
+  }
+  if (overlay.angleReading?.a) {
+    const { vertex, a, b } = overlay.angleReading
+    const v = toScreen(vertex)
+    const sides = [a, ...(b ? [b] : [])].map(toScreen)
+    ctx.strokeStyle = '#e5008a'
+    ctx.fillStyle = '#e5008a'
+    ctx.lineWidth = 1.5
+    ctx.setLineDash([6, 4])
+    for (const p of sides) {
+      ctx.beginPath()
+      ctx.moveTo(v.x, v.y)
+      ctx.lineTo(p.x, p.y)
+      ctx.stroke()
+    }
+    ctx.setLineDash([])
+    for (const p of [v, ...sides]) {
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, 3, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    if (b && sides.length === 2) {
+      // An arc across the angle, the short way round, and the reading set on its bisector.
+      const from = Math.atan2(sides[0].y - v.y, sides[0].x - v.x)
+      let sweep = Math.atan2(sides[1].y - v.y, sides[1].x - v.x) - from
+      if (sweep > Math.PI) sweep -= Math.PI * 2
+      if (sweep < -Math.PI) sweep += Math.PI * 2
+      const radius = Math.max(18, Math.min(42, Math.hypot(sides[0].x - v.x, sides[0].y - v.y) * 0.5, Math.hypot(sides[1].x - v.x, sides[1].y - v.y) * 0.5))
+      ctx.beginPath()
+      ctx.arc(v.x, v.y, radius, from, from + sweep, sweep < 0)
+      ctx.stroke()
+      const label = `${formatNumber(angleBetween(vertex, a, b))}°`
+      ctx.font = `600 12px ${FONT}`
+      const width = ctx.measureText(label).width + 12
+      const x = v.x + Math.cos(from + sweep / 2) * (radius + 22)
+      const y = v.y + Math.sin(from + sweep / 2) * (radius + 22)
+      ctx.beginPath()
+      ctx.roundRect(x - width / 2, y - 10, width, 20, 5)
+      ctx.fill()
+      ctx.fillStyle = '#ffffff'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(label, x, y + 0.5)
+      ctx.textBaseline = 'alphabetic'
+    }
   }
   if (overlay.measure) {
     const a = toScreen(overlay.measure.a)

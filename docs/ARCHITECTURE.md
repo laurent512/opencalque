@@ -174,6 +174,10 @@ A `paper` node is a sheet laid on the drawing, in the spirit of a frame: `x`, `y
 
 A paper with `titleBlock` draws a border and a block built from entries (`TITLE_FIELDS`). `titleBlockValues` resolves what each reads: project, client, address and author from the document's `info` (set with `set_document`; the project falls back on the document name, and a paper may still override project and author for itself), the names of the paper and of its page, scale, format, and the paper's own date and number, with text fields filled in. An entry is drawn when it is not in the paper's `hide` list (`['page']` by default) and is not empty; the block's rows and height follow from what is left, and a text too long for its place is set smaller. The panel (`TitleBlockEntries`) writes drawing-wide entries to `info` and the others to the paper.
 
+### Fills and patterns
+
+A fill is a colour and, optionally, a pattern over it: `style.pattern` (`PatternSchema`: a kind, a spacing, an angle, a stroke colour), which a wall type may define too. `nodePrimitives` draws it as strokes inside each closed shape of the node, cut to the shape with `clip` (`patternStrokes` in `modifiers.ts`, the same strokes the hatch modifier lays), from the origin of the drawing so that neighbouring walls carry it without a break. The editor has one window for what something is filled with (`ColorChoice`): given a `pattern` it offers Plain or Pattern, and for the colour of a line or a layer it offers colours only. `{ kind: 'None' }` says "no pattern" where one would otherwise come from the wall's type. The hatch modifier remains, for a room's floor and for files that use it.
+
 ### Shared colours (`colors.ts`)
 
 A drawing may hold named colours in `colors` (id, name, value). Any colour property (a style's stroke or fill, a layer's colour, a dimension's text colour) refers to one by holding `var(--<id>)` in place of a colour. Nothing is copied, so `update_color` recolours everything that refers to it with one operation and without touching a node.
@@ -302,6 +306,12 @@ How two walls are joined is written on the walls, in `joins: { a?, b? }`, one va
 In the editor the selected corner is `corner` in the store (a point, never set together with `selection`). A press on a wall end selects it and a drag moves it (gesture `corner`; with Alt and a wall selected, only that wall's end); a double-click on a wall splits it there; `CornerPanel` in `RightPanel.tsx` shows its position and joint.
 
 A wall that ends against the middle of another needs nothing: the merged painting of walls already hides the lines between them.
+
+### Wall types, heights and quantities (`quantities.ts`, `chains.ts`)
+
+A wall type (`doc.wallTypes`, ops `add_wall_type` / `update_wall_type` / `remove_wall_type`) defines the properties it gives a value to (`WALL_TYPE_PROPERTIES`) and only those; which ones is the user's choice, not the model's. A wall of a type takes what the type defines and keeps the rest as its own. It may also differ from its type: a `height` or a `style` value of its own wins by being there, and a thickness of its own is kept when `overrides` lists `'thickness'` (an `update_node` that gives a typed wall another thickness adds it; changing the wall's type, or patching `overrides` to null, takes it away). The thickness is the one property resolved in the document rather than at drawing time: a wall always stores its `thickness`, and `applyOps` ends by bringing every wall that follows its type to the type's (`followWallTypes`), so all the wall geometry goes on reading `wall.thickness` and knows nothing of types. Outline and fill are resolved in `nodePrimitives` and the wall kind; a build-up whose layers all have a thickness adds up to the type's thickness and is drawn as a line at each layer boundary, cut to the wall's own outline (`wallLayerLines`). In the panel, `TypedRow` shows what comes from the type and marks exceptions.
+
+Heights are data for measuring, never drawn: a wall's own `height`, else its type's, else `wallHeight` on its page (asked in the export window), and a `height` parameter on doors and windows. `quantities(doc, pageId, registry)` returns rooms, walls, openings and wall types measured; what needs a height is `null` without one. `quantitiesCsv` writes them as tables; the editor passes translated labels and the separator its language expects. `wallOpenings` (`walls.ts`) gives the doors and windows in a wall with their stretch of its middle line; `dimensionChainOps` uses it to make a group of ordinary dimensions along a wall. Those dimensions do not follow the wall afterwards.
 
 ### Drawing along a face, extending and trimming
 

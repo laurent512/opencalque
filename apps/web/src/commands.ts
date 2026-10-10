@@ -24,6 +24,7 @@ import {
   addModifier,
   exportPdf,
   canFitWalls,
+  dimensionWalls,
   fitWalls,
   importDxf,
   openExample,
@@ -32,6 +33,7 @@ import {
 } from './actions'
 import { apply, editComponent, redo, registry, select, setTool, showPage, toast, undo, useStore, type Tool } from './store'
 import { PANELS, resetLayout, togglePanel, useDock, type PanelId } from './dock'
+import { importFile } from './drop'
 import { importFloorPlan } from './floorplan'
 import { msg, t } from './i18n'
 import { setPrefs, usePrefs } from './prefs'
@@ -117,12 +119,14 @@ const STATIC: Command[] = [
   { id: 'file.save', title: msg('Save'), category: 'File', keys: ['Mod+S'], global: true, interrupts: true, run: () => saveDocument() },
   { id: 'file.saveAs', title: msg('Save as…'), category: 'File', keys: ['Mod+Shift+S'], global: true, interrupts: true, run: () => saveDocument(true) },
   { id: 'file.autosave', title: msg('Save automatically'), category: 'File', checked: () => prefs().autosave, run: () => setPrefs({ autosave: !prefs().autosave }) },
+  { id: 'file.import', title: msg('Import…'), category: 'File', keys: ['Mod+I'], global: true, interrupts: true, keywords: 'pdf picture image dxf library components extension plan', run: importFile },
+  { id: 'file.export', title: msg('Export…'), category: 'File', keys: ['Mod+P', 'Mod+E'], global: true, interrupts: true, keywords: 'pdf svg dxf print', run: () => useStore.setState({ exportOpen: true }) },
   { id: 'file.importPlan', title: msg('Import floor plan (PDF or picture)…'), category: 'File', interrupts: true, run: importFloorPlan },
   { id: 'file.importDxf', title: msg('Import DXF (from other CAD programs)…'), category: 'File', interrupts: true, run: importDxf },
   { id: 'file.importLibrary', title: msg('Import component library…'), category: 'File', interrupts: true, run: importLibrary },
-  { id: 'file.exportDxf', title: msg('Export DXF (for other CAD programs)…'), category: 'File', run: exportDxf },
-  { id: 'file.exportPdf', title: msg('Export PDF (sheets, to scale)…'), category: 'File', keys: ['Mod+P'], global: true, run: exportPdf },
-  { id: 'file.exportSvg', title: msg('Export SVG…'), category: 'File', run: exportSvg },
+  { id: 'file.exportDxf', title: msg('Export DXF (for other CAD programs)…'), category: 'File', run: () => exportDxf() },
+  { id: 'file.exportPdf', title: msg('Export PDF (sheets, to scale)…'), category: 'File', run: () => exportPdf() },
+  { id: 'file.exportSvg', title: msg('Export SVG…'), category: 'File', run: () => exportSvg() },
 
   { id: 'edit.undo', title: msg('Undo'), category: 'Edit', keys: ['Mod+Z'], interrupts: true, run: undo },
   { id: 'edit.redo', title: msg('Redo'), category: 'Edit', keys: ['Mod+Shift+Z', 'Mod+Y'], interrupts: true, run: redo },
@@ -158,6 +162,7 @@ const STATIC: Command[] = [
   { id: 'edit.nudgeUp', title: msg('Move up by one grid step'), category: 'Edit', keys: ['ArrowUp'], when: selected, run: () => nudgeSelection(0, -1) },
   { id: 'edit.nudgeDown', title: msg('Move down by one grid step'), category: 'Edit', keys: ['ArrowDown'], when: selected, run: () => nudgeSelection(0, 1) },
   { id: 'wall.extend', title: msg('Extend walls to the next wall'), category: 'Edit', keywords: 'extend lengthen', when: canFitWalls, run: () => fitWalls('extend') },
+  { id: 'wall.dimension', title: msg('Dimension the selected walls'), category: 'Edit', keywords: 'chain dimensions openings', when: canFitWalls, run: dimensionWalls },
   { id: 'wall.trim', title: msg('Trim walls that stick out'), category: 'Edit', keywords: 'trim cut shorten', when: canFitWalls, run: () => fitWalls('trim') },
   { id: 'modifier.crop', title: msg('Crop'), category: 'Edit', when: selected, run: () => addModifier('crop') },
   { id: 'edit.align.left', title: msg('Align left'), category: 'Edit', when: () => get().selection.length > 1, run: () => alignSelection('left') },
@@ -200,6 +205,7 @@ const STATIC: Command[] = [
   panel('layers'),
   panel('objects'),
   panel('colors'),
+  panel('wallTypes'),
   panel('properties'),
   panel('assistant', ['Mod+J']),
   { id: 'view.resetLayout', title: msg('Reset the panel layout'), category: 'View', run: resetLayout },
@@ -226,6 +232,7 @@ const STATIC: Command[] = [
   tool('wall', msg('Wall'), 'W'),
   tool('dimension', msg('Dimension'), 'D'),
   tool('measure', msg('Measure'), 'M'),
+  tool('angle', msg('Measure an angle'), 'Shift+M'),
   tool('eyedropper', msg('Eyedropper: copy the look of an object'), 'I'),
   tool('text', msg('Text'), 'T'),
   tool('annotation', msg('Annotation'), 'Shift+T'),

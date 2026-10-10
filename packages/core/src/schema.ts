@@ -12,11 +12,23 @@ const Id = z.string().min(1)
 
 export const Vec2Schema = z.object({ x: z.number(), y: z.number() })
 
+export const PatternSchema = z
+  .object({
+    kind: z.string().describe("Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a wall type."),
+    spacing: z.number().positive().optional().describe('Distance between its strokes, in mm. Each pattern has its own when not given.'),
+    angle: z.number().optional().describe('Degrees its strokes are turned by. Each pattern has its own when not given.'),
+    stroke: z.string().optional().describe('The colour of its strokes. A CSS colour or a shared colour reference.'),
+  })
+  .describe('A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor.')
+
+export type Pattern = z.infer<typeof PatternSchema>
+
 export const StyleSchema = z
   .object({
     stroke: z.string().optional().describe("CSS color of lines and text, or 'none'."),
     strokeWidth: z.number().positive().optional().describe('Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.'),
     fill: z.string().optional().describe("CSS fill color, or 'none'."),
+    pattern: PatternSchema.optional(),
     dash: z.array(z.number().positive()).optional().describe('Dash pattern in screen pixels.'),
   })
   .describe('Overrides the look of a node. Unset values fall back to the node kind, then the layer color.')
@@ -56,7 +68,31 @@ export const SharedColorSchema = z
   .describe(
     'A named colour that belongs to the drawing. A stroke, a fill or a layer colour refers to it by writing "var(--<id>)" in place of a colour; changing the value here then changes everything that refers to it.',
   )
+/** What a wall type can define for its walls. */
+export const WALL_TYPE_PROPERTIES = ['thickness', 'height', 'fill', 'pattern', 'stroke', 'strokeWidth', 'dash', 'layers'] as const
+
+export const WallTypeSchema = z
+  .object({
+    id: Id,
+    name: z.string(),
+    thickness: z.number().positive().optional().describe('In mm. When every layer gives a thickness, their sum.'),
+    height: z.number().positive().optional().describe('How high walls of this type stand, in mm. Used to measure their faces; nothing is drawn with it.'),
+    fill: z.string().optional().describe('The colour walls of this type are filled with. A CSS colour or a shared colour reference.'),
+    pattern: PatternSchema.optional().describe('The pattern drawn over that fill, such as the hatching of a material.'),
+    stroke: z.string().optional().describe('The colour of their outline. A CSS colour or a shared colour reference.'),
+    strokeWidth: z.number().positive().optional().describe('The weight of their outline, in screen pixels as in a style.'),
+    dash: z.array(z.number()).optional().describe('The dash pattern of their outline, as in a style.'),
+    layers: z
+      .array(z.object({ name: z.string(), thickness: z.number().positive().optional() }))
+      .optional()
+      .describe('What the wall is made of, from its left face to its right face as it is drawn from a to b: each layer a material and, when known, its thickness in mm. Layers with thicknesses are drawn as lines inside the wall and counted in the quantities.'),
+  })
+  .describe(
+    'A way of building walls that belongs to the drawing. It defines whichever properties it gives a value to, and only those: one type may be no more than a material, another a thickness, a fill and an outline. A wall refers to it by "wallType" and takes what it defines; what it leaves out stays the wall\'s own. A wall may still differ from its type on a property: by its own "height" or "style" for those, and by listing "thickness" in its "overrides" for that one.',
+  )
+
 export type SharedColor = z.infer<typeof SharedColorSchema>
+export type WallType = z.infer<typeof WallTypeSchema>
 
 export const ModifierSchema = z
   .object({
@@ -103,7 +139,9 @@ export const LEADER_SHAPES = ['curve', 'straight', 'elbow'] as const
 
 export const NodeSchema = z
   .discriminatedUnion('type', [
-    z.object({ ...base, type: z.literal('page') }).describe('A drawing sheet. Top-level container.'),
+    z
+      .object({ ...base, type: z.literal('page'), wallHeight: z.number().positive().optional().describe('How high the walls of this page stand, in mm, unless a wall gives its own. Used to measure wall faces; nothing is drawn with it.') })
+      .describe('A drawing sheet. Top-level container.'),
     z
       .object({ ...base, type: z.literal('component'), description: z.string().optional() })
       .describe('A reusable definition. Its children are drawn wherever an instance references it.'),
@@ -227,7 +265,13 @@ export const NodeSchema = z
         type: z.literal('wall'),
         a: Vec2Schema,
         b: Vec2Schema,
-        thickness: z.number().positive(),
+        thickness: z.number().positive().describe('In mm. For a wall of a type that defines a thickness it is kept equal to the type\'s, unless "overrides" lists it.'),
+        height: z.number().positive().optional().describe('How high it stands, in mm, when that differs from its page. Used to measure its face; nothing is drawn with it.'),
+        wallType: Id.optional().describe('The id of the wall type it is built as, among the document\'s "wallTypes". It takes what the type defines.'),
+        overrides: z
+          .array(z.enum(['thickness']))
+          .optional()
+          .describe('The properties this wall keeps its own value for although its type defines them. Only the thickness needs listing: a height or a style of its own is an exception by being there.'),
         joins: z
           .object({ a: join, b: join })
           .optional()
@@ -312,6 +356,7 @@ export const DocumentSchema = z
     unit: z.literal('mm'),
     layers: z.record(Id, LayerSchema).describe('Layers by id.'),
     colors: z.record(Id, SharedColorSchema).optional().describe('Shared colours by id, referred to from colour properties as "var(--<id>)".'),
+    wallTypes: z.record(Id, WallTypeSchema).optional().describe('Wall types by id, referred to from walls by "wallType".'),
     assets: z.record(Id, AssetSchema).optional().describe('Embedded files by id. Large; tools that only need the drawing can ignore it.'),
     nodes: z
       .record(Id, NodeSchema)

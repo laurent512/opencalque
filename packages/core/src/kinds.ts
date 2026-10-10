@@ -2,7 +2,7 @@ import { childrenOf, isVisible } from './document'
 import { add, dist, len, mid, norm, perp, rotate, scale, sub, type Vec2, ellipseArc, smoothPoints } from './geometry'
 import { resolveColor } from './colors'
 import { fillFields } from './fields'
-import { applyModifiers, movedModifiers } from './modifiers'
+import { applyModifiers, movedModifiers, segmentsInside, HATCH_INK, patternStrokes } from './modifiers'
 import { transformPrimitive, type Primitive } from './primitives'
 import type { Op } from './ops'
 import type { Registry } from './registry'
@@ -493,10 +493,16 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     snapPoints: (node) => [node.a, node.b],
   },
   wall: {
-    primitives: (node, ctx) => [
-      ...wallPolygons(node, ctx.doc, ctx.registry).map((points): Primitive => ({ kind: 'path', closed: true, union: 'wall', fill: WALL_FILL, points })),
-      ...wallSeams(node, ctx.doc).map((points): Primitive => ({ kind: 'path', points })),
-    ],
+    primitives: (node, ctx) => {
+      const type = node.wallType ? ctx.doc.wallTypes?.[node.wallType] : undefined
+      const pieces = wallPolygons(node, ctx.doc, ctx.registry)
+      return [
+        ...pieces.map((points): Primitive => ({ kind: 'path', closed: true, union: 'wall', fill: type?.fill ?? WALL_FILL, points })),
+        ...wallSeams(node, ctx.doc).map((points): Primitive => ({ kind: 'path', points })),
+        // Only a build-up measured through and through can be drawn to scale inside the wall.
+        ...wallLayerLines(node, (type?.layers ?? []).every((layer) => layer.thickness !== undefined) ? (type?.layers as { thickness: number }[] | undefined) ?? [] : [], pieces),
+      ]
+    },
     move: moveAB,
     handles: handlesAB,
     moveHandle: moveHandleAB,
@@ -549,6 +555,30 @@ export function kindOf(node: Node): NodeKind<any> {
   return KINDS[node.type]
 }
 
+/**
+ * The lines between the layers of a wall's build-up: one along the wall at each place where a
+ * layer ends and the next begins, counted from its left face. Each is drawn long and kept only
+ * where it is inside the wall's own outline, so it stops at openings and meets the same line of
+ * the next wall on the mitre of a corner.
+ */
+function wallLayerLines(wall: NodeOf<'wall'>, layers: { thickness: number }[], pieces: Vec2[][]): Primitive[] {
+  if (layers.length < 2 || dist(wall.a, wall.b) < 1e-6) return []
+  const d = norm(sub(wall.b, wall.a))
+  const n = perp(d)
+  const reach = wall.thickness * 4
+  const out: Primitive[] = []
+  let across = -wall.thickness / 2
+  for (const layer of layers.slice(0, -1)) {
+    across += layer.thickness
+    // The left face is the one on the left when going from a to b: against the normal used here.
+    const shift = scale(n, -across)
+    const from = add(sub(wall.a, scale(d, reach)), shift)
+    const to = add(add(wall.b, scale(d, reach)), shift)
+    for (const piece of pieces) for (const points of segmentsInside(from, to, piece)) out.push({ kind: 'path', points, strokeWidth: 0.5 })
+  }
+  return out
+}
+
 /** What backs the closed shapes of a component or an object that have no fill: the white of the paper. */
 export const OBJECT_FILL = '#ffffff'
 
@@ -560,7 +590,15 @@ export function nodePrimitives(node: Node, ctx: KindContext): Primitive[] {
   // References to shared colours are followed here, once, for whatever the kind and the style say.
   const paint = (value: string | undefined) => resolveColor(ctx.doc, value)
   const layerColor = paint(node.layer === undefined ? undefined : ctx.doc.layers[node.layer]?.color)
-  const style = node.style
+  // A wall takes from its type what the type defines, and keeps what it says for itself.
+  const type = node.type === 'wall' && node.wallType ? ctx.doc.wallTypes?.[node.wallType] : undefined
+  const typed = type && {
+    ...(type.stroke === undefined ? {} : { stroke: type.stroke }),
+    ...(type.strokeWidth === undefined ? {} : { strokeWidth: type.strokeWidth }),
+    ...(type.dash === undefined ? {} : { dash: type.dash }),
+    ...(type.pattern === undefined ? {} : { pattern: type.pattern }),
+  }
+  const style = typed ? { ...typed, ...node.style } : node.style
   const styled = kindOf(node)
     .primitives(node, ctx)
     .map((p) => {
@@ -574,6 +612,17 @@ export function nodePrimitives(node: Node, ctx: KindContext): Primitive[] {
         dash: p.own ? p.dash : (style?.dash ?? p.dash),
       }
     })
+  // The pattern of the fill: strokes inside each closed shape, cut to it, over its colour.
+  const pattern = style?.pattern
+  const hatching: Primitive[] = pattern
+    ? styled.flatMap((p): Primitive[] => {
+        if (p.own) return []
+        const shape = p.kind === 'path' && p.closed ? p.points : p.kind === 'ellipse' ? ellipseArc({ ...p, from: 0, to: 360 }).slice(0, -1) : []
+        return patternStrokes(shape, pattern).map(
+          (points): Primitive => ({ kind: 'path', points, stroke: paint(pattern.stroke) ?? HATCH_INK, strokeWidth: 0.6, own: true, backdrop: p.backdrop, clip: [...(p.clip ?? []), shape] }),
+        )
+      })
+    : []
   // A component or an object is a solid thing: a chair hides the floor it stands on. Each of its
   // closed shapes that has no fill of its own is backed with paper white, all the backings under
   // all the lines, so that one shape of the object never hides the lines of another.
@@ -584,7 +633,7 @@ export function nodePrimitives(node: Node, ctx: KindContext): Primitive[] {
       )
     : []
   // Last of all, so modifiers work on the node as it would otherwise be drawn.
-  return applyModifiers(node, [...backing, ...styled], ctx.registry)
+  return applyModifiers(node, [...backing, ...styled, ...hatching], ctx.registry)
 }
 
 /** The operations that translate a node by `d`. For a group that means moving everything inside it. */

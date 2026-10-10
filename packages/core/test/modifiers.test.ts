@@ -125,4 +125,23 @@ describe('modifiers', () => {
       expect(clipSegment({ x: 2, y: 2 }, { x: 8, y: 8 }, outline)).toEqual([{ x: 2, y: 2 }, { x: 8, y: 8 }])
     }
   })
+
+  it('draws the pattern of a fill inside each closed shape, cut to it, and leaves the shape as it was', () => {
+    const square = (style: Record<string, unknown>) => applyOps(createDocument(), [add({ type: 'rect', id: 'r', x: 0, y: 0, width: 1000, height: 1000, style })])
+    const prims = (doc: ReturnType<typeof square>) => buildScene(doc, 'page_1', registry)[0].prims
+    const plain = prims(square({ fill: '#ffffff' }))
+    expect(plain).toHaveLength(1)
+    // Lines a hundred apart, turned 45 degrees: the square itself, then its hatching.
+    const lined = prims(square({ fill: '#ffffff', pattern: { kind: 'Lines' } }))
+    expect(lined[0]).toMatchObject({ closed: true, fill: '#ffffff' })
+    expect(lined.length).toBeGreaterThan(10)
+    expect(lined.slice(1).every((p) => p.kind === 'path' && !p.closed && p.clip?.length === 1 && p.own)).toBe(true)
+    // A wider spacing draws fewer strokes; a pattern nobody knows, or 'None', draws none.
+    expect(prims(square({ pattern: { kind: 'Lines', spacing: 400 } })).length).toBeLessThan(lined.length)
+    expect(prims(square({ pattern: { kind: 'None' } }))).toHaveLength(1)
+    expect(prims(square({ pattern: { kind: 'From the future' } }))).toHaveLength(1)
+    for (const kind of ['Cross', 'Planks', 'Tiles', 'Dots', 'Zigzag']) expect(prims(square({ pattern: { kind } })).length).toBeGreaterThan(5)
+    // Its strokes take the colour given, or a soft grey.
+    expect(prims(square({ pattern: { kind: 'Lines', stroke: '#b91c1c' } }))[1]).toMatchObject({ stroke: '#b91c1c' })
+  })
 })

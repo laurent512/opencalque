@@ -182,6 +182,78 @@
         "properties": {
           "op": {
             "type": "string",
+            "const": "add_wall_type"
+          },
+          "wallType": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "op",
+          "wallType"
+        ],
+        "additionalProperties": false,
+        "description": "Adds a wall type: a name and whichever of thickness, height, fill, stroke, strokeWidth, dash and layers it defines. Walls take it with \"wallType\": \"<id>\"."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "update_wall_type"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {},
+            "description": "Shallow merge patch: each key replaces that property, and a null value removes it."
+          }
+        },
+        "required": [
+          "op",
+          "id",
+          "patch"
+        ],
+        "additionalProperties": false,
+        "description": "Changes a wall type; every wall of that type follows, except where it has a value of its own. A null in the patch makes the type stop defining that property."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "remove_wall_type"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "op",
+          "id"
+        ],
+        "additionalProperties": false,
+        "description": "Removes a wall type. Its walls stay as they are, of no type."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
             "const": "update_color"
           },
           "id": {

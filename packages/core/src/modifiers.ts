@@ -58,8 +58,17 @@ export const cropModifier: ModifierKind = {
 }
 
 /** Patterns a hatch can draw. The names are what is stored, and what is translated for display. */
-export const HATCH_PATTERNS = ['Lines', 'Planks', 'Tiles'] as const
-const HATCH_INK = '#9aa3b2'
+export const HATCH_PATTERNS = ['Lines', 'Cross', 'Planks', 'Tiles', 'Dots', 'Zigzag'] as const
+export const HATCH_INK = '#9aa3b2'
+/** The spacing in mm and the angle in degrees each pattern has when a fill does not say. */
+export const PATTERN_DEFAULTS: Record<string, { spacing: number; angle: number }> = {
+  Lines: { spacing: 100, angle: 45 },
+  Cross: { spacing: 150, angle: 45 },
+  Planks: { spacing: 150, angle: 0 },
+  Tiles: { spacing: 300, angle: 0 },
+  Dots: { spacing: 120, angle: 0 },
+  Zigzag: { spacing: 100, angle: 0 },
+}
 /** A hatch never draws more strokes than this; a spacing too fine for the shape is widened to fit. */
 const HATCH_LIMIT = 600
 
@@ -74,12 +83,36 @@ function hatchStrokes(shape: Vec2[], params: Record<string, any>, frame: Transfo
   const vs = local.map((p) => p.v)
   const [minU, maxU, minV, maxV] = [Math.min(...us), Math.max(...us), Math.min(...vs), Math.max(...vs)]
   let step = Math.max(1, params.spacing * (frame.scale ?? 1))
-  const count = (size: number) => (maxV - minV) / size + (params.pattern === 'Tiles' ? (maxU - minU) / size : params.pattern === 'Planks' ? ((maxV - minV) / size) * ((maxU - minU) / (size * 8) + 1) : 0)
+  const grid = params.pattern === 'Tiles' || params.pattern === 'Cross'
+  const filled = params.pattern === 'Dots' || params.pattern === 'Zigzag'
+  const count = (size: number) =>
+    filled
+      ? ((maxV - minV) / size + 1) * ((maxU - minU) / size + 1) * (params.pattern === 'Zigzag' ? 2 : 1)
+      : (maxV - minV) / size + (grid ? (maxU - minU) / size : params.pattern === 'Planks' ? ((maxV - minV) / size) * ((maxU - minU) / (size * 8) + 1) : 0)
   while (count(step) > HATCH_LIMIT) step *= 2
 
   const strokes: [Vec2, Vec2][] = []
+  if (params.pattern === 'Dots') {
+    // Short dashes on a staggered grid: the speckle that stands for concrete.
+    const dot = step * 0.09
+    for (let row = Math.ceil(minV / step); row * step <= maxV; row++) {
+      const shift = row % 2 === 0 ? 0 : step / 2
+      for (let column = Math.floor((minU - shift) / step); column * step + shift <= maxU; column++) strokes.push([world(column * step + shift - dot, row * step), world(column * step + shift + dot, row * step)])
+    }
+    return strokes
+  }
+  if (params.pattern === 'Zigzag') {
+    // Bands of zigzag from edge to edge: the sign for insulation.
+    for (let row = Math.floor(minV / step); row * step < maxV; row++) {
+      for (let column = Math.floor(minU / step); column * step < maxU; column++) {
+        const [u, v] = [column * step, row * step]
+        strokes.push([world(u, v + step), world(u + step / 2, v)], [world(u + step / 2, v), world(u + step, v + step)])
+      }
+    }
+    return strokes
+  }
   for (let row = Math.ceil(minV / step); row * step <= maxV; row++) strokes.push([world(minU, row * step), world(maxU, row * step)])
-  if (params.pattern === 'Tiles') {
+  if (grid) {
     for (let column = Math.ceil(minU / step); column * step <= maxU; column++) strokes.push([world(column * step, minV), world(column * step, maxV)])
   } else if (params.pattern === 'Planks') {
     // Boards eight widths long, their ends staggered from one row to the next.
@@ -90,6 +123,17 @@ function hatchStrokes(shape: Vec2[], params: Record<string, any>, frame: Transfo
     }
   }
   return strokes
+}
+
+/**
+ * The strokes of a fill pattern over one closed shape, before they are cut to it. The pattern is
+ * laid from the origin of the drawing, so shapes side by side (the walls around a room) carry it
+ * as one, without a break where they meet.
+ */
+export function patternStrokes(shape: Vec2[], pattern: { kind: string; spacing?: number; angle?: number }): [Vec2, Vec2][] {
+  const usual = PATTERN_DEFAULTS[pattern.kind]
+  if (!usual || shape.length < 3) return []
+  return hatchStrokes(shape, { pattern: pattern.kind, spacing: pattern.spacing ?? usual.spacing, angle: pattern.angle ?? usual.angle }, ORIGIN)
 }
 
 /**

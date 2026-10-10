@@ -5,6 +5,7 @@ import { PANELS, registerDock, useDock, type PanelId } from './dock'
 import { t } from './i18n'
 import { AssistantPanel } from './panels/AssistantPanel'
 import { Colors, Layers, Objects, Pages } from './panels/LeftPanel'
+import { WallTypes } from './panels/WallTypesPanel'
 import { Properties } from './panels/RightPanel'
 import { Stage } from './Stage'
 
@@ -39,14 +40,15 @@ const COMPONENTS: Record<PanelId | typeof CANVAS, FunctionComponent> = {
   layers: scrolling('layers', Layers),
   objects: scrolling('objects', Objects),
   colors: scrolling('colors', Colors),
+  wallTypes: scrolling('wallTypes', WallTypes),
   properties: scrolling('properties', Properties),
   assistant: AssistantPanel,
 }
 
 /** Where a panel goes when it is opened and its usual neighbours are closed too. */
-const SIDE: Record<PanelId, 'left' | 'right'> = { pages: 'left', layers: 'left', objects: 'left', colors: 'left', properties: 'right', assistant: 'right' }
+const SIDE: Record<PanelId, 'left' | 'right'> = { pages: 'left', layers: 'left', objects: 'left', colors: 'left', wallTypes: 'left', properties: 'right', assistant: 'right' }
 /** The panel each one shares tabs with by default. */
-const PARTNER: Record<PanelId, PanelId> = { pages: 'layers', layers: 'pages', objects: 'colors', colors: 'objects', properties: 'assistant', assistant: 'properties' }
+const PARTNER: Record<PanelId, PanelId> = { pages: 'layers', layers: 'pages', objects: 'colors', colors: 'objects', wallTypes: 'colors', properties: 'assistant', assistant: 'properties' }
 
 const title = (id: PanelId) => t(PANELS[id])
 
@@ -83,6 +85,7 @@ function arrange(api: DockviewApi): void {
   add('pages', { referencePanel: 'layers', direction: 'within' })
   add('objects', { referencePanel: 'layers', direction: 'below' })
   add('colors', { referencePanel: 'objects', direction: 'within' })
+  add('wallTypes', { referencePanel: 'objects', direction: 'within' })
   add('properties', { referencePanel: CANVAS, direction: 'right' }, 290)
   add('assistant', { referencePanel: 'properties', direction: 'within' })
   for (const front of ['layers', 'objects', 'properties']) api.getPanel(front)?.api.setActive()

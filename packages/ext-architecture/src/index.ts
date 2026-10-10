@@ -55,12 +55,14 @@ const WIDTH: ParamDef = { key: 'width', label: 'Width', type: 'number', default:
 const STEPS = (n: number): ParamDef => ({ key: 'steps', label: 'Steps', type: 'number', default: n })
 const TREAD: ParamDef = { key: 'tread', label: 'Tread depth', type: 'number', default: 270, unit: 'length' }
 const TURN: ParamDef = { key: 'turn', label: 'Turn', type: 'string', default: 'Right', options: ['Right', 'Left'] }
+/** How high an opening is. Nothing of a plan is drawn with it; it is what the opening takes out of a wall's face. */
+const HEIGHT = (mm: number): ParamDef => ({ key: 'height', label: 'Height', type: 'number', default: mm, unit: 'length' })
 const OTHER_SIDE: ParamDef = { key: 'flip', label: 'Other side', type: 'boolean', default: false }
 
 export const architecture: Extension = {
   id: 'opencalque.architecture',
   name: 'Architecture',
-  version: '0.4.0',
+  version: '0.5.0',
   translations,
   activate(api) {
     api.registerParametric({
@@ -69,6 +71,7 @@ export const architecture: Extension = {
       description: 'Place it on a wall: it cuts the opening and follows the wall. Off a wall it stands alone.',
       params: [
         WIDTH,
+        HEIGHT(2040),
         { key: 'type', label: 'Type', type: 'string', default: 'Single', options: ['Single', 'Double', 'Sliding', 'Opening only'] },
         { key: 'hinge', label: 'Hinge', type: 'string', default: 'Left', options: ['Left', 'Right'] },
         { key: 'angle', label: 'Open angle', type: 'number', default: 90 },
@@ -107,6 +110,7 @@ export const architecture: Extension = {
         { ...WIDTH, default: 1200 },
         { key: 'panes', label: 'Panes', type: 'number', default: 2 },
         { key: 'glazing', label: 'Glazing', type: 'string', default: 'Double', options: ['Single', 'Double'] },
+        HEIGHT(1250),
         { key: 'sill', label: 'Sill depth', type: 'number', default: 50, unit: 'length' },
         OTHER_SIDE,
       ],

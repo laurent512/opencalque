@@ -98,6 +98,8 @@ export function QuickBar() {
   const dash = useStore((s) => s.drawDash)
   const wallThickness = useStore((s) => s.wallThickness)
   const wallJustify = useStore((s) => s.wallJustify)
+  const wallType = useStore((s) => s.wallType)
+  const wallTypes = useStore((s) => s.doc.wallTypes)
   const paperScale = useStore((s) => s.paperScale)
   const started = useStore((s) => s.drawStep > 0)
   const sizes = SIZES[tool]
@@ -107,7 +109,8 @@ export function QuickBar() {
   const measurable = !sizes[2] || started
   const setThickness = (text: string) => {
     const mm = parseLength(text)
-    if (mm !== null && mm > 0) useStore.setState({ wallThickness: mm })
+    // A thickness typed by hand is a wall of no type.
+    if (mm !== null && mm > 0) useStore.setState({ wallThickness: mm, wallType: null })
   }
   return (
     <div className="quickbar">
@@ -128,6 +131,22 @@ export function QuickBar() {
             />
             <em>{unit()}</em>
           </label>
+        )}
+        {tool === 'wall' && Object.keys(wallTypes ?? {}).length > 0 && (
+          <select
+            className="quick-select"
+            title={t('Wall type of the next walls')}
+            aria-label={t('Wall type of the next walls')}
+            value={wallType && wallTypes?.[wallType] ? wallType : ''}
+            onChange={(e) => useStore.setState(e.target.value ? { wallType: e.target.value, wallThickness: wallTypes![e.target.value].thickness ?? useStore.getState().wallThickness } : { wallType: null })}
+          >
+            <option value="">{t('No type')}</option>
+            {Object.values(wallTypes ?? {}).map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.name}
+              </option>
+            ))}
+          </select>
         )}
         {tool === 'wall' && (
           <div className="end-picker justify-picker" role="radiogroup" aria-label={t('Where the points you click lie on the wall')}>
