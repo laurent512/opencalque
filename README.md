@@ -49,6 +49,8 @@ Installers for each version are on the [releases page](https://github.com/lauren
 
 The builds are not signed, so the system asks before running them the first time: on Windows choose "More info", then "Run anyway"; on macOS right-click the app and choose Open (or allow it under System Settings → Privacy & Security). If a version before 0.4.1 says the app "is damaged", run `xattr -cr /Applications/OpenCalque.app` once, or take a newer version. When it starts, pick **Start with the example** to get a furnished flat to take apart.
 
+Or use it in a browser, with nothing to install: **[opencalque.com](https://opencalque.com)**. Chrome and Edge can open and save a drawing in place; other browsers download it.
+
 ## Run from source
 
 Requires [Node](https://nodejs.org) 22 or newer and [pnpm](https://pnpm.io) 9.

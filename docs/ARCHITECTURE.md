@@ -36,6 +36,8 @@ Requires Node 22+ and pnpm 9. All commands run from the repository root.
 | `pnpm smoke` | Scripted interaction test of the built app (see §7) |
 | `pnpm dist` | Build, then package the installer for this system into `apps/desktop/dist` |
 
+**Continuous integration (`.github/workflows/ci.yml`).** Every push to `main` and every pull request runs `pnpm typecheck`, `pnpm test` and `pnpm build:web`. A push to `main` that passes is then published as the web editor at https://opencalque.com, on Cloudflare, as static files with no server code (`wrangler.jsonc`; `apps/web/public/_headers` sets how long the files are kept by browsers). The workflow needs two repository secrets, `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. Installers are a separate workflow, started by a version tag (`release.yml`).
+
 **Gotcha:** terminals spawned by VS Code extensions (including AI agents) have `ELECTRON_RUN_AS_NODE=1`, which makes Electron run as plain Node and crash on `app.whenReady`. Unset it for that command: `env -u ELECTRON_RUN_AS_NODE pnpm dev` in bash, or `Remove-Item Env:ELECTRON_RUN_AS_NODE` in PowerShell. A normal terminal is not affected.
 
 To open a file at launch: `pnpm build`, then from `apps/desktop` run `pnpm exec electron . ../../examples/studio.opencalque`.
@@ -587,7 +589,7 @@ In rough priority order for making it genuinely usable:
 4. **DXF import/export** for interoperability.
 5. **UI tests**: turn the smoke script into assertions (Playwright against `pnpm dev:web` is the natural fit).
 6. **Runtime extensions**: load from a folder, sandboxed (a Worker with a message API mirroring `ExtensionApi`).
-7. **Packaging**: done (`electron-builder`, release workflow). Next: code signing, automatic updates, a CI run of the tests on every push.
+7. **Packaging**: done (`electron-builder`, release workflow). The tests run on every push and the web editor is published from `main` (§2). Next: code signing, automatic updates.
 8. **Hosted version**: see below.
 
 ### Path to collaboration and hosting

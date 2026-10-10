@@ -1,0 +1,11 @@
+// The web editor as a static site on Cloudflare: `pnpm build:web`, then `npx wrangler@4 deploy`.
+// The CI workflow does both on every push to main. There is no server code: only the files.
+{
+  "$schema": "https://unpkg.com/wrangler@4/config-schema.json",
+  "name": "opencalque",
+  "compatibility_date": "2026-10-01",
+  "routes": [{ "pattern": "opencalque.com", "custom_domain": true }],
+  "assets": {
+    "directory": "apps/web/dist"
+  }
+}
