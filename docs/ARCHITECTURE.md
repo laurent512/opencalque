@@ -99,6 +99,7 @@ apps/web
   src/view.ts         The view: toWorld, visibleArea, gridStep.
   src/actions/        What commands do, by subject (index.ts lists them): file, clipboard, edit, walls, view.
   src/commands.ts     The command registry: every user-triggerable action, its shortcut, key handling.
+  src/shortcuts.ts    The file shortcuts are exported to and imported from.
   src/prefs.ts        Per-user settings (language, theme, grid, snapping, AI provider and key), kept in localStorage.
   src/theme.ts        Light or dark: resolves the preference, sets data-theme, tells the canvas and the desktop window.
   src/i18n.ts         Translation: t(), tn(), msg(). Language files are in src/locales/.
@@ -597,6 +598,7 @@ Every action the user can trigger is a `Command` (`id`, `title`, `category`, def
 
 - Shortcuts are strings like `Mod+Shift+S`, where `Mod` is Ctrl, or Cmd on macOS. `eventKey` builds them from a key event: letters follow the keyboard layout (`e.key`), digits follow the physical key (`e.code`) so `Shift+1` works on AZERTY too.
 - The user's changes are kept as `overrides` (command id → list of keys, empty meaning none) in `localStorage` under `opencalque.shortcuts`. They belong to the browser profile or desktop install, not to the document. A key belongs to one command: assigning it removes it from whichever command had it.
+- The overrides can be exported to a JSON file (`"format": "opencalque-shortcuts"`, `version` 1) and imported back, which replaces them (`shortcuts.ts`). Import keeps commands it does not know (an extension may not be loaded yet), leaves out what cannot be a key, caps how much it reads, and gives each key to one command (`settleShortcuts`).
 - `when` gates a command; a command whose `when` is false is skipped, which is how `R` rotates while placing and otherwise selects the rectangle tool (`place.rotate` is listed before `tool.rect`).
 - `global` commands also work while typing in a field; the rest are ignored there so text editing keeps its native shortcuts. A field that takes no text does not count (`forTheField`): a checkbox keeps no key, a slider only those that move it, so Ctrl+Z works right after either was used.
 - `interrupts` commands make the canvas abandon the gesture in progress (it listens through `onCommand`).
@@ -800,7 +802,7 @@ Tool versions are unusually new (TypeScript 7, Vite 7 for the apps, Vitest 5, El
 - A Japanese drawing written only in kanji, exported from an interface in another language, gets the Chinese forms of its kanji, and so does a Korean one written only in hanja. Bold in the embedded fonts is the regular font outlined, and every family (serif, monospace) uses the same sans-serif face. The web app downloads 13.7 MB the first time a PDF needs Chinese, 7.5 MB the first time one needs Korean.
 - Translation covers the interface only; see Languages above for what stays in English. Right-to-left languages are not supported by the layout.
 - Panel content is not responsive to very narrow panels. Pages, Layers and Components keep a heading under their tab because it carries their buttons; Structure has none.
-- Shortcuts are single key presses with modifiers: no chords (`G` then `P`), and no import/export of a shortcut set. Extensions cannot declare default shortcuts yet.
+- Shortcuts are single key presses with modifiers: no chords (`G` then `P`). Extensions cannot declare default shortcuts yet.
 - Some defaults are awkward on non-US layouts (for example `[` and `]` need AltGr on AZERTY); they can be rebound.
 - Curved walls cannot be drawn directly, extended, trimmed or given a dimension chain (see Curved walls).
 - Smart guides apply to moving only, not to drawing or resizing, and line things up by their upright boxes.

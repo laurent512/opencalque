@@ -43,6 +43,7 @@ import {
   distributeSelection,
   browseSelectedInstances,
   stepInstance,
+  guarded,
 } from './actions'
 import { registry } from './extensions'
 import { editComponent, showPage } from './navigation'
@@ -58,6 +59,7 @@ import { setPrefs, usePrefs } from './prefs'
 import { toggleTheme, useTheme } from './theme'
 import { labelOf } from './ui'
 import { checkForUpdate, useUpdate } from './updates'
+import { RESERVED_KEYS, readShortcutsFile, settleShortcuts, shortcutsFile } from './shortcuts'
 
 /**
  * Everything the user can trigger, in one list. The command palette, the keyboard handler, the
@@ -110,9 +112,9 @@ const lockAxis = (axis: 'x' | 'y') => {
 }
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform)
 const STORAGE_KEY = 'opencalque.shortcuts'
+const SHORTCUTS_FILE = 'opencalque-shortcuts.json'
 
-/** Keys the canvas handles itself; they cannot be assigned to commands. */
-export const RESERVED_KEYS = ['Escape', 'Enter', 'Space']
+export { RESERVED_KEYS }
 
 function loadOverrides(): Record<string, string[]> {
   try {
@@ -153,6 +155,8 @@ const panel = (id: PanelId, keys?: string[]): Command => ({
 const STATIC: Command[] = [
   { id: 'palette.open', title: msg('Show all commands'), category: 'General', keys: ['Mod+K'], global: true, run: () => useCommands.setState({ paletteOpen: true }) },
   { id: 'shortcuts.reset', title: msg('Reset all keyboard shortcuts'), category: 'General', run: () => (storeOverrides({}), toast(t('Keyboard shortcuts reset'))) },
+  { id: 'shortcuts.export', title: msg('Export keyboard shortcuts…'), category: 'General', keywords: 'export backup', run: exportShortcuts },
+  { id: 'shortcuts.import', title: msg('Import keyboard shortcuts…'), category: 'General', keywords: 'import restore', run: importShortcuts },
 
   { id: 'file.new', title: msg('New drawing'), category: 'File', keys: ['Mod+N'], global: true, interrupts: true, run: newDocument },
   { id: 'file.open', title: msg('Open…'), category: 'File', keys: ['Mod+O'], global: true, interrupts: true, run: openDocument },
@@ -406,6 +410,30 @@ export function setShortcut(id: string, key: string | null): string[] {
 export function resetShortcut(id: string): void {
   const { [id]: _, ...rest } = useCommands.getState().overrides
   storeOverrides(rest)
+}
+
+/** Saves the shortcuts the user changed to a file, to load them on another computer or after a reinstall. */
+function exportShortcuts(): void {
+  void guarded(async () => {
+    const saved = await platform.save(shortcutsFile(useCommands.getState().overrides), SHORTCUTS_FILE)
+    if (saved) toast(t('Keyboard shortcuts exported'))
+  })
+}
+
+/** Replaces the user's shortcuts with those of a file saved by `exportShortcuts`. */
+function importShortcuts(): void {
+  void guarded(async () => {
+    const file = await platform.open(['json'])
+    if (!file) return
+    let overrides
+    try {
+      overrides = readShortcutsFile(file.content)
+    } catch {
+      throw new Error(t('{file} is not a file of keyboard shortcuts', { file: file.name }))
+    }
+    storeOverrides(settleShortcuts(overrides, allCommands()))
+    toast(t('Keyboard shortcuts imported'))
+  })
 }
 
 /**

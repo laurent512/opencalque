@@ -1845,3 +1845,35 @@ test('brings the end of a wall level with its other end exactly, whatever decima
   expect(doc.nodes.w.b.y).toBe(traced.y)
   await expect(page.locator('[data-panel="properties"] .hint', { hasText: 'Not quite level' })).toHaveCount(0)
 })
+
+test('exports the keyboard shortcuts to a file and imports them back', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  await page.keyboard.press('Control+,')
+  await page.locator('.prefs-nav button', { hasText: 'Keyboard shortcuts' }).click()
+  await page.getByPlaceholder('Search a command or a key…').fill('Show all commands')
+  const keys = page.locator('.shortcut-row', { hasText: 'Show all commands' }).locator('.palette-keys')
+  await keys.click()
+  await page.keyboard.press('Alt+J')
+  await expect(keys).toHaveText('Alt+J')
+
+  await page.getByRole('button', { name: 'Export…' }).click()
+  await expect.poll(() => page.evaluate(() => (window as any).saves.length)).toBe(1)
+  const file = await page.evaluate(() => (window as any).saves[0] as string)
+  expect(JSON.parse(file)).toMatchObject({ format: 'opencalque-shortcuts', version: 1, shortcuts: { 'palette.open': ['Alt+J'] } })
+
+  await page.getByRole('button', { name: 'Reset all shortcuts' }).click()
+  await expect(keys).toHaveText('Ctrl+K')
+  await choose(page, () => page.getByRole('button', { name: 'Import…' }).click(), 'drawing.json', drawing({}))
+  await expect(page.getByText('drawing.json is not a file of keyboard shortcuts')).toBeVisible()
+  await expect(keys).toHaveText('Ctrl+K')
+  await choose(page, () => page.getByRole('button', { name: 'Import…' }).click(), 'opencalque-shortcuts.json', file)
+  await expect(keys).toHaveText('Alt+J')
+
+  // Imported shortcuts work at once.
+  await page.keyboard.press('Escape')
+  await page.locator('.stage').click({ position: { x: 5, y: 5 } })
+  await page.keyboard.press('Alt+J')
+  await expect(page.getByPlaceholder('Type a command…')).toBeVisible()
+})

@@ -233,6 +233,12 @@ function ShortcutSettings() {
         <button className="text-button" onClick={() => executeById('shortcuts.reset')}>
           {t('Reset all shortcuts')}
         </button>
+        <button className="text-button" title={t('Export keyboard shortcuts…')} onClick={() => executeById('shortcuts.export')}>
+          {t('Export…')}
+        </button>
+        <button className="text-button" title={t('Import keyboard shortcuts…')} onClick={() => executeById('shortcuts.import')}>
+          {t('Import…')}
+        </button>
       </div>
       <div className="shortcut-list">
         {commands.length === 0 && <p className="hint">{t('Nothing matches.')}</p>}

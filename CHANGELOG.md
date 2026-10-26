@@ -4,6 +4,11 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 1.3.0
+
+### New
+- Keyboard shortcuts can be exported to a file and imported back, to take them to another computer or keep them through a reinstall: Export… and Import… in Preferences › Keyboard shortcuts, or from the command list (Ctrl+K). Importing replaces the shortcuts in use with those of the file.
+
 ## 1.2.0 — 2026-10-25
 
 A change of the format that breaks with 1.0 on two points: what a component holds is no longer on a layer, and a placed component no longer has a stroke or fill of its own; and there are no wall types any more, each wall carrying what it is made of. Drawings made before are brought up to date as they open and look as they did, but for the rare cases listed under Improved. Scripts that set any of these are refused with a message saying what to do instead, and drawings saved by this version do not open in 1.0 and 1.1.

@@ -76,7 +76,7 @@ Last updated: 2026-10-19 (1.2.0, in progress).
 - Desktop app (Windows, macOS, Linux) and web app from the same code, with **installers** built and attached to a GitHub release for each version tag.
 - A **welcome window** at start (new drawing, open, recent drawings on desktop, or the bundled example) and an **About** window with the release notes, read from `CHANGELOG.md`.
 - In the desktop app on Windows and macOS the menu bar is the window's title bar.
-- Menu bar, dockable panels that can be moved, tabbed, floated and closed, a command list (`Ctrl+K`) with every command and rebindable shortcuts, a right-click menu, preferences.
+- Menu bar, dockable panels that can be moved, tabbed, floated and closed, a command list (`Ctrl+K`) with every command and rebindable shortcuts, which can be exported to a file and imported back, a right-click menu, preferences.
 - Autosave to the drawing's file, which can be switched off. Saving never leaves a half-written file (desktop).
 - **Crash recovery**: unsaved work is copied aside as it changes and offered back after a crash. **Backups** (desktop): each drawing is copied before the app first writes over it.
 - **Drawings stay readable**: what a newer version adds is kept; a newer format is refused with a message; a drawing with a broken reference opens repaired, with a note.
