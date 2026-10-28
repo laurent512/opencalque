@@ -1,0 +1,28 @@
+schema = 1
+name = "OpenCalque"
+
+[runtime]
+kind = "node"
+version = "24"
+package_manager = "pnpm"
+
+[[setup.steps]]
+kind = "dependencies"
+locked = true
+
+[[setup.steps]]
+run = ["pnpm", "build:web"]
+
+[launch]
+command = ["pnpm", "--filter", "@opencalque/web", "preview", "--host", "{host}", "--port", "{port}", "--strictPort"]
+host = "127.0.0.1"
+port = 3000
+
+[health]
+type = "http"
+path = "/"
+timeout_seconds = 90
+
+# Saved drawings use user-chosen files outside the checkout; settings use browser storage.
+[persistence]
+paths = []

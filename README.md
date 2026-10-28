@@ -61,6 +61,8 @@ Or use it in a browser, with nothing to install: **[opencalque.com](https://open
 
 ## Run from source
 
+[![Launch on PicoRunner](https://picorunner.com/badges/launch.svg)](https://picorunner.com/launch/?repository=https%3A%2F%2Fgithub.com%2Flaurent512%2Fopencalque)
+
 Requires [Node](https://nodejs.org) 22 or newer and [pnpm](https://pnpm.io) 9.
 
 ```sh
