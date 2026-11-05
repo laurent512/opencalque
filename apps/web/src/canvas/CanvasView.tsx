@@ -456,6 +456,9 @@ export function CanvasView() {
       className="canvas"
       style={{ cursor }}
       onPointerDown={(e) => (onPointerDown(e), syncStep(c))}
+      // A press that has just opened words to type in place (a text, a note) leaves the focus in
+      // them: the browser would otherwise move it as the mouse goes down, after the box took it.
+      onMouseDown={(e) => e.button === 0 && get().editingText && e.preventDefault()}
       onPointerMove={moveTo}
       onPointerUp={(e) => (onPointerUp(e), syncStep(c))}
       onPointerLeave={() => {

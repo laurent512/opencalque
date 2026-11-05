@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { annotationText, gridlineBubbles, type Node, type NodeInput } from '@opencalque/core'
 import { finishTextEdit } from './actions'
 import { darkInk } from './canvas/draw'
@@ -50,10 +50,15 @@ export function TextEditor() {
   const darkCanvas = useTheme((s) => s.darkCanvas)
   const input = useRef<HTMLTextAreaElement>(null)
 
-  // Focus after the click that placed the text has finished, or the browser takes focus back.
-  useEffect(() => {
+  // Focused as soon as it shows, so that what is typed at once goes into it rather than to the
+  // shortcuts (the letters of "Note" are tools); the canvas keeps the click that placed it from
+  // taking the focus back (its `onMouseDown`). Again once that click has finished, in case.
+  useLayoutEffect(() => {
     if (!editing) return
+    input.current?.focus()
+    input.current?.select()
     const timer = setTimeout(() => {
+      if (document.activeElement === input.current) return
       input.current?.focus()
       input.current?.select()
     })
