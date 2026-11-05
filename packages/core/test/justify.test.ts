@@ -9,6 +9,7 @@ import {
   snapOpeningToWall,
   transformOps,
   wallEdgeLines,
+  flipWallOps,
   wallJustifyOps,
   wallPolygons,
   wallThicknessOps,
@@ -116,6 +117,27 @@ describe('a wall drawn by one of its faces', () => {
     expect(get(back, 'w')).toMatchObject({ a: { x: 0, y: 0 }, b: { x: 4000, y: 0 } })
     expect(get(back, 'w').justify).toBeUndefined()
     expect(back.nodes.door).toMatchObject({ x: 1000, y: 0 })
+  })
+
+  it('flips over its line: its corners stay, it lies on the other side with its doors, the look of the face on the line kept', () => {
+    const start = applyOps(createDocument(), [
+      wall('w', 0, 0, 4000, 0, { justify: 'left', edges: { left: { stroke: '#ff0000' }, a: { show: true } } }),
+      // Running east by its left face, the wall lies south of its line: its door in the middle of it.
+      add({ type: 'parametric', id: 'door', kind: 'arch.door', props: { width: 900 }, x: 1000, y: 100, rotation: 0 }),
+    ])
+    expect(box(start, 'w')).toMatchObject({ minY: 0, maxY: 200 })
+    const doc = applyOps(start, flipWallOps(start, get(start, 'w'), registry))
+    expect(get(doc, 'w')).toMatchObject({ a: { x: 0, y: 0 }, b: { x: 4000, y: 0 }, justify: 'right', edges: { right: { stroke: '#ff0000' }, a: { show: true } } })
+    expect(get(doc, 'w').edges?.left).toBeUndefined()
+    expect(box(doc, 'w')).toMatchObject({ minY: -200, maxY: 0 })
+    expect(doc.nodes.door).toMatchObject({ x: 1000, y: -100 })
+    // Flipped again, it is as it was.
+    const back = applyOps(doc, flipWallOps(doc, get(doc, 'w'), registry))
+    expect(back.nodes.w).toEqual(start.nodes.w)
+    expect(back.nodes.door).toMatchObject({ x: 1000, y: 100 })
+    // A wall drawn by its middle lies on both sides of its line: there is nothing to flip.
+    const middle = applyOps(createDocument(), [wall('m', 0, 0, 4000, 0)])
+    expect(flipWallOps(middle, get(middle, 'm'), registry)).toEqual([])
   })
 
   it('takes the walls joined to it along, so that a room drawn by the middles of its walls, drawn by their inner faces after, is the same room', () => {

@@ -3,7 +3,7 @@ import { dimensionToolLook } from '../actions'
 import { registry } from '../extensions'
 import { t } from '../i18n'
 import type { Tool } from '../tools'
-import { formatLength, formatNumber, unit } from '../units'
+import { decimalMark, formatLength, formatNumber, unit } from '../units'
 import type { Overlay, SizeLabel, AngleMark } from './draw'
 import { BOXES, FORMAT_REACH } from './gesture'
 import { layerHere } from '../store'
@@ -166,7 +166,7 @@ export function wallOps(id: string, a: Vec2, b: Vec2): Op[] {
 
 /** The node a two-point tool makes from its two points. */
 export function shape(tool: Tool, id: string, a: Vec2, b: Vec2, offset = 0): NodeInput {
-  const { scope, wallThickness, annotationTemplate, gridlineTemplate, paperScale, base, doc } = get()
+  const { scope, wallThickness, wallMaterial, annotationTemplate, gridlineTemplate, paperScale, base, doc } = get()
   const common = { id, parent: scope, ...layerHere(), ...(tool !== 'dimension' && tool !== 'paper' ? currentStyle(tool === 'rect' || tool === 'ellipse') : {}) }
   switch (tool) {
     case 'paper': {
@@ -176,7 +176,8 @@ export function shape(tool: Tool, id: string, a: Vec2, b: Vec2, offset = 0): Nod
       return { ...common, type: 'paper', name, scale: paperScale, titleBlock: {}, x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) }
     }
     case 'wall':
-      return { ...common, type: 'wall', a, b, thickness: wallThickness }
+      // Of the material chosen for the tool, when this drawing has it: the setting outlives the drawing.
+      return { ...common, type: 'wall', a, b, thickness: wallThickness, ...(wallMaterial && doc.materials?.[wallMaterial] ? { material: wallMaterial } : {}) }
     case 'divider':
       return { id, parent: scope, ...layerHere(), type: 'divider', a, b }
     case 'annotation':
@@ -190,8 +191,9 @@ export function shape(tool: Tool, id: string, a: Vec2, b: Vec2, offset = 0): Nod
     case 'dimension': {
       const look = dimensionToolLook()
       const style = typeof look.dimensionStyle === 'string' ? doc.dimensionStyles?.[look.dimensionStyle] : undefined
-      // New dimensions read in the unit the user works in, unless the tool's settings or its style say otherwise.
-      return { ...(style?.unit === undefined ? { unit: unit() } : {}), ...look, ...common, type: 'dimension', a, b, offset } as NodeInput
+      // New dimensions read in the unit the user works in, with their decimal mark, unless the tool's settings or its style say otherwise.
+      const written = { ...(style?.unit === undefined ? { unit: unit() } : {}), ...(style?.decimal === undefined && decimalMark() === ',' ? { decimal: ',' } : {}) }
+      return { ...written, ...look, ...common, type: 'dimension', a, b, offset } as NodeInput
     }
     case 'rect':
       return { ...common, type: 'rect', x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) }

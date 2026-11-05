@@ -1,23 +1,23 @@
-import { type NodeOf, boundsOf, childrenOf, nodePrimitives, componentUses, rootOf, layersOf, type Node, type Op, roomAt, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
+import { type Bounds, type NodeOf, boundsOf, dist, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, componentUses, rootOf, layersOf, type Node, type Op, roomAt, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
 import { swapSelectedComponent } from '../../actions'
 import { EntryChoice } from '../../EntryChoice'
 import { entryOf, isModel } from '../../entries'
 import { executeById } from '../../commands'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { applyCalibration } from '../../floorplan'
-import { language, t } from '../../i18n'
+import { t } from '../../i18n'
 import { editComponent } from '../../navigation'
 import { registry } from '../../extensions'
 import { apply, useStore } from '../../store'
 import { toast } from '../../windows'
 import { Field, labelOf, Section } from '../../ui'
-import { formatLength, parseLength, unit } from '../../units'
+import { formatArea, formatLength, parseLength, unit, unitSuffix } from '../../units'
 import { Sections, type Update } from './FieldRow'
 import { AnnotationTool, DimensionTool, GridlineTool, SelectedDimensionStyle } from './dimensions'
 import { commonFields, FIELD_NAMES, fieldsOf, SHEET_FIELDS } from './fields'
 import { ModifierStack } from './modifiers'
 import { PaperSheet } from './paper'
-import { CornerPanel, WallCurve, WallEnds, WallLine, WallMaterial } from './walls'
+import { CornerPanel, WallCurve, WallEnds, WallLine, WallMaterial, WallToolMaterial } from './walls'
 import { TableSettings } from './tables'
 
 /* The Properties panel: what is selected, or the tool in use when nothing is. */
@@ -27,36 +27,43 @@ function RoomFacts({ node }: { node: Extract<Node, { type: 'room' }> }) {
   const doc = useStore((s) => s.doc)
   const region = roomAt(doc, node.parent, node)
   if (!region) return <p className="hint">{t('The walls around this room do not close, so it has no floor to show. Close them, or drag the name into a closed space.')}</p>
-  const area = new Intl.NumberFormat(language(), { maximumFractionDigits: 2 }).format(region.area / 1e6)
   return (
     <>
-      <p className="hint">{t('Floor area: {area} m², measured inside the walls.', { area })}</p>
+      <p className="hint">{t('Floor area: {area}, measured inside the walls.', { area: formatArea(region.area) })}</p>
       <p className="hint">{t('The room follows its walls. Drag its name to move it.')}</p>
     </>
   )
 }
 
 /**
- * How wide and high the objects selected stand together, as the box drawn round them on the canvas.
- * Shown only: scaling them would thicken their walls too, and stretching a plan is yet to be designed.
+ * How wide and high the objects selected stand together, as the box drawn round them on the canvas,
+ * and for walls between their axes too. Typing a size stretches them by their far side, the right
+ * or the bottom (`stretchOps`): walls keep their thickness and stay joined, where scaling would
+ * thicken them.
  */
 function SelectionSize({ nodes }: { nodes: Node[] }) {
   const doc = useStore((s) => s.doc)
+  const ids = nodes.map((node) => node.id).join()
   const bounds = useMemo(() => {
     const ctx = { doc, registry, depth: 0 }
     return boundsOf(nodes.flatMap((node) => nodePrimitives(node, ctx)))
-  }, [doc, nodes.map((node) => node.id).join()])
+  }, [doc, ids])
+  const axes = useMemo(() => wallAxesBounds(nodes.filter((node): node is NodeOf<'wall'> => node.type === 'wall')), [doc, ids])
   if (!bounds) return null
+  const size = (box: Bounds, axis: 'x' | 'y') => (axis === 'x' ? box.maxX - box.minX : box.maxY - box.minY)
+  // The difference typed is what the far side moves by, whichever of the two sizes it was typed in.
+  const stretch = (box: Bounds, axis: 'x' | 'y') => (typed: number) => {
+    if (!(typed > 0)) return
+    apply(stretchOps(doc, nodes, axis, typed - size(box, axis), registry))
+  }
   return (
     <>
-      <label className="field">
-        <span>{t('Width')}</span>
-        <output>{formatLength(bounds.maxX - bounds.minX)}</output>
-      </label>
-      <label className="field">
-        <span>{t('Height')}</span>
-        <output>{formatLength(bounds.maxY - bounds.minY)}</output>
-      </label>
+      <Field label={t('Width')} numeric length value={size(bounds, 'x')} onCommit={stretch(bounds, 'x')} />
+      <Field label={t('Height')} numeric length value={size(bounds, 'y')} onCommit={stretch(bounds, 'y')} />
+      {/* Walls along one line only have no size across them between their axes. */}
+      {axes && size(axes, 'x') > 0.5 && <Field label={t('Width, axis to axis')} numeric length value={size(axes, 'x')} onCommit={stretch(axes, 'x')} />}
+      {axes && size(axes, 'y') > 0.5 && <Field label={t('Height, axis to axis')} numeric length value={size(axes, 'y')} onCommit={stretch(axes, 'y')} />}
+      <p className="hint">{t('A size typed moves what lies along the right side, or the bottom: walls across get longer, keep their thickness and stay joined.')}</p>
     </>
   )
 }
@@ -171,9 +178,12 @@ function CalibrateTool() {
     const timer = setTimeout(() => field.current?.focus())
     return () => clearTimeout(timer)
   }, [calibration])
+  // A door's width, as an example in the unit a bare number is read in: "3.5" typed in millimetres is
+  // 3.5 mm, and an example in metres led people to shrink their plan a thousandfold.
+  const example = formatLength(900)
   const submit = () => {
     const real = parseLength(text)
-    if (real === null) return toast(t('Enter the distance as a number, for example 3500, 350 cm or 3.5 m.'))
+    if (real === null || real <= 0) return toast(t('Enter the distance as a number in {unit}, for example {example}. Another unit can be typed after it, as 90 cm.', { unit: unitSuffix() || unit(), example }))
     applyCalibration(real)
     setText('')
   }
@@ -181,7 +191,7 @@ function CalibrateTool() {
     <Section title={t('Set the scale')}>
       <p className="hint">
         {calibration
-          ? t('Type the real distance between the two points you picked.')
+          ? t('The two points are {measured} apart on the drawing now. Type their real distance, in {unit} unless you write another unit after it.', { measured: formatLength(dist(calibration.a, calibration.b)), unit: unitSuffix() || unit() })
           : t('Click two points on the imported plan whose real distance you know: the ends of a dimension, or a door width.')}
       </p>
       {calibration && (
@@ -192,8 +202,9 @@ function CalibrateTool() {
           }}
         >
           <label className="field">
-            <span>{t('Distance')}</span>
-            <input ref={field} placeholder={t('e.g. 3.5 m')} value={text} onChange={(e) => setText(e.target.value)} />
+            <span>{t('Real distance')}</span>
+            <input ref={field} placeholder={t('e.g. {example}', { example })} value={text} onChange={(e) => setText(e.target.value)} />
+            <em>{unitSuffix()}</em>
           </label>
           <button className="text-button" type="submit">
             {t('Apply scale')}
@@ -236,6 +247,10 @@ export function Properties() {
         ) : tool === 'wall' ? (
           <Section title={t('Wall tool')}>
             <Field label={t('Thickness')} numeric length min={10} value={wallThickness} onCommit={(v) => v > 0 && useStore.setState({ wallThickness: v })} />
+            <div className="field">
+              <span>{t('Material')}</span>
+              <WallToolMaterial />
+            </div>
             <p className="hint">{t('Type a length in the bar above the tools to draw a wall of that exact length.')}</p>
             <p className="hint">{t('Click each corner in turn. Double-click the last corner to close the walls back to the first one, or press Esc to stop.')}</p>
           </Section>

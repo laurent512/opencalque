@@ -2167,6 +2167,21 @@ button.crumb.ahead:hover {
 
 /* A text being typed in place on the drawing */
 
+.clearance-editor {
+  position: absolute;
+  z-index: 5;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  outline: 0;
+  background: #ffffff;
+  color: #1f1f1f;
+  font: 12px system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
 .text-editor {
   position: absolute;
   min-width: 2ch;

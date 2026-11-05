@@ -43,8 +43,9 @@ import {
   ArrowUpToLine,
   BringToFront,
   AlignVerticalSpaceAround,
+  Scissors,
 } from 'lucide-react'
-import { zoomToFit } from './actions'
+import { canFlipSide, zoomToFit } from './actions'
 import { CanvasView } from './canvas/CanvasView'
 import { executeById, formatKey, useShortcutLabel } from './commands'
 import { GridLine } from './icons'
@@ -54,8 +55,9 @@ import type { ScopeStep } from './scopePath'
 import { registry, useExtensions } from './extensions'
 import { leaveTo, returnTo, trailAhead } from './navigation'
 import { redo, setTool, undo, useStore } from './store'
-import { hintsFor, MEASURE_TOOLS, ROOM_TOOLS, SHAPE_TOOLS, TEXT_TOOLS, type Hint, type Tool } from './tools'
+import { CUT_TOOLS, hintsFor, MEASURE_TOOLS, ROOM_TOOLS, SHAPE_TOOLS, TEXT_TOOLS, type Hint, type Tool } from './tools'
 import { TextEditor } from './TextEditor'
+import { ClearanceEditor } from './ClearanceEditor'
 import { IconButton, labelOf, TypeIcon } from './ui'
 import { useWindows } from './windows'
 
@@ -69,6 +71,7 @@ const ICONS: Partial<Record<Tool, [title: string, icon: LucideIcon]>> = {
   dimension: [msg('Dimension: annotate a distance on the drawing'), RulerDimensionLine],
   measure: [msg('Measure: read a distance without drawing anything'), Ruler],
   split: [msg('Split: cut a wall, a line or a polyline in two where you click'), Slice],
+  trim: [msg('Trim: take away the stretch of a wall or a line you click, up to what crosses it'), Scissors],
   rotate: [msg('Rotate: turn the selection about a point you click'), RotateCw],
   angle: [msg('Angle: read the angle between two directions'), Triangle],
   eyedropper: [msg('Eyedropper: copy the look of an object'), Pipette],
@@ -281,6 +284,8 @@ function Hints() {
   const selected = useStore((s) => s.selection.length > 0)
   const measured = useStore((s) => s.calibration !== null)
   const opening = useStore((s) => s.placing?.type === 'parametric' && Boolean(registry.parametric.get(s.placing.kind)?.opening))
+  // Whether Shift+Space would flip something: the wall tool drawing by a face, a door being placed.
+  const flips = useStore((s) => (s.tool === 'wall' ? s.wallJustify !== 'center' : canFlipSide()))
   // With the select tool, a preview in progress is an object being moved, reshaped, scaled or turned.
   const dragging = useStore((s) => s.tool === 'select' && s.base !== null && !s.editingText)
   const walls = useStore((s) => s.selection.some((id) => s.doc.nodes[id]?.type === 'wall'))
@@ -318,7 +323,7 @@ function Hints() {
   else if (dragging && boxed) hints = [['Shift', t('keeps its proportions, from a corner')], ['Alt', t('ignores the grid and snapping')]]
   else if (boxed) hints = [['', t('Drag the middle of a side to change one size, a corner to change both')], ['', t('the knob above turns it')]]
   else if (dragging) hints = walls ? [['', t('Joined walls stretch to stay joined')], ['↑ ←', t('holds it upright or level')], ['Alt', t('moves it alone, off the grid')]] : [['Shift', t('keeps an end on its own line, or level, upright or at 45° with its other end')], ['↑ ←', t('holds it upright or level')], ['Alt', t('ignores the grid and snapping')]]
-  else hints = hintsFor(tool, step, opening, selected)
+  else hints = hintsFor(tool, step, opening, selected, flips)
   // With nothing else to say, inside a component: what its space is.
   if (hints.length === 0 && inside) hints = [['', t(inside)]]
   if (hints.length === 0 || browsing) return null
@@ -341,6 +346,7 @@ function Toolbar() {
   const roomTool = useStore((s) => s.roomTool)
   const textTool = useStore((s) => s.textTool)
   const measureTool = useStore((s) => s.measureTool)
+  const cutTool = useStore((s) => s.cutTool)
   return (
     <div className="toolbar">
       <ToolButton id="select" />
@@ -355,7 +361,7 @@ function Toolbar() {
         <LibraryBig size={18} />
       </CommandButton>
       <hr />
-      <ToolButton id="split" />
+      <ToolGroup tools={CUT_TOOLS} current={cutTool} more={t('Trim')} />
       {/* Mirroring is not a tool: the selection is flipped on itself, at once, from the same list. */}
       <ToolGroup tools={['rotate']} current="rotate" more={t('Mirror')} actions={FLIPS} />
       <ArrangeMenu />
@@ -523,6 +529,7 @@ export function Stage() {
       <Hints />
       <InstanceBar />
       <TextEditor />
+      <ClearanceEditor />
       <QuickBar />
       <Toolbar />
     </main>

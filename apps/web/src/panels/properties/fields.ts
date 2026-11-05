@@ -94,6 +94,9 @@ const ROOM_NAME = msg('Name')
 
 const FLOOR = msg('Floor')
 
+/** The mark a room's area, a table's numbers or a dimension's value are written with. */
+const DECIMAL_MARK: FieldSpec = { path: 'decimal', label: msg('Decimal mark'), type: 'string', fallback: '.', options: options(['.', msg('With a point: 1.5')], [',', msg('With a comma: 1,5')]) }
+
 /** Where the look of a selection is changed, and so where it can be taken from another object. */
 export const LOOK_SECTIONS = [STROKE, 'Style', FLOOR]
 
@@ -126,6 +129,7 @@ export const DIMENSION: FieldSpec[] = [
   { path: 'unit', label: msg('Unit'), type: 'string', section: msg('Text'), fallback: 'mm', options: options(['mm', 'mm'], ['cm', 'cm'], ['m', 'm'], ['in', 'in'], ['ft', 'ft'], ['ft-in', msg('ft and in')]) },
   { ...num('decimals', msg('Decimals'), undefined, msg('Text')), optional: true },
   { path: 'showUnit', label: msg('Show unit'), type: 'boolean', section: msg('Text'), fallback: false },
+  { ...DECIMAL_MARK, section: msg('Text') },
 ]
 
 /** The symbols an annotation's leader can end in. A bullet is the dot. */
@@ -181,6 +185,8 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
     len('size', msg('Text size'), 250, ROOM_NAME),
     { path: 'style.stroke', label: msg('Text colour'), type: 'color', section: ROOM_NAME, fallback: '#1f1f1f', unset: msg('from layer') },
     { path: 'showArea', label: msg('Show area'), type: 'boolean', section: ROOM_NAME, fallback: true },
+    { path: 'system', label: msg('Area in'), type: 'string', section: ROOM_NAME, fallback: 'metric', options: options(['metric', msg('Square metres (m²)')], ['imperial', msg('Square feet (ft²)')]) },
+    { ...DECIMAL_MARK, section: ROOM_NAME },
     fill('#dfe6f0', msg('default'), { section: FLOOR }),
   ],
   divider: AB,
@@ -193,7 +199,7 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
     { path: 'totals', label: msg('Total row'), type: 'boolean', fallback: true },
     // Past this many, its rows go on in a block beside it: a long legend stays on the sheet.
     { ...num('rowsPerBlock', msg('Rows per block')), optional: true },
-    { path: 'decimal', label: msg('Decimals'), type: 'string', fallback: '.', options: options(['.', msg('With a point: 1.5')], [',', msg('With a comma: 1,5')]) },
+    DECIMAL_MARK,
     ...stroke(STROKE),
     fill('#ffffff', msg('default'), { filled: true }),
   ],

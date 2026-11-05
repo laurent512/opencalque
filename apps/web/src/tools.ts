@@ -5,7 +5,7 @@ import { t } from './i18n'
  * each step of using one (`hintsFor`). What a tool does on the drawing is in `canvas/gestures/`
  * (`PRESSES`, and the gestures it starts); its command and shortcut are in `commands.ts` (`tool(…)`).
  */
-export type Tool = 'select' | 'hand' | 'line' | 'rect' | 'ellipse' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'rotate' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'place'
+export type Tool = 'select' | 'hand' | 'line' | 'rect' | 'ellipse' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'rotate' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'place'
 
 /** The plain shapes, which share one toolbar button. */
 export const SHAPE_TOOLS: Tool[] = ['line', 'rect', 'ellipse']
@@ -13,6 +13,8 @@ export const SHAPE_TOOLS: Tool[] = ['line', 'rect', 'ellipse']
 export const ROOM_TOOLS: Tool[] = ['room', 'divider']
 /** The tools for writing on the drawing, which share a third. */
 export const TEXT_TOOLS: Tool[] = ['text', 'annotation', 'dimension', 'gridline']
+/** The tools that cut what is drawn: in two, or a stretch away. */
+export const CUT_TOOLS: Tool[] = ['split', 'trim']
 /** The tools that read something off the drawing without adding to it. */
 export const MEASURE_TOOLS: Tool[] = ['measure', 'angle']
 
@@ -24,7 +26,7 @@ export type Hint = [key: string, text: string]
  * shown that cannot be used yet. Each hint is a key and what it does; an empty key is a plain
  * instruction, and the first one is always the next thing to do.
  */
-export function hintsFor(tool: Tool, step: number, opening: boolean, selected = false): Hint[] {
+export function hintsFor(tool: Tool, step: number, opening: boolean, selected = false, flips = false): Hint[] {
   const free: Hint = ['Alt', t('ignores the grid and snapping')]
   // What measures the drawing never takes a point from the grid (MEASURING in canvas/gesture.ts).
   const unsnapped: Hint = ['Alt', t('ignores snapping')]
@@ -34,11 +36,13 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
   const typed: Hint = ['0-9', t('type an exact length')]
   const held: Hint = ['↑ ←', t('holds it upright or level')]
   const rested: Hint = ['', t('rest on a point to line up with it')]
+  // Shift+Space flips (the command edit.flipSide): offered only where it does something.
+  const flip = (what: string): Hint[] => (flips ? [['Shift+Space', what]] : [])
   switch (tool) {
     case 'wall':
-      if (step === 0) return [['', t('Click where the wall starts')], rested]
+      if (step === 0) return [['', t('Click where the wall starts')], rested, ...flip(t('puts it on the other side of the points'))]
       // A loop needs at least two walls drawn before a third can close it.
-      return [['', t('Click the next corner')], typed, angles, held, free, ...(step >= 3 ? [['', t('Double-click closes the loop')] as Hint] : []), ['Esc', t('finishes')]]
+      return [['', t('Click the next corner')], typed, angles, held, ...flip(t('puts it on the other side of the points')), free, ...(step >= 3 ? [['', t('Double-click closes the loop')] as Hint] : []), ['Esc', t('finishes')]]
     case 'room':
       return [['', t('Click inside a closed region of walls')]]
     case 'divider':
@@ -61,6 +65,8 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
       return [['', t('Click where that line goes: the selection turns with it')], ['0-9', t('type an exact angle')], ['Shift', t('keeps to 15° steps')], ['Alt', t('turns freely')], ['Esc', t('cancels')]]
     case 'split':
       return [['', t('Click a wall, a line or a polyline where it should be cut')], ['', t('the lengths either side are shown')], ['Alt', t('ignores the grid')]]
+    case 'trim':
+      return [['', t('Click the stretch of a wall or a line to take away, up to what crosses it')], ['', t('walls are cut against the line of the wall crossing them')]]
     case 'measure':
       return step === 0 ? [['', t('Click the first point')], onDrawing] : [['', t('Click the second point')], onDrawing, heldStraight, unsnapped]
     case 'angle':
@@ -72,7 +78,7 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
     case 'gridline':
       return step === 0 ? [['', t('Click where the grid line starts, at its bubble')], rested] : [['', t('Click where it ends')], typed, angles, free, ['', t('the next one takes the next letter or number')]]
     case 'place':
-      return opening ? [['', t('Click a wall to place it')], ['R', t('rotates')], ['Alt', t('places it freely, off walls and grid')]] : [['', t('Click to place it')], ['R', t('rotates')], free]
+      return opening ? [['', t('Click a wall to place it')], ['R', t('rotates')], ...flip(t('hinges it on its other side')), ['Alt', t('places it freely, off walls and grid')]] : [['', t('Click to place it')], ['R', t('rotates')], free]
     default:
       return []
   }

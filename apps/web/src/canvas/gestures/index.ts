@@ -3,7 +3,7 @@ import type { Gesture } from '../gesture'
 import type { Move, Press, Release } from '../runtime'
 import { drawDown, drawMove, drawUp, lineDown, offsetMove, polyMove, polyUp, textDown } from './drawTools'
 import { angleDown, angleMove, measureDown, measureMove } from './measure'
-import { eyedropperDown, placeDown, splitDown, toolHover } from './place'
+import { eyedropperDown, placeDown, splitDown, toolHover, trimDown } from './place'
 import { cornerMove, cropMove, dragUp, endMove, faceMove, handleMove, hover, marqueeMove, marqueeUp, moveMove, pressMove, pressUp, resizeMove, rotateMove, scaleMove, selectDown } from './select'
 import { rotateDown, turnMove } from './turn'
 
@@ -21,6 +21,7 @@ export const PRESSES: Partial<Record<Tool, Press>> = {
   place: placeDown,
   room: placeDown,
   split: splitDown,
+  trim: trimDown,
   angle: angleDown,
   rotate: rotateDown,
   measure: measureDown,

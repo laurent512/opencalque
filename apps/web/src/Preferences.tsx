@@ -174,6 +174,15 @@ function GeneralSettings() {
         </label>
       )}
       <p className="hint">{t('Lengths are shown and typed in this unit. A different unit can always be typed after a number, such as 350 cm.')}</p>
+      <label className="pref-field">
+        <span>{t('Decimal mark')}</span>
+        <select value={prefs.decimal} onChange={(e) => setPrefs({ decimal: e.target.value as typeof prefs.decimal })}>
+          <option value="auto">{t('As the language writes it')}</option>
+          <option value=".">{t('With a point: 1.5')}</option>
+          <option value=",">{t('With a comma: 1,5')}</option>
+        </select>
+      </label>
+      <p className="hint">{t('Numbers are shown with it, and the rooms, tables and dimensions placed from now on are written with it. Either mark can be typed.')}</p>
       <Toggle label={t('Save automatically')} checked={prefs.autosave} onChange={(autosave) => setPrefs({ autosave })} />
       <p className="hint">{t('A drawing is saved to its file a moment after each change. A new drawing has to be saved once first, to give it a file.')}</p>
       <button className="text-button" onClick={resetLayout}>

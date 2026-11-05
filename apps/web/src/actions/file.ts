@@ -9,7 +9,7 @@ import { usePrefs } from '../prefs'
 import { recoverable } from '../recovery'
 import { hideSplash } from '../splash'
 import { apply, cancel, isDirty, loadDocument, select, useStore } from '../store'
-import { imperialUnit } from '../units'
+import { decimalMark, imperialUnit } from '../units'
 import { toast, useWindows } from '../windows'
 import { baseName, guarded } from './common'
 import { zoomToFit } from './view'
@@ -192,8 +192,8 @@ export const exportDxf = (container?: string) =>
 export const exportQuantities = (pageId?: string) =>
   guarded(async () => {
     const { doc, page } = get()
-    // Whether numbers are written with a decimal comma where the app's language is spoken.
-    const comma = new Intl.NumberFormat(language()).format(1.5).includes(',')
+    // Whether numbers are written with a decimal comma, as the preferences say (by default, as the language does).
+    const comma = decimalMark() === ','
     // In feet when lengths are shown in feet or inches, in metres otherwise.
     const system = imperialUnit() ? 'imperial' : 'metric'
     const [length, area, volume, thickness] = system === 'imperial' ? ['ft', 'ft²', 'ft³', 'in'] : ['m', 'm²', 'm³', 'mm']

@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { applyOps, createDocument, holdsChildren, layerIn, layersOf, pagesOf, type Document, type NodeInput, type NodeOf, type Op, type Pattern, type Vec2, wallEndsAt } from '@opencalque/core'
 import type { StoredFile } from './platform'
 import type { Tool } from './tools'
-import { MEASURE_TOOLS, ROOM_TOOLS, SHAPE_TOOLS, TEXT_TOOLS } from './tools'
+import { CUT_TOOLS, MEASURE_TOOLS, ROOM_TOOLS, SHAPE_TOOLS, TEXT_TOOLS } from './tools'
 import type { View } from './view'
 import { closeWindows, toast } from './windows'
 
@@ -107,6 +107,8 @@ interface Interaction {
    */
   /** The node whose words are being typed in place; for a grid line, which of its bubbles (`gridlineBubbles`). */
   editingText: { id: string; create?: NodeInput; bubble?: number } | null
+  /** Which of the temporary dimensions of the one selected object (`clearances`) is being typed, by its place in their list. */
+  measuring: number | null
   /** Where the right-click menu is open, in window coordinates. */
   contextMenu: { x: number; y: number } | null
   /** Where on the drawing the last right-click was, for commands of its menu that act at that very place. */
@@ -119,6 +121,8 @@ interface ToolSettings {
   wallThickness: number
   /** Where the points clicked with the wall tool lie on the wall: along its middle, or along its left or right face as it is drawn. */
   wallJustify: 'left' | 'center' | 'right'
+  /** The material the wall tool draws walls of, by its id; null for the default. Left out of a drawing that does not have it. */
+  wallMaterial: string | null
   /** The drawing scale (the N of 1:N) given to the papers the paper tool makes, which sets how large the standard formats are. */
   paperScale: number
   /** The shape tool used last, shown on the toolbar's shape button. */
@@ -128,6 +132,8 @@ interface ToolSettings {
   /** And for the text button. */
   textTool: Tool
   measureTool: Tool
+  /** And for the button of the tools that cut, split and trim. */
+  cutTool: Tool
   /** Stroke colour given to the shapes drawn next, or null for the layer's colour. */
   drawColor: string | null
   /** The fill of the closed shapes drawn next, its colour and its pattern; null for none. */
@@ -182,6 +188,7 @@ const IDLE: Interaction = {
   edgeHover: null,
   wallFace: null,
   editingText: null,
+  measuring: null,
   contextMenu: null,
   menuPoint: null,
   status: '',
@@ -190,11 +197,13 @@ const IDLE: Interaction = {
 const SETTINGS: ToolSettings = {
   wallThickness: 200,
   wallJustify: 'center',
+  wallMaterial: null,
   paperScale: 100,
   shapeTool: 'rect',
   roomTool: 'room',
   textTool: 'text',
   measureTool: 'measure',
+  cutTool: 'split',
   drawColor: null,
   drawFill: null,
   drawPattern: null,
@@ -326,11 +335,12 @@ export function setTool(tool: Tool, placing: Placing | null = null): void {
   const roomTool = ROOM_TOOLS.includes(tool) ? tool : get().roomTool
   const textTool = TEXT_TOOLS.includes(tool) ? tool : get().textTool
   const measureTool = MEASURE_TOOLS.includes(tool) ? tool : get().measureTool
-  set({ tool, placing, shapeTool, roomTool, textTool, measureTool, corner: null, placingRotation: 0, calibration: null, drawLocks: {}, axisLock: null, drawLive: null, drawStep: 0, status: '' })
+  const cutTool = CUT_TOOLS.includes(tool) ? tool : get().cutTool
+  set({ tool, placing, shapeTool, roomTool, textTool, measureTool, cutTool, corner: null, placingRotation: 0, calibration: null, measuring: null, drawLocks: {}, axisLock: null, drawLive: null, drawStep: 0, status: '' })
 }
 
 export function select(ids: string[]): void {
-  set({ selection: ids, corner: null })
+  set({ selection: ids, corner: null, measuring: null })
 }
 
 /** Selects the wall corner at a point, in place of any objects. */

@@ -161,6 +161,7 @@ const dimensionLook = {
   fraction: z.number().int().positive().optional().describe("With unit 'ft-in': the fraction of an inch the value is rounded to, as its lower number (2, 4, 8, 16, 32). Defaults to 16."),
   decimals: z.number().int().min(0).max(6).optional().describe('Decimal places. Defaults to 0 for mm, 1 for cm and in, 2 for m and ft.'),
   showUnit: z.boolean().optional().describe('Append the unit to the value.'),
+  decimal: z.enum(['.', ',']).optional().describe("The decimal separator of the value. Defaults to '.'."),
 }
 
 export const DimensionStyleSchema = z
@@ -253,6 +254,8 @@ export const NodeSchema = z
         y: z.number(),
         size: z.number().positive().optional().describe('Size of the name and area written at (x, y), in mm. Defaults to 250.'),
         showArea: z.boolean().optional().describe('Whether the floor area is written under the name. Defaults to true.'),
+        system: z.enum(['metric', 'imperial']).optional().describe("'imperial' writes the floor area in square feet. Defaults to 'metric', square metres."),
+        decimal: z.enum(['.', ',']).optional().describe("The decimal separator of the area. Defaults to '.'."),
         material: Id.optional().describe('The id of the material its floor is made of, among the document\'s "materials": the floor takes its colour and pattern, unless the room gives its own in "style", and is counted under it.'),
       })
       .describe(

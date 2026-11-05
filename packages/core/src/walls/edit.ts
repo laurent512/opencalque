@@ -211,6 +211,23 @@ export function wallJustifyOps(doc: Document, wall: Wall, justify: 'left' | 'cen
 }
 
 /**
+ * The operations that turn a wall drawn by one of its faces over its line, as Revit flips one: it
+ * then lies on the other side of that line, its corners where they are, the walls joined there
+ * mitred to it anew, its doors and windows going across with it. The look given to the face on the
+ * line stays with it (`edges.left` and `edges.right` swap). A wall drawn by its middle lies on both
+ * sides of its line and has nothing to flip: no operations.
+ */
+export function flipWallOps(doc: Document, wall: Wall, registry: Registry): Op[] {
+  if (wall.justify !== 'left' && wall.justify !== 'right') return []
+  const justify = wall.justify === 'left' ? 'right' : 'left'
+  const by = middleAcross({ thickness: wall.thickness, justify }) - middleAcross(wall)
+  const { left, right, ...ends } = wall.edges ?? {}
+  // `edges` is replaced whole by the patch, so a face with no look of its own is left out of it.
+  const edges = left || right ? { edges: { ...ends, ...(right ? { left: right } : {}), ...(left ? { right: left } : {}) } } : {}
+  return [{ op: 'update_node', id: wall.id, patch: { justify, ...edges } }, ...openingsAcross(doc, wall, by, registry)]
+}
+
+/**
  * What has to follow when end `index` (0 for `a`, 1 for `b`) of a wall is dragged to `p`: the ends
  * of the other walls that met it there. `doc` is the drawing before the drag.
  */

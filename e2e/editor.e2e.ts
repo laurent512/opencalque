@@ -518,19 +518,31 @@ test('sets the length of a wall typed in its properties, its free end moving and
   expect(doc.nodes.w3.b.x / doc.nodes.w3.bulge).toBeCloseTo(8, 6)
 })
 
-test('shows how wide and high the objects selected stand together', async ({ page }) => {
+test('shows how wide and high the objects selected stand together, and stretches them by a size typed', async ({ page }) => {
   await startWith(page)
+  await recordSaves(page)
   await openEditor(page)
-  // Two walls 200 thick meeting at a corner: their outer faces stand 4100 by 3100 apart.
+  // Two walls 200 thick meeting at a corner: their outer faces stand 4100 by 3100 apart, their axes 4000 by 3000.
   const wall = (id: string, a: [number, number], b: [number, number]) => ({ id, type: 'wall', parent: 'page_1', layer: 'layer_1', order: `a${id}`, a: { x: a[0], y: a[1] }, b: { x: b[0], y: b[1] }, thickness: 200 })
   await choose(page, () => page.keyboard.press('Control+o'), 'corner.opencalque', drawing({ w1: wall('1', [0, 0], [4000, 0]), w2: wall('2', [4000, 0], [4000, 3000]) }))
   await expect(objectRows(page)).toHaveCount(2)
   await objectRows(page).first().click()
   await objectRows(page).last().click({ modifiers: ['Shift'] })
-  const size = (name: string) => page.locator('[data-panel="properties"] .field', { has: page.locator(`span:text-is("${name}")`) }).locator('output')
+  // The first: the walls' own Height field comes further down.
+  const size = (name: string) => page.locator('[data-panel="properties"] .field', { has: page.locator(`span:text-is("${name}")`) }).locator('input').first()
   await expect(page.locator('[data-panel="properties"]')).toContainText('2 objects')
-  await expect(size('Width')).toHaveText('4100 mm')
-  await expect(size('Height')).toHaveText('3100 mm')
+  await expect(size('Width')).toHaveValue('4100')
+  await expect(size('Height')).toHaveValue('3100')
+  await expect(size('Width, axis to axis')).toHaveValue('4000')
+  await expect(size('Height, axis to axis')).toHaveValue('3000')
+  // Typed between the axes, the wall on the right moves out whole, the other getting longer to stay joined.
+  await size('Width, axis to axis').fill('5000')
+  await size('Width, axis to axis').press('Enter')
+  await expect(size('Width')).toHaveValue('5100')
+  await page.keyboard.press('Control+s')
+  const doc = JSON.parse(await page.evaluate(() => (window as any).saves.at(-1)))
+  expect(doc.nodes.w1).toMatchObject({ a: { x: 0, y: 0 }, b: { x: 5000, y: 0 }, thickness: 200 })
+  expect(doc.nodes.w2).toMatchObject({ a: { x: 5000, y: 0 }, b: { x: 5000, y: 3000 }, thickness: 200 })
 })
 
 test('moves the step between two walls in line by the line across the end of either, the other following', async ({ page }) => {

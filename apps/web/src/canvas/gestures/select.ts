@@ -41,7 +41,7 @@ import { gridStep } from '../../view'
 import { formatLength, formatNumber } from '../../units'
 import { heldNearest, lineEnd, snap, squareFrom, type Target } from '../aim'
 import { ALIGN_REACH, SNAP_REACH } from '../gesture'
-import { cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, lineUp, titleAt } from '../picking'
+import { clearanceAt, cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, lineUp, titleAt } from '../picking'
 import { get, type Canvas, type Move, type Press, type Release } from '../runtime'
 import { faceAcross, faceOf, paperLabel, resizeCursor, round, sizes, thicknessLabel, thicknessStep, wallNormal } from '../shapes'
 
@@ -53,6 +53,12 @@ import { faceAcross, faceOf, paperLabel, resizeCursor, round, sizes, thicknessLa
 export const selectDown: Press = (c, e, at, world) => {
   const s = get()
   const { frame, ownBox } = c
+  // A click on the length of a temporary dimension opens it, to type another (`ClearanceEditor`).
+  const measuring = clearanceAt(c, at)
+  if (measuring !== null) {
+    useStore.setState({ measuring })
+    return
+  }
   const cropped = frameCornerAt(c, at)
   if (cropped) {
     c.gesture = { kind: 'crop', node: s.doc.nodes[s.selection[0]], index: cropped.index, fixed: cropped.outline[(cropped.corner + 2) % 4] }

@@ -7,7 +7,17 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 ## 1.3.0
 
 ### New
-- Keyboard shortcuts can be exported to a file and imported back, to take them to another computer or keep them through a reinstall: Export… and Import… in Preferences › Keyboard shortcuts, or from the command list (Ctrl+K). Importing replaces the shortcuts in use with those of the file.
+- Keyboard shortcuts can be exported to a file and imported back, to take them to another computer or keep them through a reinstall: Export… and Import… in Preferences › Keyboard shortcuts, or from the command list (Ctrl+K). Importing replaces the shortcuts in use with those of the file (#6).
+- Temporary dimensions, as in Revit: a selected wall shows how far each of its faces stands from the wall it faces, a door or window how far each of its sides is along its wall from the walls on either side (or the next opening), and any other object how far each side of it is from the nearest wall. Click a number, type another and press Enter: the wall, the door or the object moves there, the walls joined to a wall following it. View › Show temporary dimensions turns them off (#9).
+- A trim tool (X, beside Split): pointing at a wall, a line or a polyline shows the stretch of it up to what crosses it, struck through, and a click takes it away. An end is cut back, a stretch in the middle leaves two parts, and a wall cut so ends against the line of the wall that crossed it (#9).
+- Shift+Space flips: while drawing walls by a face, it puts them on the other side of the points clicked; while placing a door, it hinges it on its other side; on a selected wall drawn by a face, it moves the wall over to the other side of that face, its corners staying where they are; on a selected door, it changes its hinge (on a window, its side). It can be given another key in the command list (#9).
+- The width and height of several objects selected can be typed, and for walls their size from axis to axis, shown beside it: what lies along the right side (or the bottom) moves, the walls running across get longer, keeping their thickness, and everything stays joined. Four walls round a room 6.7 m across outside are 6.5 m from axis to axis, and typing 7 m there makes the room 50 cm wider (#7).
+- The material of the walls about to be drawn is chosen beforehand, in the bar above the tools or the wall tool's properties, beside the thickness (#9).
+- A decimal mark of one's choice, in Preferences: with a point or a comma, or as the language writes numbers, as before. Numbers are shown with it, and the rooms, tables of quantities and dimensions placed afterwards are written with it; a dimension, or a dimension style, has its own choice in its properties.
+
+### Fixed
+- A room placed while working in feet or inches writes its area in square feet: it was always in square metres (#10). A room's properties choose between the two, and the decimal mark of its area, for several rooms at once; rooms already drawn keep square metres until changed so.
+- Setting the scale of an imported plan said "e.g. 3.5 m", but a number typed alone was read in the unit of the preferences, so that 3.5 typed in millimetres made the plan a thousand times too small. The panel now says how far apart the two points are on the drawing, which unit a number alone is in, and gives its example in that unit.
 
 ## 1.2.0 — 2026-10-25
 

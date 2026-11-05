@@ -16,4 +16,4 @@ export { hostWall, openingSpan, snapOpeningToWall, wallOpenings } from './openin
 export { endLineOps, endLineShown, endLineUsual, wallEdgeLines, wallOutline, wallOutlineRuns, wallParts, wallPolygons, wallSeams, withEdge, type WallPiece, type WallParts } from './outline'
 export type { Stop } from './joints'
 export { materialSeams } from './seams'
-export { extendWallOps, splitWallOps, trimWallOps, wallEndFollowOps, wallFollowOps, wallJustifyOps, wallThicknessOps } from './edit'
+export { extendWallOps, flipWallOps, splitWallOps, trimWallOps, wallEndFollowOps, wallFollowOps, wallJustifyOps, wallThicknessOps } from './edit'

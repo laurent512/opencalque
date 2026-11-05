@@ -3,7 +3,7 @@ import { stopBrowsing } from '../actions/instances'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { type NodeOf, type Primitive, dist, gridlineBubbles, wallEndState, boundsFrame, buildScene, connectedWalls, frameContains, frameGrips, hitTest, kindOf, modifierKind, modifierParams, newId, placedScene, resizeFrame, rotate, sceneBounds, turnedBox, wallEdgeLines, wallLength, wallMiddle } from '@opencalque/core'
 import { finishTextEdit, zoomToFit } from '../actions'
-import { onCommand } from '../commands'
+import { commandFor, onCommand } from '../commands'
 import { registry, useExtensions } from '../extensions'
 import { editComponent, forgetTrail } from '../navigation'
 import { usePrefs } from '../prefs'
@@ -18,6 +18,7 @@ import { TURNING, type Gesture, type PointerAt } from './gesture'
 import { DRAW_PRESS, MOVES, PRESSES, RELEASES } from './gestures'
 import { aim, finishPoly, finishShape, polyPoint } from './gestures/drawTools'
 import { finishTurn } from './gestures/turn'
+import { clearanceLabel, useClearances } from './clearances'
 import { titleAt } from './picking'
 import { get, local, reset, syncStep, type Canvas, type Move, type Release, type Shown } from './runtime'
 import { boxLabels, paperLabel, polyline, roomsOnly, sizes, snapName, wallOps } from './shapes'
@@ -136,6 +137,10 @@ export function CanvasView() {
     return []
   }, [doc, selection, tool, handles, frame])
 
+  // How far the one object selected stands from the walls around it, with each length where it is written.
+  const measured = useClearances()
+  const clearanceLines = useMemo(() => measured?.list.map((clearance) => ({ from: clearance.from, to: clearance.to, label: clearanceLabel(clearance, view) })), [measured, view])
+
   // The name of each paper, written above its corner. It is a label of the editor, not part of the drawing.
   const titles = useMemo(
     () => scene.flatMap((item) => (item.node.type === 'paper' ? [{ id: item.id, at: { x: item.node.x, y: item.node.y }, text: item.node.name ?? '', selected: selection.includes(item.id) }] : [])),
@@ -175,13 +180,14 @@ export function CanvasView() {
     handles: [],
     frame: null,
     ownBox: null,
+    clearanceLabels: [],
     gripCursor: null,
     element: () => canvasRef.current!,
     setOverlay,
     setGripCursor,
   }
   const c = runtime.current
-  Object.assign(c, { scene, titles, frames, handles, frame, ownBox, gripCursor })
+  Object.assign(c, { scene, titles, frames, handles, frame, ownBox, gripCursor, clearanceLabels: clearanceLines?.map((line) => line.label) ?? [] })
 
   // Switching tool or container abandons whatever was in progress.
   useEffect(() => {
@@ -214,8 +220,8 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, editingId ? shown.map((item) => (item.id === editingId ? { ...item, prims: withoutTyped(item.prims, editingBubble) } : item)) : shown, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks }, showGrid, palette)
-  }, [shown, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, palette, pictures, editingId, editingBubble, tool, edgeLines, wallLinks])
+    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, editingId ? shown.map((item) => (item.id === editingId ? { ...item, prims: withoutTyped(item.prims, editingBubble) } : item)) : shown, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette)
+  }, [shown, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, palette, pictures, editingId, editingBubble, tool, edgeLines, wallLinks, clearanceLines])
 
   // Lets the quick bar finish the shape in progress with the sizes typed there.
   useEffect(() => {
@@ -285,7 +291,7 @@ export function CanvasView() {
     // A finished measurement stays on screen until the next one starts.
     const { marker } = out
     const tracked = trackedPoints(c)
-    setOverlay((o) => ({ tracked: tracked.length > 0 ? tracked : undefined, cut: out.cut, face: out.face, box: out.turning, marker: marker && { ...marker, label: snapName(marker.kind) }, smart: out.smart ?? (marker?.guides ? { lines: marker.guides, gaps: [] } : undefined), link: out.link, labels: out.labels, angle: out.angle, axis: out.axis, guide: out.guide, ghosts: out.ghosts, marquee: out.marquee, measure: out.measure ?? o.measure, angleReading: out.angleReading ?? o.angleReading }))
+    setOverlay((o) => ({ tracked: tracked.length > 0 ? tracked : undefined, cut: out.cut, trim: out.trim, face: out.face, box: out.turning, marker: marker && { ...marker, label: snapName(marker.kind) }, smart: out.smart ?? (marker?.guides ? { lines: marker.guides, gaps: [] } : undefined), link: out.link, labels: out.labels, angle: out.angle, axis: out.axis, guide: out.guide, ghosts: out.ghosts, marquee: out.marquee, measure: out.measure ?? o.measure, angleReading: out.angleReading ?? o.angleReading }))
     // A failed preview has put its reason in the status bar; keep it there.
     if (out.previewed) useStore.setState({ status: out.status, drawLive: out.live })
   }
@@ -373,6 +379,9 @@ export function CanvasView() {
       if ((e.target as HTMLElement).closest('input, textarea, select')) return
       if (e.ctrlKey || e.metaKey || e.altKey) return
       const s = get()
+      // Space with Shift flips what is drawn or selected (a command, which can be given plain Space
+      // too): a key a command takes neither pans nor finishes the drawing.
+      if (e.key === ' ' && commandFor(e)) return
       if (e.key === ' ') {
         c.space = true
         if (!e.repeat) c.spaceTap = { at: performance.now(), used: false }

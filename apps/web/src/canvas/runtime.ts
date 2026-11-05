@@ -64,6 +64,8 @@ export interface Canvas {
   frame: BoxFrame | null
   /** The box around one selected object that turns but has no frame (a text, a picture, a compass). */
   ownBox: ResizeFrame | null
+  /** Where the lengths of the temporary dimensions are written on screen, in their order, for a click to open one. */
+  clearanceLabels: { x: number; y: number; width: number; height: number }[]
   /** The pointer shown over a grip, so it says what dragging there does. */
   gripCursor: string | null
 
@@ -85,6 +87,7 @@ export interface Shown {
   live: { a: number; b: number } | null
   measure?: Overlay['measure']
   cut?: Overlay['cut']
+  trim?: Overlay['trim']
   angleReading?: Overlay['angleReading']
   face?: Overlay['face']
   turning?: Overlay['box']

@@ -33,19 +33,38 @@ export const unit = (): Unit => usePrefs.getState().unit
 export const fromMm = (mm: number, to: Unit = unit()) => mm / MM_PER[to]
 export const toMm = (value: number, from: Unit = unit()) => value * MM_PER[from]
 
-/** A length as a number in the current unit, written the way the user's language writes numbers, without the unit. */
+/** The decimal mark numbers are written with: the one of the preferences, or the language's. */
+export function decimalMark(): '.' | ',' {
+  const chosen = usePrefs.getState().decimal
+  if (chosen !== 'auto') return chosen
+  return new Intl.NumberFormat(language()).format(1.5).includes(',') ? ',' : '.'
+}
+
+/**
+ * A number with at most `decimals` places, written with the decimal mark in use and no digit
+ * grouping: the result is also shown in fields, and must read back as a number.
+ */
+export function formatDecimal(value: number, decimals: number, minimum = 0): string {
+  const text = new Intl.NumberFormat('en', { maximumFractionDigits: decimals, minimumFractionDigits: minimum, useGrouping: false }).format(value)
+  return decimalMark() === ',' ? text.replace('.', ',') : text
+}
+
+/** A length as a number in the current unit, written with the decimal mark in use, without the unit. */
 export function formatNumber(mm: number, decimals = DECIMALS[unit()]): string {
   // Feet and inches are not a number with a unit after it: they are written whole, marks included,
   // and read back by `parseLength`.
   if (unit() === 'ft-in') return formatFeetInches(mm, usePrefs.getState().fraction)
-  // No digit grouping: the result is also shown in fields, and must read back as a number.
-  return new Intl.NumberFormat(language(), { maximumFractionDigits: decimals, useGrouping: false }).format(fromMm(mm))
+  return formatDecimal(fromMm(mm), decimals)
 }
 
-/** An angle in degrees, to a hundredth (or to `decimals` places), as the language writes numbers: never a length, whatever the unit. */
-export function formatAngle(degrees: number, decimals = 2): string {
-  return new Intl.NumberFormat(language(), { maximumFractionDigits: decimals, useGrouping: false }).format(degrees)
-}
+/** An angle in degrees, to a hundredth (or to `decimals` places), with the decimal mark in use: never a length, whatever the unit. */
+export const formatAngle = (degrees: number, decimals = 2): string => formatDecimal(degrees, decimals)
+
+/** An area in mm², in square metres, or in square feet when lengths are in feet or inches, with its unit and two decimals at most. */
+export const formatArea = (mm2: number): string => (imperialUnit() ? `${formatDecimal(mm2 / 92903.04, 2)} ft²` : `${formatDecimal(mm2 / 1e6, 2)} m²`)
+
+/** How a room or a table placed now writes its numbers, as the user reads them: in feet, with a decimal comma, each only when so. */
+export const writtenAs = (): { system?: 'imperial'; decimal?: ',' } => ({ ...(imperialUnit() ? { system: 'imperial' } : {}), ...(decimalMark() === ',' ? { decimal: ',' } : {}) })
 
 /** A length with its unit, e.g. "5.02 m". */
 export const formatLength = (mm: number) => (unit() === 'ft-in' ? formatNumber(mm) : `${formatNumber(mm)} ${unit()}`)
@@ -53,7 +72,7 @@ export const formatLength = (mm: number) => (unit() === 'ft-in' ? formatNumber(m
 /** What is written after a length typed on its own in the current unit: nothing for feet and inches, which carry their marks. */
 export const unitSuffix = () => (unit() === 'ft-in' ? '' : unit())
 
-/** Reads a number typed by the user, accepting a comma or a point as the decimal sign. */
+/** Reads a number typed by the user, accepting a comma or a point as the decimal mark. */
 export function parseNumber(text: string): number {
   const trimmed = text.trim().replace(',', '.')
   return trimmed === '' ? NaN : Number(trimmed)

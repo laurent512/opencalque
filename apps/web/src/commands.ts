@@ -28,6 +28,8 @@ import {
   addModifier,
   exportPdf,
   canFitWalls,
+  canFlipSide,
+  flipSide,
   canSplitWall,
   canClosePolylines,
   canOpenPolylines,
@@ -255,6 +257,14 @@ const STATIC: Command[] = [
   { id: 'view.zoomIn', title: msg('Zoom in'), category: 'View', keys: ['+', 'Shift++', 'Mod+='], run: () => zoomBy(1.25) },
   { id: 'view.toggleTheme', title: msg('Dark theme'), category: 'View', keywords: 'dark light mode appearance colours', checked: () => useTheme.getState().dark, run: toggleTheme },
   { id: 'view.toggleGrid', title: msg('Show grid'), category: 'View', checked: () => prefs().showGrid, run: () => setPrefs({ showGrid: !prefs().showGrid }) },
+  {
+    id: 'view.toggleClearances',
+    title: msg('Show temporary dimensions'),
+    category: 'View',
+    keywords: 'clearance distance walls revit',
+    checked: () => prefs().showClearances,
+    run: () => setPrefs({ showClearances: !prefs().showClearances }),
+  },
   { id: 'view.toggleSnapGrid', title: msg('Snap to grid'), category: 'View', checked: () => prefs().snapToGrid, run: () => setPrefs({ snapToGrid: !prefs().snapToGrid }) },
   {
     id: 'view.toggleSnapObjects',
@@ -290,6 +300,15 @@ const STATIC: Command[] = [
     when: () => get().tool === 'place',
     run: () => useStore.setState({ placingRotation: (get().placingRotation + 90) % 360 }),
   },
+  {
+    id: 'edit.flipSide',
+    title: msg('Flip: the wall being drawn to the other side, a door to its other hinge'),
+    category: 'Edit',
+    keywords: 'flip swap side hinge swing turn over',
+    keys: ['Shift+Space'],
+    when: canFlipSide,
+    run: flipSide,
+  },
   tool('rect', msg('Rectangle'), 'R'),
   tool('ellipse', msg('Ellipse'), 'O'),
   tool('wall', msg('Wall'), 'W'),
@@ -297,6 +316,7 @@ const STATIC: Command[] = [
   tool('measure', msg('Measure'), 'M'),
   tool('angle', msg('Measure an angle'), 'Shift+M'),
   tool('split', msg('Split'), 'K'),
+  tool('trim', msg('Trim'), 'X'),
   tool('rotate', msg('Rotate'), 'E'),
   tool('eyedropper', msg('Eyedropper: copy the look of an object'), 'I'),
   tool('text', msg('Text'), 'T'),
@@ -502,14 +522,19 @@ function forTheField(e: KeyboardEvent): boolean {
   return field.type !== 'range' || SLIDER_KEYS.includes(e.key)
 }
 
+/** The command a key press runs, if any: one bound to it that applies now. */
+export function commandFor(e: KeyboardEvent): Command | null {
+  const { overrides, paletteOpen } = useCommands.getState()
+  if (paletteOpen) return null
+  const key = eventKey(e)
+  if (!key) return null
+  const typing = forTheField(e)
+  return allCommands().find((c) => keysOf(c, overrides).includes(key) && (!typing || c.global) && (c.when?.() ?? true)) ?? null
+}
+
 /** Runs the command bound to a key press, if any. Installed once on the window. */
 export function handleKeyDown(e: KeyboardEvent): void {
-  const { overrides, paletteOpen } = useCommands.getState()
-  if (paletteOpen) return
-  const key = eventKey(e)
-  if (!key) return
-  const typing = forTheField(e)
-  const command = allCommands().find((c) => keysOf(c, overrides).includes(key) && (!typing || c.global) && (c.when?.() ?? true))
+  const command = commandFor(e)
   if (!command) return
   e.preventDefault()
   execute(command)

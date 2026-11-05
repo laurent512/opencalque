@@ -5,7 +5,7 @@
  *   file       drawings and files: open, save, export, import
  *   clipboard  cut, copy, paste
  *   edit       the selection and pages: delete, duplicate, transform, group, components, order, align, style
- *   walls      the selected walls: dimension, split, extend, trim, turn round
+ *   walls      the selected walls: dimension, split, extend, trim, turn round, flip over
  *   tables     tables of quantities: a new one, in the user's language, and its columns
  *   view       zoom, and the view kept while a component opened from a list is edited
  *   instances  going through the placements of a component one by one

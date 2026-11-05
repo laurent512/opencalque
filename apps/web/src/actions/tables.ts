@@ -1,7 +1,7 @@
 import { SCHEDULE_COLUMNS, SCHEDULE_FIELDS, tableWord, TABLE_WORDS, type NodeOf, type Schedule } from '@opencalque/core'
 import { language, msg, t } from '../i18n'
 import { useStore } from '../store'
-import { imperialUnit } from '../units'
+import { decimalMark, imperialUnit } from '../units'
 
 /*
  * Tables of quantities, as the editor makes them: in the words of the language in use, with the
@@ -56,8 +56,8 @@ export function tableLabels(system: 'metric' | 'imperial', schedule?: Schedule):
 /** A new table of one kind, to be placed: titled, worded and numbered as the user reads. */
 export function newTable(schedule: Schedule): Omit<NodeOf<'table'>, 'id' | 'parent' | 'order' | 'x' | 'y'> {
   const system = imperialUnit() ? 'imperial' : 'metric'
-  // Numbers are written with a decimal comma where the app's language is spoken so.
-  const comma = new Intl.NumberFormat(language()).format(1.5).includes(',')
+  // Numbers are written with the decimal mark of the preferences, by default the language's.
+  const comma = decimalMark() === ','
   // As large on paper as a room's name, at the scale papers are drawn at.
   const size = Math.round(2 * useStore.getState().paperScale)
   // A table of the objects placed draws each beside its name: a legend of the plan that keeps up with it.

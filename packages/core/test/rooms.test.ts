@@ -64,6 +64,16 @@ describe('rooms', () => {
     expect(item.bounds).toMatchObject({ minX: 100, minY: 100, maxX: 3950, maxY: 3900 })
   })
 
+  it('writes its area in square feet, and with a decimal comma, when it says so', () => {
+    const area = (patch: Record<string, unknown>) => {
+      const doc = applyOps(withRoom(house), [{ op: 'update_node', id: 'living', patch }])
+      return drawn(doc).prims.filter((p) => p.kind === 'text').map((p: any) => p.text)[1]
+    }
+    expect(area({ system: 'imperial' })).toBe('154.46 ft²')
+    expect(area({ decimal: ',' })).toBe('14,35 m²')
+    expect(area({ system: 'imperial', decimal: ',' })).toBe('154,46 ft²')
+  })
+
   it('follows the walls: moving one changes the room, with nothing stored to update', () => {
     const doc = withRoom(house)
     const d = { x: -1000, y: 0 }

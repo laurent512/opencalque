@@ -23,7 +23,7 @@ Last updated: 2026-10-19 (1.2.0, in progress).
 - **Eyedropper**: copy the look of an object to the selection or to the next shapes.
 - **Arrange** from the toolbar: stacking order, align and space evenly. The common properties of several selected objects are edited together.
 - A guide line across the view while a segment is exactly horizontal or vertical, and a hint bar with the keys that matter for the tool in use.
-- Lengths shown and typed in millimetres, centimetres, metres, inches, feet, or feet and inches (7' 6 1/2").
+- Lengths shown and typed in millimetres, centimetres, metres, inches, feet, or feet and inches (7' 6 1/2"); room areas in square metres or square feet; numbers with a decimal point or comma, as the language writes them or as chosen.
 - **Papers**: sheets like frames, drawn at a standard format (A5 to A0, upright or lying, at a drawing scale) or any size, named above their corner, moved on their own over the drawing to frame it, and copied or duplicated with what is drawn on them.
 - Walls stay joined: moving a wall or a corner stretches the walls that meet it, and its doors and windows follow.
 - Numbers in the panels change by holding Alt and dragging sideways.
@@ -98,8 +98,8 @@ Ranked by how much each one moves the app from "promising" to "usable for real w
 | 5 | **DXF export** | **Done** (lines, circles, text, layers), and DXF import: geometry, blocks (as groups), hatches, dimensions, leaders, and sheets laid out in paper space. Blocks do not become components yet. |
 | 6 | **Sheets and printing**: paper size, drawing scale, title block, PDF export to scale | **Done**: papers with format, direction, scale and a title block; vector PDF export at true scale, one page per paper. Views of the plan at another scale on a sheet are in the ideas below. |
 | 7 | **More drawing tools**: polyline and polygon tool, arcs and curves, typed lengths while drawing, room areas | **Mostly done**: one line tool for lines, polylines and polygons (a double-click closes the shape), typed sizes, room areas, arcs (by angles) and curved polylines, snapping to middles, crossings, perpendiculars and lines. A tool to draw an arc directly is not started. |
-| 8 | **Transforming**: rotate and scale handles, align and distribute, mirror, array | **Mostly done**: rotate (a tool, about a clicked point), mirror, uniform scale and nudge for any selection, from grips on the selection box, menus and shortcuts. Align, distribute, a repeat (array) modifier and smart guides while moving are done. One object is made wider or taller by the sides of its frame (a rectangle, an ellipse, a placed component, a stair, a washbasin, a bathtub, a hob, a sink, a fridge, a corner sofa, a radiator, the adjustable furniture); several selected together are only scaled evenly. |
-| 9 | **Walls as a system**: openings that follow their wall, walls trimmed where they meet mid-span, moving a wall drags its neighbours, rooms detected from walls | **Done**, with selectable corners, joint types, walls of layers and curved walls. |
+| 8 | **Transforming**: rotate and scale handles, align and distribute, mirror, array | **Mostly done**: rotate (a tool, about a clicked point), mirror, uniform scale and nudge for any selection, from grips on the selection box, menus and shortcuts. Align, distribute, a repeat (array) modifier and smart guides while moving are done. One object is made wider or taller by the sides of its frame (a rectangle, an ellipse, a placed component, a stair, a washbasin, a bathtub, a hob, a sink, a fridge, a corner sofa, a radiator, the adjustable furniture); several selected together are stretched by their far side when a width or height is typed (walls keep their thickness and stay joined), and scaled evenly by the box's corners. |
+| 9 | **Walls as a system**: openings that follow their wall, walls trimmed where they meet mid-span, moving a wall drags its neighbours, rooms detected from walls | **Done**, with selectable corners, joint types, walls of layers and curved walls; temporary dimensions to the walls around a selected wall, door, window or object, typed to move it; flipping a wall or a door with `Shift+Space`; a trim tool. |
 | 10 | **Hosted version**: accounts, cloud storage, sharing by link, realtime collaboration | Not started. The data model is prepared for it (see ARCHITECTURE §10). |
 
 ## Ideas, in the order they seem worth doing
@@ -125,7 +125,7 @@ Agreed with the owner in October 2026. The first was built straight away.
 - ~~Snapping to midpoints, perpendiculars and intersections~~ (done, with the nearest point on a line); tangents and the quarter points of circles
 - ~~Eyedropper~~ (done)
 - Fills made of a picture, or of a texture (wood, concrete, grass), as more tabs of the fill window
-- Trim, extend and fillet for lines
+- ~~Trim for lines~~ (done: the trim tool, for walls, lines and polylines); extend and fillet for lines
 
 **Import and sharing**
 - ~~DXF import~~ (done, with blocks as groups); blocks as components
@@ -143,10 +143,10 @@ Not ranked within an area.
 
 **Drawing and editing**
 - Rich text; angular and radius dimensions; dimensions that follow what they measure.
-- Trim, extend, offset and fillet for plain lines (walls have extend and trim); boolean operations on shapes.
+- Extend, offset and fillet for plain lines (walls have extend, and everything the trim tool); boolean operations on shapes.
 - Smart guides while drawing and resizing; snapping to tangents and the quarter points of circles.
 - Select similar; select by layer or type; find and replace text.
-- ~~Lock aspect ratio; non-uniform scaling~~ (done for rectangles and ellipses; a selection of several still scales in proportion); numeric move and copy.
+- ~~Lock aspect ratio; non-uniform scaling~~ (done for rectangles and ellipses; a selection of several is stretched by a size typed, scaled in proportion by its corners); numeric move and copy.
 
 **Architecture**
 - Columns, beams, slabs, roofs in plan; curtain walls.

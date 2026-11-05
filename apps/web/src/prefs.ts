@@ -17,6 +17,8 @@ export interface Prefs {
   unit: 'mm' | 'cm' | 'm' | 'in' | 'ft' | 'ft-in'
   /** With feet and inches: the fraction of an inch lengths are rounded to, as its lower number (16 for sixteenths). */
   fraction: number
+  /** The mark between the whole and the decimals of a number: 'auto' writes it as the language does (a comma in French, a point in English). */
+  decimal: 'auto' | '.' | ','
   /** Save a drawing to its file by itself a moment after each change. */
   autosave: boolean
   /** Offer a new drawing, a file or the example in a window when the app starts. */
@@ -26,6 +28,8 @@ export interface Prefs {
   showGrid: boolean
   snapToGrid: boolean
   snapToObjects: boolean
+  /** Show how far the one object selected stands from the walls around it, as dimensions to type into. */
+  showClearances: boolean
   /** How the Components panel shows them: one per line, or as pictures side by side. */
   componentsView: 'list' | 'grid'
   extensions: {
@@ -73,12 +77,14 @@ const DEFAULTS: Prefs = {
   darkCanvas: true,
   unit: usualUnit(),
   fraction: 16,
+  decimal: 'auto',
   autosave: true,
   showWelcome: true,
   checkUpdates: true,
   showGrid: true,
   snapToGrid: true,
   snapToObjects: true,
+  showClearances: true,
   componentsView: 'list',
   extensions: { installed: {}, disabled: [] },
   catalogUrl: '',

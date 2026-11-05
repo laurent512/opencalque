@@ -325,6 +325,14 @@
           "showUnit": {
             "description": "Append the unit to the value.",
             "type": "boolean"
+          },
+          "decimal": {
+            "description": "The decimal separator of the value. Defaults to '.'.",
+            "type": "string",
+            "enum": [
+              ".",
+              ","
+            ]
           }
         },
         "required": [
@@ -1848,6 +1856,22 @@
               "showArea": {
                 "description": "Whether the floor area is written under the name. Defaults to true.",
                 "type": "boolean"
+              },
+              "system": {
+                "description": "'imperial' writes the floor area in square feet. Defaults to 'metric', square metres.",
+                "type": "string",
+                "enum": [
+                  "metric",
+                  "imperial"
+                ]
+              },
+              "decimal": {
+                "description": "The decimal separator of the area. Defaults to '.'.",
+                "type": "string",
+                "enum": [
+                  ".",
+                  ","
+                ]
               },
               "material": {
                 "description": "The id of the material its floor is made of, among the document's \"materials\": the floor takes its colour and pattern, unless the room gives its own in \"style\", and is counted under it.",
@@ -4264,6 +4288,14 @@
               "showUnit": {
                 "description": "Append the unit to the value.",
                 "type": "boolean"
+              },
+              "decimal": {
+                "description": "The decimal separator of the value. Defaults to '.'.",
+                "type": "string",
+                "enum": [
+                  ".",
+                  ","
+                ]
               }
             },
             "required": [

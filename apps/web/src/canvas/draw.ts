@@ -123,6 +123,10 @@ export interface Overlay {
   face?: Vec2[][]
   /** Where the split tool would cut: a point, the way the thing runs there, and how far the mark reaches to either side. */
   cut?: { at: Vec2; dir: Vec2; half: number; parts?: Vec2[][]; gap?: number }
+  /** What the trim tool would take away: the stretch of a wall or a line, along its line, and how wide to show it in pixels (a wall's thickness). */
+  trim?: { piece: Vec2[]; width: number }
+  /** Temporary dimensions of the one object selected: each line, and its length in a box on screen (`clearanceLabel`). */
+  clearances?: { from: Vec2; to: Vec2; label: { x: number; y: number; width: number; height: number; text: string } }[]
   /** The measure tool's reading, in world coordinates. It is not part of the drawing. */
   measure?: { a: Vec2; b: Vec2 }
   /** Sizes written next to the shape being drawn or selected. */
@@ -671,6 +675,54 @@ export function drawScene(
       ctx.stroke()
     }
     ctx.lineCap = 'butt'
+  }
+  if (overlay.clearances) {
+    // Thin and grey, as Revit draws them, with a tick across each end; the length in a box, which a click opens.
+    ctx.setLineDash([])
+    ctx.lineWidth = 1
+    ctx.strokeStyle = '#6b7a90'
+    for (const { from, to } of overlay.clearances) {
+      const [a, b] = [toScreen(from), toScreen(to)]
+      const l = Math.hypot(b.x - a.x, b.y - a.y) || 1
+      const n = { x: ((a.y - b.y) / l) * 5, y: ((b.x - a.x) / l) * 5 }
+      ctx.beginPath()
+      ctx.moveTo(a.x, a.y)
+      ctx.lineTo(b.x, b.y)
+      for (const p of [a, b]) {
+        ctx.moveTo(p.x - n.x, p.y - n.y)
+        ctx.lineTo(p.x + n.x, p.y + n.y)
+      }
+      ctx.stroke()
+    }
+    ctx.font = '11px system-ui, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    for (const { label } of overlay.clearances) {
+      ctx.fillStyle = '#ffffff'
+      ctx.beginPath()
+      ctx.roundRect(label.x, label.y, label.width, label.height, 4)
+      ctx.fill()
+      ctx.stroke()
+      ctx.fillStyle = '#3d4a5c'
+      ctx.fillText(label.text, label.x + label.width / 2, label.y + label.height / 2 + 0.5)
+    }
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+  }
+  if (overlay.trim) {
+    // Struck through in the colour of the split tool's mark: what goes when clicked.
+    const line = overlay.trim.piece.map(toScreen)
+    ctx.setLineDash([])
+    ctx.lineCap = 'butt'
+    for (const [width, colour] of [[Math.max(8, overlay.trim.width), 'rgb(229 0 138 / 25%)'], [2, '#e5008a']] as const) {
+      ctx.strokeStyle = colour
+      ctx.lineWidth = width
+      ctx.setLineDash(width === 2 ? [6, 4] : [])
+      ctx.beginPath()
+      line.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)))
+      ctx.stroke()
+    }
+    ctx.setLineDash([])
   }
   if (overlay.cut) {
     const { at, dir, half } = overlay.cut

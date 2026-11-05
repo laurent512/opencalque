@@ -77,7 +77,8 @@ const moveAB = (node: { a: Vec2; b: Vec2 }, d: Vec2) => ({ a: add(node.a, d), b:
 const handlesAB = (node: { a: Vec2; b: Vec2 }) => [node.a, node.b]
 const moveHandleAB = (_: unknown, index: number, p: Vec2) => (index === 0 ? { a: p } : { b: p })
 
-function rectCorners(node: NodeOf<'rect'>): Vec2[] {
+/** The four corners of a rectangle, turned with it, from its top-left corner round. */
+export function rectCorners(node: NodeOf<'rect'>): Vec2[] {
   const local = [
     { x: 0, y: 0 },
     { x: node.width, y: 0 },
@@ -131,13 +132,19 @@ function symbolPrimitives(object: { kind: 'component' | 'parametric'; id: string
 }
 
 /** The text a dimension shows for a measured length in mm. */
-export function dimensionLabel(node: Pick<NodeOf<'dimension'>, 'text' | 'unit' | 'decimals' | 'showUnit' | 'fraction'>, length: number): string {
+export function dimensionLabel(node: Pick<NodeOf<'dimension'>, 'text' | 'unit' | 'decimals' | 'showUnit' | 'fraction' | 'decimal'>, length: number): string {
   if (node.text) return node.text
   const unit = node.unit ?? 'mm'
   // Feet and inches say their own units with their marks.
   if (unit === 'ft-in') return formatFeetInches(length, node.fraction ?? 16)
-  const value = (length / { mm: 1, cm: 10, m: 1000, in: 25.4, ft: 304.8 }[unit]).toFixed(node.decimals ?? { mm: 0, cm: 1, m: 2, in: 1, ft: 2 }[unit])
+  const value = (length / { mm: 1, cm: 10, m: 1000, in: 25.4, ft: 304.8 }[unit]).toFixed(node.decimals ?? { mm: 0, cm: 1, m: 2, in: 1, ft: 2 }[unit]).replace('.', node.decimal ?? '.')
   return node.showUnit ? `${value} ${unit}` : value
+}
+
+/** The floor area a room writes under its name, from its area in mm²: in m², or in ft² for an imperial one, with its decimal mark. */
+export function roomArea(node: Pick<NodeOf<'room'>, 'system' | 'decimal'>, area: number): string {
+  const [value, unit] = node.system === 'imperial' ? [area / (304.8 * 304.8), 'ft²'] : [area / 1e6, 'm²']
+  return `${value.toFixed(2).replace('.', node.decimal ?? '.')} ${unit}`
 }
 
 /** The symbol at one end of a dimension line. `out` points along the line, away from its middle. */
@@ -596,7 +603,7 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
       if (!region) return [name]
       // The room's stroke is the colour of its name: the floor keeps no outline whatever it is.
       const floor: Primitive = { kind: 'path', points: region.outline, closed: true, fill: ROOM_FILL, stroke: 'none', over: true, backdrop: 'floor' }
-      return node.showArea === false ? [floor, name] : [floor, name, label(`${(region.area / 1e6).toFixed(2)} m²`, 1)]
+      return node.showArea === false ? [floor, name] : [floor, name, label(roomArea(node, region.area), 1)]
     },
     move: moveXY,
     // The floor is not something to snap to; the walls around it are.

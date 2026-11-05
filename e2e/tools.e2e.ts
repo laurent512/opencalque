@@ -211,6 +211,44 @@ test('cuts a wall in two with the split tool', async ({ page }) => {
   )
 })
 
+test('takes away the stretch of a wall up to the wall crossing it with the trim tool', async ({ page }) => {
+  const at = await blank(page)
+  await drawWall(page, [320, 220], [720, 220])
+  await drawWall(page, [520, 20], [520, 420])
+  await page.keyboard.press('x')
+  await page.mouse.move(at(1000, 0).x, at(1000, 0).y)
+  await click(page, at(1000, 0))
+  // What is left of the long wall ends on the line of the wall it crossed.
+  expect((await saved(page)).find((n) => n.type === 'wall' && n.b.x === 4000)).toMatchObject({ a: { x: 2000, y: 0 }, b: { x: 4000, y: 0 } })
+})
+
+test('flips the wall being drawn to the other side of its points with Shift+Space', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('w')
+  await page.getByRole('radio', { name: 'Points along the left face of the wall' }).click()
+  await page.mouse.move(at(0, 0).x, at(0, 0).y)
+  await page.keyboard.press('Shift+Space')
+  await click(page, at(0, 0))
+  await click(page, at(3000, 0))
+  await page.keyboard.press('Escape')
+  // Shift+Space neither ended the drawing nor panned: the wall is there, by its right face.
+  expect((await saved(page)).filter((n) => n.type === 'wall')).toEqual([expect.objectContaining({ a: { x: 0, y: 0 }, b: { x: 3000, y: 0 }, justify: 'right' })])
+})
+
+test('moves a wall by typing its distance to the wall it faces into a temporary dimension', async ({ page }) => {
+  const at = await blank(page)
+  await drawWall(page, [320, 220], [320, 620])
+  await drawWall(page, [620, 220], [620, 620])
+  await click(page, at(0, 2000))
+  // From the face of the one selected, 100 mm from its line, to the face of the other: 2.8 m, written halfway.
+  await click(page, at(1500, 2000))
+  const field = page.locator('.clearance-editor')
+  await expect(field).toHaveValue('2800')
+  await field.fill('2000')
+  await field.press('Enter')
+  expect((await saved(page)).find((n) => n.type === 'wall' && n.a.y === 0 && n.a.x < 3000)).toMatchObject({ a: { x: 800, y: 0 }, b: { x: 800, y: 4000 } })
+})
+
 test('turns the selection a quarter about a point with the rotate tool', async ({ page }) => {
   const at = await blank(page)
   await page.keyboard.press('r')

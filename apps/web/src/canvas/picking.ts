@@ -25,6 +25,12 @@ export function titleAt(c: Canvas, at: Vec2): SceneItem | null {
   return (title && c.scene.find((item) => item.id === title.id && !item.locked)) ?? null
 }
 
+/** Which temporary dimension's length is written under a point of the canvas, by its place in their list. */
+export function clearanceAt(c: Canvas, at: Vec2): number | null {
+  const index = c.clearanceLabels.findIndex((box) => at.x >= box.x && at.x <= box.x + box.width && at.y >= box.y && at.y <= box.y + box.height)
+  return index < 0 ? null : index
+}
+
 /** The corner of a draggable modifier outline under a point of the canvas. */
 export function frameCornerAt(c: Canvas, at: Vec2): { index: number; corner: number; outline: Vec2[] } | null {
   const { view } = get()

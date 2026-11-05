@@ -1,4 +1,4 @@
-import { type NodeOf, type Node, type Op, applyOps, DEFAULT_MATERIAL, WALL_FILL, newId, resolveColor, autoJoinCuts, cornerJoin, cornerJoinOps, endLineOps, endLineShown, withEdge, type WallEdge, moveCornerOps, wallEndsAt, wallEndsOf, wallEndState, looseEndOps, wallArc, wallLength, wallJustifyOps } from '@opencalque/core'
+import { type Document, type NodeOf, type Node, type Op, applyOps, DEFAULT_MATERIAL, WALL_FILL, newId, resolveColor, autoJoinCuts, cornerJoin, cornerJoinOps, endLineOps, endLineShown, withEdge, type WallEdge, moveCornerOps, wallEndsAt, wallEndsOf, wallEndState, looseEndOps, wallArc, wallLength, wallJustifyOps } from '@opencalque/core'
 import { executeById } from '../../commands'
 import { useEffect, type ReactNode } from 'react'
 import { Link2, Undo2 } from 'lucide-react'
@@ -61,12 +61,8 @@ export function WallLine({ walls }: { walls: NodeOf<'wall'>[] }) {
  */
 export function WallMaterial({ walls }: { walls: NodeOf<'wall'>[] }) {
   const doc = useStore((s) => s.doc)
-  const materials = Object.values(doc.materials ?? {}).filter((material) => material.id !== DEFAULT_MATERIAL)
-  const usual = doc.materials?.[DEFAULT_MATERIAL]
-  const options: MaterialOption[] = [
-    { id: '', name: t('Default'), fill: usual?.fill ?? WALL_FILL, pattern: usual?.pattern },
-    ...materials.map((material) => ({ id: material.id, name: material.name, fill: material.fill ?? '#ffffff', pattern: material.pattern })),
-  ]
+  const options = wallMaterials(doc)
+  const materials = options.slice(1)
   const values = new Set(walls.map((wall) => wall.material ?? ''))
   // A fill a wall was given of its own, as walls had before materials, gives way to the material's.
   const unfilled = (wall: NodeOf<'wall'>) => {
@@ -86,6 +82,43 @@ export function WallMaterial({ walls }: { walls: NodeOf<'wall'>[] }) {
       <span>{t('Material')}</span>
       <MaterialChoice label={t('Material')} value={values.size === 1 ? [...values][0] : undefined} mixed={values.size > 1} options={options} pick={(id) => made(id || null)} create={create} />
     </div>
+  )
+}
+
+/** What a wall can be made of: the default material first (id ''), then the drawing's own. */
+function wallMaterials(doc: Document): MaterialOption[] {
+  const usual = doc.materials?.[DEFAULT_MATERIAL]
+  return [
+    { id: '', name: t('Default'), fill: usual?.fill ?? WALL_FILL, pattern: usual?.pattern },
+    ...Object.values(doc.materials ?? {})
+      .filter((material) => material.id !== DEFAULT_MATERIAL)
+      .map((material) => ({ id: material.id, name: material.name, fill: material.fill ?? '#ffffff', pattern: material.pattern })),
+  ]
+}
+
+/**
+ * The material the wall tool draws the next walls of, chosen before drawing them. The setting
+ * belongs to the session; in a drawing without that material, walls are of the default one.
+ */
+export function WallToolMaterial() {
+  const doc = useStore((s) => s.doc)
+  const chosen = useStore((s) => s.wallMaterial)
+  const options = wallMaterials(doc)
+  const create = (name: string) => {
+    const id = newId('material')
+    apply([{ op: 'add_material', material: { id, name: name || t('Material {n}', { n: options.length }), fill: '#e7e5e4' } }])
+    useStore.setState({ wallMaterial: id })
+    showPanel('materials')
+  }
+  return (
+    <MaterialChoice
+      label={t('Material of the next walls')}
+      value={chosen && doc.materials?.[chosen] ? chosen : ''}
+      mixed={false}
+      options={options}
+      pick={(id) => useStore.setState({ wallMaterial: id || null })}
+      create={create}
+    />
   )
 }
 

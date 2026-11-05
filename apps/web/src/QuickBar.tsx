@@ -6,6 +6,7 @@ import { FillChoice } from './FillChoice'
 import { msg, t } from './i18n'
 import { useStore } from './store'
 import { type Tool } from './tools'
+import { WallToolMaterial } from './panels/properties/walls'
 import { JustifyPicker, scrub } from './ui'
 import { formatNumber, parseLength, parseNumber, unitSuffix } from './units'
 
@@ -186,6 +187,12 @@ export function QuickBar() {
           layer={{ color: layerInk, several: false, byDefault: true }}
           commit={(next) => useStore.setState({ drawColor: (next as string | undefined) ?? null })}
         />
+        {tool === 'wall' && (
+          <span className="quick-field locked">
+            <span>{t('Material')}</span>
+            <WallToolMaterial />
+          </span>
+        )}
         {FILLED.includes(tool) && (
           <FillChoice
             compact
