@@ -22,6 +22,10 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 - In the desktop app, the keys of the assistant's services (Claude, an OpenAI-compatible service) are kept encrypted by the system (the keychain on macOS, Windows' data protection, the keyring on Linux), no longer in plain text with the preferences; a key kept so before is moved there at start. Where the system cannot encrypt (Linux without a keyring), it stays where it was. The web app keeps them with its preferences, as before.
 - Under the Material of a wall or a floor, the properties say that its colour and hatch are its material's, with a link to the Materials panel where they are changed.
 
+### Fixed
+- A distance typed into a temporary dimension is the distance read when the wall is selected again: a wall moved towards a wall joined to it, as the sides of a triangle are, turned that wall as it moved, and stopped short of the distance typed. It is now measured again and the move corrected until it is met.
+- What is typed straight after placing a text or a note, or double-clicking the bubble of a grid line, goes into it: on a busy computer, the first letters could go to the shortcuts (the letters of "Note" are tools) before the box to type in had the focus.
+
 ## 1.3.0 — 2026-11-05
 
 ### New
