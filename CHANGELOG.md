@@ -4,7 +4,7 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
-## 1.3.0
+## 1.3.0 — 2026-11-05
 
 ### New
 - Keyboard shortcuts can be exported to a file and imported back, to take them to another computer or keep them through a reinstall: Export… and Import… in Preferences › Keyboard shortcuts, or from the command list (Ctrl+K). Importing replaces the shortcuts in use with those of the file (#6).
