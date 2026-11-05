@@ -10,9 +10,9 @@ import { tidy, turned, type Placing } from './similarity'
 import { sheetContentOf } from './templates'
 import type { Op } from './ops'
 import type { Registry } from './registry'
-import { DEFAULT_MATERIAL, type Asset, type Document, type Node, type NodeOf, type NodeType, type WallEdge } from './schema'
+import { DEFAULT_MATERIAL, type Asset, type Document, type DrawingSettings, type Node, type NodeOf, type NodeType, type WallEdge } from './schema'
 import { DEFAULT_PAPER_SCALE, paperFormat, paperSheet } from './papers'
-import { roomAt } from './rooms'
+import { regionPerimeter, roomAt } from './rooms'
 import { tablePrimitives } from './tables'
 import { bulgeThrough, hostWall, materialSeams, wallMiddle, wallPoints, wallPolygons, wallSeams, wallOutlineRuns, wallSides } from './walls'
 
@@ -131,20 +131,29 @@ function symbolPrimitives(object: { kind: 'component' | 'parametric'; id: string
   return nodePrimitives(node as Node, { ...ctx, depth: ctx.depth + 1 })
 }
 
-/** The text a dimension shows for a measured length in mm. */
-export function dimensionLabel(node: Pick<NodeOf<'dimension'>, 'text' | 'unit' | 'decimals' | 'showUnit' | 'fraction' | 'decimal'>, length: number): string {
+/** The text a dimension shows for a measured length in mm, with its own decimal mark or else the drawing's (`drawing`). */
+export function dimensionLabel(node: Pick<NodeOf<'dimension'>, 'text' | 'unit' | 'decimals' | 'showUnit' | 'fraction' | 'decimal'>, length: number, drawing: DrawingSettings = {}): string {
   if (node.text) return node.text
   const unit = node.unit ?? 'mm'
   // Feet and inches say their own units with their marks.
   if (unit === 'ft-in') return formatFeetInches(length, node.fraction ?? 16)
-  const value = (length / { mm: 1, cm: 10, m: 1000, in: 25.4, ft: 304.8 }[unit]).toFixed(node.decimals ?? { mm: 0, cm: 1, m: 2, in: 1, ft: 2 }[unit]).replace('.', node.decimal ?? '.')
+  const value = (length / { mm: 1, cm: 10, m: 1000, in: 25.4, ft: 304.8 }[unit]).toFixed(node.decimals ?? { mm: 0, cm: 1, m: 2, in: 1, ft: 2 }[unit]).replace('.', node.decimal ?? drawing.decimal ?? '.')
   return node.showUnit ? `${value} ${unit}` : value
 }
 
-/** The floor area a room writes under its name, from its area in mm²: in m², or in ft² for an imperial one, with its decimal mark. */
-export function roomArea(node: Pick<NodeOf<'room'>, 'system' | 'decimal'>, area: number): string {
-  const [value, unit] = node.system === 'imperial' ? [area / (304.8 * 304.8), 'ft²'] : [area / 1e6, 'm²']
-  return `${value.toFixed(2).replace('.', node.decimal ?? '.')} ${unit}`
+/**
+ * The floor area a room writes under its name, from its area in mm²: in m², or in ft² in an
+ * imperial drawing, with the drawing's decimal mark (`drawing`), unless the room says otherwise.
+ */
+export function roomArea(node: Pick<NodeOf<'room'>, 'system' | 'decimal'>, area: number, drawing: DrawingSettings = {}): string {
+  const [value, unit] = (node.system ?? drawing.system) === 'imperial' ? [area / (304.8 * 304.8), 'ft²'] : [area / 1e6, 'm²']
+  return `${value.toFixed(2).replace('.', node.decimal ?? drawing.decimal ?? '.')} ${unit}`
+}
+
+/** How far it is round a room's floor, from its perimeter in mm, as `roomArea` writes its area: in m, or in ft. */
+export function roomPerimeter(node: Pick<NodeOf<'room'>, 'system' | 'decimal'>, perimeter: number, drawing: DrawingSettings = {}): string {
+  const [value, unit] = (node.system ?? drawing.system) === 'imperial' ? [perimeter / 304.8, 'ft'] : [perimeter / 1000, 'm']
+  return `${value.toFixed(2).replace('.', node.decimal ?? drawing.decimal ?? '.')} ${unit}`
 }
 
 /** The symbol at one end of a dimension line. `out` points along the line, away from its middle. */
@@ -456,7 +465,7 @@ export function nextGridLabel(label: string): string {
   return letters[1] + chars.join('')
 }
 
-function dimensionPrimitives(node: NodeOf<'dimension'>): Primitive[] {
+function dimensionPrimitives(node: NodeOf<'dimension'>, drawing?: DrawingSettings): Primitive[] {
   const length = dist(node.a, node.b)
   if (length < 1e-6) return []
   const size = node.size ?? DIMENSION_TEXT_SIZE
@@ -480,7 +489,7 @@ function dimensionPrimitives(node: NodeOf<'dimension'>): Primitive[] {
   const gap = scale(n, side * (node.extensionGap ?? 0))
   const overshoot = scale(n, side * size * 0.4)
 
-  const label = dimensionLabel(node, length)
+  const label = dimensionLabel(node, length, drawing)
   const width = label.length * size * 0.55
   const position = node.textPosition ?? 'above'
   let angle = 0
@@ -603,7 +612,9 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
       if (!region) return [name]
       // The room's stroke is the colour of its name: the floor keeps no outline whatever it is.
       const floor: Primitive = { kind: 'path', points: region.outline, closed: true, fill: ROOM_FILL, stroke: 'none', over: true, backdrop: 'floor' }
-      return node.showArea === false ? [floor, name] : [floor, name, label(roomArea(node, region.area), 1)]
+      // Under the name, its area, then how far it is round it: each on the next line, as many as are shown.
+      const lines = [...(node.showArea === false ? [] : [roomArea(node, region.area, ctx.doc.settings)]), ...(node.showPerimeter ? [roomPerimeter(node, regionPerimeter(region), ctx.doc.settings)] : [])]
+      return [floor, name, ...lines.map((text, i) => label(text, i + 1))]
     },
     move: moveXY,
     // The floor is not something to snap to; the walls around it are.
@@ -748,7 +759,7 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     },
   },
   dimension: {
-    primitives: (node, ctx) => dimensionPrimitives(styledDimension(ctx.doc, node)),
+    primitives: (node, ctx) => dimensionPrimitives(styledDimension(ctx.doc, node), ctx.doc.settings),
     move: moveAB,
     // The third handle sits on the dimension line and sets how far it stands off.
     handles: (node) => [node.a, node.b, add(mid(node.a, node.b), scale(perp(norm(sub(node.b, node.a))), node.offset))],

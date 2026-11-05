@@ -8,7 +8,8 @@ import { t } from './i18n'
 export type Tool = 'select' | 'hand' | 'line' | 'rect' | 'ellipse' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'rotate' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'place'
 
 /** The plain shapes, which share one toolbar button. */
-export const SHAPE_TOOLS: Tool[] = ['line', 'rect', 'ellipse']
+// A paper is drawn as a rectangle is, by its corners: it is offered with the shapes.
+export const SHAPE_TOOLS: Tool[] = ['line', 'rect', 'ellipse', 'paper']
 /** The tools for naming spaces, which share another. */
 export const ROOM_TOOLS: Tool[] = ['room', 'divider']
 /** The tools for writing on the drawing, which share a third. */

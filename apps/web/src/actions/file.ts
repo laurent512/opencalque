@@ -1,4 +1,4 @@
-import { applyOps, componentsOf, createDocument, dxfOps, freeComponentName, importComponents, NewerFormatError, parseDocument, pdfFontCharacters, quantities, quantitiesCsv, readDocument, serializeDocument, toDXF, toPDF, toSVG, type Document, type Op, type QuantityLabels } from '@opencalque/core'
+import { applyOps, componentsOf, createDocument, dxfOps, freeComponentName, importComponents, NewerFormatError, parseDocument, pdfFontCharacters, quantities, quantitiesCsv, readDocument, serializeDocument, settingsOf, toDXF, toPDF, toSVG, type Document, type Op, type QuantityLabels } from '@opencalque/core'
 import { abortable } from '../abortable'
 import { showPanel } from '../dock'
 import { registry } from '../extensions'
@@ -9,7 +9,7 @@ import { usePrefs } from '../prefs'
 import { recoverable } from '../recovery'
 import { hideSplash } from '../splash'
 import { apply, cancel, isDirty, loadDocument, select, useStore } from '../store'
-import { decimalMark, imperialUnit } from '../units'
+import { newDrawingSettings } from '../units'
 import { toast, useWindows } from '../windows'
 import { baseName, guarded } from './common'
 import { zoomToFit } from './view'
@@ -23,11 +23,12 @@ export const DRAWING_EXTENSIONS = ['opencalque', 'opencad', 'json']
 
 const confirmDiscard = () => !isDirty() || window.confirm(t('Discard unsaved changes?'))
 
-/** An empty drawing whose first page and layer are named in the current language. */
+/** An empty drawing whose first page and layer are named in the current language, writing its numbers as the user reads them. */
 export function blankDocument(): Document {
   return applyOps(createDocument(t('Untitled')), [
     { op: 'update_node', id: 'page_1', patch: { name: t('Page {n}', { n: 1 }) } },
     { op: 'update_layer', id: 'layer_1', patch: { name: t('Layer {n}', { n: 1 }) } },
+    { op: 'set_document', settings: newDrawingSettings() },
   ])
 }
 
@@ -185,17 +186,15 @@ export const exportDxf = (container?: string) =>
 
 /**
  * Exports what a page holds as a table for a spreadsheet: rooms and their areas, walls with their
- * lengths and faces, doors and windows by kind, floors and walls by material, the objects placed. It is written the way
- * spreadsheets expect where the app's language is spoken: with a decimal comma, cells are
- * separated by semicolons.
+ * lengths and faces, doors and windows by kind, floors and walls by material, the objects placed. It is written as
+ * spreadsheets expect it: with a decimal comma (the drawing's), cells are separated by semicolons.
  */
 export const exportQuantities = (pageId?: string) =>
   guarded(async () => {
     const { doc, page } = get()
-    // Whether numbers are written with a decimal comma, as the preferences say (by default, as the language does).
-    const comma = decimalMark() === ','
-    // In feet when lengths are shown in feet or inches, in metres otherwise.
-    const system = imperialUnit() ? 'imperial' : 'metric'
+    // In the units and with the decimal mark of the drawing (File › Drawing settings), as its rooms and tables are.
+    const { system, decimal } = settingsOf(doc)
+    const comma = decimal === ','
     const [length, area, volume, thickness] = system === 'imperial' ? ['ft', 'ft²', 'ft³', 'in'] : ['m', 'm²', 'm³', 'mm']
     const labels: QuantityLabels = {
       rooms: t('Rooms'),
@@ -211,6 +210,7 @@ export const exportQuantities = (pageId?: string) =>
       count: t('Count'),
       total: t('Total'),
       area: t('Area ({unit})', { unit: area }),
+      perimeter: t('Perimeter ({unit})', { unit: length }),
       length: t('Length ({unit})', { unit: length }),
       thickness: t('Thickness ({unit})', { unit: thickness }),
       height: t('Height ({unit})', { unit: length }),
@@ -230,6 +230,40 @@ export const exportSvg = (container?: string) =>
   guarded(async () => {
     const { doc, scope } = get()
     await platform.save(toSVG(doc, container ?? scope, registry), `${baseName()}.svg`)
+  })
+
+/** The sizes, in pixels along its longer side, a page can be exported as a picture at; browsers draw no canvas much larger. */
+export const PNG_SIZES = [2000, 4000, 8000]
+
+/**
+ * Exports one page (or, without one given, what is being edited) as a PNG picture `pixels` wide
+ * on its longer side, at most 8000: the SVG export, drawn by the browser on a white canvas, so that
+ * the two look alike.
+ */
+export const exportPng = (container: string | undefined, pixels: number) =>
+  guarded(async () => {
+    const { doc, scope } = get()
+    const svg = toSVG(doc, container ?? scope, registry)
+    const [, , width, height] = (/viewBox="([^"]+)"/.exec(svg)?.[1] ?? '0 0 1 1').split(' ').map(Number)
+    const scale = Math.min(pixels, 8000) / Math.max(width, height)
+    const [w, h] = [Math.max(1, Math.round(width * scale)), Math.max(1, Math.round(height * scale))]
+    // Given its size in pixels, the picture is drawn at it rather than stretched from a small one.
+    const sized = svg.replace('<svg ', `<svg width="${w}" height="${h}" `)
+    const url = URL.createObjectURL(new Blob([sized], { type: 'image/svg+xml' }))
+    try {
+      const image = new Image()
+      image.src = url
+      await image.decode()
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      canvas.getContext('2d')!.drawImage(image, 0, 0, w, h)
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+      if (!blob) throw new Error(t('The picture is too large to be made: choose a smaller size.'))
+      await platform.save(new Uint8Array(await blob.arrayBuffer()), `${baseName()}.png`)
+    } finally {
+      URL.revokeObjectURL(url)
+    }
   })
 
 /** Adds the geometry of a DXF file to what is being edited, selects it and brings it into view. */

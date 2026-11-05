@@ -76,12 +76,13 @@ export function labelOf(doc: Document, node: Node): string {
   return t(TYPE_LABELS[node.type])
 }
 
-export function IconButton(props: { title: string; onClick: () => void; active?: boolean; disabled?: boolean; children: ReactNode }) {
+export function IconButton(props: { title: string; onClick: () => void; active?: boolean; pressed?: boolean; disabled?: boolean; children: ReactNode }) {
   return (
     <button
-      className={`icon-button${props.active ? ' active' : ''}`}
+      className={`icon-button${props.active || props.pressed ? ' active' : ''}`}
       title={props.title}
       aria-label={props.title}
+      aria-pressed={props.pressed}
       disabled={props.disabled}
       onClick={(e) => {
         e.stopPropagation()

@@ -529,7 +529,8 @@ html.dock-dragging .tab-more {
   color: var(--danger-text);
 }
 
-.hint.warning .text-button {
+.hint.warning .text-button,
+.hint .text-button {
   margin: 0;
   padding: 0;
 }
@@ -916,6 +917,7 @@ body.scrubbing .quick-field input[title] {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  container: stage / inline-size;
 }
 
 .canvas {
@@ -958,6 +960,110 @@ body.scrubbing .quick-field input[title] {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   text-align: right;
+}
+
+/*
+ * The view bar, in the bottom right corner, level with the tool bar: a still square, which opens
+ * upwards into the view settings and the zoom under the pointer, or while something in it has the
+ * focus. Open all the time, it took too much of the drawing.
+ */
+/* One width for the square and what it opens into, whatever the scale says: nothing moves as it opens or as the scale changes. */
+.view-bar {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2;
+  display: flex;
+  width: 44px;
+  flex-direction: column;
+}
+
+/* Too narrow for it beside the centred tool bar: it goes up over the right end of the tool bar's row. */
+@container stage (max-width: 820px) {
+  .view-bar {
+    bottom: 72px;
+  }
+}
+
+.view-handle {
+  display: grid;
+  width: 100%;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 12px;
+  place-items: center;
+  background: var(--bg);
+  box-shadow: 0 2px 14px rgb(0 0 0 / 15%), 0 0 0 1px var(--ring);
+  color: var(--text);
+  cursor: pointer;
+  /* Not needed all the time: faint until pointed at or reached with the keyboard. */
+  opacity: 0.5;
+  transition: opacity 120ms;
+}
+
+.view-more {
+  display: none;
+  box-sizing: border-box;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 6px;
+  padding: 6px 0;
+  border-radius: 12px;
+  background: var(--bg);
+  box-shadow: 0 2px 14px rgb(0 0 0 / 15%), 0 0 0 1px var(--ring);
+}
+
+.view-bar:hover .view-more,
+.view-bar:focus-within .view-more {
+  display: flex;
+}
+
+.view-bar:hover .view-handle,
+.view-bar:focus-within .view-handle {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.view-more .icon-button {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+}
+
+/* A setting that is on: lit, but quieter than the tool in use. */
+.view-more .icon-button.active,
+.view-more .icon-button.active:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--accent);
+  filter: none;
+}
+
+.view-more hr {
+  align-self: stretch;
+  margin: 3px 4px;
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
+.zoom-slider {
+  height: 88px;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  accent-color: var(--accent);
+}
+
+.zoom-scale {
+  width: 100%;
+  padding: 2px 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .status {
@@ -1419,7 +1525,8 @@ button.crumb.ahead:hover {
 }
 
 .pref-field > input,
-.pref-field > select {
+.pref-field > select,
+.pref-field > textarea {
   flex: 1;
   min-width: 0;
   height: 26px;
@@ -1430,8 +1537,22 @@ button.crumb.ahead:hover {
 }
 
 .pref-field > input:focus,
-.pref-field > select:focus {
+.pref-field > select:focus,
+.pref-field > textarea:focus {
   border-color: var(--accent);
+}
+
+/* Drawing settings: its fields have longer names than those of the preferences */
+
+.drawing-settings .pref-field > span {
+  width: 110px;
+}
+
+.pref-field > textarea {
+  height: auto;
+  padding: 4px 8px;
+  font: inherit;
+  resize: vertical;
 }
 
 /* Assistant */
@@ -2884,13 +3005,13 @@ button.crumb.ahead:hover {
   cursor: default;
 }
 
-/* Four formats to export as */
+/* Five formats to export as, side by side where there is room */
 .export-formats {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
 }
 
 .dialog.export {
-  width: min(720px, calc(100vw - 32px));
+  width: min(840px, calc(100vw - 32px));
 }
 
 .export-options .field {

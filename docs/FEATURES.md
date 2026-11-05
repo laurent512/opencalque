@@ -2,7 +2,7 @@
 
 What the app does today, the ten big features chosen to do next and where each stands, and the longer backlog. For how things are built, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Last updated: 2026-10-19 (1.2.0, in progress).
+Last updated: 2026-11-05 (1.4.0, in progress).
 
 ## 1. What exists today
 
@@ -23,15 +23,15 @@ Last updated: 2026-10-19 (1.2.0, in progress).
 - **Eyedropper**: copy the look of an object to the selection or to the next shapes.
 - **Arrange** from the toolbar: stacking order, align and space evenly. The common properties of several selected objects are edited together.
 - A guide line across the view while a segment is exactly horizontal or vertical, and a hint bar with the keys that matter for the tool in use.
-- Lengths shown and typed in millimetres, centimetres, metres, inches, feet, or feet and inches (7' 6 1/2"); room areas in square metres or square feet; numbers with a decimal point or comma, as the language writes them or as chosen.
+- Lengths shown and typed in millimetres, centimetres, metres, inches, feet, or feet and inches (7' 6 1/2"); numbers in the panels with a decimal point or comma, as the language writes them or as chosen. **Drawing settings**: each drawing says whether its areas and quantities are metric or imperial and which decimal mark its rooms, tables, dimensions and CSV export write, with the project information of its title blocks.
 - **Papers**: sheets like frames, drawn at a standard format (A5 to A0, upright or lying, at a drawing scale) or any size, named above their corner, moved on their own over the drawing to frame it, and copied or duplicated with what is drawn on them.
-- Walls stay joined: moving a wall or a corner stretches the walls that meet it, and its doors and windows follow.
+- Walls stay joined: moving a wall or a corner stretches the walls that meet it, and its doors and windows follow; they follow it however a straight wall is changed (an end dragged, a length or angle typed, trimmed), at their distance from the end that stayed.
 - Numbers in the panels change by holding Alt and dragging sideways.
 - **Transforming** any selection: turn about a clicked point with the Rotate tool (by a base line, or a typed angle), mirror horizontally or vertically, scale and nudge, by dragging the grips of the selection box, from the menus or the keyboard. A rectangle or an ellipse is resized like a box, by its corners and the middles of its sides, turned or not, Shift keeping its proportions.
 - **Annotations**: a note with a curved, straight or elbowed leader to what it is about, typed in place, with a choice of symbol at each end.
 - **Grid lines**: the axes of a building, drawn by two clicks from the text button (G), each with its letter or number in a bubble at one end or both, labelled one after the other (A, B, C or 1, 2, 3) and relabelled by double-clicking a bubble, in dash and dot or any other line. Other lines snap onto them.
 - **Corners**: a wall end is a selectable corner shared by the walls that meet there; drag it and they all follow. A corner of two walls can be mitred, rounded, cut off, or have one wall run through. Each line of a wall (its faces, its ends) can have its own look. A wall is cut in two with the Split tool; the two halves show the line between them. A selected wall shows which of its ends are joined, touch a wall without being joined, or nearly meet another; an end can be detached (joined to nothing) or brought onto the end it nearly meets.
-- **Rooms**: click inside closed walls to name a space; its floor, outline and area follow the walls. **Dividers** split an open space into rooms without a wall.
+- **Rooms**: click inside closed walls to name a space; its floor, outline, area and perimeter follow the walls. **Dividers** split an open space into rooms without a wall.
 - **Fills**: no fill, a solid colour, or a hatch (lines, cross-hatch, planks, tiles, concrete, insulation) over a background colour, chosen in one fill window with a tab for each and a preview of the hatch, whose colour, opacity, weight, spacing and angle are set there. The same window serves shapes, walls, materials, the floors of rooms and the bar above the tools; the Hatch modifier does the same as a modifier.
 - **Shared colours**: named colours that objects and layers link to; change one and everything linked follows. Any colour may be see-through (an opacity in the colour window), and may follow the colour of the object's layer.
 - **Materials**: the drawing's materials (concrete, brick, insulation, plaster, floor finishes), each with a fill and a hatch, and a default one for walls of no material that cannot be deleted. A wall is of one material, drawn in its look; walls of one material are drawn as one, with a line between walls of different materials; a wall of several materials is several walls side by side, a door or window going through them all. A room's floor may be of a material.
@@ -76,6 +76,7 @@ Last updated: 2026-10-19 (1.2.0, in progress).
 - Desktop app (Windows, macOS, Linux) and web app from the same code, with **installers** built and attached to a GitHub release for each version tag.
 - A **welcome window** at start (new drawing, open, recent drawings on desktop, or the bundled example) and an **About** window with the release notes, read from `CHANGELOG.md`.
 - In the desktop app on Windows and macOS the menu bar is the window's title bar.
+- A view bar in the corner of the drawing, opened by pointing at it: zoom slider and buttons, the scale seen on screen (1:50), zoom to fit, and the grid, snapping and temporary dimensions switched on and off.
 - Menu bar, dockable panels that can be moved, tabbed, floated and closed, a command list (`Ctrl+K`) with every command and rebindable shortcuts, which can be exported to a file and imported back, a right-click menu, preferences.
 - Autosave to the drawing's file, which can be switched off. Saving never leaves a half-written file (desktop).
 - **Crash recovery**: unsaved work is copied aside as it changes and offered back after a crash. **Backups** (desktop): each drawing is copied before the app first writes over it.
@@ -83,7 +84,7 @@ Last updated: 2026-10-19 (1.2.0, in progress).
 - A fault in one panel leaves the rest of the window working, and the drawing can always be saved.
 - English, French, Spanish, German, Chinese, Japanese and Korean.
 - Files are readable JSON with a published schema; a command-line tool creates, validates, edits and exports drawings.
-- Export to PDF at true scale (one page per paper, with a title block), to SVG and to DXF. Chinese, Japanese, Korean, Greek, Cyrillic and Central European text prints in the PDF, in fonts shipped with the app, only the glyphs used embedded.
+- Export to PDF at true scale (one page per paper, with a title block), to SVG, to PNG (2000 to 8000 pixels wide) and to DXF. Chinese, Japanese, Korean, Greek, Cyrillic and Central European text prints in the PDF, in fonts shipped with the app, only the glyphs used embedded.
 
 ## 2. The next ten big features
 
@@ -129,7 +130,7 @@ Agreed with the owner in October 2026. The first was built straight away.
 
 **Import and sharing**
 - ~~DXF import~~ (done, with blocks as groups); blocks as components
-- PNG export
+- ~~PNG export~~ (done)
 - A live demo on GitHub Pages; ~~downloadable installers~~ (done, unsigned by choice); ~~automatic updates~~ (done on Windows and Linux; macOS is told of a new version)
 
 **Assistant**
@@ -145,7 +146,7 @@ Not ranked within an area.
 - Rich text; angular and radius dimensions; dimensions that follow what they measure.
 - Extend, offset and fillet for plain lines (walls have extend, and everything the trim tool); boolean operations on shapes.
 - Smart guides while drawing and resizing; snapping to tangents and the quarter points of circles.
-- Select similar; select by layer or type; find and replace text.
+- ~~Select similar; select by layer or type~~ (done, and by material); find and replace text.
 - ~~Lock aspect ratio; non-uniform scaling~~ (done for rectangles and ellipses; a selection of several is stretched by a size typed, scaled in proportion by its corners); numeric move and copy.
 
 **Architecture**
@@ -165,7 +166,7 @@ Not ranked within an area.
 - Translations of the extensions' own texts beyond what they carry.
 
 **Import and export**
-- DWG import; IFC export; PNG export at a chosen resolution.
+- DWG import; IFC export; ~~PNG export at a chosen resolution~~ (done).
 - Straighten and crop a scan; trace a scan automatically.
 
 **Assistant**

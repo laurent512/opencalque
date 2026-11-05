@@ -41,7 +41,7 @@ async function saved(page: Page): Promise<Saved[]> {
   return Object.values(doc.nodes as Record<string, Saved>).filter((node) => node.type !== 'page')
 }
 
-const status = (page: Page) => page.locator('.status span').nth(1)
+const status = (page: Page) => page.locator('.status span')
 
 test('draws a line, and a closed shape by coming back to its first point, with the line tool', async ({ page }) => {
   const at = await blank(page)
@@ -113,11 +113,12 @@ test('draws a rectangle by dragging and an ellipse by two clicks', async ({ page
   await page.keyboard.press('r')
   await drag(page, at(0, 0), at(2000, 1000))
   await page.keyboard.press('o')
-  await click(page, at(2500, 0))
-  await click(page, at(4500, 1000))
+  // Under it: further right, a narrow canvas has the view bar standing against its edge.
+  await click(page, at(0, 1500))
+  await click(page, at(2000, 2500))
   const nodes = await saved(page)
   expect(nodes.find((n) => n.type === 'rect')).toMatchObject({ x: 0, y: 0, width: 2000, height: 1000 })
-  expect(nodes.find((n) => n.type === 'ellipse')).toMatchObject({ cx: 3500, cy: 500, rx: 1000, ry: 500 })
+  expect(nodes.find((n) => n.type === 'ellipse')).toMatchObject({ cx: 1000, cy: 2000, rx: 1000, ry: 500 })
 })
 
 test('writes a text where it is clicked, and a note with a leader to what it is about', async ({ page }) => {

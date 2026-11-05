@@ -1,6 +1,6 @@
 import { generateKeyBetween, generateNKeysBetween } from 'fractional-indexing'
 import { host } from './host'
-import { FORMAT, FORMAT_VERSION, type ContainerNode, type Document, type Layer, type Node } from './schema'
+import { FORMAT, FORMAT_VERSION, type ContainerNode, type Document, type DrawingSettings, type Layer, type Node } from './schema'
 
 export function newId(prefix = 'n'): string {
   const alphabet = '0123456789abcdefghijklmnopqrstuvwxyz'
@@ -21,6 +21,9 @@ export function createDocument(name = 'Untitled'): Document {
     nodes: { page_1: { id: 'page_1', type: 'page', name: 'Page 1', parent: null, order } },
   }
 }
+
+/** How a drawing writes its numbers, what it leaves out filled in: metric, with a decimal point. */
+export const settingsOf = (doc: Pick<Document, 'settings'>): Required<DrawingSettings> => ({ system: doc.settings?.system ?? 'metric', decimal: doc.settings?.decimal ?? '.' })
 
 export const isContainer = (node: Node): node is ContainerNode => node.type === 'page' || node.type === 'component'
 

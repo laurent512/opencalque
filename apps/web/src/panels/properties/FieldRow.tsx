@@ -6,7 +6,8 @@ import { registry } from '../../extensions'
 import { apply, setTool, useStore } from '../../store'
 import { ColorChoice, type LayerOption } from '../../ColorChoice'
 import { FillChoice, type FillChange } from '../../FillChoice'
-import { MaterialChoice, type MaterialOption } from '../../MaterialChoice'
+import { MaterialChoice, MaterialNote, type MaterialOption } from '../../MaterialChoice'
+import { unfilledPatch } from '../../materials'
 import { showPanel } from '../../dock'
 import { WeightChoice } from '../../WeightChoice'
 import { DashPicker, Field, IconButton, OpacitySlider, Section, YesNo } from '../../ui'
@@ -112,7 +113,9 @@ export function FieldRow({ node, nodes, field, update }: { node: Node; nodes: No
     )
   }
   if (field.material) {
-    // A floor's material, picked by its swatch; a new one is made of the floors selected.
+    // A floor's material, picked by its swatch; a new one is made of the floors selected. Its look is
+    // then the material's, as a wall's is: a fill the floor had of its own goes.
+    const made = (id: string | null, before: Op[] = []) => apply([...before, ...nodes.map((n): Op => ({ op: 'update_node', id: n.id, patch: { material: id, ...(id ? unfilledPatch(n) : {}) } }))])
     const options = field.options!.map(({ value: id, label }): MaterialOption => {
       const material = id ? doc.materials?.[id] : undefined
       return { id, name: material ? material.name : t(label), fill: material ? (material.fill ?? '#ffffff') : 'none', pattern: material?.pattern }
@@ -120,15 +123,18 @@ export function FieldRow({ node, nodes, field, update }: { node: Node; nodes: No
     const create = (name: string) => {
       const id = newId('material')
       const count = Object.keys(doc.materials ?? {}).length
-      apply([{ op: 'add_material', material: { id, name: name || t('Material {n}', { n: count + 1 }), fill: '#e7e5e4' } }, ...nodes.map((n): Op => ({ op: 'update_node', id: n.id, patch: { material: id } }))])
+      made(id, [{ op: 'add_material', material: { id, name: name || t('Material {n}', { n: count + 1 }), fill: '#e7e5e4' } }])
       showPanel('materials')
     }
     // Not a label: a label would hand every click to the button inside, opening its list again.
     return (
-      <div className="field">
-        <span>{t(field.label)}</span>
-        <MaterialChoice label={t(field.label)} value={mixed ? undefined : ((value as string | undefined) ?? '')} mixed={mixed} options={options} pick={(id) => commit(id || undefined)} create={create} />
-      </div>
+      <>
+        <div className="field">
+          <span>{t(field.label)}</span>
+          <MaterialChoice label={t(field.label)} value={mixed ? undefined : ((value as string | undefined) ?? '')} mixed={mixed} options={options} pick={(id) => made(id || null)} create={create} />
+        </div>
+        {(mixed || value) && <MaterialNote />}
+      </>
     )
   }
   if (field.ends) {

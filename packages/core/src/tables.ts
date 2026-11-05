@@ -1,4 +1,4 @@
-import { rootOf } from './document'
+import { rootOf, settingsOf } from './document'
 import { unionBounds, type Bounds } from './geometry'
 import { primitiveBounds, transformPrimitive, type Primitive } from './primitives'
 import { objectLabel, quantities, quantitiesIn, type Quantities } from './quantities'
@@ -25,7 +25,7 @@ export function tableItems(node: NodeOf<'table'>, doc: Document, registry: Regis
   if (!isSchedule(node.schedule)) return []
   const source = tableSource(doc, node)
   if (!source) return []
-  const system = node.system ?? 'metric'
+  const system = node.system ?? settingsOf(doc).system
   const translations = node.language ? registry.translations[node.language] : undefined
   const none = node.labels?.none ?? tableWord('none', system)
   const metric = measured(doc, source, registry)
@@ -52,7 +52,7 @@ type Unit = 'text' | 'count' | 'length' | 'area' | 'volume' | 'thickness' | 'sym
 export const SCHEDULE_FIELDS: Record<Schedule, Record<string, { unit: Unit; total?: boolean }>> = {
   objects: { symbol: { unit: 'symbol' }, name: { unit: 'text' }, count: { unit: 'count', total: true } },
   floors: { material: { unit: 'text' }, rooms: { unit: 'count', total: true }, area: { unit: 'area', total: true } },
-  rooms: { name: { unit: 'text' }, material: { unit: 'text' }, area: { unit: 'area', total: true } },
+  rooms: { name: { unit: 'text' }, material: { unit: 'text' }, area: { unit: 'area', total: true }, perimeter: { unit: 'length', total: true } },
   walls: { material: { unit: 'text' }, thickness: { unit: 'thickness' }, count: { unit: 'count', total: true }, length: { unit: 'length', total: true }, area: { unit: 'area', total: true }, volume: { unit: 'volume', total: true } },
   openings: { kind: { unit: 'text' }, width: { unit: 'length' }, height: { unit: 'length' }, count: { unit: 'count', total: true } },
 }
@@ -91,6 +91,7 @@ export const TABLE_WORDS: Record<string, string> = {
   material: 'Material',
   rooms: 'Rooms',
   area: 'Area ({unit})',
+  perimeter: 'Perimeter ({unit})',
   thickness: 'Thickness ({unit})',
   length: 'Length ({unit})',
   volume: 'Volume ({unit})',
@@ -102,11 +103,34 @@ export const TABLE_WORDS: Record<string, string> = {
   none: '—',
 }
 
+/** The unit a field is measured in, as written in a system ("m²"), or undefined for a field of words, counts or symbols. */
+function unitOf(field: string, system: 'metric' | 'imperial'): string | undefined {
+  const unit = Object.values(SCHEDULE_FIELDS).find((fields) => fields[field])?.[field]?.unit
+  return unit && unit !== 'text' && unit !== 'count' && unit !== 'symbol' ? UNITS[system][unit] : undefined
+}
+
+/** The words of a field with the unit it is measured in put in place of "{unit}". */
+export function withUnit(text: string, field: string, system: 'metric' | 'imperial'): string {
+  const unit = unitOf(field, system)
+  return unit ? text.replace('{unit}', unit) : text
+}
+
+/**
+ * Words given to a field with the unit of `system` written in them ("Surface (m²)") made to say
+ * "{unit}" there instead, so that they follow the drawing when it changes system. The unit is taken
+ * where it stands alone, not inside a word, and the last time it does.
+ */
+export function unitless(text: string, field: string, system: 'metric' | 'imperial'): string {
+  const unit = unitOf(field, system)
+  if (!unit || text.includes('{unit}')) return text
+  const alone = new RegExp(String.raw`(?<![\p{L}\p{N}])${unit}(?![\p{L}\p{N}²³])`, 'gu')
+  const last = [...text.matchAll(alone)].pop()
+  return last?.index === undefined ? text : `${text.slice(0, last.index)}{unit}${text.slice(last.index + unit.length)}`
+}
+
 /** The English words of a field, in a table of `schedule` when given, with the unit it is measured in filled in. */
 export function tableWord(field: string, system: 'metric' | 'imperial' = 'metric', words: Record<string, string> = TABLE_WORDS, schedule?: string): string {
-  const unit = Object.values(SCHEDULE_FIELDS).find((fields) => fields[field])?.[field]?.unit
-  const text = (schedule ? words[`${schedule}.${field}`] : undefined) ?? words[field] ?? field
-  return unit && unit !== 'text' && unit !== 'count' && unit !== 'symbol' ? text.replace('{unit}', UNITS[system][unit]) : text
+  return withUnit((schedule ? words[`${schedule}.${field}`] : undefined) ?? words[field] ?? field, field, system)
 }
 
 /** What a column of symbols draws in a row: a component, or a kind of parametric object with its parameters. */
@@ -133,7 +157,7 @@ function rowsOf(schedule: Schedule, metric: Quantities, q: Quantities, name: (la
     case 'floors':
       return q.floors.map((f) => ({ key: `material:${f.id}`, material: f.material || none, rooms: f.rooms, area: f.area }))
     case 'rooms':
-      return q.rooms.map((r) => ({ key: `room:${r.id}`, name: r.name || none, material: r.material || none, area: r.area }))
+      return q.rooms.map((r) => ({ key: `room:${r.id}`, name: r.name || none, material: r.material || none, area: r.area, perimeter: r.perimeter }))
     case 'openings':
       return q.openings.map((o, i) => {
         const m = metric.openings[i]
@@ -198,8 +222,9 @@ export function tableSource(doc: Document, node: NodeOf<'table'>): string | null
 
 /** What a table shows, worked out from the page it counts. */
 export function tableContent(node: NodeOf<'table'>, doc: Document, registry: Registry): TableContent {
-  const system = node.system ?? 'metric'
-  const words = (field: string) => node.labels?.[field] ?? tableWord(field, system, TABLE_WORDS, node.schedule)
+  const system = node.system ?? settingsOf(doc).system
+  // Its own words say "{unit}" where the unit goes, so that they follow the drawing's system.
+  const words = (field: string) => (node.labels?.[field] !== undefined ? withUnit(node.labels[field], field, system) : tableWord(field, system, TABLE_WORDS, node.schedule))
   const title = node.title ?? ''
   if (!isSchedule(node.schedule)) return { title, headings: [], rows: [], numeric: [], total: false }
   const fields = SCHEDULE_FIELDS[node.schedule]
@@ -211,7 +236,7 @@ export function tableContent(node: NodeOf<'table'>, doc: Document, registry: Reg
   const name = (label: string) => translations?.[label] ?? label
   const listed = metric && q ? rowsOf(node.schedule, metric, q, name, words('none')) : []
   const rows = (node.only ? listed.filter((row) => node.only!.includes(row.key)) : listed).slice(0, MAX_ROWS)
-  const decimal = node.decimal ?? '.'
+  const decimal = node.decimal ?? settingsOf(doc).decimal
   const cells = rows.map((row) => columns.map((field) => written(row[field] ?? null, fields[field].unit, system, decimal)))
   const total = node.totals !== false && rows.length > 0 && columns.some((field) => fields[field].total)
   if (total) {

@@ -9,7 +9,8 @@ import { ColorChoice } from '../../ColorChoice'
 import { WeightChoice } from '../../WeightChoice'
 import { DashPicker, Field, IconButton, JustifyPicker, Section, YesNo } from '../../ui'
 import { formatLength } from '../../units'
-import { MaterialChoice, type MaterialOption } from '../../MaterialChoice'
+import { MaterialChoice, MaterialNote, type MaterialOption } from '../../MaterialChoice'
+import { unfilledPatch } from '../../materials'
 import { showPanel } from '../../dock'
 
 /* What the Properties panel shows of walls: their material, line and curve, their ends and lines, and a selected corner. */
@@ -65,11 +66,7 @@ export function WallMaterial({ walls }: { walls: NodeOf<'wall'>[] }) {
   const materials = options.slice(1)
   const values = new Set(walls.map((wall) => wall.material ?? ''))
   // A fill a wall was given of its own, as walls had before materials, gives way to the material's.
-  const unfilled = (wall: NodeOf<'wall'>) => {
-    const { fill: _, pattern: __, ...rest } = wall.style ?? {}
-    return wall.style && ('fill' in wall.style || 'pattern' in wall.style) ? { style: Object.keys(rest).length > 0 ? rest : null } : {}
-  }
-  const made = (id: string | null, before: Op[] = []) => apply([...before, ...walls.map((wall): Op => ({ op: 'update_node', id: wall.id, patch: { material: id, ...unfilled(wall) } }))])
+  const made = (id: string | null, before: Op[] = []) => apply([...before, ...walls.map((wall): Op => ({ op: 'update_node', id: wall.id, patch: { material: id, ...unfilledPatch(wall) } }))])
   const create = (name: string) => {
     const id = newId('material')
     made(id, [{ op: 'add_material', material: { id, name: name || t('Material {n}', { n: materials.length + 1 }), fill: '#e7e5e4' } }])
@@ -78,10 +75,13 @@ export function WallMaterial({ walls }: { walls: NodeOf<'wall'>[] }) {
   }
   return (
     // Not a label: a label would hand every click to the button inside, opening its list again.
-    <div className="field">
-      <span>{t('Material')}</span>
-      <MaterialChoice label={t('Material')} value={values.size === 1 ? [...values][0] : undefined} mixed={values.size > 1} options={options} pick={(id) => made(id || null)} create={create} />
-    </div>
+    <>
+      <div className="field">
+        <span>{t('Material')}</span>
+        <MaterialChoice label={t('Material')} value={values.size === 1 ? [...values][0] : undefined} mixed={values.size > 1} options={options} pick={(id) => made(id || null)} create={create} />
+      </div>
+      <MaterialNote />
+    </>
   )
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { About } from './About'
+import { DrawingSettingsWindow } from './DrawingSettingsWindow'
 import { startUp } from './actions'
 import { startAutosave } from './autosave'
 import { carriesFiles, openDropped } from './drop'
@@ -116,6 +117,7 @@ export function App() {
       <Warehouse />
       <Welcome />
       <ExportDialog />
+      <DrawingSettingsWindow />
       <About />
       <QuestionWindow />
       <DropTarget />

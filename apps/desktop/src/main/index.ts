@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, net, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, net, safeStorage, shell } from 'electron'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { cpSync, existsSync, readFileSync } from 'node:fs'
 import { copyFile, mkdir, readdir, readFile, realpath, rename, unlink, writeFile } from 'node:fs/promises'
@@ -163,6 +163,37 @@ try {
 function remember(path: string): void {
   recent = [path, ...recent.filter((other) => other !== path)].slice(0, 8)
   writeFile(recentFile, JSON.stringify(recent)).catch(() => {})
+}
+
+// The keys of the assistant's services, encrypted by the system (`safeStorage`), each by the
+// service it is for, so that they are not kept in plain text with the window's preferences.
+const secretsFile = join(app.getPath('userData'), 'secrets.json')
+const SECRET_NAMES = ['anthropic', 'compatible']
+let secrets: Record<string, string> = {}
+try {
+  const stored = JSON.parse(readFileSync(secretsFile, 'utf8'))
+  if (stored && typeof stored === 'object') secrets = Object.fromEntries(Object.entries(stored).filter(([name, value]) => SECRET_NAMES.includes(name) && typeof value === 'string')) as Record<string, string>
+} catch {
+  // None kept yet.
+}
+
+/** Whether keys can be kept encrypted: on Linux without a keyring, Electron would only obscure them, so they stay where they were. */
+const canEncrypt = () => safeStorage.isEncryptionAvailable() && (process.platform !== 'linux' || safeStorage.getSelectedStorageBackend() !== 'basic_text')
+
+function secret(name: string): string | null {
+  if (!SECRET_NAMES.includes(name) || !secrets[name] || !canEncrypt()) return null
+  try {
+    return safeStorage.decryptString(Buffer.from(secrets[name], 'base64'))
+  } catch {
+    return null
+  }
+}
+
+async function keepSecret(name: string, value: string): Promise<void> {
+  if (!SECRET_NAMES.includes(name) || typeof value !== 'string' || !canEncrypt()) return
+  if (value) secrets[name] = safeStorage.encryptString(value).toString('base64')
+  else delete secrets[name]
+  await writeFile(secretsFile, JSON.stringify(secrets))
 }
 
 async function read(path: string) {
@@ -349,6 +380,10 @@ app.whenReady().then(() => {
     const response = await net.fetch(url, init.body ? init : { method: init.method, headers: init.headers })
     return { status: response.status, body: await response.text() }
   })
+
+  ipcMain.handle('secret:available', () => canEncrypt())
+  ipcMain.handle('secret:get', (_, name: string) => secret(name))
+  ipcMain.handle('secret:set', (_, name: string, value: string) => keepSecret(name, value))
 
   ipcMain.handle('claude:run', (_, input: { prompt: string; session?: string; model?: string }) => runClaude(input))
   ipcMain.on('claude:cancel', () => claude?.kill())

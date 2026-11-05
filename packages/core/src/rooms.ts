@@ -26,6 +26,10 @@ export interface Region {
   area: number
 }
 
+/** How far it is round a floor, in mm: along the faces of its walls, doors included, not round what stands inside it. */
+export const regionPerimeter = (region: Pick<Region, 'outline'>): number =>
+  region.outline.reduce((total, p, i) => total + Math.hypot(region.outline[(i + 1) % region.outline.length].x - p.x, region.outline[(i + 1) % region.outline.length].y - p.y), 0)
+
 /** Walls closer than this, in mm, are taken as touching. */
 const GAP = 50
 /** Clipper works in whole numbers: hundredths of a millimetre. */

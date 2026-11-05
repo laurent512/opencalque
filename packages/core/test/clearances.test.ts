@@ -41,4 +41,18 @@ describe('temporary dimensions', () => {
     const moved = applyOps(plan, clearanceOps(plan, plan.nodes.door, before, 300, registry))
     expect(moved.nodes.door).toMatchObject({ x: 400, y: 0 })
   })
+
+  it('meet the distance typed when the wall faced is joined to the one moved, as two sides of a triangle are', () => {
+    // Walls joined at their corners: moving the long one turns the one it faces about their far corner.
+    const triangle = applyOps(createDocument(), [wall('ab', 0, 3000, 5000, 0), wall('bc', 5000, 0, 2500, 8000), wall('ca', 2500, 8000, 0, 3000)])
+    const measured = (doc: typeof triangle) => clearances(doc, doc.nodes.bc, registry)
+    const inside = measured(triangle).sort((p, q) => p.length - q.length)[0]
+    const doc = applyOps(triangle, clearanceOps(triangle, triangle.nodes.bc, inside, 3000, registry))
+    // Selected again, it reads what was typed: the clearance found again in the same place.
+    const again = measured(doc).find((c) => Math.abs(c.length - 3000) < 0.05)
+    expect(again).toBeDefined()
+    // Still a triangle: the walls joined at its corners stayed joined.
+    expect(doc.nodes.ab).toMatchObject({ a: { x: 0, y: 3000 } })
+    expect((doc.nodes.bc as { a: unknown }).a).toEqual((doc.nodes.ab as { b: unknown }).b)
+  })
 })

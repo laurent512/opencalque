@@ -94,9 +94,6 @@ const ROOM_NAME = msg('Name')
 
 const FLOOR = msg('Floor')
 
-/** The mark a room's area, a table's numbers or a dimension's value are written with. */
-const DECIMAL_MARK: FieldSpec = { path: 'decimal', label: msg('Decimal mark'), type: 'string', fallback: '.', options: options(['.', msg('With a point: 1.5')], [',', msg('With a comma: 1,5')]) }
-
 /** Where the look of a selection is changed, and so where it can be taken from another object. */
 export const LOOK_SECTIONS = [STROKE, 'Style', FLOOR]
 
@@ -129,7 +126,6 @@ export const DIMENSION: FieldSpec[] = [
   { path: 'unit', label: msg('Unit'), type: 'string', section: msg('Text'), fallback: 'mm', options: options(['mm', 'mm'], ['cm', 'cm'], ['m', 'm'], ['in', 'in'], ['ft', 'ft'], ['ft-in', msg('ft and in')]) },
   { ...num('decimals', msg('Decimals'), undefined, msg('Text')), optional: true },
   { path: 'showUnit', label: msg('Show unit'), type: 'boolean', section: msg('Text'), fallback: false },
-  { ...DECIMAL_MARK, section: msg('Text') },
 ]
 
 /** The symbols an annotation's leader can end in. A bullet is the dot. */
@@ -185,8 +181,7 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
     len('size', msg('Text size'), 250, ROOM_NAME),
     { path: 'style.stroke', label: msg('Text colour'), type: 'color', section: ROOM_NAME, fallback: '#1f1f1f', unset: msg('from layer') },
     { path: 'showArea', label: msg('Show area'), type: 'boolean', section: ROOM_NAME, fallback: true },
-    { path: 'system', label: msg('Area in'), type: 'string', section: ROOM_NAME, fallback: 'metric', options: options(['metric', msg('Square metres (m²)')], ['imperial', msg('Square feet (ft²)')]) },
-    { ...DECIMAL_MARK, section: ROOM_NAME },
+    { path: 'showPerimeter', label: msg('Show perimeter'), type: 'boolean', section: ROOM_NAME, fallback: false },
     fill('#dfe6f0', msg('default'), { section: FLOOR }),
   ],
   divider: AB,
@@ -199,7 +194,6 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
     { path: 'totals', label: msg('Total row'), type: 'boolean', fallback: true },
     // Past this many, its rows go on in a block beside it: a long legend stays on the sheet.
     { ...num('rowsPerBlock', msg('Rows per block')), optional: true },
-    DECIMAL_MARK,
     ...stroke(STROKE),
     fill('#ffffff', msg('default'), { filled: true }),
   ],
@@ -261,16 +255,19 @@ export const FIELD_NAMES: Record<(typeof TEXT_FIELDS)[number], string> = {
 }
 
 /**
- * A room's fields, with what its floor is made of among the drawing's materials: a floor of a
- * material takes its colour and pattern unless it is given its own.
+ * A room's fields, with what its floor is made of among the drawing's materials. A floor of a
+ * material looks as the material does, as a wall does, and has no fill to set: its look is changed
+ * in the Materials panel. One given a fill of its own before (by a script, a file of 1.3) shows it,
+ * to be taken off.
  */
 function roomFields(node: Extract<Node, { type: 'room' }>, doc: Document): FieldSpec[] {
   // The default material is what walls are made of, not floors.
   const materials = Object.values(doc.materials ?? {}).filter((m) => m.id !== DEFAULT_MATERIAL)
   const material = node.material ? doc.materials?.[node.material] : undefined
   const choice: FieldSpec = { path: 'material', label: msg('Material'), type: 'string', section: FLOOR, material: true, options: [{ value: '', label: msg('None') }, ...materials.map((m) => ({ value: m.id, label: m.name }))] }
+  const own = !!node.style && ('fill' in node.style || 'pattern' in node.style)
   return (FIELDS.room ?? []).flatMap((field) =>
-    field.type !== 'fill' ? [field] : [choice, material ? { ...field, inherited: { fill: material.fill, pattern: material.pattern }, unset: msg('from its material') } : field],
+    field.type !== 'fill' ? [field] : !material ? [choice, field] : own ? [choice, { ...field, inherited: { fill: material.fill, pattern: material.pattern }, unset: msg('from its material') }] : [choice],
   )
 }
 

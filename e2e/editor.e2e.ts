@@ -111,8 +111,9 @@ test('pastes a picture copied in another program as it is, rather than what was 
     const png = await new Promise<Blob>((done) => picture.toBlob((blob) => done(blob!), 'image/png'))
     await navigator.clipboard.write([new ClipboardItem({ 'image/png': png, 'text/html': new Blob(['<img src="plan.png">'], { type: 'text/html' }) })])
   })
-  const zoom = page.getByTitle('Screen pixels per metre')
-  const seen = await zoom.innerText()
+  // Pixels per millimetre.
+  const zoom = page.locator('.view-bar .zoom-scale')
+  const seen = Number(await zoom.getAttribute('data-zoom'))
   await page.keyboard.press('Control+v')
   // On top, selected, whole: not a plan to trace, which goes under everything on a layer of its own, faded, and changes the view and the tool.
   await expect(objectRows(page)).toHaveCount(2)
@@ -121,7 +122,7 @@ test('pastes a picture copied in another program as it is, rather than what was 
   await expect(page.locator('[data-panel="layers"]')).toContainText('Layer 1')
   await expect(page.locator('[data-panel="layers"]')).not.toContainText('Reference')
   await expect(page.locator('.toast')).toHaveCount(0)
-  await expect(zoom).toHaveText(seen)
+  await expect(zoom).toHaveAttribute('data-zoom', String(seen))
   // As big as it was on screen, and see-through where it was: kept as PNG.
   await page.keyboard.press('Control+s')
   await expect.poll(() => page.evaluate(() => (window as any).saves.length)).toBe(1)
@@ -130,7 +131,7 @@ test('pastes a picture copied in another program as it is, rather than what was 
   expect(saved.assets[picture.asset].mime).toBe('image/png')
   expect(picture.opacity).toBeUndefined()
   expect(picture.width / picture.height).toBeCloseTo(4 / 3, 2)
-  expect((picture.width * parseInt(seen)) / 1000).toBeCloseTo(40, 0)
+  expect(picture.width * seen).toBeCloseTo(40, 0)
 })
 
 test('fills a shape with the colour of its layer, chosen in the colour window, which also has an eyedropper', async ({ page }) => {
@@ -1207,13 +1208,13 @@ test('opens a component from its row filling the view, and comes back to the vie
   await page.keyboard.press('v')
   await objectRows(page).first().click()
   await page.keyboard.press('Control+Alt+k')
-  const zoom = page.getByTitle('Screen pixels per metre')
+  const zoom = page.locator('.view-bar .zoom-scale')
   const seen = await zoom.innerText()
   await page.locator('.dv-tab', { hasText: 'Components' }).click()
   await page.locator('[data-panel="components"] .row').first().getByRole('button', { name: 'Edit component' }).click()
   // Inside it, its rectangle of 300 × 200 mm in the middle of the view, at 2 px a millimetre: its
   // left side 300 px left of the middle.
-  await expect(zoom).toHaveText('2000 px/m')
+  await expect.poll(async () => Number(await zoom.getAttribute('data-zoom'))).toBeCloseTo(2, 3)
   await page.mouse.click(box.x + box.width / 2 - 300, box.y + box.height / 2)
   await expect(objectRows(page).first()).toHaveClass(/selected/)
   // Out again (Esc lets go of the rectangle, then leaves), the drawing is as it was, its placement selected.
@@ -1888,4 +1889,100 @@ test('exports the keyboard shortcuts to a file and imports them back', async ({ 
   await page.locator('.stage').click({ position: { x: 5, y: 5 } })
   await page.keyboard.press('Alt+J')
   await expect(page.getByPlaceholder('Type a command…')).toBeVisible()
+})
+
+test('exports a page as a PNG picture of the size chosen', async ({ page }) => {
+  await startWith(page)
+  // The bytes saved, kept whole, to read the picture's size from its header.
+  await page.addInitScript(() => {
+    ;(window as any).showSaveFilePicker = async ({ suggestedName }: { suggestedName: string }) => ({
+      name: suggestedName,
+      createWritable: async () => ({ write: async (data: Uint8Array) => void ((window as any).png = { name: suggestedName, bytes: Array.from(data.slice(0, 24)) }), close: async () => {} }),
+    })
+  })
+  await openEditor(page)
+  await drawWall(page, [300, 300], [700, 300])
+  await page.keyboard.press('Control+e')
+  await page.getByRole('radio', { name: /PNG/ }).click()
+  await page.locator('.export-options .pref-field', { hasText: 'Size' }).locator('select').selectOption('2000')
+  await page.getByRole('button', { name: 'Export…' }).click()
+  await expect.poll(() => page.evaluate(() => (window as any).png?.name)).toMatch(/\.png$/)
+  const bytes: number[] = await page.evaluate(() => (window as any).png.bytes)
+  const word = (at: number) => ((bytes[at] << 24) | (bytes[at + 1] << 16) | (bytes[at + 2] << 8) | bytes[at + 3]) >>> 0
+  // The PNG signature, then a header 2000 pixels wide, the wall being wider than it is high.
+  expect(bytes.slice(1, 4)).toEqual([0x50, 0x4e, 0x47])
+  expect(word(16)).toBe(2000)
+  expect(word(20)).toBeLessThan(2000)
+})
+
+test('zooms and switches the grid, snapping and temporary dimensions from the view bar, and draws a paper from the shapes', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  // A still square in the corner, which opens under the pointer.
+  const bar = page.getByRole('toolbar', { name: 'View' })
+  const scale = bar.locator('.zoom-scale')
+  await expect(bar).toBeHidden()
+  const handle = page.getByRole('button', { name: 'View: zoom, grid and snapping' })
+  const closed = await handle.boundingBox()
+  await handle.hover()
+  await expect(bar).toBeVisible()
+  // Nothing moves as it opens, nor as the scale gets longer or shorter.
+  expect(await handle.boundingBox()).toEqual(closed)
+  const width = (await bar.boundingBox())!.width
+  for (const press of ['Home', 'End']) {
+    await bar.getByRole('slider', { name: 'Zoom' }).focus()
+    await page.keyboard.press(press)
+    expect(await handle.boundingBox()).toEqual(closed)
+    expect((await bar.boundingBox())!.width).toBe(width)
+  }
+  await expect(scale).toHaveText('5.3:1')
+  // As far out as it goes: zooming in from there.
+  await page.keyboard.press('Home')
+  await expect(scale).toHaveText('1:1890')
+  const before = Number(await scale.getAttribute('data-zoom'))
+  await bar.getByRole('button', { name: /^Zoom in/ }).click()
+  await expect.poll(async () => Number(await scale.getAttribute('data-zoom'))).toBeCloseTo(before * 1.25, 5)
+  // The slider at its far end: as close as the view goes, 20 px a millimetre, shown as a scale.
+  await bar.getByRole('slider', { name: 'Zoom' }).focus()
+  await page.keyboard.press('End')
+  await expect(scale).toHaveText('5.3:1')
+  // Each setting lit while on, and kept as a preference.
+  const grid = bar.getByRole('button', { name: /^Show grid/ })
+  await expect(grid).toHaveAttribute('aria-pressed', 'true')
+  await grid.click()
+  await expect(grid).toHaveAttribute('aria-pressed', 'false')
+  await bar.getByRole('button', { name: /^Show temporary dimensions/ }).click()
+  const prefs = JSON.parse((await page.evaluate(() => localStorage.getItem('opencalque.prefs')))!)
+  expect(prefs).toMatchObject({ showGrid: false, showClearances: false })
+
+  // The paper is drawn from the shapes' list, as a rectangle is.
+  await page.getByRole('button', { name: 'More shapes' }).click()
+  await page.getByRole('menuitem', { name: /^Paper/ }).click()
+  await expect(page.locator('.toolbar .icon-button.active')).toHaveAttribute('title', /^Paper/)
+})
+
+test('keeps a door in its wall when the wall is made shorter than where the door was', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  const plan = drawing({
+    w: { id: 'w', type: 'wall', parent: 'page_1', layer: 'layer_1', order: 'a1', name: 'Wall', a: { x: 0, y: 0 }, b: { x: 6000, y: 0 }, thickness: 200 },
+    d: { id: 'd', type: 'parametric', parent: 'page_1', layer: 'layer_1', order: 'a2', kind: 'arch.door', props: { width: 900 }, x: 4000, y: 0 },
+  })
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
+  await objectRows(page).filter({ hasText: 'Wall' }).click()
+  const length = page.locator('.field', { has: page.locator('span:text-is("Length")') }).locator('input')
+  await length.fill('3000')
+  await length.press('Enter')
+  await page.keyboard.press('Control+s')
+  await expect.poll(() => page.evaluate(() => (window as any).saves.length)).toBe(1)
+  const saved = JSON.parse(await page.evaluate(() => (window as any).saves[0]))
+  expect(saved.nodes.w.b).toEqual({ x: 3000, y: 0 })
+  // Pushed back to the end of the wall, which it would otherwise have stood beyond.
+  expect(saved.nodes.d).toMatchObject({ x: 2100, y: 0 })
+  // And undone in the same step as the wall.
+  await page.keyboard.press('Control+z')
+  await page.keyboard.press('Control+s')
+  await expect.poll(() => page.evaluate(() => (window as any).saves.length)).toBe(2)
+  expect(JSON.parse(await page.evaluate(() => (window as any).saves[1])).nodes.d).toMatchObject({ x: 4000, y: 0 })
 })

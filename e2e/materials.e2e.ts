@@ -67,15 +67,19 @@ test('gives a floor a material, and places a table of quantities that counts the
       ...Object.fromEntries(
         [wall('1', [0, 0], [5000, 0]), wall('2', [5000, 0], [5000, 4000]), wall('3', [5000, 4000], [0, 4000]), wall('4', [0, 4000], [0, 0])].map((w) => [w.id, w]),
       ),
-      r: { id: 'r', type: 'room', parent: 'page_1', layer: 'layer_1', order: 'a5', name: 'Living room', x: 2500, y: 2000 },
+      // Given a fill of its own before, as rooms could be.
+      r: { id: 'r', type: 'room', parent: 'page_1', layer: 'layer_1', order: 'a5', name: 'Living room', x: 2500, y: 2000, style: { fill: '#ff0000', stroke: '#333333' } },
     },
     { version: 2, materials: { oak: { id: 'oak', name: 'Oak', fill: '#d9b98c' } } },
   )
   await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
   await expect(objectRows(page)).toHaveCount(5)
   await objectRows(page).filter({ hasText: 'Living room' }).click()
+  await expect(page.locator('[data-panel="properties"] .fill-field')).toHaveCount(1)
   await page.locator('.field', { has: page.locator('span:text-is("Material")') }).locator('.material-choice > button').click()
   await page.locator('.material-menu .color-option', { hasText: 'Oak' }).click()
+  // Its look is now the material's, as a wall's is: its own fill went, and there is none to set.
+  await expect(page.locator('[data-panel="properties"] .fill-field')).toHaveCount(0)
 
   await page.getByTitle('Object library: stairs, furniture and every other object').click()
   await librarySection(page, 'Tables of quantities').click()
@@ -90,7 +94,63 @@ test('gives a floor a material, and places a table of quantities that counts the
 
   const doc = await saved(page)
   const table = Object.values(doc.nodes).find((n: any) => n.type === 'table') as Record<string, any>
-  expect(table).toMatchObject({ schedule: 'floors', title: 'Floor areas by material', columns: ['material', 'rooms', 'area'], language: 'en', system: 'metric' })
-  expect(table.labels).toMatchObject({ material: 'Material', area: 'Area (m²)', total: 'Total' })
+  // Its numbers are written as the drawing writes them, and its words leave the unit to it.
+  expect(table).toMatchObject({ schedule: 'floors', title: 'Floor areas by material', columns: ['material', 'rooms', 'area'], language: 'en' })
+  expect(table.system).toBeUndefined()
+  expect(table.labels).toMatchObject({ material: 'Material', area: 'Area ({unit})', total: 'Total' })
   expect(doc.nodes.r.material).toBe('oak')
+  expect(doc.nodes.r.style).toEqual({ stroke: '#333333' })
+})
+
+test('writes the numbers of a whole drawing as its settings say, the rooms and tables placed before following them', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  const wall = (id: string, a: [number, number], b: [number, number]) => ({ id, type: 'wall', parent: 'page_1', layer: 'layer_1', order: `a${id}`, a: { x: a[0], y: a[1] }, b: { x: b[0], y: b[1] }, thickness: 200 })
+  // A room and a table placed by 1.3, each writing its numbers its own way, and the unit in the table's words.
+  const plan = drawing({
+    ...Object.fromEntries([wall('1', [0, 0], [5000, 0]), wall('2', [5000, 0], [5000, 4000]), wall('3', [5000, 4000], [0, 4000]), wall('4', [0, 4000], [0, 0])].map((w) => [w.id, w])),
+    r: { id: 'r', type: 'room', parent: 'page_1', layer: 'layer_1', order: 'a5', name: 'Living room', x: 2500, y: 2000, system: 'metric', decimal: '.' },
+    t: { id: 't', type: 'table', parent: 'page_1', layer: 'layer_1', order: 'a6', x: 7000, y: 0, schedule: 'rooms', system: 'metric', labels: { name: 'Name', area: 'Area (m²)' } },
+  })
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('Drawing settings')
+  await page.keyboard.press('Enter')
+  const window = page.getByRole('dialog', { name: 'Drawing settings' })
+  await window.locator('.pref-field', { hasText: 'Units' }).locator('select').selectOption('imperial')
+  await window.locator('.pref-field', { hasText: 'Decimal mark' }).locator('select').selectOption(',')
+  await window.locator('.pref-field', { hasText: 'Client' }).locator('input').fill('Dupont')
+  await window.getByRole('button', { name: 'Done' }).click()
+
+  const doc = await saved(page)
+  expect(doc.settings).toEqual({ system: 'imperial', decimal: ',' })
+  expect(doc.info).toEqual({ client: 'Dupont' })
+  expect(doc.nodes.r.system).toBeUndefined()
+  expect(doc.nodes.r.decimal).toBeUndefined()
+  expect(doc.nodes.t.system).toBeUndefined()
+  expect(doc.nodes.t.labels).toEqual({ name: 'Name', area: 'Area ({unit})' })
+  // A room has no units of its own to set any more.
+  await objectRows(page).filter({ hasText: 'Living room' }).click()
+  await expect(page.locator('.field', { has: page.locator('span:text-is("Area in")') })).toHaveCount(0)
+})
+
+test('selects the walls of one material and thickness, then every wall of that material', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  const wall = (id: string, a: [number, number], b: [number, number], thickness: number, material?: string) => ({ id, type: 'wall', parent: 'page_1', layer: 'layer_1', order: `a${id}`, name: `Wall ${id}`, a: { x: a[0], y: a[1] }, b: { x: b[0], y: b[1] }, thickness, ...(material ? { material } : {}) })
+  const plan = drawing(
+    Object.fromEntries([wall('1', [0, 0], [5000, 0], 200, 'brick'), wall('2', [5000, 0], [5000, 4000], 200, 'brick'), wall('3', [5000, 4000], [0, 4000], 300, 'brick'), wall('4', [0, 4000], [0, 0], 200)].map((w) => [w.id, w])),
+    { version: 2, materials: { brick: { id: 'brick', name: 'Brick', fill: '#efc7b4' } } },
+  )
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
+  const selected = page.locator('[data-panel="objects"] .row.selected')
+  await objectRows(page).filter({ hasText: 'Wall 1' }).click()
+  await page.keyboard.press('Control+Shift+a')
+  // The list shows what is on top first.
+  await expect(selected).toHaveText([/Wall 2/, /Wall 1/])
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('Select all of the same material')
+  await page.keyboard.press('Enter')
+  await expect(selected).toHaveText([/Wall 3/, /Wall 2/, /Wall 1/])
 })

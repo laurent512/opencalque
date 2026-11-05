@@ -66,3 +66,41 @@ test('desktop: opens the file it is started with, saves over it with a backup an
     rmSync(scratch, { recursive: true, force: true })
   }
 })
+
+test('desktop: keeps the key of the assistant encrypted in the profile, moving there one kept in plain text before', async () => {
+  // The app is started twice.
+  test.setTimeout(90_000)
+  const scratch = mkdtempSync(join(tmpdir(), 'opencalque-e2e-'))
+  const profile = join(scratch, 'profile')
+  const env = { ...process.env } as Record<string, string>
+  delete env.ELECTRON_RUN_AS_NODE
+  const launch = () => electron.launch({ args: [APP, `--user-data-dir=${profile}`], env, cwd: APP })
+  try {
+    // A key written with the preferences, as versions before kept it.
+    let app = await launch()
+    let page = await app.firstWindow()
+    await page.evaluate(() => localStorage.setItem('opencalque.prefs', JSON.stringify({ language: 'en', showWelcome: false, ai: { anthropic: { apiKey: 'sk-ant-e2e-secret' } } })))
+    await app.close()
+
+    app = await launch()
+    page = await app.firstWindow()
+    await expect.poll(() => existsSync(join(profile, 'secrets.json'))).toBe(true)
+    const kept = readFileSync(join(profile, 'secrets.json'), 'utf8')
+    expect(JSON.parse(kept)).toHaveProperty('anthropic')
+    expect(kept).not.toContain('sk-ant-e2e-secret')
+    expect(await page.evaluate(() => localStorage.getItem('opencalque.prefs'))).not.toContain('sk-ant')
+    // And read back into the preferences, where the assistant takes it from.
+    await page.keyboard.press('Control+k')
+    await page.keyboard.type('Preferences')
+    await page.keyboard.press('Enter')
+    await page.locator('.prefs-nav button', { hasText: 'Assistant' }).click()
+    await expect(page.locator('.pref-field', { hasText: 'API key' }).locator('input')).toHaveValue('sk-ant-e2e-secret')
+    await app.close()
+  } finally {
+    // Windows can hold the profile of an app started twice for a while after it closed: what is
+    // left in the temporary folder is left to the system.
+    try {
+      rmSync(scratch, { recursive: true, force: true, maxRetries: 4, retryDelay: 250 })
+    } catch {}
+  }
+})

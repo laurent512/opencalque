@@ -364,7 +364,10 @@ export const hover: Move<'idle'> = (c, _g, _e, at, world, out) => {
   const faced = pointer === null ? faceAt(c, at) : null
   if (faced) out.face = faceOf(faced.wall, s.doc, faced.side)
   if (ending) out.face = wallEdgeLines(ending.wall, s.doc, registry, ending.end)
-  const shown = pointer ?? (faced ? resizeCursor(wallNormal(faced.wall, world)) : null)
+  // On the length of a temporary dimension, a press opens it to type another (`clearanceAt` is asked first).
+  const measuring = s.tool === 'select' ? clearanceAt(c, at) : null
+  if (measuring !== null) out.clearanceHover = measuring
+  const shown = measuring !== null ? 'pointer' : (pointer ?? (faced ? resizeCursor(wallNormal(faced.wall, world)) : null))
   if (shown !== c.gripCursor) c.setGripCursor(shown)
   const over = ending ? 'end hover' : faced ? 'hover' : null
   if (s.wallFace !== over) useStore.setState({ wallFace: over })

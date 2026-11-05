@@ -44,8 +44,13 @@ import {
   BringToFront,
   AlignVerticalSpaceAround,
   Scissors,
+  Crosshair,
+  Grid3x3,
+  Magnet,
+  Plus,
+  SlidersHorizontal,
 } from 'lucide-react'
-import { canFlipSide, zoomToFit } from './actions'
+import { canFlipSide, MAX_ZOOM, MIN_ZOOM, zoomBy, zoomTo, zoomToFit } from './actions'
 import { CanvasView } from './canvas/CanvasView'
 import { executeById, formatKey, useShortcutLabel } from './commands'
 import { GridLine } from './icons'
@@ -60,6 +65,8 @@ import { TextEditor } from './TextEditor'
 import { ClearanceEditor } from './ClearanceEditor'
 import { IconButton, labelOf, TypeIcon } from './ui'
 import { useWindows } from './windows'
+import { setPrefs, usePrefs, type Prefs } from './prefs'
+import { screenScale } from './view'
 
 const ICONS: Partial<Record<Tool, [title: string, icon: LucideIcon]>> = {
   select: [msg('Select'), MousePointer2],
@@ -367,7 +374,6 @@ function Toolbar() {
       <ArrangeMenu />
       <ToolGroup tools={MEASURE_TOOLS} current={measureTool} more={t('Measure an angle')} />
       <ToolGroup tools={TEXT_TOOLS} current={textTool} more={t('Annotation, dimension, grid line')} />
-      <ToolButton id="paper" />
       <hr />
       <CommandButton command="edit.undo" title={t('Undo')} onClick={undo} disabled={!canUndo}>
         <Undo2 size={18} />
@@ -375,11 +381,78 @@ function Toolbar() {
       <CommandButton command="edit.redo" title={t('Redo')} onClick={redo} disabled={!canRedo}>
         <Redo2 size={18} />
       </CommandButton>
-      <hr />
-      <CommandButton command="view.zoomToFit" title={t('Zoom to fit')} onClick={zoomToFit}>
-        <Maximize size={18} />
-      </CommandButton>
     </div>
+  )
+}
+
+/** The view settings the view bar switches on and off, each by the command that does it elsewhere. */
+const VIEW_TOGGLES: [command: string, title: string, pref: keyof Prefs, icon: LucideIcon][] = [
+  ['view.toggleGrid', msg('Show grid'), 'showGrid', Grid3x3],
+  ['view.toggleSnapGrid', msg('Snap to grid'), 'snapToGrid', Magnet],
+  ['view.toggleSnapObjects', msg('Snap to objects'), 'snapToObjects', Crosshair],
+  ['view.toggleClearances', msg('Show temporary dimensions'), 'showClearances', RulerDimensionLine],
+]
+
+/** The slider's steps: the zoom on a scale of its logarithm, so that each step multiplies it alike. */
+const [LOW, HIGH] = [Math.log(MIN_ZOOM), Math.log(MAX_ZOOM)]
+
+/**
+ * How the drawing is looked at, in the bottom right corner: a still square, which opens upwards
+ * under the pointer (or when it has the focus, for a keyboard or a touch) into the settings that
+ * change what is shown and what the pointer holds to, each lit while on, then zooming in and out,
+ * the slider, the scale the drawing is seen at on screen as an architect reads one (1:50), and
+ * zooming to fit. The scale is not on the square: changing with every zoom, it drew the eye.
+ */
+function ViewBar() {
+  const zoom = useStore((s) => s.view.zoom)
+  const prefs = usePrefs()
+  return (
+    <div className="view-bar">
+      <div className="view-more" role="toolbar" aria-label={t('View')}>
+        {VIEW_TOGGLES.map(([command, title, pref, Icon]) => (
+          <ViewToggle key={command} command={command} title={t(title)} on={prefs[pref] === true} flip={() => setPrefs({ [pref]: !prefs[pref] })}>
+            <Icon size={16} />
+          </ViewToggle>
+        ))}
+        <hr />
+        <CommandButton command="view.zoomIn" title={t('Zoom in')} onClick={() => zoomBy(1.25)}>
+          <Plus size={16} />
+        </CommandButton>
+        <input
+          type="range"
+          className="zoom-slider"
+          aria-label={t('Zoom')}
+          min={LOW}
+          max={HIGH}
+          step={(HIGH - LOW) / 400}
+          value={Math.log(zoom)}
+          onChange={(e) => zoomTo(Math.exp(Number(e.target.value)))}
+        />
+        <CommandButton command="view.zoomOut" title={t('Zoom out')} onClick={() => zoomBy(0.8)}>
+          <Minus size={16} />
+        </CommandButton>
+        {/* The zoom itself, in pixels per millimetre, for scripts and tests: the scale shown is rounded. */}
+        <span className="zoom-scale" data-zoom={zoom} title={t('The scale the drawing is seen at on screen, at 96 pixels to the inch')}>
+          {screenScale(zoom)}
+        </span>
+        <CommandButton command="view.zoomToFit" title={t('Zoom to fit')} onClick={zoomToFit}>
+          <Maximize size={16} />
+        </CommandButton>
+      </div>
+      <button type="button" className="view-handle" title={t('View: zoom, grid and snapping')} aria-label={t('View: zoom, grid and snapping')}>
+        <SlidersHorizontal size={16} />
+      </button>
+    </div>
+  )
+}
+
+/** A view setting as a button, lit while on, its shortcut in its title when it has one. */
+function ViewToggle(props: { command: string; title: string; on: boolean; flip: () => void; children: React.ReactNode }) {
+  const shortcut = useShortcutLabel(props.command)
+  return (
+    <IconButton title={shortcut ? `${props.title} (${shortcut})` : props.title} pressed={props.on} onClick={props.flip}>
+      {props.children}
+    </IconButton>
   )
 }
 
@@ -512,19 +585,26 @@ function Breadcrumb() {
 }
 
 /** The drawing area: the canvas with everything that floats over it. */
-export function Stage() {
+/**
+ * A reading, out of the way in the corner: where the pointer is. A component of its own, as it
+ * changes with every movement of the pointer: read by the stage, it redrew the tool bars each time.
+ */
+function Status() {
   const status = useStore((s) => s.status)
+  return (
+    <div className="status">
+      <span>{status}</span>
+    </div>
+  )
+}
+
+export function Stage() {
   const toast = useWindows((s) => s.toast)
-  const zoom = useStore((s) => s.view.zoom)
   return (
     <main className="stage">
       <CanvasView />
       <Breadcrumb />
-      {/* Readings, out of the way in the corner: how far the view is zoomed, and where the pointer is. */}
-      <div className="status">
-        <span title={t('Screen pixels per metre')}>{Math.round(zoom * 1000)} px/m</span>
-        <span>{status}</span>
-      </div>
+      <Status />
       {toast && <div className="toast">{toast}</div>}
       <Hints />
       <InstanceBar />
@@ -532,6 +612,7 @@ export function Stage() {
       <ClearanceEditor />
       <QuickBar />
       <Toolbar />
+      <ViewBar />
     </main>
   )
 }

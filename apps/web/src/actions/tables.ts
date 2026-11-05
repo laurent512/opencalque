@@ -1,11 +1,10 @@
-import { SCHEDULE_COLUMNS, SCHEDULE_FIELDS, tableWord, TABLE_WORDS, type NodeOf, type Schedule } from '@opencalque/core'
+import { SCHEDULE_COLUMNS, SCHEDULE_FIELDS, TABLE_WORDS, type NodeOf, type Schedule } from '@opencalque/core'
 import { language, msg, t } from '../i18n'
 import { useStore } from '../store'
-import { decimalMark, imperialUnit } from '../units'
 
 /*
- * Tables of quantities, as the editor makes them: in the words of the language in use, with the
- * numbers written as people there write them, in the unit system they work in. Once made, a table
+ * Tables of quantities, as the editor makes them: in the words of the language in use, their numbers
+ * written as the drawing writes them (its settings). Once made, a table
  * keeps those words, as the names of layers do, so that the drawing reads the same wherever it is
  * opened.
  */
@@ -36,6 +35,7 @@ const WORDS: Record<keyof typeof TABLE_WORDS, string> = {
   material: msg('Material'),
   rooms: msg('Rooms'),
   area: msg('Area ({unit})'),
+  perimeter: msg('Perimeter ({unit})'),
   thickness: msg('Thickness ({unit})'),
   length: msg('Length ({unit})'),
   volume: msg('Volume ({unit})'),
@@ -47,22 +47,22 @@ const WORDS: Record<keyof typeof TABLE_WORDS, string> = {
   none: '—',
 }
 
-/** The words of a table of `schedule` in the language in use, for the unit system given, by field. */
-export function tableLabels(system: 'metric' | 'imperial', schedule?: Schedule): Record<string, string> {
+/**
+ * The words of a table of `schedule` in the language in use, by field, saying "{unit}" where the
+ * unit goes: the table fills it in with the drawing's (`withUnit`), so they follow its settings.
+ */
+export function tableLabels(schedule?: Schedule): Record<string, string> {
   const translated = Object.fromEntries(Object.entries(WORDS).map(([field, word]) => [field, word === '—' ? word : t(word, { unit: '{unit}' })]))
-  return Object.fromEntries(Object.keys(WORDS).filter((field) => !field.includes('.')).map((field) => [field, tableWord(field, system, translated, schedule)]))
+  return Object.fromEntries(Object.keys(WORDS).filter((field) => !field.includes('.')).map((field) => [field, (schedule ? translated[`${schedule}.${field}`] : undefined) ?? translated[field]]))
 }
 
-/** A new table of one kind, to be placed: titled, worded and numbered as the user reads. */
+/** A new table of one kind, to be placed: titled and worded as the user reads, its numbers written as the drawing writes them. */
 export function newTable(schedule: Schedule): Omit<NodeOf<'table'>, 'id' | 'parent' | 'order' | 'x' | 'y'> {
-  const system = imperialUnit() ? 'imperial' : 'metric'
-  // Numbers are written with the decimal mark of the preferences, by default the language's.
-  const comma = decimalMark() === ','
   // As large on paper as a room's name, at the scale papers are drawn at.
   const size = Math.round(2 * useStore.getState().paperScale)
   // A table of the objects placed draws each beside its name: a legend of the plan that keeps up with it.
   const columns = schedule === 'objects' ? { columns: ['symbol', 'name', 'count'] } : {}
-  return { type: 'table', schedule, title: t(SCHEDULE_NAMES[schedule]), labels: tableLabels(system, schedule), language: language(), system, ...(comma ? { decimal: ',' as const } : {}), size, ...columns }
+  return { type: 'table', schedule, title: t(SCHEDULE_NAMES[schedule]), labels: tableLabels(schedule), language: language(), size, ...columns }
 }
 
 /** The fields a table of a kind can show, in the order offered. */

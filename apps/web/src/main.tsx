@@ -5,7 +5,8 @@ import { blankDocument } from './actions'
 import { App } from './App'
 import { Guard } from './Guard'
 import { setLanguage } from './i18n'
-import { usePrefs } from './prefs'
+import { platform } from './platform'
+import { keepKeysIn, usePrefs } from './prefs'
 import { loadExtensions, registry, useExtensions } from './extensions'
 import { loadDocument } from './store'
 import { startTheme } from './theme'
@@ -18,6 +19,7 @@ loadExtensions()
 setLanguage(usePrefs.getState().language, registry.translations)
 startTheme()
 startUpdates()
+if (platform.secrets) void keepKeysIn(platform.secrets)
 loadDocument(blankDocument(), null)
 
 /** Rebuilds the whole interface when the language or the unit changes; drawing and settings live outside it. */

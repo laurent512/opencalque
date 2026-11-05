@@ -1,10 +1,11 @@
 import { add, boundsOfPoints, dist, norm, pointInPolygon, scale, sub, type Vec2 } from './geometry'
+import { applyOps } from './ops'
 import { moveOps, nodePrimitives } from './kinds'
 import type { Op } from './ops'
 import type { Registry } from './registry'
 import { boundsOf } from './scene'
 import type { Document, Node, NodeOf } from './schema'
-import { courseOf, cross, wallArc, wallSides } from './walls/course'
+import { courseOf, cross, dot, wallArc, wallSides } from './walls/course'
 import { wallFollowOps } from './walls/edit'
 import { hostWall, openingIndex, openingSpan } from './walls/openings'
 import { wallPolygons } from './walls/outline'
@@ -145,12 +146,47 @@ export function clearances(doc: Document, node: Node, registry: Registry): Clear
   return host ? openingClearances(doc, node, host, registry) : boxClearances(doc, node, registry)
 }
 
+/** How close, in mm, a distance typed must be met. */
+const MET = 0.01
+/** How many times a move is corrected, at most, to meet it. */
+const TRIES = 12
+
 /**
  * The operations that move `node` so that `measured` (one of its clearances) becomes `length`: along
  * that clearance, the walls joined to a wall following it, and its doors and windows going with it.
+ *
+ * Moved by the difference, it is at the distance typed only when what it faces stays where it is.
+ * A wall it faces may be joined to it, as two sides of a triangle are, and turn as it moves: the
+ * distance is then measured again where it went, and the move corrected (by secants) until it is
+ * met, so that the number typed is the number read when the wall is selected again.
  */
 export function clearanceOps(doc: Document, node: Node, measured: Clearance, length: number, registry: Registry): Op[] {
   if (!(length >= 0) || measured.length <= 0) return []
-  const d = scale(sub(measured.to, measured.from), (measured.length - length) / measured.length)
-  return [...moveOps(doc, node, d), ...wallFollowOps(doc, [node], d, registry)]
+  const way = scale(sub(measured.to, measured.from), 1 / measured.length)
+  const ops = (k: number): Op[] => {
+    const d = scale(way, k)
+    return [...moveOps(doc, node, d), ...wallFollowOps(doc, [node], d, registry)]
+  }
+  // How far from the length typed it stands once moved `k` along the way it measures; null when it measures nothing there.
+  const off = (k: number): number | null => {
+    let next: Document
+    try {
+      next = applyOps(doc, ops(k))
+    } catch {
+      return null
+    }
+    const moved = next.nodes[node.id]
+    const start = add(measured.from, scale(way, k))
+    const again = moved && clearances(next, moved, registry).filter((c) => c.length > 0 && Math.abs(cross(way, scale(sub(c.to, c.from), 1 / c.length))) < 1e-6 && dot(way, sub(c.to, c.from)) > 0)
+    const same = again?.sort((p, q) => dist(p.from, start) - dist(q.from, start))[0]
+    return same ? same.length - length : null
+  }
+  let [k0, f0] = [0, measured.length - length]
+  let k1 = measured.length - length
+  for (let i = 0; i < TRIES; i++) {
+    const f1 = off(k1)
+    if (f1 === null || Math.abs(f1) < MET || Math.abs(f1 - f0) < 1e-12) break
+    ;[k0, f0, k1] = [k1, f1, k1 - (f1 * (k1 - k0)) / (f1 - f0)]
+  }
+  return ops(k1)
 }

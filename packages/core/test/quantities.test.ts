@@ -40,7 +40,8 @@ describe('quantities', () => {
   it('measures rooms and walls, and leaves out what needs a height nobody gave', () => {
     const q = quantities(room, 'page_1', registry)
     // The floor inside the walls: (5 - 0.2) × (4 - 0.2).
-    expect(q.rooms).toEqual([{ id: 'r', name: 'Living room', area: 18.24, material: '', materialId: '' }])
+    // Round it, along the faces of its walls: 2 × (4.8 + 3.8).
+    expect(q.rooms).toEqual([{ id: 'r', name: 'Living room', area: 18.24, perimeter: 17.2, material: '', materialId: '' }])
     expect(q.walls.map((w) => [w.id, w.length, w.footprint, w.openings])).toEqual([
       ['top', 5, 1, 2],
       ['right', 4, 0.8, 0],
@@ -83,6 +84,8 @@ describe('quantities', () => {
     ])
     const q = quantities(built, 'page_1', registry)
     expect(q.rooms.map((r) => r.area)).toEqual([18.24, 72.96, 36.48])
+    // Stretched twice along the room's 4.8 m side: 2 × (9.6 + 3.8).
+    expect(q.rooms.map((r) => r.perimeter)).toEqual([17.2, 34.4, 26.8])
     // Stretched along its own X: its level walls twice as long, as thick as they were; its upright ones as long, twice as thick.
     const [top, , , left] = q.walls.slice(8)
     expect(top).toMatchObject({ length: 10, thickness: 200, gross: 25 })
@@ -101,12 +104,13 @@ describe('quantities', () => {
     const tall = applyOps(room, [{ op: 'update_node', id: 'page_1', patch: { wallHeight: 2500 } }])
     const english = quantitiesCsv(quantities(tall, 'page_1', registry)).replace('﻿', '').split('\r\n')
     expect(english[0]).toBe('Rooms')
-    expect(english[2]).toBe('Living room,18.24')
+    expect(english[1]).toBe('Name,Area (m²),Perimeter (m)')
+    expect(english[2]).toBe('Living room,18.24,17.2')
     expect(english).toContain('Total,,18,,,3.6,2,45,3.8,41.2,8.24')
     expect(english).toContain('Door,1,2,1')
     const french = quantitiesCsv(quantities(tall, 'page_1', registry), { separator: ';', decimal: ',' })
     expect(french.startsWith('﻿')).toBe(true)
-    expect(french).toContain('Living room;18,24')
+    expect(french).toContain('Living room;18,24;17,2')
     // A name with the separator or a quote in it is quoted.
     const awkward = applyOps(room, [{ op: 'update_node', id: 'r', patch: { name: 'Salon, "ouvert"' } }])
     expect(quantitiesCsv(quantities(awkward, 'page_1', registry))).toContain('"Salon, ""ouvert""",18.24')

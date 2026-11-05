@@ -12,13 +12,13 @@ import { useTheme } from '../theme'
 import { formatLength, formatNumber, unitSuffix } from '../units'
 import { toWorld } from '../view'
 import { trackedPoints } from './aim'
-import { DARK_AROUND_CANVAS, DARK_CANVAS, drawScene, LIGHT_CANVAS, MAX_LINKED_WALLS, onPictureReady, type Overlay, type SizeLabel, type WallLinks } from './draw'
+import { DARK_AROUND_CANVAS, DARK_CANVAS, drawScene, LIGHT_CANVAS, MAX_LINKED_WALLS, onPictureReady, onRepaint, type Overlay, type SizeLabel, type WallLinks } from './draw'
 import { drawing } from './drawing'
 import { TURNING, type Gesture, type PointerAt } from './gesture'
 import { DRAW_PRESS, MOVES, PRESSES, RELEASES } from './gestures'
 import { aim, finishPoly, finishShape, polyPoint } from './gestures/drawTools'
 import { finishTurn } from './gestures/turn'
-import { clearanceLabel, useClearances } from './clearances'
+import { shownClearances, useClearances, type ScreenBox } from './clearances'
 import { titleAt } from './picking'
 import { get, local, reset, syncStep, type Canvas, type Move, type Release, type Shown } from './runtime'
 import { boxLabels, paperLabel, polyline, roomsOnly, sizes, snapName, wallOps } from './shapes'
@@ -63,6 +63,8 @@ export function CanvasView() {
   const [pictures, setPictures] = useState(0)
   useEffect(() => {
     onPictureReady(() => setPictures((n) => n + 1))
+    // Once the view stops moving, the drawing stretched meanwhile is painted sharp.
+    onRepaint(() => setPictures((n) => n + 1))
   }, [])
 
   const extensionsVersion = useExtensions((s) => s.version)
@@ -138,8 +140,23 @@ export function CanvasView() {
   }, [doc, selection, tool, handles, frame])
 
   // How far the one object selected stands from the walls around it, with each length where it is written.
+  // Those worth showing, each length where it covers neither the object nor its sizes.
   const measured = useClearances()
-  const clearanceLines = useMemo(() => measured?.list.map((clearance) => ({ from: clearance.from, to: clearance.to, label: clearanceLabel(clearance, view) })), [measured, view])
+  const clearanceLines = useMemo(() => {
+    if (!measured) return undefined
+    // A slanting wall's box would take in the very places its lengths go: only an object's is kept clear.
+    const bounds = measured.node.type === 'wall' ? null : scene.find((item) => item.id === measured.node.id)?.bounds
+    const own: ScreenBox[] = bounds ? [{ x: bounds.minX * view.zoom + view.x, y: bounds.minY * view.zoom + view.y, width: (bounds.maxX - bounds.minX) * view.zoom, height: (bounds.maxY - bounds.minY) * view.zoom }] : []
+    const sizes = selectionLabels.map((label): ScreenBox => {
+      // As the canvas writes them: 11 px text in a box 18 high, upright for a height.
+      const [width, height] = [label.text.length * 6.5 + 12, 18]
+      const [w, h] = Math.abs(Math.abs(label.rotation ?? 0) - 90) < 1 ? [height, width] : [width, height]
+      const x = label.at.x * view.zoom + view.x + label.dx
+      const y = label.at.y * view.zoom + view.y + label.dy
+      return { x: x - w / 2, y: y - h / 2, width: w, height: h }
+    })
+    return shownClearances(measured.node, measured.list, view, [...own, ...sizes])
+  }, [measured, view, scene, selectionLabels])
 
   // The name of each paper, written above its corner. It is a label of the editor, not part of the drawing.
   const titles = useMemo(
@@ -212,6 +229,13 @@ export function CanvasView() {
     if (sized) zoomToFit()
   }, [doc.id, sized])
 
+  // What is painted: while a text is typed in place, without that text. Kept from one paint to the
+  // next, so that the painter can keep the drawing it painted from it (`drawScene`).
+  const drawnScene = useMemo(
+    () => (editingId ? shown.map((item) => (item.id === editingId ? { ...item, prims: withoutTyped(item.prims, editingBubble) } : item)) : shown),
+    [shown, editingId, editingBubble],
+  )
+
   useEffect(() => {
     const canvas = canvasRef.current!
     const dpr = window.devicePixelRatio || 1
@@ -220,8 +244,8 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, editingId ? shown.map((item) => (item.id === editingId ? { ...item, prims: withoutTyped(item.prims, editingBubble) } : item)) : shown, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette)
-  }, [shown, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, palette, pictures, editingId, editingBubble, tool, edgeLines, wallLinks, clearanceLines])
+    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette)
+  }, [drawnScene, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines])
 
   // Lets the quick bar finish the shape in progress with the sizes typed there.
   useEffect(() => {
@@ -291,7 +315,7 @@ export function CanvasView() {
     // A finished measurement stays on screen until the next one starts.
     const { marker } = out
     const tracked = trackedPoints(c)
-    setOverlay((o) => ({ tracked: tracked.length > 0 ? tracked : undefined, cut: out.cut, trim: out.trim, face: out.face, box: out.turning, marker: marker && { ...marker, label: snapName(marker.kind) }, smart: out.smart ?? (marker?.guides ? { lines: marker.guides, gaps: [] } : undefined), link: out.link, labels: out.labels, angle: out.angle, axis: out.axis, guide: out.guide, ghosts: out.ghosts, marquee: out.marquee, measure: out.measure ?? o.measure, angleReading: out.angleReading ?? o.angleReading }))
+    setOverlay((o) => ({ tracked: tracked.length > 0 ? tracked : undefined, cut: out.cut, trim: out.trim, face: out.face, box: out.turning, marker: marker && { ...marker, label: snapName(marker.kind) }, smart: out.smart ?? (marker?.guides ? { lines: marker.guides, gaps: [] } : undefined), link: out.link, labels: out.labels, angle: out.angle, axis: out.axis, guide: out.guide, ghosts: out.ghosts, marquee: out.marquee, clearanceHover: out.clearanceHover, measure: out.measure ?? o.measure, angleReading: out.angleReading ?? o.angleReading }))
     // A failed preview has put its reason in the status bar; keep it there.
     if (out.previewed) useStore.setState({ status: out.status, drawLive: out.live })
   }

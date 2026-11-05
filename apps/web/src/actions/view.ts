@@ -7,6 +7,13 @@ import { useStore } from '../store'
 
 const get = useStore.getState
 
+/** How far the view zooms out and in, in screen pixels per millimetre. */
+export const MIN_ZOOM = 0.002
+export const MAX_ZOOM = 20
+
+/** Zooms to `zoom` pixels per millimetre around the centre of the canvas, within the limits. */
+export const zoomTo = (zoom: number): void => zoomBy(zoom / get().view.zoom)
+
 /** Where the view was when a component was opened from a list, to come back to. */
 let before: { component: string; view: { zoom: number; x: number; y: number }; selection: string[] } | null = null
 
@@ -35,7 +42,7 @@ useStore.subscribe((state) => {
 /** Zooms around the centre of the canvas. */
 export function zoomBy(factor: number): void {
   const { view, viewport } = get()
-  const zoom = Math.min(20, Math.max(0.002, view.zoom * factor))
+  const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, view.zoom * factor))
   const cx = viewport.width / 2
   const cy = viewport.height / 2
   useStore.setState({ view: { zoom, x: cx - ((cx - view.x) / view.zoom) * zoom, y: cy - ((cy - view.y) / view.zoom) * zoom } })

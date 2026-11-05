@@ -1,6 +1,7 @@
 import { goTo } from './instances'
 import { entryName, entryTarget, isModel, placementsOf } from '../entries'
 import {
+  alikeTo,
   applyOps,
   buildScene,
   childrenOf,
@@ -23,6 +24,7 @@ import {
   ungroupNode,
   unusedComponents,
   wallFollowOps,
+  type Likeness,
   type Modifier,
   type Node,
   type Op,
@@ -32,6 +34,7 @@ import { registry } from '../extensions'
 import { t, tn } from '../i18n'
 import { showPage } from '../navigation'
 import { apply, cancel, commit, layerHere, select, setTool, useStore } from '../store'
+import { withoutFill } from '../materials'
 import { gridStep } from '../view'
 import { ask, toast } from '../windows'
 import { withPaperContents } from './clipboard'
@@ -196,6 +199,18 @@ export function distributeSelection(along: 'x' | 'y'): void {
  * Takes the look of an object (colours, weight, dashes, fill). With objects selected they are given
  * it; with none, its line colour and fill become those of what is drawn next.
  */
+/**
+ * What the eyedropper gives `target` of the look of `source`: its style, and between walls, or
+ * between rooms, its material. A wall, or a floor of a material, takes no fill of its own: its
+ * material gives it.
+ */
+function lookFrom(source: Node, target: Node): Record<string, unknown> {
+  const material = target.type === source.type && (target.type === 'wall' || target.type === 'room') ? { material: (source as { material?: string }).material ?? null } : {}
+  const made = 'material' in material ? material.material : (target as { material?: string }).material
+  const style = target.type === 'wall' || (target.type === 'room' && made) ? withoutFill(source.style) : source.style
+  return { style: style ?? null, ...material }
+}
+
 export function pickStyle(source: Node): void {
   const { selection, doc } = get()
   // A placed component looks as its component does and takes no look of its own.
@@ -203,13 +218,29 @@ export function pickStyle(source: Node): void {
   if (targets.length === 0 && selection.some((id) => doc.nodes[id]?.type === 'instance')) {
     toast(t('A component looks as it is drawn, in the colour of its layer: change the component, or put it on another layer.'))
   } else if (targets.length > 0) {
-    if (apply(targets.map((id): Op => ({ op: 'update_node', id, patch: { style: source.style ?? null } })))) toast(tn(targets.length, 'Style given to {n} object', 'Style given to {n} objects'))
+    if (apply(targets.map((id): Op => ({ op: 'update_node', id, patch: lookFrom(source, doc.nodes[id]) })))) toast(tn(targets.length, 'Style given to {n} object', 'Style given to {n} objects'))
   } else {
     // What the bar above the tools shows, which is what the next shapes take: the colour of their lines and their fill.
     useStore.setState({ drawColor: source.style?.stroke ?? null, drawFill: source.style?.fill ?? null, drawPattern: source.style?.pattern ?? null })
     toast(t('Style picked up: the next shapes you draw will have it'))
   }
   setTool('select')
+}
+
+/**
+ * Adds to the selection what is alike to it in the way said (`alikeTo`), among what can be picked
+ * where the editing is: the walls of one material and thickness, the placements of one component…
+ */
+export function selectAlike(by: Likeness): void {
+  const { doc, scope, selection } = get()
+  const chosen = selection.map((id) => doc.nodes[id]).filter(Boolean)
+  const pickable = buildScene(doc, scope, registry)
+    .filter((item) => !item.locked)
+    .map((item) => item.node)
+  const found = alikeTo(chosen, pickable, by, registry).map((node) => node.id)
+  const ids = [...new Set([...selection, ...found])]
+  select(ids)
+  toast(tn(ids.length, '{n} object selected', '{n} objects selected'))
 }
 
 /** Moves the selection by whole steps of the grid as it is shown; `dx` and `dy` count steps. */

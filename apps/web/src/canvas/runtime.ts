@@ -80,6 +80,8 @@ export interface Shown {
   smart?: Overlay['smart']
   link?: Overlay['link']
   labels?: SizeLabel[]
+  /** The temporary dimension whose length the pointer is on, by its place in the list shown. */
+  clearanceHover?: number
   angle?: AngleMark
   axis?: Overlay['axis']
   guide?: Overlay['guide']

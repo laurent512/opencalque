@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import type { SecretStore } from './platform'
 import type { DeclarativeExtension } from '@opencalque/core'
 import { msg } from './i18n'
 
@@ -98,6 +99,11 @@ const DEFAULTS: Prefs = {
 }
 
 const STORAGE_KEY = 'opencalque.prefs'
+/** The providers whose settings hold a key, kept in the system's keychain where there is one (`keepKeysIn`). */
+const KEYED = ['anthropic', 'compatible'] as const
+
+/** Where the keys are kept once `keepKeysIn` has been given a keychain: then never written with the other preferences. */
+let keychain: SecretStore | null = null
 const PROVIDERS = ['anthropic', 'claudeCli', 'ollama', 'compatible'] as const
 
 /** Whether the unit was chosen, rather than guessed from the system's language (`usualUnit`): once chosen, it is kept. */
@@ -136,6 +142,9 @@ export function storedPrefs(prefs: Prefs): Record<string, unknown> {
     const own = differing(prefs.ai[key], DEFAULTS.ai[key])
     if (Object.keys(own).length > 0) ai[key] = own
   }
+  // In a keychain, a key is not written with the rest in plain text.
+  if (keychain) for (const key of KEYED) if (ai[key]) delete (ai[key] as Record<string, unknown>).apiKey
+  for (const key of KEYED) if (ai[key] && Object.keys(ai[key] as object).length === 0) delete ai[key]
   delete out.ai
   if (Object.keys(ai).length > 0) out.ai = ai
   delete out.extensions
@@ -148,12 +157,38 @@ export const usePrefs = create<Prefs>(() => load())
 
 export function setPrefs(patch: Partial<Prefs>): void {
   if (patch.unit !== undefined) unitChosen = true
+  const before = usePrefs.getState().ai
   usePrefs.setState(patch)
+  const after = usePrefs.getState().ai
+  if (keychain) for (const key of KEYED) if (after[key].apiKey !== before[key].apiKey) void keychain.set(key, after[key].apiKey)
+  write()
+}
+
+function write(): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(storedPrefs(usePrefs.getState())))
   } catch {
     // Storage can be unavailable (private windows); the change then lasts for this session.
   }
+}
+
+/**
+ * Keeps the keys of the assistant's services in `store`, the desktop app's keychain, from now on:
+ * those it holds are read into the preferences, and those still written with the preferences (by a
+ * version before, or a computer that could not encrypt them then) are moved into it and taken out of
+ * them. Where the store cannot encrypt, nothing changes. Called once, at start.
+ */
+export async function keepKeysIn(store: SecretStore): Promise<void> {
+  if (!(await store.available())) return
+  const ai = { ...usePrefs.getState().ai }
+  for (const key of KEYED) {
+    const kept = await store.get(key)
+    if (kept) ai[key] = { ...ai[key], apiKey: kept } as never
+    else if (ai[key].apiKey) await store.set(key, ai[key].apiKey)
+  }
+  keychain = store
+  usePrefs.setState({ ai })
+  write()
 }
 
 export function setAiPrefs(patch: Partial<Prefs['ai']>): void {

@@ -63,8 +63,11 @@ export const formatAngle = (degrees: number, decimals = 2): string => formatDeci
 /** An area in mm², in square metres, or in square feet when lengths are in feet or inches, with its unit and two decimals at most. */
 export const formatArea = (mm2: number): string => (imperialUnit() ? `${formatDecimal(mm2 / 92903.04, 2)} ft²` : `${formatDecimal(mm2 / 1e6, 2)} m²`)
 
-/** How a room or a table placed now writes its numbers, as the user reads them: in feet, with a decimal comma, each only when so. */
-export const writtenAs = (): { system?: 'imperial'; decimal?: ',' } => ({ ...(imperialUnit() ? { system: 'imperial' } : {}), ...(decimalMark() === ',' ? { decimal: ',' } : {}) })
+/**
+ * How a new drawing writes its numbers, as the user reads them: in feet, with a decimal comma, each
+ * only when so. What is placed in it then follows the drawing (File › Drawing settings).
+ */
+export const newDrawingSettings = (): { system?: 'imperial'; decimal?: ',' } => ({ ...(imperialUnit() ? { system: 'imperial' } : {}), ...(decimalMark() === ',' ? { decimal: ',' } : {}) })
 
 /** A length with its unit, e.g. "5.02 m". */
 export const formatLength = (mm: number) => (unit() === 'ft-in' ? formatNumber(mm) : `${formatNumber(mm)} ${unit()}`)

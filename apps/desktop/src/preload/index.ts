@@ -29,6 +29,11 @@ const desktop: Platform = {
   },
   installUpdate: () => ipcRenderer.send('update:install'),
   setDirty: (dirty) => ipcRenderer.send('doc:dirty', dirty),
+  secrets: {
+    available: () => ipcRenderer.invoke('secret:available'),
+    get: (name) => ipcRenderer.invoke('secret:get', name),
+    set: (name, value) => ipcRenderer.invoke('secret:set', name, value),
+  },
 }
 
 contextBridge.exposeInMainWorld('opencalqueDesktop', desktop)

@@ -1,4 +1,4 @@
-import { type Op, type Pattern } from '@opencalque/core'
+import { type Node, type Op, type Pattern, type Style } from '@opencalque/core'
 import { msg, t } from './i18n'
 import { apply, useStore } from './store'
 
@@ -6,6 +6,19 @@ import { apply, useStore } from './store'
  * The materials of a house that the editor offers before the drawing has any of its own, added to
  * the drawing all at once from the Materials panel.
  */
+
+/**
+ * What a wall, or a floor of a material, keeps of a style: everything but the fill and pattern,
+ * which are its material's. Undefined when nothing is left.
+ */
+export function withoutFill(style: Style | undefined): Style | undefined {
+  if (!style) return undefined
+  const { fill: _, pattern: __, ...rest } = style
+  return Object.keys(rest).length > 0 ? rest : undefined
+}
+
+/** The patch that takes off a fill a node was given of its own, which gives way to its material's: nothing when it has none. */
+export const unfilledPatch = (node: Node): Record<string, unknown> => (node.style && ('fill' in node.style || 'pattern' in node.style) ? { style: withoutFill(node.style) ?? null } : {})
 
 /** The materials of a house, each drawn as plans usually draw it. */
 export const COMMON: { name: string; fill: string; pattern?: Pattern }[] = [

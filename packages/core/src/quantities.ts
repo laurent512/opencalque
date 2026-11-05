@@ -1,4 +1,4 @@
-import { applyTransform, type Vec2 } from './geometry'
+import { applyTransform, len, sub, type Vec2 } from './geometry'
 import type { Registry } from './registry'
 import { roomAt } from './rooms'
 import type { Document, Node, NodeOf } from './schema'
@@ -12,6 +12,8 @@ export interface RoomQuantity {
   id: string
   name: string
   area: number
+  /** In metres: round its floor, along the faces of its walls, doors included, not round what stands inside it. */
+  perimeter: number
   material: string
   /** The id of that material, or '' for none. */
   materialId: string
@@ -131,11 +133,13 @@ export function quantities(doc: Document, pageId: string, registry: Registry): Q
   // A material is told by its id: two of one name are counted apart.
   const materialId = (id: string | undefined) => (id !== undefined && doc.materials?.[id] ? id : '')
   const materialName = (id: string | undefined) => (id === undefined ? '' : (doc.materials?.[id]?.name ?? ''))
-  const rooms = all.flatMap(({ node: room, map }): RoomQuantity[] =>
-    room.type === 'room'
-      ? [{ id: room.id, name: room.name ?? '', area: round(((roomAt(doc, room.parent, room)?.area ?? 0) * Math.abs(det(map))) / 1e6, 2), material: materialName(room.material), materialId: materialId(room.material) }]
-      : [],
-  )
+  const rooms = all.flatMap(({ node: room, map }): RoomQuantity[] => {
+    if (room.type !== 'room') return []
+    const region = roomAt(doc, room.parent, room)
+    // Round the outline as it is drawn where it is placed: stretched, a side is longer.
+    const perimeter = region ? region.outline.reduce((total, p, i) => total + len(apply(map, sub(region.outline[(i + 1) % region.outline.length], p))), 0) : 0
+    return [{ id: room.id, name: room.name ?? '', area: round(((region?.area ?? 0) * Math.abs(det(map))) / 1e6, 2), perimeter: round(perimeter / 1000, 2), material: materialName(room.material), materialId: materialId(room.material) }]
+  })
   const floors = new Map<string, FloorQuantity>()
   for (const room of rooms) {
     const seen = floors.get(room.materialId)
@@ -296,6 +300,8 @@ export interface QuantityLabels {
   count: string
   total: string
   area: string
+  /** Round a room's floor. */
+  perimeter: string
   length: string
   thickness: string
   height: string
@@ -321,6 +327,7 @@ export const QUANTITY_LABELS: QuantityLabels = {
   count: 'Count',
   total: 'Total',
   area: 'Area (m²)',
+  perimeter: 'Perimeter (m)',
   length: 'Length (m)',
   thickness: 'Thickness (mm)',
   height: 'Height (m)',
@@ -336,6 +343,7 @@ export const QUANTITY_LABELS: QuantityLabels = {
 export const IMPERIAL_QUANTITY_LABELS: QuantityLabels = {
   ...QUANTITY_LABELS,
   area: 'Area (ft²)',
+  perimeter: 'Perimeter (ft)',
   length: 'Length (ft)',
   thickness: 'Thickness (in)',
   height: 'Height (ft)',
@@ -359,7 +367,7 @@ function imperial(q: Quantities): Quantities {
   const ft3 = scaled(1 / 0.3048 ** 3, 2)
   const inches = scaled(1 / 25.4, 2)
   return {
-    rooms: q.rooms.map((room) => ({ ...room, area: ft2(room.area) })),
+    rooms: q.rooms.map((room) => ({ ...room, area: ft2(room.area), perimeter: ft(room.perimeter) })),
     walls: q.walls.map((w) => ({ ...w, length: ft(w.length), thickness: inches(w.thickness), height: maybe(ft)(w.height), footprint: ft2(w.footprint), gross: maybe(ft2)(w.gross), cut: maybe(ft2)(w.cut), net: maybe(ft2)(w.net), volume: maybe(ft3)(w.volume) })),
     openings: q.openings.map((o) => ({ ...o, width: ft(o.width), height: maybe(ft)(o.height) })),
     floors: q.floors.map((floor) => ({ ...floor, area: ft2(floor.area) })),
@@ -392,7 +400,11 @@ export function quantitiesCsv(
     if (lines.length > 0) lines.push('')
     lines.push(cell(title), header.map(cell).join(separator), ...rows.map((row) => row.map(cell).join(separator)))
   }
-  table(l.rooms, [l.name, l.area], [...q.rooms.map((room) => [room.name, room.area]), [l.total, round(q.rooms.reduce((total, room) => total + room.area, 0), 2)]])
+  table(
+    l.rooms,
+    [l.name, l.area, l.perimeter],
+    [...q.rooms.map((room) => [room.name, room.area, room.perimeter]), [l.total, round(q.rooms.reduce((total, room) => total + room.area, 0), 2), round(q.rooms.reduce((total, room) => total + room.perimeter, 0), 2)]],
+  )
   table(
     l.walls,
     [l.name, l.material, l.length, l.thickness, l.height, l.footprint, l.count, l.gross, l.cut, l.net, l.volume],

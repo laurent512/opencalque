@@ -2,10 +2,26 @@ import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Plus } from 'lucide-react'
 import type { Pattern } from '@opencalque/core'
+import { showPanel } from './dock'
 import { FillSwatch } from './FillChoice'
 import { FLOATING, useFloating } from './floating'
 import { t } from './i18n'
 import { IconButton } from './ui'
+
+/**
+ * Says where the look of a wall, or of a floor of a material, comes from, under its Material field:
+ * it has no fill of its own, and is changed where the drawing's materials are.
+ */
+export function MaterialNote() {
+  return (
+    <p className="hint">
+      {t('Its colour and hatch are those of its material.')}{' '}
+      <button className="text-button" onClick={() => showPanel('materials')}>
+        {t('Change them in Materials')}
+      </button>
+    </p>
+  )
+}
 
 /** One material that can be picked: '' for the choice of none (the default material of walls, no material for a floor). */
 export interface MaterialOption {

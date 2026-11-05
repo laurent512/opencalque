@@ -16,6 +16,8 @@ const ON_SELECTION = [
   'edit.duplicate',
   'edit.delete',
   null,
+  'edit.selectSimilar',
+  null,
   'edit.group',
   'edit.ungroup',
   'component.create',

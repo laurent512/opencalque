@@ -51,3 +51,44 @@ describe('the preferences kept', () => {
     expect(store.saved()).toEqual({ extensions: { disabled: ['opencalque.architecture'] } })
   })
 })
+
+describe('the keys of the assistant', () => {
+  /** A stand-in for the desktop app's keychain. */
+  const keychain = (available = true, held: Record<string, string> = {}) => ({
+    held,
+    available: async () => available,
+    get: async (name: string) => held[name] ?? null,
+    set: async (name: string, value: string) => {
+      if (value) held[name] = value
+      else delete held[name]
+    },
+  })
+
+  it('go into the keychain where there is one, out of the preferences written in plain text', async () => {
+    const store = storage({ showGrid: false, ai: { anthropic: { apiKey: 'sk-ant-1', model: 'other' } } })
+    const { keepKeysIn, setAiPrefs, usePrefs } = await start()
+    const kept = keychain()
+    await keepKeysIn(kept)
+    expect(kept.held).toEqual({ anthropic: 'sk-ant-1' })
+    expect(store.saved()).toEqual({ showGrid: false, ai: { anthropic: { model: 'other' } } })
+    expect(usePrefs.getState().ai.anthropic.apiKey).toBe('sk-ant-1')
+    // Changed or forgotten, in the keychain only.
+    setAiPrefs({ compatible: { ...usePrefs.getState().ai.compatible, apiKey: 'sk-2' } })
+    setAiPrefs({ anthropic: { ...usePrefs.getState().ai.anthropic, apiKey: '' } })
+    await Promise.resolve()
+    expect(kept.held).toEqual({ compatible: 'sk-2' })
+    expect(JSON.stringify(store.saved())).not.toContain('sk-')
+  })
+
+  it('are read from the keychain at start, and stay in the preferences where nothing can encrypt them', async () => {
+    storage()
+    let prefs = await start()
+    await prefs.keepKeysIn(keychain(true, { anthropic: 'sk-ant-kept' }))
+    expect(prefs.usePrefs.getState().ai.anthropic.apiKey).toBe('sk-ant-kept')
+
+    const store = storage({ ai: { anthropic: { apiKey: 'sk-ant-1' } } })
+    prefs = await start()
+    await prefs.keepKeysIn(keychain(false))
+    expect(store.saved()).toEqual({ ai: { anthropic: { apiKey: 'sk-ant-1' } } })
+  })
+})

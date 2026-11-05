@@ -4,6 +4,24 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 1.4.0 — 2026-11-05
+
+### New
+- Doors and windows follow their wall: a wall made longer or shorter by an end, turned, moved by its coordinates, cut by the trim tool, or changed by the assistant keeps its doors and windows in it, each at its distance from the end that stayed, turning with the wall, and held within it when it is made shorter than where they were. They used to stay where they were, out of the wall.
+- Select similar (Ctrl+Shift+A, Edit menu, right-click): adds to the selection what a plan calls the same thing, the walls of the same material and thickness, the floors of the same material, the placements of the same component, the objects of the same model, the dimensions of the same style, and otherwise what is of the same type on the same layer with the same look. The Edit menu also selects all of the same type, all on the same layer, and all the walls or floors of the same material, so that walls are made alike by selecting them together.
+- How far it is round a room: its properties say it beside its floor area, Show perimeter writes it under the area on the plan, and the table of rooms and the quantities exported as CSV have a Perimeter column, measured along the faces of its walls, doors included.
+- Export as a PNG picture, 2000, 4000 or 8000 pixels on its longer side, to send a plan to someone who has nothing to open an SVG or a PDF with.
+
+### Improved
+- Faster on real plans. The drawing is no longer painted again each time the pointer moves, only what moves with it; while the view is panned, what was painted is moved and only what comes into sight is painted; hatches and cropped groups are painted with far less work; what is out of sight is left out. On a plan of 1 200 objects, on a slow computer, hovering, panning, zooming and selecting went from stuttering (up to 50 slow frames in a gesture) to smooth.
+- In the bottom right corner of the drawing, a small square opens, when pointed at, into buttons that switch the grid, snapping to the grid, snapping to objects and temporary dimensions on and off, each lit while on, then zoom in and out, a zoom slider, the scale the drawing is seen at on screen read as a drawing scale (1:50), and zoom to fit. The px/m reading in the corner, and zoom to fit in the tool bar, are gone.
+- Temporary dimensions are quieter: an object other than a wall, a door or a window is measured only to walls within 2 m of it, a length is never written over the object, its sizes or another length (it goes past the wall it reaches, or beside its line, or is left out), and they are drawn dashed, their length boxed only under the pointer, where a click opens it.
+- The Paper tool is in the list of the shapes, with the line, the rectangle and the ellipse, rather than a button of its own.
+- How a drawing writes its numbers belongs to the drawing: File › Drawing settings says whether its areas are in square metres or square feet (and its tables of quantities in metres or feet), and whether its numbers have a decimal point or comma. Every room, table of quantities and dimension in it follows, and so do the quantities exported as CSV; a room and a table no longer have a choice of their own, nor a dimension or a dimension style its own decimal mark. Changing a setting there brings into line what was placed before with a choice of its own, in one step to undo. A new drawing starts as the preferences say. The same window holds the project, client, address and author shown in title blocks, which were only reachable from a sheet.
+- A floor of a material looks as its material does, as a wall does: it has no fill of its own to set over it, and choosing a material takes off a fill it was given before. Its look is changed in the Materials panel. A floor of no material keeps its fill. The eyedropper gives a wall or a room the material of the wall or room it is taken from.
+- In the desktop app, the keys of the assistant's services (Claude, an OpenAI-compatible service) are kept encrypted by the system (the keychain on macOS, Windows' data protection, the keyring on Linux), no longer in plain text with the preferences; a key kept so before is moved there at start. Where the system cannot encrypt (Linux without a keyring), it stays where it was. The web app keeps them with its preferences, as before.
+- Under the Material of a wall or a floor, the properties say that its colour and hatch are its material's, with a link to the Materials panel where they are changed.
+
 ## 1.3.0 — 2026-11-05
 
 ### New

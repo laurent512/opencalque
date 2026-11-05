@@ -31,10 +31,18 @@ export function EntryChoice(props: { label: string; value?: string; mixed?: bool
     setQuery('')
   }
   const { closing, style } = useFloating(open, close, box, menu)
-  const entries = entriesOf(doc)
-    .filter((entry) => !exclude?.(entry))
-    .map((entry) => ({ entry, name: entryName(doc, entry) }))
-    .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+  // Listed only while open: the list goes through the whole drawing, and the chooser is drawn closed
+  // each time an object is selected.
+  const entries = useMemo(
+    () =>
+      open
+        ? entriesOf(doc)
+            .filter((entry) => !exclude?.(entry))
+            .map((entry) => ({ entry, name: entryName(doc, entry) }))
+            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
+        : [],
+    [open, doc, exclude],
+  )
   const pictures = useMemo(() => {
     if (!open) return new Map<string, string>()
     return new Map(

@@ -3,7 +3,7 @@ import { dimensionToolLook } from '../actions'
 import { registry } from '../extensions'
 import { t } from '../i18n'
 import type { Tool } from '../tools'
-import { decimalMark, formatLength, formatNumber, unit } from '../units'
+import { formatLength, formatNumber, unit } from '../units'
 import type { Overlay, SizeLabel, AngleMark } from './draw'
 import { BOXES, FORMAT_REACH } from './gesture'
 import { layerHere } from '../store'
@@ -191,8 +191,8 @@ export function shape(tool: Tool, id: string, a: Vec2, b: Vec2, offset = 0): Nod
     case 'dimension': {
       const look = dimensionToolLook()
       const style = typeof look.dimensionStyle === 'string' ? doc.dimensionStyles?.[look.dimensionStyle] : undefined
-      // New dimensions read in the unit the user works in, with their decimal mark, unless the tool's settings or its style say otherwise.
-      const written = { ...(style?.unit === undefined ? { unit: unit() } : {}), ...(style?.decimal === undefined && decimalMark() === ',' ? { decimal: ',' } : {}) }
+      // New dimensions read in the unit the user works in, unless the tool's settings or its style say otherwise; their decimal mark is the drawing's.
+      const written = style?.unit === undefined ? { unit: unit() } : {}
       return { ...written, ...look, ...common, type: 'dimension', a, b, offset } as NodeInput
     }
     case 'rect':

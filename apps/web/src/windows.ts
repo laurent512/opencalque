@@ -11,6 +11,8 @@ interface Windows {
   /** The page Preferences opens on next, when something asked for one; otherwise the one it was left on. */
   preferencesPage: string | null
   exportOpen: boolean
+  /** Whether File › Drawing settings is open. */
+  drawingSettingsOpen: boolean
   aboutOpen: boolean
   /** Whether the object library is open. */
   warehouse: 'components' | null
@@ -30,7 +32,7 @@ export interface Question {
   run: () => void
 }
 
-const CLOSED: Windows = { welcomeOpen: false, preferencesOpen: false, preferencesPage: null, exportOpen: false, aboutOpen: false, warehouse: null, question: null, toast: null, browsing: null }
+const CLOSED: Windows = { welcomeOpen: false, preferencesOpen: false, preferencesPage: null, exportOpen: false, drawingSettingsOpen: false, aboutOpen: false, warehouse: null, question: null, toast: null, browsing: null }
 
 export const useWindows = create<Windows>(() => CLOSED)
 

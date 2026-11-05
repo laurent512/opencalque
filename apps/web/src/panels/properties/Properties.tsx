@@ -1,4 +1,4 @@
-import { type Bounds, type NodeOf, boundsOf, dist, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, componentUses, rootOf, layersOf, type Node, type Op, roomAt, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
+import { type Bounds, type NodeOf, boundsOf, dist, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, componentUses, rootOf, layersOf, type Node, type Op, roomAt, regionPerimeter, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
 import { swapSelectedComponent } from '../../actions'
 import { EntryChoice } from '../../EntryChoice'
 import { entryOf, isModel } from '../../entries'
@@ -29,7 +29,7 @@ function RoomFacts({ node }: { node: Extract<Node, { type: 'room' }> }) {
   if (!region) return <p className="hint">{t('The walls around this room do not close, so it has no floor to show. Close them, or drag the name into a closed space.')}</p>
   return (
     <>
-      <p className="hint">{t('Floor area: {area}, measured inside the walls.', { area: formatArea(region.area) })}</p>
+      <p className="hint">{t('Floor area: {area}, perimeter: {perimeter}, measured inside the walls.', { area: formatArea(region.area), perimeter: formatLength(regionPerimeter(region)) })}</p>
       <p className="hint">{t('The room follows its walls. Drag its name to move it.')}</p>
     </>
   )

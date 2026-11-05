@@ -61,7 +61,7 @@ export type Op =
   | { op: 'update_material'; id: string; patch: Record<string, unknown> }
   | { op: 'remove_material'; id: string }
   | { op: 'add_asset'; asset: Omit<Asset, 'id'> & { id?: string } }
-  | { op: 'set_document'; name?: string; info?: Record<string, string | null> }
+  | { op: 'set_document'; name?: string; info?: Record<string, string | null>; settings?: { system?: 'metric' | 'imperial' | null; decimal?: '.' | ',' | null } }
 
 const patch = z
   .record(z.string(), z.unknown())
@@ -107,8 +107,15 @@ export const OpSchema = z.discriminatedUnion('op', [
     .object({ op: z.literal('add_asset'), asset: z.looseObject({ mime: z.string(), data: z.string() }) })
     .describe('Embeds a file (base64) so image nodes can show it. Assets are dropped on save once nothing uses them.'),
   z
-    .object({ op: z.literal('set_document'), name: z.string().optional(), info: z.record(z.string(), z.string().nullable()).optional() })
-    .describe('Renames the document and/or changes what it says about itself ("info": project, client, address, author), shown in title blocks. In "info" each key replaces that entry and a null or empty value removes it.'),
+    .object({
+      op: z.literal('set_document'),
+      name: z.string().optional(),
+      info: z.record(z.string(), z.string().nullable()).optional(),
+      settings: z.object({ system: z.enum(['metric', 'imperial']).nullable().optional(), decimal: z.enum(['.', ',']).nullable().optional() }).optional(),
+    })
+    .describe(
+      'Renames the document and/or changes what it says about itself ("info": project, client, address, author), shown in title blocks, and/or how it writes its numbers ("settings": system, decimal). In "info" and "settings" each key replaces that entry and a null or empty value removes it.',
+    ),
 ])
 
 export class OpError extends Error {}
@@ -425,6 +432,18 @@ function applyOp(d: Document, op: Op, batch: Batch): void {
         }
         if (Object.keys(info).length > 0) d.info = info
         else delete d.info
+      }
+      if (op.settings) {
+        const settings: Record<string, string> = { ...d.settings }
+        for (const [key, value] of Object.entries(op.settings)) {
+          const allowed = key === 'system' ? ['metric', 'imperial'] : key === 'decimal' ? ['.', ','] : null
+          if (!allowed) throw new OpError(`Unknown drawing setting "${key}". Use system or decimal.`)
+          if (value === null || value === undefined) delete settings[key]
+          else if (!allowed.includes(value)) throw new OpError(`The setting "${key}" is ${allowed.map((one) => `"${one}"`).join(' or ')}, not "${value}".`)
+          else settings[key] = value
+        }
+        if (Object.keys(settings).length > 0) d.settings = settings as Document['settings']
+        else delete d.settings
       }
       return
     }

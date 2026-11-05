@@ -161,7 +161,7 @@ const dimensionLook = {
   fraction: z.number().int().positive().optional().describe("With unit 'ft-in': the fraction of an inch the value is rounded to, as its lower number (2, 4, 8, 16, 32). Defaults to 16."),
   decimals: z.number().int().min(0).max(6).optional().describe('Decimal places. Defaults to 0 for mm, 1 for cm and in, 2 for m and ft.'),
   showUnit: z.boolean().optional().describe('Append the unit to the value.'),
-  decimal: z.enum(['.', ',']).optional().describe("The decimal separator of the value. Defaults to '.'."),
+  decimal: z.enum(['.', ',']).optional().describe("The decimal separator of the value, in place of the drawing's (\"settings\"). Left out, the drawing's."),
 }
 
 export const DimensionStyleSchema = z
@@ -254,8 +254,9 @@ export const NodeSchema = z
         y: z.number(),
         size: z.number().positive().optional().describe('Size of the name and area written at (x, y), in mm. Defaults to 250.'),
         showArea: z.boolean().optional().describe('Whether the floor area is written under the name. Defaults to true.'),
-        system: z.enum(['metric', 'imperial']).optional().describe("'imperial' writes the floor area in square feet. Defaults to 'metric', square metres."),
-        decimal: z.enum(['.', ',']).optional().describe("The decimal separator of the area. Defaults to '.'."),
+        showPerimeter: z.boolean().optional().describe('Whether how far it is round the floor (along the faces of its walls, doors included) is written under the name and area, in m or ft as the drawing settings say. Defaults to false.'),
+        system: z.enum(['metric', 'imperial']).optional().describe("'imperial' writes the floor area in square feet, 'metric' in square metres, in place of the drawing's \"settings\". Left out (as it should be), the drawing's."),
+        decimal: z.enum(['.', ',']).optional().describe("The decimal separator of the area, in place of the drawing's \"settings\". Left out (as it should be), the drawing's."),
         material: Id.optional().describe('The id of the material its floor is made of, among the document\'s "materials": the floor takes its colour and pattern, unless the room gives its own in "style", and is counted under it.'),
       })
       .describe(
@@ -295,8 +296,8 @@ export const NodeSchema = z
           .describe(
             "The rows shown, by their keys; the others are left out of the table and its total, and what comes on the plan later is not shown. Keys: objects 'component:<id>', or for a parametric object 'parametric:' then its kind and every one of its parameters, defaults filled in, as JSON with its keys in order ('parametric:arch.radiator {\"length\":800,...}': a model with other parameters is another row); floors 'material:<id>' ('material:' for the floors of no material); rooms 'room:<id>'; walls 'material:<id>' and the thickness in mm, as 'material:brick 200' ('material: 200' for the default material); openings the kind, then width and height in metres, as 'arch.door 0.9 2.1', whatever the table's units. Left out, every row.",
           ),
-        decimal: z.enum(['.', ',']).optional().describe("The decimal separator of its numbers. Defaults to '.'."),
-        system: z.enum(['metric', 'imperial']).optional().describe("'imperial' gives lengths in feet, areas in square feet, volumes in cubic feet and thicknesses in inches. Defaults to 'metric'."),
+        decimal: z.enum(['.', ',']).optional().describe("The decimal separator of its numbers, in place of the drawing's \"settings\". Left out (as it should be), the drawing's."),
+        system: z.enum(['metric', 'imperial']).optional().describe("'imperial' gives lengths in feet, areas in square feet, volumes in cubic feet and thicknesses in inches, in place of the drawing's \"settings\". Left out (as it should be), the drawing's."),
         language: z.string().optional().describe('The language code its rows are named in where they take a name from an extension, as "fr".'),
       })
       .describe('A table of quantities placed on the drawing, its top-left corner at (x, y): what is on a page, counted and measured, and kept up to date as the drawing changes.'),
@@ -479,6 +480,12 @@ export const NodeSchema = z
   ])
   .describe('All coordinates and lengths are millimetres. X grows to the right, Y grows downward.')
 
+/** How a whole drawing writes its numbers. What is placed in it follows, unless it says otherwise itself. */
+export const DrawingSettingsSchema = z.object({
+  system: z.enum(['metric', 'imperial']).optional().describe("'imperial': areas in square feet, and the lengths, volumes and thicknesses of tables of quantities in feet and inches. Defaults to 'metric' (square metres, metres)."),
+  decimal: z.enum(['.', ',']).optional().describe("The decimal separator of the areas, tables and dimensions. Defaults to '.'."),
+})
+
 export const DocumentSchema = z
   .object({
     format: z.literal(FORMAT),
@@ -498,6 +505,7 @@ export const DocumentSchema = z
       .object({ project: z.string().optional(), client: z.string().optional(), address: z.string().optional(), author: z.string().optional() })
       .optional()
       .describe('What the drawing says about itself, shown in the title block of every sheet: the project (the document name when not given), the client, the address of the site (lines separated by a line break), the author.'),
+    settings: DrawingSettingsSchema.optional().describe('How the drawing writes its numbers: the floor areas of its rooms, its tables of quantities, its dimensions. Left out, in metric with a decimal point.'),
     meta: z.record(z.string(), z.unknown()).optional(),
   })
   .describe('An OpenCalque document (.opencalque file).')
@@ -513,3 +521,4 @@ export type NodeType = Node['type']
 export type NodeOf<T extends NodeType> = Extract<Node, { type: T }>
 export type ContainerNode = NodeOf<'page'> | NodeOf<'component'>
 export type Document = z.infer<typeof DocumentSchema>
+export type DrawingSettings = z.infer<typeof DrawingSettingsSchema>

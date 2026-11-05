@@ -1,20 +1,32 @@
 import { gridStep } from '../view'
-import { boundsFrame, frameGrips, paintOrder, rotate, sceneBounds, type MoveGuides, type PaintStep, type ResizeFrame, type SceneItem, type Snap, type Vec2 } from '@opencalque/core'
+import { boundsFrame, frameGrips, paintOrder, primitiveBounds, rotate, sceneBounds, type Bounds, type MoveGuides, type PaintStep, type Primitive, type ResizeFrame, type SceneItem, type Snap, type Vec2 } from '@opencalque/core'
 
 // Pictures decode asynchronously. Until one is ready it is simply not drawn, and the canvas is
 // told to repaint when it arrives.
 const pictures = new Map<string, HTMLImageElement>()
 let pictureReady = () => {}
+/** How many pictures have arrived: the drawing kept under the overlay (`base`) is painted again when one does. */
+let arrived = 0
 
 export function onPictureReady(listener: () => void): void {
   pictureReady = listener
+}
+
+/** Asks the canvas to paint again once the view has stopped moving, to paint sharp what was stretched meanwhile. */
+let repaint = () => {}
+
+export function onRepaint(listener: () => void): void {
+  repaint = listener
 }
 
 function pictureFor(href: string): HTMLImageElement | null {
   let picture = pictures.get(href)
   if (!picture) {
     picture = new Image()
-    picture.onload = () => pictureReady()
+    picture.onload = () => {
+      arrived++
+      pictureReady()
+    }
     picture.src = href
     pictures.set(href, picture)
   }
@@ -127,6 +139,8 @@ export interface Overlay {
   trim?: { piece: Vec2[]; width: number }
   /** Temporary dimensions of the one object selected: each line, and its length in a box on screen (`clearanceLabel`). */
   clearances?: { from: Vec2; to: Vec2; label: { x: number; y: number; width: number; height: number; text: string } }[]
+  /** The one whose length the pointer is on: boxed, as a field to click. */
+  clearanceHover?: number
   /** The measure tool's reading, in world coordinates. It is not part of the drawing. */
   measure?: { a: Vec2; b: Vec2 }
   /** Sizes written next to the shape being drawn or selected. */
@@ -235,6 +249,94 @@ export interface AngleMark {
 }
 
 
+/** The order a scene is painted in, worked out once for each scene: it does not change with the view, the pointer or what is laid over it. */
+const orders = new WeakMap<SceneItem[], { sheets: PaintStep[]; drawn: PaintStep[] }>()
+function stepsOf(scene: SceneItem[]): { sheets: PaintStep[]; drawn: PaintStep[] } {
+  let steps = orders.get(scene)
+  if (!steps) {
+    const all = paintOrder(scene.flatMap((item) => item.prims))
+    orders.set(scene, (steps = { sheets: all.filter((step) => step.prim.backdrop === true), drawn: all.filter((step) => step.prim.backdrop !== true) }))
+  }
+  return steps
+}
+
+/** Whether two primitives are cut to the same outlines, the same ones and not only alike: those of one crop, or the shape one hatch is laid in. */
+const sameClip = (a: Vec2[][] | undefined, b: Vec2[][] | undefined): boolean => (a?.length ?? 0) === (b?.length ?? 0) && (a ?? []).every((outline, i) => outline === b![i])
+
+/** Whether two steps are lines of a hatch that can be stroked as one: same colour, weight and dash. */
+const sameHatch = (a: PaintStep, b: PaintStep): boolean =>
+  a.prim.kind === 'path' &&
+  b.prim.kind === 'path' &&
+  !!a.prim.texture &&
+  !!b.prim.texture &&
+  a.prim.stroke === b.prim.stroke &&
+  a.prim.strokeWidth === b.prim.strokeWidth &&
+  a.widthScale === b.widthScale &&
+  a.widthExtra === b.widthExtra &&
+  String(a.prim.dash ?? '') === String(b.prim.dash ?? '')
+
+/** Where each primitive lies, worked out once: primitives never change. */
+const extents = new WeakMap<Primitive, Bounds | null>()
+function extentOf(prim: Primitive): Bounds | null {
+  let bounds = extents.get(prim)
+  if (bounds === undefined) extents.set(prim, (bounds = primitiveBounds(prim)))
+  return bounds
+}
+
+/** Whether a step may show in `area`: what has no bounds (a text measured nowhere) is taken to. */
+function seen(step: PaintStep, area: Bounds | null): boolean {
+  if (!area) return true
+  const b = extentOf(step.prim)
+  return !b || (b.maxX >= area.minX && b.minX <= area.maxX && b.maxY >= area.minY && b.minY <= area.maxY)
+}
+
+/**
+ * Paints steps in their order, as `paint` does one by one, with less work for the canvas: what
+ * lies outside `area` (the view, in drawing coordinates) is left out, steps one after the other cut
+ * to the same outlines (a crop, the shape a hatch is laid in) are painted inside one clip, and the
+ * lines of a hatch one after the other as one stroke. A plan with hatched floors and cropped groups
+ * had thousands of clips each time it was painted.
+ */
+function paintSteps(ctx: CanvasRenderingContext2D, all: PaintStep[], zoom: number, ink: CanvasPalette['ink'], area: Bounds | null = null): void {
+  const steps = area ? all.filter((step) => seen(step, area)) : all
+  for (let i = 0; i < steps.length; ) {
+    const clip = steps[i].prim.clip
+    let end = i + 1
+    while (end < steps.length && sameClip(steps[end].prim.clip, clip)) end++
+    if (clip?.length) {
+      ctx.save()
+      for (const outline of clip) {
+        ctx.beginPath()
+        outline.forEach((p, k) => (k === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)))
+        ctx.closePath()
+        ctx.clip()
+      }
+    }
+    for (let k = i; k < end; ) {
+      let last = k + 1
+      while (last < end && sameHatch(steps[k], steps[last])) last++
+      if (last - k > 1) strokeHatch(ctx, steps.slice(k, last), zoom, ink)
+      else paintWhole(ctx, steps[k], zoom, ink)
+      k = last
+    }
+    if (clip?.length) ctx.restore()
+    i = end
+  }
+}
+
+/** The lines of one hatch as one path, stroked once: as `paintWhole` strokes each of them. */
+function strokeHatch(ctx: CanvasRenderingContext2D, steps: PaintStep[], zoom: number, ink: CanvasPalette['ink']): void {
+  const [{ prim, widthScale, widthExtra }] = steps
+  if (prim.kind !== 'path' || prim.stroke === 'none') return
+  ctx.beginPath()
+  for (const { prim: line } of steps) if (line.kind === 'path') line.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)))
+  ctx.strokeStyle = ink(prim.stroke ?? 'black', true)
+  ctx.lineWidth = ((prim.strokeWidth ?? 1) * widthScale + widthExtra) / zoom
+  ctx.lineJoin = widthExtra > 0 ? 'round' : 'miter'
+  ctx.setLineDash((prim.dash ?? []).map((d) => d / zoom))
+  ctx.stroke()
+}
+
 /** Paints one step, inside the outlines its primitive is clipped to, if any. */
 function paint(ctx: CanvasRenderingContext2D, step: PaintStep, zoom: number, ink: CanvasPalette['ink'] = same): void {
   const clip = step.prim.clip
@@ -264,6 +366,11 @@ function paintWhole(ctx: CanvasRenderingContext2D, { prim, stroke, fill, widthSc
     return
   }
   if (prim.kind === 'text') {
+    // Smaller than half a pixel on screen, it would not be seen. It is set at its own size and
+    // scaled with the view, not at the size it is seen at: the browser keeps its letters at one
+    // size, where every step of zoom would have asked for letters of a new size.
+    const m = ctx.getTransform()
+    if (prim.size * Math.hypot(m.a, m.b) < 0.5) return
     ctx.save()
     ctx.translate(prim.x, prim.y)
     if (prim.rotation) ctx.rotate((prim.rotation * Math.PI) / 180)
@@ -344,6 +451,107 @@ function ringCanvas(width: number, height: number): HTMLCanvasElement {
   return ring
 }
 
+/**
+ * The drawing as last painted, what it was painted from, the view it was painted in, and whether it
+ * is sharp there (not moved by a fraction of a pixel, which blurs it a little).
+ */
+let base: { canvas: HTMLCanvasElement; key: unknown[]; view: View; sharp: boolean } | null = null
+/** A canvas to move the kept drawing into, swapped with it each time. */
+let spare: HTMLCanvasElement | null = null
+/** The view of the last paint, to tell a view moving (panned, zoomed) from one that has stopped. */
+let lastView: View | null = null
+let settling: ReturnType<typeof setTimeout> | undefined
+/** How long, in ms, the view stays still before what was stretched is painted sharp. */
+const SETTLE = 120
+
+/** A rectangle of the view, in CSS pixels. */
+interface Rect {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+/**
+ * Paints the desk, the sheets, the grid and the drawing onto `into` (made the size of `like`), as
+ * `drawScene` lays them under the rest; with `rect`, that part of the view only, leaving the rest
+ * as it is.
+ */
+function paintBase(
+  into: HTMLCanvasElement | undefined,
+  like: HTMLCanvasElement,
+  { width, height, dpr }: { width: number; height: number; dpr: number },
+  view: View,
+  scene: SceneItem[],
+  showGrid: boolean,
+  palette: CanvasPalette,
+  rect: Rect = { x: 0, y: 0, w: width, h: height },
+): HTMLCanvasElement {
+  const canvas = into ?? document.createElement('canvas')
+  if (canvas.width !== like.width || canvas.height !== like.height) Object.assign(canvas, { width: like.width, height: like.height })
+  const ctx = canvas.getContext('2d')!
+  const world = () => ctx.setTransform(dpr * view.zoom, 0, 0, dpr * view.zoom, dpr * view.x, dpr * view.y)
+  const screen = () => ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  screen()
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(rect.x, rect.y, rect.w, rect.h)
+  ctx.clip()
+  ctx.setLineDash([])
+  const { sheets, drawn } = stepsOf(scene)
+  // What is in sight there, and a margin as wide as the thickest line or largest marker drawn around a shape.
+  const margin = 40 / view.zoom
+  const area = { minX: (rect.x - view.x) / view.zoom - margin, minY: (rect.y - view.y) / view.zoom - margin, maxX: (rect.x + rect.w - view.x) / view.zoom + margin, maxY: (rect.y + rect.h - view.y) / view.zoom + margin }
+  // Once there are sheets of paper, what surrounds them is the desk they lie on.
+  ctx.fillStyle = sheets.length > 0 ? palette.desk : palette.surface
+  ctx.fillRect(rect.x, rect.y, rect.w, rect.h)
+  world()
+  paintSteps(ctx, sheets, view.zoom, palette.ink, area)
+  screen()
+  if (showGrid) drawGrid(ctx, width, height, view, palette)
+  world()
+  paintSteps(ctx, drawn, view.zoom, palette.ink, area)
+  ctx.restore()
+  return canvas
+}
+
+/**
+ * Moves the kept drawing with the view, which was panned by less than its size: what was painted is
+ * moved, and only the strips that come into sight are painted, so that what lies outside shows as
+ * it comes in. False when the view moved too far for anything to be kept.
+ */
+function panBase(kept: NonNullable<typeof base>, size: { width: number; height: number; dpr: number }, view: View, scene: SceneItem[], showGrid: boolean, palette: CanvasPalette): boolean {
+  const { width, height, dpr } = size
+  // Moved by whole pixels of the canvas only: moved by a fraction, it would be blurred a little at
+  // each step, more and more. It is then kept for a view a fraction of a pixel from the one shown,
+  // which laying it down makes up for once (and painting it again when the view stops).
+  const [sx, sy] = [Math.round((view.x - kept.view.x) * dpr), Math.round((view.y - kept.view.y) * dpr)]
+  const [dx, dy] = [sx / dpr, sy / dpr]
+  if (Math.abs(dx) >= width || Math.abs(dy) >= height) return false
+  const at: View = { zoom: kept.view.zoom, x: kept.view.x + dx, y: kept.view.y + dy }
+  if (sx !== 0 || sy !== 0) {
+    spare ??= document.createElement('canvas')
+    if (spare.width !== kept.canvas.width || spare.height !== kept.canvas.height) Object.assign(spare, { width: kept.canvas.width, height: kept.canvas.height })
+    const moved = spare.getContext('2d')!
+    moved.setTransform(1, 0, 0, 1, 0, 0)
+    moved.clearRect(0, 0, spare.width, spare.height)
+    moved.drawImage(kept.canvas, sx, sy)
+    const was = kept.canvas
+    kept.canvas = spare
+    spare = was
+    // The strips that came into sight, a pixel wider, so that no seam is left at their edge.
+    const strips: Rect[] = []
+    if (dx > 0) strips.push({ x: 0, y: 0, w: Math.ceil(dx) + 1, h: height })
+    if (dx < 0) strips.push({ x: Math.floor(width + dx) - 1, y: 0, w: Math.ceil(-dx) + 2, h: height })
+    if (dy > 0) strips.push({ x: 0, y: 0, w: width, h: Math.ceil(dy) + 1 })
+    if (dy < 0) strips.push({ x: 0, y: Math.floor(height + dy) - 1, w: width, h: Math.ceil(-dy) + 2 })
+    for (const strip of strips) paintBase(kept.canvas, kept.canvas, size, at, scene, showGrid, palette, strip)
+  }
+  kept.view = at
+  kept.sharp = at.x === view.x && at.y === view.y
+  return true
+}
+
 export function drawScene(
   ctx: CanvasRenderingContext2D,
   size: { width: number; height: number; dpr: number },
@@ -360,20 +568,37 @@ export function drawScene(
   const world = () => ctx.setTransform(dpr * view.zoom, 0, 0, dpr * view.zoom, dpr * view.x, dpr * view.y)
   const screen = () => ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-  screen()
-  ctx.setLineDash([])
-  const steps = paintOrder(scene.flatMap((item) => item.prims))
-  const sheets = steps.filter((step) => step.prim.backdrop === true)
-  // Once there are sheets of paper, what surrounds them is the desk they lie on.
-  ctx.fillStyle = sheets.length > 0 ? palette.desk : palette.surface
-  ctx.fillRect(0, 0, width, height)
+  // The drawing itself, painted again only when it or the way it is seen changes, and laid down
+  // whole under what moves with the pointer: snaps, the selection, sizes, guides.
+  // Panned, the drawing as last painted is moved and only what comes into sight is painted:
+  // painting a whole plan at each step of a drag could not keep up. Zoomed, it is painted whole at
+  // each step, sharp all the way: scaling the old one up and painting it sharp once the view had
+  // stopped made it blur and come back into focus, which read as the plan loading again. What is
+  // laid over it is always painted as it is.
+  const key = [scene, width, height, dpr, showGrid, palette, arrived]
+  const same = !!base && base.key.every((value, i) => value === key[i])
+  const moving = lastView !== null && (lastView.zoom !== view.zoom || lastView.x !== view.x || lastView.y !== view.y)
+  lastView = view
+  clearTimeout(settling)
+  const whole = () => (base = { canvas: paintBase(base?.canvas, ctx.canvas, size, view, scene, showGrid, palette), key, view, sharp: true })
+  if (!base || !same || base.view.zoom !== view.zoom) whole()
+  else {
+    const off = base.view.x !== view.x || base.view.y !== view.y
+    // Still, it is painted again where it is not exactly what the view shows.
+    if (off && moving) {
+      if (!panBase(base, size, view, scene, showGrid, palette)) whole()
+    } else if (off || !base.sharp) whole()
+  }
+  // Kept for a view a fraction of a pixel off: painted exactly once the view has been still a moment.
+  if (!base!.sharp) settling = setTimeout(repaint, SETTLE)
+  const kept = base!
+  // A canvas not laid out yet has no pixels, which a browser refuses to copy. It is laid down on
+  // whole pixels, never blurred: a third of a pixel off at most, which no one sees.
+  if (kept.canvas.width > 0 && kept.canvas.height > 0) {
+    ctx.setTransform(1, 0, 0, 1, Math.round(dpr * (view.x - kept.view.x)), Math.round(dpr * (view.y - kept.view.y)))
+    ctx.drawImage(kept.canvas, 0, 0)
+  }
   world()
-  for (const step of sheets) paint(ctx, step, view.zoom, palette.ink)
-  screen()
-  if (showGrid) drawGrid(ctx, width, height, view, palette)
-
-  world()
-  for (const step of steps) if (step.prim.backdrop !== true) paint(ctx, step, view.zoom, palette.ink)
 
   // The walls joined to the selected ones, faintly: what follows when their corners are moved.
   if (overlay.wallLinks && overlay.wallLinks.joined.length > 0) {
@@ -677,17 +902,21 @@ export function drawScene(
     ctx.lineCap = 'butt'
   }
   if (overlay.clearances) {
-    // Thin and grey, as Revit draws them, with a tick across each end; the length in a box, which a click opens.
-    ctx.setLineDash([])
+    // Thin, grey and dashed, so as not to be taken for dimensions of the drawing, with a tick across
+    // each end; the length on a light ground, boxed under the pointer, where a click opens it.
     ctx.lineWidth = 1
     ctx.strokeStyle = '#6b7a90'
     for (const { from, to } of overlay.clearances) {
+      ctx.setLineDash([4, 3])
       const [a, b] = [toScreen(from), toScreen(to)]
       const l = Math.hypot(b.x - a.x, b.y - a.y) || 1
       const n = { x: ((a.y - b.y) / l) * 5, y: ((b.x - a.x) / l) * 5 }
       ctx.beginPath()
       ctx.moveTo(a.x, a.y)
       ctx.lineTo(b.x, b.y)
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.beginPath()
       for (const p of [a, b]) {
         ctx.moveTo(p.x - n.x, p.y - n.y)
         ctx.lineTo(p.x + n.x, p.y + n.y)
@@ -697,15 +926,20 @@ export function drawScene(
     ctx.font = '11px system-ui, sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    for (const { label } of overlay.clearances) {
-      ctx.fillStyle = '#ffffff'
+    overlay.clearances.forEach(({ label }, i) => {
+      const hovered = i === overlay.clearanceHover
+      ctx.fillStyle = hovered ? '#ffffff' : 'rgb(255 255 255 / 80%)'
       ctx.beginPath()
       ctx.roundRect(label.x, label.y, label.width, label.height, 4)
       ctx.fill()
-      ctx.stroke()
-      ctx.fillStyle = '#3d4a5c'
+      if (hovered) {
+        ctx.strokeStyle = ACCENT
+        ctx.stroke()
+        ctx.strokeStyle = '#6b7a90'
+      }
+      ctx.fillStyle = hovered ? '#1f2937' : '#5b6576'
       ctx.fillText(label.text, label.x + label.width / 2, label.y + label.height / 2 + 0.5)
-    }
+    })
     ctx.textAlign = 'left'
     ctx.textBaseline = 'alphabetic'
   }

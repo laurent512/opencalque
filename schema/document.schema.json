@@ -327,7 +327,7 @@
             "type": "boolean"
           },
           "decimal": {
-            "description": "The decimal separator of the value. Defaults to '.'.",
+            "description": "The decimal separator of the value, in place of the drawing's (\"settings\"). Left out, the drawing's.",
             "type": "string",
             "enum": [
               ".",
@@ -1857,8 +1857,12 @@
                 "description": "Whether the floor area is written under the name. Defaults to true.",
                 "type": "boolean"
               },
+              "showPerimeter": {
+                "description": "Whether how far it is round the floor (along the faces of its walls, doors included) is written under the name and area, in m or ft as the drawing settings say. Defaults to false.",
+                "type": "boolean"
+              },
               "system": {
-                "description": "'imperial' writes the floor area in square feet. Defaults to 'metric', square metres.",
+                "description": "'imperial' writes the floor area in square feet, 'metric' in square metres, in place of the drawing's \"settings\". Left out (as it should be), the drawing's.",
                 "type": "string",
                 "enum": [
                   "metric",
@@ -1866,7 +1870,7 @@
                 ]
               },
               "decimal": {
-                "description": "The decimal separator of the area. Defaults to '.'.",
+                "description": "The decimal separator of the area, in place of the drawing's \"settings\". Left out (as it should be), the drawing's.",
                 "type": "string",
                 "enum": [
                   ".",
@@ -2122,7 +2126,7 @@
                 }
               },
               "decimal": {
-                "description": "The decimal separator of its numbers. Defaults to '.'.",
+                "description": "The decimal separator of its numbers, in place of the drawing's \"settings\". Left out (as it should be), the drawing's.",
                 "type": "string",
                 "enum": [
                   ".",
@@ -2130,7 +2134,7 @@
                 ]
               },
               "system": {
-                "description": "'imperial' gives lengths in feet, areas in square feet, volumes in cubic feet and thicknesses in inches. Defaults to 'metric'.",
+                "description": "'imperial' gives lengths in feet, areas in square feet, volumes in cubic feet and thicknesses in inches, in place of the drawing's \"settings\". Left out (as it should be), the drawing's.",
                 "type": "string",
                 "enum": [
                   "metric",
@@ -4290,7 +4294,7 @@
                 "type": "boolean"
               },
               "decimal": {
-                "description": "The decimal separator of the value. Defaults to '.'.",
+                "description": "The decimal separator of the value, in place of the drawing's (\"settings\"). Left out, the drawing's.",
                 "type": "string",
                 "enum": [
                   ".",
@@ -4982,6 +4986,29 @@
         },
         "author": {
           "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "settings": {
+      "description": "How the drawing writes its numbers: the floor areas of its rooms, its tables of quantities, its dimensions. Left out, in metric with a decimal point.",
+      "type": "object",
+      "properties": {
+        "system": {
+          "description": "'imperial': areas in square feet, and the lengths, volumes and thicknesses of tables of quantities in feet and inches. Defaults to 'metric' (square metres, metres).",
+          "type": "string",
+          "enum": [
+            "metric",
+            "imperial"
+          ]
+        },
+        "decimal": {
+          "description": "The decimal separator of the areas, tables and dimensions. Defaults to '.'.",
+          "type": "string",
+          "enum": [
+            ".",
+            ","
+          ]
         }
       },
       "additionalProperties": false

@@ -64,7 +64,24 @@ export interface Platform {
   /** Desktop only: closes the app, asking first about unsaved changes, installs the downloaded version and starts it. */
   installUpdate?(): void
   setDirty(dirty: boolean): void
+  /**
+   * Desktop only: where the keys of the assistant's services are kept, encrypted by the system
+   * (Electron's `safeStorage`: the keychain on macOS, DPAPI on Windows, the keyring on Linux), rather
+   * than in plain text with the other preferences. `available` is false where the system has no
+   * way to encrypt them, and they stay with the preferences.
+   */
+  secrets?: SecretStore
 }
+
+/** The keys of the assistant's services, kept apart: by the service they are for. */
+export interface SecretStore {
+  available(): Promise<boolean>
+  get(name: SecretName): Promise<string | null>
+  /** An empty value forgets the key. */
+  set(name: SecretName, value: string): Promise<void>
+}
+
+export type SecretName = 'anthropic' | 'compatible'
 
 declare global {
   interface Window {
@@ -90,6 +107,7 @@ const SAVED_TYPES: Record<string, { description: string; mime: string }> = {
   json: { description: 'JSON', mime: 'application/json' },
   pdf: { description: 'PDF', mime: 'application/pdf' },
   svg: { description: 'SVG', mime: 'image/svg+xml' },
+  png: { description: 'PNG', mime: 'image/png' },
   dxf: { description: 'DXF', mime: 'image/vnd.dxf' },
   csv: { description: 'CSV', mime: 'text/csv' },
 }

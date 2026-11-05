@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { FileText, LoaderCircle, PenTool, Ruler, Table2, type LucideIcon } from 'lucide-react'
+import { FileText, Image as Picture, LoaderCircle, PenTool, Ruler, Table2, type LucideIcon } from 'lucide-react'
 import { pagesOf, pdfFontCharacters } from '@opencalque/core'
-import { exportDxf, exportPdf, exportQuantities, exportSvg, type PdfExportStage } from './actions'
+import { exportDxf, exportPdf, exportPng, exportQuantities, exportSvg, PNG_SIZES, type PdfExportStage } from './actions'
 import { language, msg, t } from './i18n'
 import { preparePdfFonts } from './pdfFonts'
 import { registry } from './extensions'
@@ -11,7 +11,7 @@ import { useWindows } from './windows'
 
 const close = () => useWindows.setState({ exportOpen: false })
 
-type Format = 'pdf' | 'svg' | 'dxf' | 'csv'
+type Format = 'pdf' | 'svg' | 'png' | 'dxf' | 'csv'
 const PROGRESS: Record<PdfExportStage, string> = {
   fonts: msg('Preparing PDF fonts…'),
   rendering: msg('Generating PDF…'),
@@ -22,13 +22,14 @@ const PROGRESS: Record<PdfExportStage, string> = {
 const FORMATS: [Format, string, string, LucideIcon][] = [
   ['pdf', 'PDF', msg('Sheets at their true size and scale, to print or send'), FileText],
   ['svg', 'SVG', msg('A picture that stays sharp at any size, for the web or a layout program'), PenTool],
+  ['png', 'PNG', msg('A picture to send or show, readable everywhere'), Picture],
   ['dxf', 'DXF', msg('Lines, circles and text for other CAD programs'), Ruler],
   ['csv', 'CSV', msg('Quantities for a spreadsheet: room areas, walls, doors and windows'), Table2],
 ]
 
 /**
  * The one place a drawing is exported from: choose the format, then what goes in it. A PDF is
- * made of papers, one page each; an SVG or a DXF holds one page of the drawing.
+ * made of papers, one page each; an SVG, a PNG or a DXF holds one page of the drawing.
  */
 export function ExportDialog() {
   const open = useWindows((s) => s.exportOpen)
@@ -36,6 +37,7 @@ export function ExportDialog() {
   const page = useStore((s) => s.page)
   const selection = useStore((s) => s.selection)
   const [format, setFormat] = useState<Format>('pdf')
+  const [pixels, setPixels] = useState(PNG_SIZES[1])
   const [chosen, setChosen] = useState<string[]>([])
   const [from, setFrom] = useState(page)
   const [progress, setProgress] = useState<PdfExportStage | null>(null)
@@ -74,6 +76,7 @@ export function ExportDialog() {
     if (format !== 'pdf') {
       close()
       if (format === 'svg') await exportSvg(from)
+      else if (format === 'png') await exportPng(from, pixels)
       else if (format === 'dxf') await exportDxf(from)
       else await exportQuantities(from)
       return
@@ -152,6 +155,18 @@ export function ExportDialog() {
                 {pages.map((p) => (
                   <option key={p.id} value={p.id}>
                     {labelOf(doc, p)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {format === 'png' && (
+            <label className="pref-field">
+              <span>{t('Size')}</span>
+              <select value={pixels} onChange={(e) => setPixels(Number(e.target.value))}>
+                {PNG_SIZES.map((size) => (
+                  <option key={size} value={size}>
+                    {t('{n} pixels on its longer side', { n: size })}
                   </option>
                 ))}
               </select>

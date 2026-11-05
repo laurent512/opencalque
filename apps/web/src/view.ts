@@ -19,6 +19,20 @@ export function visibleArea(view: View, viewport: { width: number; height: numbe
 }
 
 /** The grid step, in mm, for a zoom: the finest whose squares are at least 8 pixels on screen. */
+/** CSS pixels in a millimetre of screen: 96 to the inch. */
+const PX_PER_MM = 96 / 25.4
+
+/**
+ * The scale the drawing is seen at on screen, as a drawing scale: "1:50" when a metre of the
+ * drawing is 2 cm of screen, "5:1" when enlarged. Taken at 96 pixels to the inch, which screens
+ * only roughly are.
+ */
+export function screenScale(zoom: number): string {
+  const n = PX_PER_MM / zoom
+  if (n >= 1) return `1:${n >= 10 ? Math.round(n) : Math.round(n * 10) / 10}`
+  return `${Math.round(10 / n) / 10}:1`
+}
+
 export function gridStep(zoom: number): number {
   for (const step of [1, 5, 10, 50, 100, 500, 1000, 5000, 10000, 50000]) if (step * zoom >= 8) return step
   return 100000

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { applyOps, createDocument, holdsChildren, layerIn, layersOf, pagesOf, type Document, type NodeInput, type NodeOf, type Op, type Pattern, type Vec2, wallEndsAt } from '@opencalque/core'
+import { applyOps, createDocument, holdsChildren, layerIn, layersOf, openingFollowOps, pagesOf, type Document, type NodeInput, type NodeOf, type Op, type Pattern, type Vec2, wallEndsAt } from '@opencalque/core'
+import { registry } from './extensions'
 import type { StoredFile } from './platform'
 import type { Tool } from './tools'
 import { CUT_TOOLS, MEASURE_TOOLS, ROOM_TOOLS, SHAPE_TOOLS, TEXT_TOOLS } from './tools'
@@ -251,13 +252,24 @@ function record(doc: Document, ops: Op[]): void {
 }
 
 /**
+ * `ops` applied to `doc`, with what follows from them: the doors and windows of the walls they
+ * changed, put back in them (`openingFollowOps`), so that no edit of a wall has to see to them.
+ */
+function applied(doc: Document, ops: Op[]): { doc: Document; ops: Op[] } {
+  const next = applyOps(doc, ops)
+  const changed = ops.flatMap((op) => (op.op === 'update_node' ? [op.id] : []))
+  const follow = changed.length > 0 ? openingFollowOps(doc, next, changed, registry) : []
+  return follow.length > 0 ? { doc: applyOps(next, follow), ops: [...ops, ...follow] } : { doc: next, ops }
+}
+
+/**
  * Applies operations as one undoable step, or throws when one fails. During a gesture they go on
  * top of its preview, which becomes part of the same step.
  */
 export function applyOrThrow(ops: Op[]): void {
   const s = get()
-  const all = s.base ? [...pending, ...ops] : ops
-  record(applyOps(s.doc, ops), all)
+  const done = applied(s.doc, ops)
+  record(done.doc, s.base ? [...pending, ...done.ops] : done.ops)
 }
 
 /** Applies operations as one undoable step. Reports failures to the user and returns false. */
@@ -279,8 +291,9 @@ export function preview(ops: Op[]): boolean {
   const s = get()
   const base = s.base ?? s.doc
   try {
-    set({ ...settle(s, applyOps(base, ops)), base })
-    pending = ops
+    const done = applied(base, ops)
+    set({ ...settle(s, done.doc), base })
+    pending = done.ops
     return true
   } catch (error) {
     set({ status: (error as Error).message.split('\n')[0] })
