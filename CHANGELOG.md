@@ -4,7 +4,7 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
-## Unreleased
+## 1.6.0 — 2026-11-06
 
 ### New
 - A Curved line tool, beside the line tool (`Shift+L`): a curve flows through the points as you click them. Curves used to be made by drawing a polyline and curving it afterwards, which still works.
