@@ -5,11 +5,11 @@ import { t } from './i18n'
  * each step of using one (`hintsFor`). What a tool does on the drawing is in `canvas/gestures/`
  * (`PRESSES`, and the gestures it starts); its command and shortcut are in `commands.ts` (`tool(…)`).
  */
-export type Tool = 'select' | 'hand' | 'line' | 'rect' | 'ellipse' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'rotate' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'place'
+export type Tool = 'select' | 'hand' | 'line' | 'curve' | 'arc' | 'rect' | 'ellipse' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'rotate' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'place'
 
 /** The plain shapes, which share one toolbar button. */
 // A paper is drawn as a rectangle is, by its corners: it is offered with the shapes.
-export const SHAPE_TOOLS: Tool[] = ['line', 'rect', 'ellipse', 'paper']
+export const SHAPE_TOOLS: Tool[] = ['line', 'curve', 'arc', 'rect', 'ellipse', 'paper']
 /** The tools for naming spaces, which share another. */
 export const ROOM_TOOLS: Tool[] = ['room', 'divider']
 /** The tools for writing on the drawing, which share a third. */
@@ -49,9 +49,14 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
     case 'divider':
       return step === 0 ? [['', t('Click where the divider starts, on a wall')]] : [['', t('Click where it ends, on the wall opposite')], angles, held, free, ['Esc', t('finishes')]]
     case 'line':
+    case 'curve':
       // One segment is a line, several a polyline; closed, a shape that can be filled.
-      if (step === 0) return [['', t('Click where the line starts')], rested]
-      return [['', step === 1 ? t('Click where it ends') : t('Click the next point')], typed, angles, held, free, ...(step >= 3 ? [['', t('Double-click, or click the first point, to close the shape')] as Hint] : []), ['Esc', t('finishes')]]
+      if (step === 0) return [['', tool === 'curve' ? t('Click where the curve starts') : t('Click where the line starts')], rested]
+      return [['', step === 1 && tool === 'line' ? t('Click where it ends') : t('Click the next point')], typed, angles, held, free, ...(step >= 3 ? [['', t('Double-click, or click the first point, to close the shape')] as Hint] : []), ['Esc', t('finishes')]]
+    case 'arc':
+      if (step === 0) return [['', t('Click where the arc starts')], rested]
+      if (step === 1) return [['', t('Click where the arc ends')], typed, angles, free, ['Esc', t('cancels')]]
+      return [['', t('Click a point the arc goes through')], ['0-9', t('type a radius')], ['Shift', t('makes a half circle')], free, ['Esc', t('cancels')]]
     case 'rect':
     case 'ellipse':
       return step === 0 ? [['', t('Click a corner, or type a width and a height first and click to place it')]] : [['', t('Click the opposite corner')], ['0-9', t('type an exact size')], free]

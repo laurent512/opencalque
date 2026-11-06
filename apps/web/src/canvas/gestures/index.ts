@@ -1,7 +1,7 @@
 import type { Tool } from '../../tools'
 import type { Gesture } from '../gesture'
 import type { Move, Press, Release } from '../runtime'
-import { drawDown, drawMove, drawUp, lineDown, offsetMove, polyMove, polyUp, textDown } from './drawTools'
+import { arcMove, drawDown, drawMove, drawUp, lineDown, offsetMove, polyMove, polyUp, textDown } from './drawTools'
 import { angleDown, angleMove, measureDown, measureMove } from './measure'
 import { eyedropperDown, placeDown, splitDown, toolHover, trimDown } from './place'
 import { cornerMove, cropMove, dragUp, endMove, faceMove, handleMove, hover, marqueeMove, marqueeUp, moveMove, pressMove, pressUp, resizeMove, rotateMove, scaleMove, selectDown } from './select'
@@ -27,6 +27,7 @@ export const PRESSES: Partial<Record<Tool, Press>> = {
   measure: measureDown,
   calibrate: measureDown,
   line: lineDown,
+  curve: lineDown,
 }
 /** The tools that draw by two points (and a dimension's third), and any not listed above. */
 export const DRAW_PRESS: Press = drawDown
@@ -48,6 +49,7 @@ export const MOVES: { [K in Gesture['kind']]: Move<K> } = {
   marquee: marqueeMove,
   draw: drawMove,
   offset: offsetMove,
+  arc: arcMove,
   measure: measureMove,
   angle: angleMove,
   poly: polyMove,

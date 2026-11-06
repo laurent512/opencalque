@@ -30,6 +30,8 @@ export type Gesture =
   | { kind: 'draw'; id: string; start: Vec2; press: (Vec2 & { time: number }) | null; origin: Vec2; segments: number; since: number }
   /** A dimension whose two points are set; the pointer now chooses how far its line stands off. */
   | { kind: 'offset'; id: string; a: Vec2; b: Vec2 }
+  /** An arc whose two ends are set; the pointer now chooses a point it goes through. */
+  | { kind: 'arc'; id: string; a: Vec2; b: Vec2 }
   /** A live reading from `start`. Nothing is added to the drawing. */
   | { kind: 'measure'; start: Vec2 }
   | { kind: 'angle'; vertex: Vec2; a?: Vec2 }
@@ -63,7 +65,7 @@ export interface Keys {
   shiftKey: boolean
 }
 
-export const TWO_POINT: Tool[] = ['line', 'wall', 'divider', 'dimension', 'annotation', 'gridline', 'rect', 'ellipse', 'paper']
+export const TWO_POINT: Tool[] = ['line', 'curve', 'arc', 'wall', 'divider', 'dimension', 'annotation', 'gridline', 'rect', 'ellipse', 'paper']
 /** The tools that measure what is drawn: their points snap to it, never to the grid. A dimension's line is still placed by grid steps. */
 export const MEASURING: Tool[] = ['dimension', 'measure', 'angle']
 /** Tools whose two typed sizes are a width and a height. */

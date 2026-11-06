@@ -204,6 +204,8 @@ While it is on, the desktop app listens on this computer only, on a port of its 
 | Tools | `V` select, `H` pan, `L` line (one segment, several, or closed into a polygon), `R` rectangle, `O` ellipse, `W` wall, `D` dimension, `E` rotate, `M` measure, `T` text, `I` eyedropper, `K` split, `X` trim. The plain shapes share one toolbar button; the arrow beside it lists them |
 | Exact sizes | While drawing, a bar above the tools shows the shape's sizes. Type a number (just start typing) to fix one, Tab to the next, Enter to draw. For a rectangle, type both and click once to place it |
 | Draw | Click the first point, click the second. Lines and walls keep chaining; `Esc` or a double-click ends. Dragging also works |
+| Curves and arcs | `Shift+L` draws a curve through the points you click. `Shift+O` draws an arc: click its two ends, then a point it goes through, or type a radius; `Shift` makes a half circle |
+| Select by a box | Drag on empty space with the select tool. Dragged to the right, the box takes what is wholly inside it; dragged to the left, green and dashed, everything it touches |
 | Navigate | Scroll to zoom, middle-drag or `Space`+drag to pan, `Shift+1` to fit; a tap on `Space` goes back to selecting |
 | Snapping | Snaps to existing points, then to the grid. Rest the pointer a moment on a point (a small cross marks it): what you draw or drag then lines up with it, and with two such points (upright from one, level with the other) snaps where their guides cross. `Shift` constrains to 45°, `Alt` turns it off |
 | Edit | Drag objects or their square handles, or type exact values in the right panel |

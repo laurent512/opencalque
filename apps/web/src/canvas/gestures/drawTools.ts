@@ -1,4 +1,4 @@
-import { dist, len, newId, nextGridLabel, norm, paperSize, perp, sub, type NodeInput, type Vec2 } from '@opencalque/core'
+import { arcMiddleOfRadius, dist, len, newId, nextGridLabel, norm, paperSize, perp, sub, type NodeInput, type Vec2 } from '@opencalque/core'
 import { t } from '../../i18n'
 import { apply, cancel, commit, layerHere, preview, useStore } from '../../store'
 import { formatLength, formatNumber } from '../../units'
@@ -6,19 +6,40 @@ import { gridStep } from '../../view'
 import { lineEnd, snap, type Target } from '../aim'
 import { BOXES, CHAINED, DRAG_DISTANCE, DRAG_TIME, SAME_POINT, type GestureOf, type Keys } from '../gesture'
 import { get, reset, syncStep, type Canvas, type Move, type Press, type Release } from '../runtime'
-import { axisOf, constrain, currentStyle, paperFormats, polyline, shape, sizes, wallOps } from '../shapes'
+import { arcNode, axisOf, constrain, currentStyle, paperFormats, polyline, shape, sizes, wallOps } from '../shapes'
 
 /*
- * The tools that add to the drawing point by point: the line tool, whose points make a line, a
- * polyline or a polygon (`poly`); the two-point shapes, walls and dividers chaining one after the
- * other (`draw`), a dimension then taking a third point for its line (`offset`); and text.
+ * The tools that add to the drawing point by point: the line and curve tools, whose points make a
+ * line, a polyline or a polygon, straight or flowing through them (`poly`); the two-point shapes,
+ * walls and dividers chaining one after the other (`draw`), a dimension then taking a third point
+ * for its line (`offset`) and an arc one that it goes through (`arc`); and text.
  */
 
 /** Where the second point of the two-point shape being drawn goes, for the pointer where it is. */
 export function aim(c: Canvas, g: GestureOf<'draw'>, world: Vec2, e: Keys): Target {
   const { tool } = get()
   if (CHAINED.includes(tool)) return lineEnd(c, world, e, [g.id], g.start)
-  return snap(c, world, e, [g.id], tool === 'dimension' || tool === 'gridline' ? g.start : undefined)
+  return snap(c, world, e, [g.id], tool === 'dimension' || tool === 'gridline' || tool === 'arc' ? g.start : undefined)
+}
+
+/**
+ * The point the arc being drawn goes through, for the pointer where it is: on a radius typed in
+ * the quick bar, which wins; on the top of a half circle with Shift; else snapped.
+ */
+function arcAim(c: Canvas, g: GestureOf<'arc'>, world: Vec2, e: Keys): Target {
+  const { a: radius } = get().drawLocks
+  if (radius !== undefined) return { p: arcMiddleOfRadius(g.a, g.b, radius, world), marker: null }
+  if (e.shiftKey) return { p: arcMiddleOfRadius(g.a, g.b, 0, world), marker: null }
+  return snap(c, world, e, [g.id])
+}
+
+/** Keeps the arc being drawn, through the point the pointer gives. */
+export function finishArc(c: Canvas, g: GestureOf<'arc'>, world: Vec2, e: Keys): void {
+  if (preview([{ op: 'add_node', node: arcNode(g.id, g.a, g.b, arcAim(c, g, world, e).p) }])) commit()
+  else cancel()
+  useStore.setState({ drawLocks: {}, drawLive: null })
+  c.gesture = { kind: 'idle' }
+  c.setOverlay({})
 }
 
 /** Completes the shape being drawn at `p`. Chained tools then start the next one from there. */
@@ -42,6 +63,12 @@ export function finishShape(c: Canvas, g: GestureOf<'draw'>, end: Vec2, chain: b
     // Not done yet: the next click places the dimension line.
     preview([{ op: 'add_node', node: shape(tool, g.id, g.start, p) }])
     c.gesture = { kind: 'offset', id: g.id, a: g.start, b: p }
+    return
+  }
+  if (tool === 'arc') {
+    // Not done yet: the next click says what it goes through. Until then it is its straight line.
+    preview([{ op: 'add_node', node: shape(tool, g.id, g.start, p) }])
+    c.gesture = { kind: 'arc', id: g.id, a: g.start, b: p }
     return
   }
   if (tool === 'annotation') {
@@ -128,6 +155,8 @@ export const drawDown: Press = (c, e, at, world) => {
   if (g.kind === 'offset') {
     commit()
     c.gesture = { kind: 'idle' }
+  } else if (g.kind === 'arc') {
+    finishArc(c, g, world, e)
   } else if (g.kind === 'draw') {
     // A click back on the point just placed, give or take the wobble of a double-click, is that
     // point: it ends the run (and, as a double-click, closes it) rather than drawing a tiny wall
@@ -157,7 +186,7 @@ export const drawDown: Press = (c, e, at, world) => {
 
 export const drawMove: Move<'draw'> = (c, g, e, _at, world, out) => {
   const s = get()
-  const constrained = CHAINED.includes(s.tool) || s.tool === 'dimension' || s.tool === 'gridline'
+  const constrained = CHAINED.includes(s.tool) || s.tool === 'dimension' || s.tool === 'gridline' || s.tool === 'arc'
   const target = aim(c, g, world, e)
   out.marker = target.marker
   out.link = target.link
@@ -186,7 +215,7 @@ export const polyMove: Move<'poly'> = (c, g, e, _at, world, out) => {
   out.previewed = preview([{ op: 'add_node', node: polyline(g.id, [...g.points, end], false) }])
   out.status = t('Length {value}', { value: formatLength(dist(last, end)) })
   out.axis = axisOf(last, end)
-  Object.assign(out, sizes('line', last, end))
+  Object.assign(out, sizes(s.tool, last, end))
 }
 
 export const offsetMove: Move<'offset'> = (_c, g, e, _at, world, out) => {
@@ -196,6 +225,16 @@ export const offsetMove: Move<'offset'> = (_c, g, e, _at, world, out) => {
   const offset = Math.round(((world.x - g.a.x) * n.x + (world.y - g.a.y) * n.y) / step) * step
   out.previewed = preview([{ op: 'add_node', node: shape('dimension', g.id, g.a, g.b, offset) }])
   out.status = t('Offset {value}', { value: formatLength(Math.abs(offset)) })
+}
+
+export const arcMove: Move<'arc'> = (c, g, e, _at, world, out) => {
+  const target = arcAim(c, g, world, e)
+  out.marker = target.marker
+  const node = arcNode(g.id, g.a, g.b, target.p)
+  out.previewed = preview([{ op: 'add_node', node }])
+  const radius = node.type === 'ellipse' ? (node.rx as number) : 0
+  out.live = { a: radius, b: 0 }
+  if (radius > 0) out.status = t('Radius {value}', { value: formatLength(radius) })
 }
 
 /** A line can be drawn by dragging from its first point to its second, and is then done. */

@@ -1,8 +1,8 @@
 import { childrenOf, isLocked, isVisible } from './document'
-import { boundsContain, boundsContainPoint, unionBounds, type Bounds, type Vec2 } from './geometry'
+import { boundsContain, boundsContainPoint, boundsTouch, unionBounds, type Bounds, type Vec2 } from './geometry'
 import { drawnSolid, kindOf, nodePrimitives, objectBacking, PAPER_EDGE, PAPER_FILL } from './kinds'
 import { mergedOutlines } from './merge'
-import { distToPrimitive, insidePrimitive, primitiveBounds, type Primitive } from './primitives'
+import { distToPrimitive, insidePrimitive, primitiveBounds, primitiveTouches, type Primitive } from './primitives'
 import type { Registry } from './registry'
 import type { Document, Node } from './schema'
 
@@ -86,13 +86,15 @@ export function sceneBounds(scene: SceneItem[]): Bounds | null {
   return scene.reduce<Bounds | null>((b, item) => unionBounds(b, item.bounds), null)
 }
 
+/** A component or an object is a thing, not a set of lines: inside one of its closed shapes is on it. */
+const isSolid = (item: SceneItem) => item.node.type === 'instance' || item.node.type === 'parametric'
+
 /** The topmost unlocked item within `tolerance` of the point. */
 export function hitTest(scene: SceneItem[], p: Vec2, tolerance: number): SceneItem | null {
   for (let i = scene.length - 1; i >= 0; i--) {
     const item = scene[i]
     if (item.locked || !item.bounds || !boundsContainPoint(item.bounds, p, tolerance)) continue
-    // A component or an object is a thing, not a set of lines: inside one of its closed shapes is on it.
-    const solid = item.node.type === 'instance' || item.node.type === 'parametric'
+    const solid = isSolid(item)
     if (item.prims.some((prim) => distToPrimitive(prim, p) <= tolerance || (solid && insidePrimitive(prim, p)))) return item
   }
   return null
@@ -101,6 +103,16 @@ export function hitTest(scene: SceneItem[], p: Vec2, tolerance: number): SceneIt
 /** Unlocked items lying entirely inside the rectangle. */
 export function itemsInside(scene: SceneItem[], rect: Bounds): SceneItem[] {
   return scene.filter((item) => !item.locked && item.bounds && boundsContain(rect, item.bounds))
+}
+
+/**
+ * Unlocked items the rectangle touches: what a click somewhere in it would pick up (`hitTest`). It
+ * goes by what is drawn, not by the box around it: a long diagonal line is not touched by a
+ * rectangle in a corner of its box, nor a sheet by a rectangle on it.
+ */
+export function itemsTouching(scene: SceneItem[], rect: Bounds): SceneItem[] {
+  const corner = { x: rect.minX, y: rect.minY }
+  return scene.filter((item) => !item.locked && item.bounds && boundsTouch(rect, item.bounds) && item.prims.some((prim) => primitiveTouches(prim, rect) || (isSolid(item) && insidePrimitive(prim, corner))))
 }
 
 export function snapPointsOf(item: SceneItem): Vec2[] {

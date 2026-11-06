@@ -2,7 +2,7 @@ import { serializeDocument } from '@opencalque/core'
 import { t } from './i18n'
 import { platform } from './platform'
 import { usePrefs } from './prefs'
-import { isDirty, useStore } from './store'
+import { forFile, isDirty, useStore } from './store'
 import { toast } from './windows'
 
 /** How long the drawing must have been left alone before it is saved, in milliseconds. */
@@ -22,7 +22,7 @@ async function save(): Promise<void> {
   const { doc, file, base, saved } = useStore.getState()
   if (!autosaves(file) || base || doc === saved) return
   try {
-    const stored = await platform.save(serializeDocument(doc), file!.name, file!.token)
+    const stored = await platform.save(serializeDocument(forFile(doc)), file!.name, file!.token)
     // The drawing may have been changed, or another one opened, while this one was being written.
     if (stored && useStore.getState().file === file) useStore.setState({ saved: doc })
     failing = false

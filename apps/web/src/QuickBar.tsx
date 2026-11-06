@@ -27,12 +27,18 @@ const run: Size[] = [
   { which: 'a', label: msg('Length'), kind: 'length' },
   { which: 'b', label: msg('Angle'), kind: 'angle' },
 ]
+/** A curve and an arc are not going the way their points lie: of those, only how far apart they are can be typed. */
+const span: Size[] = [run[0]]
+/** What can be typed once an arc has its two ends. */
+const bend: Size[] = [{ which: 'a', label: msg('Radius'), kind: 'length' }]
 /** The sizes each tool lets you type: lengths, an angle, or for resizing a percentage. */
 const SIZES: Partial<Record<Tool, Size[]>> = {
   rect: box,
   ellipse: box,
   paper: box,
   line: run,
+  curve: span,
+  arc: span,
   wall: run,
   divider: run,
   gridline: run,
@@ -43,8 +49,8 @@ const SIZES: Partial<Record<Tool, Size[]>> = {
  * make closed shapes, which take its fill too (the line tool closes a polygon). Line weights and
  * kinds of line are set afterwards, in the properties.
  */
-const INKED: Tool[] = ['rect', 'ellipse', 'line', 'wall', 'gridline']
-const FILLED: Tool[] = ['rect', 'ellipse', 'line']
+const INKED: Tool[] = ['rect', 'ellipse', 'line', 'curve', 'arc', 'wall', 'gridline']
+const FILLED: Tool[] = ['rect', 'ellipse', 'line', 'curve']
 
 /**
  * One size of the shape being drawn. It follows the pointer until a value is typed into it; a
@@ -122,7 +128,8 @@ export function QuickBar() {
   const paperScale = useStore((s) => s.paperScale)
   // The rotate tool takes an angle once its base line is set, at its second step.
   const started = useStore((s) => s.drawStep > (s.tool === 'rotate' ? 1 : 0))
-  const sizes = SIZES[tool]
+  const bending = useStore((s) => s.tool === 'arc' && s.drawStep >= 2)
+  const sizes = bending ? bend : SIZES[tool]
   if (!sizes) return null
   // A length or an angle means nothing before there is a point to measure it from. A
   // width and a height do: typed first, they make a box that one click places.

@@ -5,6 +5,7 @@ import {
   ellipseArc,
   pointInPolygon,
   rotate,
+  segmentTouchesBounds,
   type Bounds,
   type Transform,
   type Vec2,
@@ -216,6 +217,36 @@ export function insidePrimitive(p: Primitive, pt: Vec2): boolean {
     return Math.hypot(q.x / p.rx, q.y / p.ry) < 1
   }
   return false
+}
+
+/** Whether a line through `points` has any point in the box or, for a `solid` closed shape, the box is inside it. */
+function lineTouches(points: Vec2[], closed: boolean, solid: boolean, box: Bounds): boolean {
+  const n = points.length
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    if (segmentTouchesBounds(points[i], points[(i + 1) % n], box)) return true
+  }
+  // Having crossed no side of it, the box is either wholly inside or wholly outside.
+  return solid && pointInPolygon({ x: box.minX, y: box.minY }, points)
+}
+
+/**
+ * Whether a box has on it something of what a click there would find (`distToPrimitive`): the lines
+ * of a shape and the inside of one that is filled, never a floor or the inside of a sheet. Of a
+ * clip it asks only that the box meets its outline, which is close enough for selecting.
+ */
+export function primitiveTouches(p: Primitive, box: Bounds): boolean {
+  if (p.backdrop === 'floor') return false
+  if (p.clip?.some((outline) => !lineTouches(outline, true, true, box))) return false
+  switch (p.kind) {
+    case 'path':
+      return lineTouches(p.points, !!p.closed, !!p.closed && filled(p) && !p.backdrop, box)
+    case 'ellipse':
+      return lineTouches(ellipseArc({ ...p, from: 0, to: 360 }), true, filled(p), box)
+    case 'text':
+      return lineTouches(textCorners(p), true, true, box)
+    case 'image':
+      return lineTouches(imageCorners(p), true, true, box)
+  }
 }
 
 export function distToPrimitive(p: Primitive, pt: Vec2): number {

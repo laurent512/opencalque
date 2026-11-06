@@ -332,3 +332,77 @@ test('moves an object by dragging it, by whole steps of the grid', async ({ page
   await drag(page, at(500, 0), at(2500, 1000))
   expect((await saved(page)).find((n) => n.type === 'rect')).toMatchObject({ x: 2000, y: 1000, width: 1000, height: 1000 })
 })
+
+test('draws a curve through the points clicked, with its own tool', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('Shift+L')
+  await click(page, at(0, 0))
+  await expect(page.locator('.quickbar .quick-size span')).toHaveText(['Length'])
+  await click(page, at(1000, 1000))
+  await click(page, at(2000, 0))
+  await page.keyboard.press('Escape')
+  expect((await saved(page)).find((n) => n.type === 'polyline')).toMatchObject({
+    smooth: true,
+    points: [
+      { x: 0, y: 0 },
+      { x: 1000, y: 1000 },
+      { x: 2000, y: 0 },
+    ],
+  })
+})
+
+test('draws an arc by its two ends and a point it goes through', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('Shift+O')
+  await click(page, at(0, 0))
+  await expect(page.locator('.quickbar .quick-size span')).toHaveText(['Length'])
+  await click(page, at(2000, 0))
+  await expect(page.locator('.quickbar .quick-size span')).toHaveText(['Radius'])
+  await page.mouse.move(at(1000, 1000).x, at(1000, 1000).y)
+  await click(page, at(1000, 1000))
+  const arc = (await saved(page)).find((n) => n.type === 'ellipse')!
+  expect(arc).toMatchObject({ cx: 1000, cy: 0, rx: 1000, ry: 1000 })
+  // Clockwise on screen from the right end, down through the point clicked, to the left end.
+  expect([arc.from, arc.to].map(Math.round)).toEqual([0, 180])
+})
+
+test('takes a radius typed for an arc, on the side of the pointer', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('Shift+O')
+  await click(page, at(0, 0))
+  await click(page, at(2000, 0))
+  await page.mouse.move(at(1000, -300).x, at(1000, -300).y)
+  await page.keyboard.type('1500')
+  await page.keyboard.press('Enter')
+  const arc = (await saved(page)).find((n) => n.type === 'ellipse')!
+  expect(arc.rx).toBeCloseTo(1500)
+  expect(arc.cy).toBeGreaterThan(0)
+})
+
+test('a click on the third point of an arc in line with its ends makes a line', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('Shift+O')
+  await click(page, at(0, 0))
+  await click(page, at(2000, 0))
+  await click(page, at(1000, 0))
+  const nodes = await saved(page)
+  expect(nodes.filter((n) => n.type === 'ellipse')).toEqual([])
+  expect(nodes.find((n) => n.type === 'line')).toMatchObject({ a: { x: 0, y: 0 }, b: { x: 2000, y: 0 } })
+})
+
+test('a box dragged rightwards takes what is inside it, one dragged leftwards what it touches', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('l')
+  await click(page, at(1000, 0))
+  await click(page, at(1000, 3000))
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('v')
+  // Over the middle of the line, its ends outside: rightwards this takes nothing.
+  await drag(page, at(500, 1000), at(1500, 2000))
+  await page.keyboard.press('Delete')
+  expect((await saved(page)).filter((n) => n.type === 'line')).toHaveLength(1)
+  await drag(page, at(1500, 1000), at(500, 2000))
+  await page.keyboard.press('Delete')
+  expect((await saved(page)).filter((n) => n.type === 'line')).toHaveLength(0)
+})

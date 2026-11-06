@@ -8,6 +8,7 @@ import {
   frameMiddle,
   hitTest,
   itemsInside,
+  itemsTouching,
   kindOf,
   moveCornerOps,
   moveGuides,
@@ -32,6 +33,7 @@ import {
   type Modifier,
   type Node,
   type Op,
+  type Vec2,
 } from '@opencalque/core'
 import { registry } from '../../extensions'
 import { t } from '../../i18n'
@@ -40,7 +42,7 @@ import { commit, preview, select, selectCorner, useStore, cancel } from '../../s
 import { gridStep } from '../../view'
 import { formatLength, formatNumber } from '../../units'
 import { heldNearest, lineEnd, snap, squareFrom, type Target } from '../aim'
-import { ALIGN_REACH, SNAP_REACH } from '../gesture'
+import { ALIGN_REACH, SNAP_REACH, type GestureOf } from '../gesture'
 import { clearanceAt, cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, lineUp, titleAt } from '../picking'
 import { get, type Canvas, type Move, type Press, type Release } from '../runtime'
 import { faceAcross, faceOf, paperLabel, resizeCursor, round, sizes, thicknessLabel, thicknessStep, wallNormal } from '../shapes'
@@ -334,13 +336,23 @@ export const rotateMove: Move<'rotate'> = (_c, g, e, _at, world, out) => {
   out.status = t('Rotation {degrees}°', { degrees: String(Math.round((((degrees % 360) + 360) % 360) * 100) / 100) })
 }
 
+/** As in CAD, a box dragged leftwards picks up what it touches, and one dragged rightwards what lies wholly inside it. */
+const crossing = (g: GestureOf<'marquee'>, world: Vec2) => world.x < g.start.x
+
+/** What the box from where the drag started to `world` selects, with what was kept. */
+function boxed(c: Canvas, g: GestureOf<'marquee'>, world: Vec2): string[] {
+  const box = boundsOfPoints([g.start, world])!
+  const found = crossing(g, world) ? itemsTouching(c.scene, box) : itemsInside(c.scene, box)
+  return [...new Set([...g.keep, ...found.map((item) => item.id)])]
+}
+
 /** Shows what the box would select while it is being dragged, not only on release. */
 export const marqueeMove: Move<'marquee'> = (c, g, _e, _at, world, out) => {
   const s = get()
-  const inside = itemsInside(c.scene, boundsOfPoints([g.start, world])!).map((item) => item.id)
-  const next = [...new Set([...g.keep, ...inside])]
+  const next = boxed(c, g, world)
   if (next.length !== s.selection.length || next.some((id, i) => id !== s.selection[i])) select(next)
-  out.marquee = { a: g.start, b: world }
+  out.marquee = { a: g.start, b: world, crossing: crossing(g, world) }
+  out.status = crossing(g, world) ? t('Selects what the box touches') : t('Selects what is wholly inside the box')
 }
 
 /**
@@ -393,8 +405,7 @@ export function dragUp(c: Canvas): void {
 }
 
 export const marqueeUp: Release<'marquee'> = (c, g, _e, _at, world) => {
-  const inside = itemsInside(c.scene, boundsOfPoints([g.start, world])!).map((item) => item.id)
-  select([...new Set([...g.keep, ...inside])])
+  select(boxed(c, g, world))
   c.gesture = { kind: 'idle' }
   c.setOverlay({})
 }

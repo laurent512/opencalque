@@ -411,6 +411,15 @@ html.dock-dragging .tab-more {
   font-weight: 600;
 }
 
+/* Renaming the drawing happens where its name is: the field is as wide as the text, which stays put. */
+.menubar-name .inline-input {
+  flex: 0 1 auto;
+  field-sizing: content;
+  min-width: 4ch;
+  font: inherit;
+  text-align: center;
+}
+
 /* Panels */
 
 .panel {

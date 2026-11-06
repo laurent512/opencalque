@@ -1,5 +1,5 @@
 import { createDocument, readDocument, serializeDocument, type Document } from '@opencalque/core'
-import { isDirty, loadDocument, useStore } from './store'
+import { forFile, isDirty, loadDocument, useStore } from './store'
 
 /**
  * Unsaved work kept aside, so that a crash, a power cut or a frozen window does not lose it. A
@@ -100,7 +100,7 @@ export function startRecovery(): () => void {
     if (s.doc === written) return
     written = s.doc
     const now = Date.now()
-    await put({ session, name: s.doc.name, fileName: s.file?.name, content: serializeDocument(s.doc), changed: now, alive: now })
+    await put({ session, name: s.doc.name, fileName: s.file?.name, content: serializeDocument(forFile(s.doc, s)), changed: now, alive: now })
   }
   const check = () => {
     clearTimeout(timer)

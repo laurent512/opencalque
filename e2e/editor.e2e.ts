@@ -2142,3 +2142,57 @@ test('a locked object selected from the Structure panel cannot be changed by its
   await row.click()
   await expect(width).toHaveValue('4000')
 })
+
+test('a drawing opens on the layer in use when it was saved, and choosing one is not an edit', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  const rows = page.locator('[data-panel="layers"] .row')
+  const written = async () => {
+    const count: number = await page.evaluate(() => (window as any).saves.length)
+    await page.keyboard.press('Control+s')
+    await expect.poll(() => page.evaluate(() => (window as any).saves.length)).toBe(count + 1)
+    return JSON.parse(await page.evaluate(() => (window as any).saves.at(-1)))
+  }
+  await page.getByRole('button', { name: 'Add layer' }).click()
+  await expect(rows).toHaveCount(2)
+  await rows.nth(0).click()
+  // The first layer needs no saying: a drawing on it is written as it always was.
+  expect((await written()).meta).toBeUndefined()
+  await rows.nth(1).click()
+  await expect(page.locator('.menubar-name .faint', { hasText: '●' })).toHaveCount(0)
+  const file = await written()
+  expect(file.layers[file.meta.activeLayer].name).toBe((await rows.nth(1).textContent())!.trim())
+
+  await rows.nth(0).click()
+  await expect(rows.nth(0)).toHaveClass(/current/)
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', JSON.stringify(file))
+  await expect(rows.nth(1)).toHaveClass(/current/)
+  await expect(rows.nth(0)).not.toHaveClass(/current/)
+
+  // A layer that is no longer there, or anything else in its place, leaves the first one in use.
+  for (const kept of ['gone', 'constructor', 7]) {
+    await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', JSON.stringify({ ...file, meta: { activeLayer: kept } }))
+    await expect(rows.nth(0)).toHaveClass(/current/)
+  }
+})
+
+test('renames the drawing in place: the text does not move when it is double-clicked', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  const name = page.locator('.menubar-name .editable')
+  const shown = (await name.boundingBox())!
+  const weight = await name.evaluate((el) => getComputedStyle(el).fontWeight)
+  await name.dblclick()
+  const field = page.locator('.menubar-name .inline-input')
+  await expect(field).toBeFocused()
+  const box = (await field.boundingBox())!
+  expect(Math.abs(box.x + box.width / 2 - (shown.x + shown.width / 2))).toBeLessThanOrEqual(2)
+  // No wider than the text and the field's own edges.
+  expect(box.width).toBeLessThanOrEqual(shown.width + 14)
+  expect(await field.evaluate((el) => [getComputedStyle(el).textAlign, getComputedStyle(el).fontWeight])).toEqual(['center', weight])
+  await field.fill('A much longer name for this drawing')
+  await expect.poll(async () => (await field.boundingBox())!.width).toBeGreaterThan(box.width + 50)
+  await field.press('Enter')
+  await expect(name).toHaveText('A much longer name for this drawing')
+})

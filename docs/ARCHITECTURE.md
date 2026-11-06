@@ -63,7 +63,7 @@ packages/core/src            No UI and no DOM: compiled without the DOM's or Nod
   transform.ts    transformOps (through each kind's `transform`), turnToOps, turnedBox.
   resize.ts       The frames boxes, parametric objects and placed components are resized by.
   merge.ts        The outline of walls, painted as one mass: plain lines centred on their faces, what lies inside the mass left out (also the DXF export).
-  scene.ts        buildScene, hitTest, marquee selection, snap points, paint order.
+  scene.ts        buildScene, hitTest, marquee selection (itemsInside, itemsTouching), snap points, paint order.
   snap.ts         snapTo (points, middles, crossings, perpendiculars, places lined up with points, lines) and alignMove / moveGuides (smart guides).
   walls/          Walls, by part (index.ts lists them): course, spatial, openings, joints, outline, edit.
   similar.ts      What is alike to the selection (`alikeTo`): the same thing on a plan, type, layer or material; Select similar and the commands beside it.
@@ -399,7 +399,7 @@ Text written `\U+XXXX` is decoded; the export writes every character beyond ASCI
 
 ### Arcs, curves, repeats
 
-An arc is not a node type: an `ellipse` with `from` and/or `to` (degrees, clockwise on screen from the X axis) draws as an open path (`arcOf`, `ellipseArc`), so everything that works on an ellipse works on it; a mirror swaps its ends in `transformOps`. A polyline with `smooth` draws a Catmull-Rom curve through its points (`smoothPoints`); the points stay the handles. The `array` modifier returns the primitives it is given plus translated copies; its steps go through the modifier's `frame`, so they turn and scale with the object.
+An arc is not a node type: an `ellipse` with `from` and/or `to` (degrees, clockwise on screen from the X axis) draws as an open path (`arcOf`, `ellipseArc`), so everything that works on an ellipse works on it; a mirror swaps its ends in `transformOps`. The Arc tool makes one from its two ends and a point it goes through (`arcThrough`, the `arc` gesture, which follows `draw` as `offset` does for a dimension): always a circular arc, with its angles unrounded so that its ends stay where they were clicked; three points in line make a line. A polyline with `smooth` draws a Catmull-Rom curve through its points (`smoothPoints`); the points stay the handles. The Curved line tool is the line tool (`poly`) making that polyline. The `array` modifier returns the primitives it is given plus translated copies; its steps go through the modifier's `frame`, so they turn and scale with the object.
 
 ### PNG in PDF (`png.ts`)
 
@@ -643,6 +643,10 @@ In the quick bar, a size field that is focused and still following the pointer i
 **Splitting a wall (`splitWall` in `actions/walls.ts`).** The command `wall.split` cuts the one selected wall with `splitWallOps` at `menuPoint`, the place of the last right-click, which the canvas records with the context menu; when that point is not on the wall (the command came from the menu bar or the command list) the wall is cut in its middle. It is in the Edit menu and the command list, not in the right-click menu: on the drawing, the Split tool does it, showing where.
 
 **Smart guides (`alignMove`, `moveGuides` in `snap.ts`).** When a move begins, the canvas takes the box and snap points of what is moved and of every other thing in view (`alignables`). A group counts as itself and as each thing it holds, however deeply (`heldItems` in `scene.ts`), so that a thing lines up with one wall of a plan whose walls were grouped; what is moved is left out, even from inside a group, and a group holding more than 2000 things in view counts by its box alone. On each movement `alignMove` adjusts the displacement, each axis on its own: sides and middles of boxes against those of other boxes, points against points (never one against the other, or something would always be in reach), and the places where the moved thing would keep the same gap as its neighbours. An axis with nothing within 6 px goes by the grid as before. `moveGuides` then reports what is true of where things now are, lines and equal gaps, for the overlay (`Overlay.smart`); it does not care how they got there, so things lined up by the grid show too. Both are pure and unit-tested. Not done: the same while drawing or resizing, and objects that are turned (boxes are upright).
+
+**Selecting by a box**: dragged to the right, `itemsInside`; dragged to the left, `itemsTouching`, which means what a click somewhere in the box would pick up (`primitiveTouches` follows `distToPrimitive`): the lines of a shape and the inside of a filled one, of a component or an object all of it, never a floor or the inside of a sheet. It goes by what is drawn, not by bounds, or a long diagonal would be taken by any box near it.
+
+**The layer in use** is the editor's, not the drawing's: choosing one is no edit, takes no step of undo and leaves nothing to save. Only what is written carries it, as `meta.activeLayer` on a copy (`forFile` in `store.ts`, used wherever the editor writes a drawing), and only when it is not the first; `session` opens on it when that layer is still there. So a layer chosen and left with no change made is not remembered.
 
 ### Commands and shortcuts (`commands.ts`)
 

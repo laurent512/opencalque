@@ -104,7 +104,7 @@ const browsing = () => useWindows.getState().browsing !== null
 /** One parametric object or one table of quantities selected: what can be made into the shapes it draws. */
 const onlyVectorizable = () => get().selection.length === 1 && ['parametric', 'table'].includes(get().doc.nodes[get().selection[0]]?.type ?? '')
 /** A line, a wall or a divider has its first point and is waiting for the next. */
-const drawingLine = () => get().drawStep > 0 && ['line', 'wall', 'divider'].includes(get().tool)
+const drawingLine = () => get().drawStep > 0 && ['line', 'curve', 'wall', 'divider'].includes(get().tool)
 /** Something is being dragged with the select tool: moved, or reshaped by one of its points. */
 const dragging = () => get().tool === 'select' && get().base !== null && !get().editingText
 const canHold = () => drawingLine() || dragging()
@@ -297,6 +297,8 @@ const STATIC: Command[] = [
   tool('select', msg('Select'), 'V'),
   tool('hand', msg('Pan'), 'H'),
   tool('line', msg('Line'), 'L'),
+  tool('curve', msg('Curved line'), 'Shift+L'),
+  tool('arc', msg('Arc'), 'Shift+O'),
   // Listed before the rectangle tool so that R rotates while an object is being placed.
   {
     id: 'place.rotate',

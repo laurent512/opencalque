@@ -36,6 +36,7 @@ import type { View } from '../view'
 import { formatAngle, formatLength, formatNumber } from '../units'
 
 const ACCENT = '#0d99ff'
+const CROSSING = '#16a34a'
 /** The colour of what the pointer snaps to and of the guides shown while something is moved. */
 const SNAP = '#e5008a'
 /** The colour of what belongs to a modifier rather than to the object. */
@@ -120,7 +121,7 @@ export function darkInk(color: string, line = false): string {
 }
 
 export interface Overlay {
-  marquee?: { a: Vec2; b: Vec2 }
+  marquee?: { a: Vec2; b: Vec2; crossing: boolean }
   /** What the cursor snapped to, marked by a sign that tells its kind, with a word beside it for those that need one. */
   marker?: (Snap & { label?: string }) | null
   /** From what the pointer is on to where the line being drawn ends, when that end is only level with it. */
@@ -726,9 +727,15 @@ export function drawScene(
   if (overlay.marquee) {
     const a = toScreen(overlay.marquee.a)
     const b = toScreen(overlay.marquee.b)
-    ctx.fillStyle = 'rgba(13, 153, 255, 0.08)'
+    // Green and dashed when it picks up what it touches, as in CAD: which of the two it is shows before letting go.
+    const crossing = overlay.marquee.crossing
+    ctx.fillStyle = crossing ? 'rgba(22, 163, 74, 0.08)' : 'rgba(13, 153, 255, 0.08)'
     ctx.fillRect(a.x, a.y, b.x - a.x, b.y - a.y)
+    ctx.strokeStyle = crossing ? CROSSING : ACCENT
+    ctx.setLineDash(crossing ? [5, 4] : [])
     ctx.strokeRect(a.x + 0.5, a.y + 0.5, b.x - a.x, b.y - a.y)
+    ctx.strokeStyle = ACCENT
+    ctx.setLineDash([])
   }
   if (overlay.corner) {
     const p = toScreen(overlay.corner)

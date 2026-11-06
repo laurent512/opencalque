@@ -157,6 +157,12 @@ type State = Session & Interaction & ToolSettings & Screen
 
 const HISTORY_LIMIT = 200
 
+/** The layer a drawing opens on: the one in use when it was saved (`forFile`), if it is still there, else the first. */
+function layerToOpen(doc: Document): string {
+  const kept = doc.meta?.activeLayer
+  return typeof kept === 'string' && Object.hasOwn(doc.layers, kept) ? kept : layersOf(doc)[0].id
+}
+
 function session(doc: Document, file: StoredFile | null): Session {
   const page = pagesOf(doc)[0].id
   return {
@@ -172,7 +178,7 @@ function session(doc: Document, file: StoredFile | null): Session {
     trail: null,
     selection: [],
     corner: null,
-    activeLayer: layersOf(doc)[0].id,
+    activeLayer: layerToOpen(doc),
     view: { x: 320, y: 220, zoom: 0.1 },
   }
 }
@@ -363,3 +369,16 @@ export function layerHere(s: Pick<State, 'doc' | 'scope' | 'activeLayer'> = get(
 }
 
 export const isDirty = (s: State = get()) => (s.base ?? s.doc) !== s.saved
+
+/**
+ * The drawing as it goes into its file: with the layer in use, so that it opens on it, unless that
+ * is the first, on which it opens anyway. This is a copy made for writing and never the document:
+ * choosing a layer is not an edit, and neither takes a step of undo nor counts as a change to save.
+ */
+export function forFile(doc: Document, s: State = get()): Document {
+  const { meta, ...rest } = doc
+  const { activeLayer: _, ...others } = meta ?? {}
+  const kept = Object.hasOwn(doc.layers, s.activeLayer) && s.activeLayer !== layersOf(doc)[0].id ? { activeLayer: s.activeLayer } : {}
+  const written = { ...others, ...kept }
+  return Object.keys(written).length > 0 ? { ...rest, meta: written } : rest
+}

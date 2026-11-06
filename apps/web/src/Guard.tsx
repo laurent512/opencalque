@@ -3,7 +3,7 @@ import { serializeDocument } from '@opencalque/core'
 import { t } from './i18n'
 import { platform } from './platform'
 import { hideSplash } from './splash'
-import { useStore } from './store'
+import { forFile, useStore } from './store'
 
 /** Saves the drawing as it is, wherever the user says, whatever state the interface is in. */
 async function saveCopy(): Promise<void> {
@@ -11,7 +11,7 @@ async function saveCopy(): Promise<void> {
   // A gesture under way is left out: what is drawn is what was last finished.
   const drawing = base ?? doc
   try {
-    await platform.save(serializeDocument(drawing), file?.name ?? `${drawing.name.trim() || t('Untitled')}.opencalque`)
+    await platform.save(serializeDocument(forFile(drawing)), file?.name ?? `${drawing.name.trim() || t('Untitled')}.opencalque`)
   } catch (error) {
     window.alert((error as Error).message)
   }

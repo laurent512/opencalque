@@ -8,7 +8,7 @@ import { platform, type OpenedFile } from '../platform'
 import { usePrefs } from '../prefs'
 import { recoverable } from '../recovery'
 import { hideSplash } from '../splash'
-import { apply, cancel, isDirty, loadDocument, select, useStore } from '../store'
+import { apply, cancel, forFile, isDirty, loadDocument, select, useStore } from '../store'
 import { newDrawingSettings } from '../units'
 import { toast, useWindows } from '../windows'
 import { baseName, guarded } from './common'
@@ -135,7 +135,7 @@ export const saveDocument = (saveAs = false) =>
     cancel()
     const { doc, file } = get()
     const token = saveAs ? undefined : (file?.token ?? undefined)
-    const stored = await platform.save(serializeDocument(doc), file?.name ?? `${baseName()}.opencalque`, token)
+    const stored = await platform.save(serializeDocument(forFile(doc)), file?.name ?? `${baseName()}.opencalque`, token)
     if (stored) useStore.setState({ saved: doc, file: stored })
   })
 

@@ -4,6 +4,17 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### New
+- A Curved line tool, beside the line tool (`Shift+L`): a curve flows through the points as you click them. Curves used to be made by drawing a polyline and curving it afterwards, which still works.
+- An Arc tool (`Shift+O`): click the two ends, then a point the arc goes through. Type a radius instead of the third click, or hold `Shift` for a half circle.
+- Selecting by a box as in CAD: dragged to the right it takes what is wholly inside it, as before; dragged to the left, green and dashed, it takes everything it touches.
+
+### Improved
+- A drawing opens on the layer you were using when it was saved, rather than on the first one.
+- Renaming the drawing at the top of the window happens where its name is, instead of the name jumping to the left of a wide field.
+
 ## 1.5.0 — 2026-11-06
 
 ### New

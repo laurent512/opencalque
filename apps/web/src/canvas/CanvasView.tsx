@@ -16,7 +16,7 @@ import { DARK_AROUND_CANVAS, DARK_CANVAS, drawScene, LIGHT_CANVAS, MAX_LINKED_WA
 import { drawing } from './drawing'
 import { TURNING, type Gesture, type PointerAt } from './gesture'
 import { DRAW_PRESS, MOVES, PRESSES, RELEASES } from './gestures'
-import { aim, finishPoly, finishShape, polyPoint } from './gestures/drawTools'
+import { aim, finishArc, finishPoly, finishShape, polyPoint } from './gestures/drawTools'
 import { finishTurn } from './gestures/turn'
 import { shownClearances, useClearances, type ScreenBox } from './clearances'
 import { lockedAmong, titleAt } from './picking'
@@ -253,6 +253,7 @@ export function CanvasView() {
       const g = c.gesture
       const { world, ...keys } = c.lastWorld
       if (g.kind === 'draw') finishShape(c, g, aim(c, g, world, keys).p, true)
+      else if (g.kind === 'arc') finishArc(c, g, world, keys)
       else if (g.kind === 'turn' && g.from) finishTurn(c, g, world, keys)
       else if (g.kind === 'poly') {
         g.points.push(polyPoint(c, g, world, keys))
@@ -344,7 +345,7 @@ export function CanvasView() {
     const s = get()
     const line = c.endedLine
     const drawn = line && s.doc.nodes[line.id]
-    if (s.tool === 'line' && line && drawn?.type === 'polyline' && performance.now() - line.time < 1500 && c.gesture.kind === 'idle') {
+    if ((s.tool === 'line' || s.tool === 'curve') && line && drawn?.type === 'polyline' && performance.now() - line.time < 1500 && c.gesture.kind === 'idle') {
       // The line ended by the second click of this double-click: close it into a shape.
       c.endedLine = null
       apply([{ op: 'update_node', id: line.id, patch: { closed: true } }])
@@ -437,7 +438,7 @@ export function CanvasView() {
       // Not in the middle of dragging something: only a drawing being made is put down, as Esc does.
       const g = c.gesture
       if (g.kind === 'poly') finishPoly(c, g, false)
-      else if (['draw', 'offset', 'measure', 'angle', 'turn'].includes(g.kind)) reset(c)
+      else if (['draw', 'offset', 'arc', 'measure', 'angle', 'turn'].includes(g.kind)) reset(c)
       else if (g.kind !== 'idle') return
       if (get().tool !== 'select') setTool('select')
     }

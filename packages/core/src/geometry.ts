@@ -93,6 +93,30 @@ export function boundsContain(outer: Bounds, inner: Bounds): boolean {
   return inner.minX >= outer.minX && inner.maxX <= outer.maxX && inner.minY >= outer.minY && inner.maxY <= outer.maxY
 }
 
+/** Whether two boxes have any point in common. */
+export function boundsTouch(a: Bounds, b: Bounds): boolean {
+  return a.minX <= b.maxX && a.maxX >= b.minX && a.minY <= b.maxY && a.maxY >= b.minY
+}
+
+/** Whether any point of the segment from `a` to `b` is in the box: whether anything of it is left once each side of the box has cut it. */
+export function segmentTouchesBounds(a: Vec2, b: Vec2, box: Bounds): boolean {
+  let start = 0
+  let end = 1
+  const sides: [along: number, room: number][] = [
+    [a.x - b.x, a.x - box.minX],
+    [b.x - a.x, box.maxX - a.x],
+    [a.y - b.y, a.y - box.minY],
+    [b.y - a.y, box.maxY - a.y],
+  ]
+  for (const [along, room] of sides) {
+    if (along === 0) {
+      if (room < 0) return false
+    } else if (along < 0) start = Math.max(start, room / along)
+    else end = Math.min(end, room / along)
+  }
+  return start <= end
+}
+
 export function distToSegment(p: Vec2, a: Vec2, b: Vec2): number {
   const d = sub(b, a)
   const l2 = d.x * d.x + d.y * d.y
@@ -198,6 +222,47 @@ export function roundCorners(points: Vec2[], radius: number | readonly number[],
     if (Math.abs(first.x - last.x) < 1e-9 && Math.abs(first.y - last.y) < 1e-9) out.pop()
   }
   return out
+}
+
+/**
+ * The circular arc from `a` to `b` through `p`, in the terms of an ellipse that is an arc: its
+ * centre, its radius and the angles it runs clockwise between, which may start from `b`. Null when
+ * the three points are as good as in line, where there is no such arc.
+ */
+export function arcThrough(a: Vec2, b: Vec2, p: Vec2): { cx: number; cy: number; r: number; from: number; to: number } | null {
+  const chord = dist(a, b)
+  if (chord < 1e-6) return null
+  const middle = mid(a, b)
+  const along = norm(sub(b, a))
+  const across = perp(along)
+  const u = (p.x - middle.x) * along.x + (p.y - middle.y) * along.y
+  const v = (p.x - middle.x) * across.x + (p.y - middle.y) * across.y
+  if (Math.abs(v) < chord * 1e-4) return null
+  // Across from the middle of the chord, the centre is as far from `p` as from either end.
+  const k = (u * u + v * v - (chord * chord) / 4) / (2 * v)
+  const centre = add(middle, scale(across, k))
+  const angle = (q: Vec2) => (Math.atan2(q.y - centre.y, q.x - centre.x) * 180) / Math.PI
+  const turn = (from: number, to: number) => (((to - from) % 360) + 360) % 360
+  const [start, end] = [angle(a), angle(b)]
+  const fromA = turn(start, angle(p)) < turn(start, end)
+  return { cx: centre.x, cy: centre.y, r: dist(centre, a), from: fromA ? start : end, to: fromA ? end : start }
+}
+
+/**
+ * The point an arc of radius `radius` from `a` to `b` passes through, halfway round, on the side of
+ * the chord `towards` is on. There are two such arcs, a short and a long one: it is the one whose
+ * middle is nearer `towards`. A radius too small to reach makes a half circle.
+ */
+export function arcMiddleOfRadius(a: Vec2, b: Vec2, radius: number, towards: Vec2): Vec2 {
+  const half = dist(a, b) / 2
+  const middle = mid(a, b)
+  const across = perp(norm(sub(b, a)))
+  const beside = (towards.x - middle.x) * across.x + (towards.y - middle.y) * across.y
+  const r = Math.max(radius, half)
+  const rise = Math.sqrt(r * r - half * half)
+  const [short, long] = [r - rise, r + rise]
+  const height = Math.abs(Math.abs(beside) - short) <= Math.abs(Math.abs(beside) - long) ? short : long
+  return add(middle, scale(across, beside < 0 ? -height : height))
 }
 
 /** The points of an arc of an ellipse, clockwise on screen from one angle to another (a whole turn when they are equal). */

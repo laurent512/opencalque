@@ -5,6 +5,9 @@ import { createLucideIcon } from 'lucide-react'
  * among its own. Each is a LucideIcon, used wherever one of Lucide's is.
  */
 
+/** An arc: half a circle, unlike Lucide's curve with a point at each end, which it stands beside. */
+export const Arc = createLucideIcon('arc', [['path', { d: 'M4 18a8 8 0 0 1 16 0', key: 'arc' }]])
+
 /** A grid line: its bubble with a letter in it, over the start of its line in dash and dot. */
 export const GridLine = createLucideIcon('grid-line', [
   ['circle', { cx: '12', cy: '9', r: '7', key: 'bubble' }],

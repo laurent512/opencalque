@@ -44,6 +44,7 @@ import {
   BringToFront,
   AlignVerticalSpaceAround,
   Scissors,
+  Spline,
   Crosshair,
   Grid3x3,
   Magnet,
@@ -53,7 +54,7 @@ import {
 import { canFlipSide, MAX_ZOOM, MIN_ZOOM, zoomBy, zoomTo, zoomToFit } from './actions'
 import { CanvasView } from './canvas/CanvasView'
 import { executeById, formatKey, useShortcutLabel } from './commands'
-import { GridLine } from './icons'
+import { Arc, GridLine } from './icons'
 import { msg, t } from './i18n'
 import { QuickBar } from './QuickBar'
 import type { ScopeStep } from './scopePath'
@@ -72,6 +73,8 @@ const ICONS: Partial<Record<Tool, [title: string, icon: LucideIcon]>> = {
   select: [msg('Select'), MousePointer2],
   hand: [msg('Pan'), Hand],
   line: [msg('Line'), Minus],
+  curve: [msg('Curved line: flows through the points you click'), Spline],
+  arc: [msg('Arc: click its two ends, then a point it goes through'), Arc],
   rect: [msg('Rectangle'), Square],
   ellipse: [msg('Ellipse'), Circle],
   wall: [msg('Wall'), BrickWall],

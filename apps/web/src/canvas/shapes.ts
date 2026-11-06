@@ -1,4 +1,4 @@
-import { add, DEFAULT_PAPER_SCALE, dist, len, norm, PAPER_FORMATS, paperSize, perp, scale, sub, wallArc, wallEdgeLines, wallMiddle, wallSides, type Document, type NodeInput, type NodeOf, type Op, type SnapKind, type Style, type Vec2 } from '@opencalque/core'
+import { add, arcThrough, DEFAULT_PAPER_SCALE, dist, len, norm, PAPER_FORMATS, paperSize, perp, scale, sub, wallArc, wallEdgeLines, wallMiddle, wallSides, type Document, type NodeInput, type NodeOf, type Op, type SnapKind, type Style, type Vec2 } from '@opencalque/core'
 import { dimensionToolLook } from '../actions'
 import { registry } from '../extensions'
 import { t } from '../i18n'
@@ -81,7 +81,9 @@ export function sizes(tool: Tool, start: Vec2, p: Vec2): { live: { a: number; b:
   if (turn > 90 || turn <= -90) turn += 180
   const up = { x: Math.sin((turn * Math.PI) / 180), y: -Math.cos((turn * Math.PI) / 180) }
   const length: SizeLabel = { at: { x: (start.x + p.x) / 2, y: (start.y + p.y) / 2 }, dx: up.x * 16, dy: up.y * 16, text: formatLength(len(d)), rotation: turn }
-  return { live: { a: len(d), b: angle }, labels: [length], angle: { at: start, degrees: angle } }
+  // The way from one point of a curve or an arc to the next is not the way the line drawn goes: it has no angle to show.
+  const straight = tool !== 'curve' && tool !== 'arc'
+  return { live: { a: len(d), b: angle }, labels: [length], ...(straight ? { angle: { at: start, degrees: angle } } : {}) }
 }
 
 /** A width under a box and a height to its right. */
@@ -211,8 +213,16 @@ export const axisOf = (from: Vec2, to: Vec2): Overlay['axis'] => {
   return flat === upright ? undefined : { at: from, vertical: upright }
 }
 
-/** The polyline the line tool makes from the points clicked. */
+/** The polyline the line tool makes from the points clicked, or the curve through them that the curve tool makes. */
 export const polyline = (id: string, points: Vec2[], closed: boolean): NodeInput => {
+  const { scope, tool } = get()
+  return { id, type: 'polyline', parent: scope, ...layerHere(), points, closed, ...(tool === 'curve' ? { smooth: true } : {}), ...currentStyle(closed) }
+}
+
+/** The arc from `a` to `b` through `p`: an ellipse with a start and an end angle. Three points in line make a line. */
+export function arcNode(id: string, a: Vec2, b: Vec2, p: Vec2): NodeInput {
+  const arc = arcThrough(a, b, p)
+  if (!arc) return shape('line', id, a, b)
   const { scope } = get()
-  return { id, type: 'polyline', parent: scope, ...layerHere(), points, closed, ...currentStyle(closed) }
+  return { id, type: 'ellipse', parent: scope, ...layerHere(), cx: arc.cx, cy: arc.cy, rx: arc.r, ry: arc.r, from: arc.from, to: arc.to, ...currentStyle() }
 }
