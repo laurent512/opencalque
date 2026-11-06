@@ -34,8 +34,9 @@ app.whenReady().then(async () => {
   await key('v'); await click(620, 360); await shot('s2-selected.png')
   // Select everything, make a component, place a second instance rotated.
   await key('a', ['control']); await key('k', ['control', 'alt']); await shot('s3-component.png')
-  // Chosen through the command list, which works in any language and any panel arrangement.
-  await key('k', ['control']); for (const c of 'place component') await key(c); await key('Enter')
+  // Chosen through the command list, which works in any language and any panel arrangement. "insert"
+  // is its category: "place component" alone also finds going through the instances, listed first.
+  await key('k', ['control']); for (const c of 'insert place component') await key(c); await key('Enter')
   await move(900, 620); await key('r'); await click(1000, 640); await key('Escape')
   await click(700, 330); await click(700, 330)
   await shot('s4-instances.png')
