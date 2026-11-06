@@ -3,9 +3,10 @@ import { t } from '../i18n'
 import { platform } from '../platform'
 import { CLAUDE_MODELS, setAiPrefs, usePrefs, type Prefs } from '../prefs'
 import { registry } from '../extensions'
+import { svgToCanvas } from '../actions/file'
 import { applyOrThrow, collapseHistory, layerHere, useStore } from '../store'
 import { visibleArea } from '../view'
-import { runRequest, systemPrompt, TOOLS, type AgentHost, type RequestContext } from './agent'
+import { drawingHost, runRequest, systemPrompt, toolsFor, type AgentHost, type RequestContext } from './agent'
 import { anthropicProvider } from './anthropic'
 import { claudeCliProvider } from './claudecli'
 import { compatibleProvider, type Http } from './compatible'
@@ -85,7 +86,15 @@ const host: AgentHost = {
   },
   // Throws on a failed operation, which the agent reports back to the model.
   apply: applyOrThrow,
+  // PNG, not JPEG: a plan is thin lines on white.
+  picture: async (svg, pixels) => {
+    const canvas = await svgToCanvas(svg, pixels)
+    return { mime: 'image/png', data: canvas.toDataURL('image/png').split(',')[1], width: canvas.width, height: canvas.height }
+  },
 }
+
+/** The drawing open in the editor, for the tools. */
+export const openDrawing = drawingHost(host)
 
 /** The model session of the current conversation, with the settings it was made with. */
 let live: { provider: Provider; session: ChatSession; kind: ProviderKind; settings: string } | null = null
@@ -152,7 +161,7 @@ function currentSession(): NonNullable<typeof live> {
   const history = live ? (live.kind === ai.provider ? live.session.snapshot() : undefined) : stored?.provider === ai.provider ? stored.history : undefined
   if (history === undefined) carry = transcript(entries)
   const provider = createProvider(ai)
-  live = { provider, session: provider.createSession({ system: systemPrompt(registry), tools: TOOLS, history }), kind: ai.provider, settings }
+  live = { provider, session: provider.createSession({ system: systemPrompt(registry, provider.pictures), tools: toolsFor(provider.pictures), history }), kind: ai.provider, settings }
   return live
 }
 

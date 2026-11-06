@@ -31,6 +31,8 @@ export interface Prefs {
   snapToObjects: boolean
   /** Show how far the one object selected stands from the walls around it, as dimensions to type into. */
   showClearances: boolean
+  /** Desktop app: let agents on this computer work on the open drawing. Off until the person turns it on. */
+  agentBridge: boolean
   /** How the Components panel shows them: one per line, or as pictures side by side. */
   componentsView: 'list' | 'grid'
   extensions: {
@@ -86,6 +88,7 @@ const DEFAULTS: Prefs = {
   snapToGrid: true,
   snapToObjects: true,
   showClearances: true,
+  agentBridge: false,
   componentsView: 'list',
   extensions: { installed: {}, disabled: [] },
   catalogUrl: '',

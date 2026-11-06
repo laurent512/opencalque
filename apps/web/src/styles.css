@@ -1468,6 +1468,41 @@ button.crumb.ahead:hover {
   margin-left: auto;
 }
 
+.pref-heading {
+  margin: 20px 0 6px;
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.pref-heading:first-child {
+  margin-top: 4px;
+}
+
+.pref-command {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--hover);
+}
+
+.pref-command > code {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, Consolas, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.pref-command > button {
+  flex: none;
+}
+
 .shortcut-bar {
   display: flex;
   align-items: center;

@@ -1,4 +1,5 @@
 import { parseColor } from './colors'
+import type { Bounds } from './geometry'
 import { buildScene, paintOrder, sceneBounds, type PaintStep } from './scene'
 import type { Registry } from './registry'
 import type { Document } from './schema'
@@ -44,11 +45,17 @@ function stepToSvg({ prim, stroke, fill, widthScale, widthExtra, seam }: PaintSt
   return `<path d="${d}"${paint}/>`
 }
 
-/** Renders a page or component to a standalone SVG, in millimetres. */
-export function toSVG(doc: Document, containerId: string, registry: Registry): string {
+/** The part of the drawing an SVG made by `toSVG` shows, in millimetres. */
+export function svgBox(svg: string): Bounds {
+  const [x, y, width, height] = (/viewBox="([^"]+)"/.exec(svg)?.[1] ?? '0 0 1 1').split(' ').map(Number)
+  return { minX: x, minY: y, maxX: x + width, maxY: y + height }
+}
+
+/** Renders a page or component to a standalone SVG, in millimetres: all of it with a margin, or just `area`. */
+export function toSVG(doc: Document, containerId: string, registry: Registry, options: { area?: Bounds } = {}): string {
   const scene = buildScene(doc, containerId, registry)
-  const b = sceneBounds(scene) ?? { minX: 0, minY: 0, maxX: 1000, maxY: 1000 }
-  const margin = Math.max(b.maxX - b.minX, b.maxY - b.minY) * 0.05 + 1
+  const b = options.area ?? sceneBounds(scene) ?? { minX: 0, minY: 0, maxX: 1000, maxY: 1000 }
+  const margin = options.area ? 0 : Math.max(b.maxX - b.minX, b.maxY - b.minY) * 0.05 + 1
   const box = [b.minX - margin, b.minY - margin, b.maxX - b.minX + 2 * margin, b.maxY - b.minY + 2 * margin]
   // Clip outlines become clip paths, each defined once; a primitive inside several is nested in them all.
   const clips = new Map<string, string>()

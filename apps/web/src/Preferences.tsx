@@ -6,12 +6,22 @@ import { LANGUAGES, msg, t } from './i18n'
 import { platform } from './platform'
 import { CLAUDE_MODELS, setAiPrefs, setPrefs, usePrefs } from './prefs'
 import { BUILT_IN_EXTENSION } from './extensions'
+import { REPOSITORY } from './release'
 import { useStore } from './store'
 import { toast, useWindows } from './windows'
 import { FRACTIONS, UNITS } from './units'
 import { ExtensionWarehouse } from './WarehouseDialog'
 
 const close = () => useWindows.setState({ preferencesOpen: false })
+
+/** Says how a key is kept: encrypted by the system where the app can have it so (`keepKeysIn`), in plain text otherwise. */
+function KeyNote(props: { encrypted: string; plain: string }) {
+  const [encrypted, setEncrypted] = useState(false)
+  useEffect(() => {
+    void platform.secrets?.available().then(setEncrypted)
+  }, [])
+  return <p className="hint">{encrypted ? props.encrypted : props.plain}</p>
+}
 
 function Toggle(props: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
   return (
@@ -41,6 +51,22 @@ function TextSetting(props: { label: string; value: string; secret?: boolean; pl
         onBlur={() => text.trim() !== props.value && props.onCommit(text.trim())}
       />
     </label>
+  )
+}
+
+/** Everything that lets AI reach a drawing: the assistant in the app, then agents outside it where the app can let them in. */
+function AiSettings() {
+  return (
+    <>
+      <h3 className="pref-heading">{t('Assistant')}</h3>
+      <AssistantSettings />
+      {platform.agentBridge && (
+        <>
+          <h3 className="pref-heading">{t('Agents')}</h3>
+          <AgentSettings />
+        </>
+      )}
+    </>
   )
 }
 
@@ -77,7 +103,7 @@ function AssistantSettings() {
             </select>
           </label>
           <p className="hint">{t('Create a key at console.anthropic.com. Usage is billed to your Anthropic account.')}</p>
-          <p className="hint">{t('The key is stored on this computer, unencrypted, and is sent only to Anthropic.')}</p>
+          <KeyNote encrypted={t('The key is stored on this computer, encrypted by the system, and is sent only to Anthropic.')} plain={t('The key is stored on this computer, unencrypted, and is sent only to Anthropic.')} />
         </>
       )}
 
@@ -106,11 +132,45 @@ function AssistantSettings() {
           <TextSetting label={t('Model')} placeholder={t('The model name your service expects')} value={ai.compatible.model} onCommit={(model) => setAiPrefs({ compatible: { ...ai.compatible, model } })} />
           <TextSetting label={t('API key')} secret value={ai.compatible.apiKey} onCommit={(apiKey) => setAiPrefs({ compatible: { ...ai.compatible, apiKey } })} />
           <p className="hint">{t('Works with any service that accepts the OpenAI chat-completions format and supports tool calling.')}</p>
-          <p className="hint">{t('The key is stored on this computer, unencrypted, and is sent only to the address above.')}</p>
+          <KeyNote encrypted={t('The key is stored on this computer, encrypted by the system, and is sent only to the address above.')} plain={t('The key is stored on this computer, unencrypted, and is sent only to the address above.')} />
         </>
       )}
 
       <p className="hint">{t('When you use the assistant, your drawing is sent to the provider you chose. Imported pictures are left out unless the assistant asks to look at one.')}</p>
+    </>
+  )
+}
+
+/** A word of a command line, quoted unless it is plain: a path on Windows has backslashes, and often spaces. */
+const shellWord = (word: string) => (/^[\w./:=-]+$/.test(word) ? word : `"${word}"`)
+
+/** Agents outside the app: whether they may work on the open drawing, and how to connect one. */
+function AgentSettings() {
+  const agentBridge = usePrefs((p) => p.agentBridge)
+  const [connect, setConnect] = useState('')
+  useEffect(() => {
+    void platform.agentBridge?.command().then(({ command, args }) => setConnect(`claude mcp add opencalque-live -- ${[command, ...args].map(shellWord).join(' ')}`))
+  }, [])
+  const copy = () => void navigator.clipboard.writeText(connect).then(() => toast(t('Copied to the clipboard')))
+  return (
+    <>
+      <Toggle label={t('Let agents on this computer work on the open drawing')} checked={agentBridge} onChange={(on) => setPrefs({ agentBridge: on })} />
+      <p className="hint">{t('Programs on this computer that know how to reach it, such as Claude Code through the OpenCalque MCP server, can then read the open drawing and change it. Each change can be undone.')}</p>
+      <p className="hint">{t('Any program you run on this computer can then reach the open drawing, so turn this off when you are not using it.')}</p>
+      <p className="hint">{t('To connect Claude Code, run this once in a terminal:')}</p>
+      {connect && (
+        <div className="pref-command">
+          <code>{connect}</code>
+          <button className="text-button" onClick={copy}>
+            {t('Copy')}
+          </button>
+        </div>
+      )}
+      <p className="hint">
+        <a href={`${REPOSITORY}#ai-agents`} target="_blank" rel="noreferrer">
+          {t('Other agents, and working on files')}
+        </a>
+      </p>
     </>
   )
 }
@@ -282,7 +342,7 @@ function ShortcutSettings() {
 const PAGES: [id: string, title: string, icon: LucideIcon, page: () => React.ReactNode][] = [
   ['general', msg('General'), Settings2, GeneralSettings],
   ['drawing', msg('Drawing'), PencilRuler, DrawingSettings],
-  ['assistant', msg('Assistant'), Bot, AssistantSettings],
+  ['ai', msg('AI'), Bot, AiSettings],
   ['shortcuts', msg('Keyboard shortcuts'), Keyboard, ShortcutSettings],
   ['extensions', msg('Extensions'), Puzzle, ExtensionWarehouse],
 ]

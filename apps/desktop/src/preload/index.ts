@@ -6,6 +6,13 @@ const desktop: Platform = {
   request: (url, init) => ipcRenderer.invoke('net:request', url, init),
   claudeCli: (input) => ipcRenderer.invoke('claude:run', input),
   cancelClaudeCli: () => ipcRenderer.send('claude:cancel'),
+  agentBridge: {
+    set: (on) => ipcRenderer.send('bridge:set', on),
+    command: () => ipcRenderer.invoke('bridge:command'),
+    onCall: (listener) => {
+      ipcRenderer.on('bridge:call', async (_, id: number, name: string, input: unknown) => ipcRenderer.send('bridge:result', id, await listener(name, input)))
+    },
+  },
   setTheme: (dark, followsSystem) => ipcRenderer.send('app:theme', dark, followsSystem),
   setDialogLabels: (labels) => ipcRenderer.send('app:labels', labels),
   open: (extensions) => ipcRenderer.invoke('file:open', extensions),

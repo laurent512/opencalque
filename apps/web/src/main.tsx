@@ -10,6 +10,7 @@ import { keepKeysIn, usePrefs } from './prefs'
 import { loadExtensions, registry, useExtensions } from './extensions'
 import { loadDocument } from './store'
 import { startTheme } from './theme'
+import { startAgentBridge } from './ai/bridge'
 import { startUpdates } from './updates'
 import './styles.css'
 
@@ -19,6 +20,7 @@ loadExtensions()
 setLanguage(usePrefs.getState().language, registry.translations)
 startTheme()
 startUpdates()
+startAgentBridge()
 if (platform.secrets) void keepKeysIn(platform.secrets)
 loadDocument(blankDocument(), null)
 

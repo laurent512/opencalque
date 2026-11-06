@@ -130,7 +130,12 @@ pnpm opencalque svg plan.opencalque --out plan.svg
 pnpm opencalque dxf plan.opencalque --out plan.dxf
 pnpm opencalque import plan.opencalque ground.dxf first.dxf     # each DXF becomes a page, with its pictures
 pnpm opencalque validate plan.opencalque                          # exits 1, listing them, if opening it needs repairs
+pnpm opencalque check plan.opencalque                             # what is wrong with it, as JSON; exits 1 if anything is
+pnpm opencalque quantities plan.opencalque                        # rooms and their areas, walls, doors and objects, as JSON
+pnpm opencalque png plan.opencalque --size 2000 --out plan.png    # a page as a picture
 pnpm opencalque schema --out schema                              # JSON Schemas of documents and operations
+pnpm opencalque guide                                             # how drawings are stored and edited, written for an AI agent
+pnpm opencalque guide --type wall                                 # the JSON Schema of one type of node
 ```
 
 A wall is one operation:
@@ -141,11 +146,42 @@ A wall is one operation:
 
 A batch is all-or-nothing and every result is validated, so a script or a model cannot leave a drawing broken. Details are under [Operations](#operations).
 
+## AI agents
+
+OpenCalque serves drawings to an agent over [MCP](https://modelcontextprotocol.io), with the tools the assistant uses: edit with operations, read, measure, check what came out wrong, and look at a picture of the result.
+
+**The drawing open in the desktop app** needs only the app. Turn on *Let agents on this computer work on the open drawing* under Preferences › AI, which also gives the command to run once, with the real path of your app. With Claude Code it looks like this:
+
+```sh
+claude mcp add opencalque-live -- "C:\Users\you\AppData\Local\Programs\OpenCalque\OpenCalque.exe" --mcp
+```
+
+For any other MCP client, the command is the app and its one argument is `--mcp`. The app does not need to be open when you add it, only when the agent works.
+
+**Drawings on disk** need a checkout of this repository, like the CLI:
+
+```sh
+claude mcp add opencalque -- pnpm --silent --dir /path/to/opencalque opencalque mcp
+```
+
+Keep `--silent`: anything else on its output would break the protocol. From a checkout, `opencalque mcp --live` also reaches the open drawing. Give the agent absolute paths. It reads `read_guide` first, and asks for the schema of each type of node it uses.
+
+| | On a file | On the drawing open in the app |
+| --- | --- | --- |
+| **Turn it on** | Nothing to do | Preferences › AI › *Let agents on this computer work on the open drawing* (desktop app, off by default) |
+| **An edit** | Is written to the file at once | Appears on the canvas, and `Ctrl+Z` undoes it |
+| **Undo** | None: keep the drawing in version control, or a copy | Each edit is one step |
+| **Selection** | None | The agent is told what is selected |
+
+Do not work on a file with an agent while it is open in the app: the last to save wins. Use `--live` for that.
+
+While it is on, the desktop app listens on this computer only, on a port of its choosing, and answers only those who show the token it writes in `.opencalque/bridge.json` in your home folder. Web pages are turned away. Any program you run can read that file, so turn it off when you are not using it.
+
 ## Practical workflows
 
 - **Trace an existing plan.** Drop a scan or a PDF, click two points you know the distance between, and draw over it.
 - **Describe it.** Ask the assistant for "a 5 × 4 m room with a door on the bottom wall", paste a sketch, and undo the whole request with one `Ctrl+Z`.
-- **Generate it.** Produce a plan from a script or an agent with operations, then open it to adjust by hand. The example apartment is made this way.
+- **Generate it.** Produce a plan from a script or an agent with operations, then open it to adjust by hand. The example apartment is made this way. An agent can [check and measure what it drew](#ai-agents).
 - **Furnish and annotate.** Pick symbols from the library, name the rooms, add a floor pattern, dimension the walls.
 - **Frame it and print it.** Lay an A3 at 1:50 around the plan, fill in the title block, and export a PDF on which one metre measures 20 mm.
 
@@ -233,11 +269,12 @@ The assistant can use, chosen under Preferences:
 - **A local model through Ollama.** Nothing leaves your computer. In the desktop app this works out of the box; in a browser Ollama must be told to accept the page (`OLLAMA_ORIGINS`).
 - **Any other service** that accepts the OpenAI chat-completions format and supports tool calling.
 
-- An API key, when one is used, is stored on your computer, unencrypted, and is sent only to the provider you chose.
+- An API key, when one is used, is stored on your computer and sent only to the provider you chose. The desktop app has the system encrypt it; a browser has no way to, so there it is unencrypted.
 - When you send a request, the drawing is sent to that provider as JSON, with what you have selected (shown above the message box, where you can leave it out). Imported pictures are left out, unless the assistant asks to look at one (for example to trace a plan), in which case that picture is sent.
+- The assistant can also ask for a picture of the drawing to check its work. That picture shows what is drawn, imported pictures included.
 - The desktop app asks once before the assistant reaches a service that is not on your computer.
 - Pictures you attach are sent with that message. Conversations are kept on your computer (without the pictures' full data) until you delete them.
-- Nothing is sent anywhere unless you use the assistant. The rest of the app works offline.
+- Nothing is sent anywhere unless you use the assistant, or let an [agent](#ai-agents) in, which then decides where what it reads goes. The rest of the app works offline.
 
 ## How it is organised
 
@@ -320,6 +357,7 @@ pnpm opencalque apply plan.opencalque examples/studio.ops.json   # apply a JSON 
 pnpm opencalque describe plan.opencalque                         # JSON summary, useful as context for an AI agent
 pnpm opencalque svg plan.opencalque --out plan.svg
 pnpm opencalque validate plan.opencalque
+pnpm opencalque check plan.opencalque                            # what the operations left wrong
 ```
 
 `examples/studio.opencalque` was produced exactly this way from [`examples/studio.ops.json`](examples/studio.ops.json).

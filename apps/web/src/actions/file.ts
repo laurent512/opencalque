@@ -1,4 +1,4 @@
-import { applyOps, componentsOf, createDocument, dxfOps, freeComponentName, importComponents, NewerFormatError, parseDocument, pdfFontCharacters, quantities, quantitiesCsv, readDocument, serializeDocument, settingsOf, toDXF, toPDF, toSVG, type Document, type Op, type QuantityLabels } from '@opencalque/core'
+import { applyOps, componentsOf, createDocument, dxfOps, freeComponentName, importComponents, NewerFormatError, parseDocument, pdfFontCharacters, quantities, quantitiesCsv, readDocument, serializeDocument, settingsOf, svgBox, toDXF, toPDF, toSVG, type Document, type Op, type QuantityLabels } from '@opencalque/core'
 import { abortable } from '../abortable'
 import { showPanel } from '../dock'
 import { registry } from '../extensions'
@@ -236,6 +236,31 @@ export const exportSvg = (container?: string) =>
 export const PNG_SIZES = [2000, 4000, 8000]
 
 /**
+ * An SVG of a drawing drawn by the browser on a canvas `pixels` long on its longer side, at most
+ * 8000. Given its size in pixels, it is drawn at it rather than stretched from a small one.
+ */
+export async function svgToCanvas(svg: string, pixels: number): Promise<HTMLCanvasElement> {
+  const box = svgBox(svg)
+  const [width, height] = [box.maxX - box.minX, box.maxY - box.minY]
+  const scale = Math.min(pixels, 8000) / Math.max(width, height)
+  const [w, h] = [Math.max(1, Math.round(width * scale)), Math.max(1, Math.round(height * scale))]
+  const sized = svg.replace('<svg ', `<svg width="${w}" height="${h}" `)
+  const url = URL.createObjectURL(new Blob([sized], { type: 'image/svg+xml' }))
+  try {
+    const image = new Image()
+    image.src = url
+    await image.decode()
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    canvas.getContext('2d')!.drawImage(image, 0, 0, w, h)
+    return canvas
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+/**
  * Exports one page (or, without one given, what is being edited) as a PNG picture `pixels` wide
  * on its longer side, at most 8000: the SVG export, drawn by the browser on a white canvas, so that
  * the two look alike.
@@ -243,27 +268,10 @@ export const PNG_SIZES = [2000, 4000, 8000]
 export const exportPng = (container: string | undefined, pixels: number) =>
   guarded(async () => {
     const { doc, scope } = get()
-    const svg = toSVG(doc, container ?? scope, registry)
-    const [, , width, height] = (/viewBox="([^"]+)"/.exec(svg)?.[1] ?? '0 0 1 1').split(' ').map(Number)
-    const scale = Math.min(pixels, 8000) / Math.max(width, height)
-    const [w, h] = [Math.max(1, Math.round(width * scale)), Math.max(1, Math.round(height * scale))]
-    // Given its size in pixels, the picture is drawn at it rather than stretched from a small one.
-    const sized = svg.replace('<svg ', `<svg width="${w}" height="${h}" `)
-    const url = URL.createObjectURL(new Blob([sized], { type: 'image/svg+xml' }))
-    try {
-      const image = new Image()
-      image.src = url
-      await image.decode()
-      const canvas = document.createElement('canvas')
-      canvas.width = w
-      canvas.height = h
-      canvas.getContext('2d')!.drawImage(image, 0, 0, w, h)
-      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
-      if (!blob) throw new Error(t('The picture is too large to be made: choose a smaller size.'))
-      await platform.save(new Uint8Array(await blob.arrayBuffer()), `${baseName()}.png`)
-    } finally {
-      URL.revokeObjectURL(url)
-    }
+    const canvas = await svgToCanvas(toSVG(doc, container ?? scope, registry), pixels)
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
+    if (!blob) throw new Error(t('The picture is too large to be made: choose a smaller size.'))
+    await platform.save(new Uint8Array(await blob.arrayBuffer()), `${baseName()}.png`)
   })
 
 /** Adds the geometry of a DXF file to what is being edited, selects it and brings it into view. */

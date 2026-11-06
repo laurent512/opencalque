@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyOps, childrenOf, createDocument, OpSchema, Registry, type Document, type Op, type Vec2 } from '@opencalque/core'
 import { architecture } from '@opencalque/ext-architecture'
-import { describeState, runRequest, systemPrompt, TOOLS, type AgentHost } from './agent'
+import { describeState, runRequest, systemPrompt, toolsFor, TOOLS, type AgentHost } from './agent'
 import { modelOptions } from './anthropic'
 import { parseReply } from './claudecli'
 import type { ChatSession, TurnInput, TurnOutput } from './types'
@@ -99,6 +99,52 @@ describe('assistant', () => {
     }
   })
 
+  it('tells the model what its edit left wrong, and the person only that it was applied', async () => {
+    const { host } = fakeHost()
+    const room = { op: 'add_node', node: { type: 'room', id: 'r', name: 'Kitchen', parent: 'page_1', x: 500, y: 500 } }
+    const { session, received } = scripted([call('apply_operations', { operations: [room] })])
+    const log = events()
+    await runRequest(session, host, 'name this room', log, new AbortController().signal)
+    const [result] = (received[1] as { results: { content: string }[] }).results
+    expect(JSON.parse(result.content).problems[0]).toMatchObject({ kind: 'room-not-enclosed', nodes: ['r'] })
+    expect(log.notes).toEqual(['done: Applied 1 change to the drawing'])
+  })
+
+  it('shows the model the drawing through the host, and runs the calls of one step in turn', async () => {
+    const { host, doc } = fakeHost()
+    const drawn: string[] = []
+    host.picture = async (svg) => {
+      // What is drawn is the drawing as the call before it left it.
+      drawn.push(svg)
+      return { mime: 'image/png', data: 'eA==', width: 800, height: 600 }
+    }
+    const step: TurnOutput = {
+      calls: [
+        { id: 'c1', name: 'apply_operations', input: { operations: [wall] } },
+        { id: 'c2', name: 'view_drawing', input: {} },
+      ],
+      stop: 'tools',
+    }
+    const { session, received } = scripted([step])
+    const log = events()
+    await runRequest(session, host, 'draw and look', log, new AbortController().signal)
+    expect(childrenOf(doc(), 'page_1')).toHaveLength(1)
+    expect(drawn[0]).toContain('<path')
+    const results = (received[1] as { results: { id: string; content: string; image?: unknown }[] }).results
+    expect(results.map((r) => r.id)).toEqual(['c1', 'c2'])
+    expect(results[1].image).toEqual({ mime: 'image/png', data: 'eA==' })
+    expect(results[1].content).toContain('800 × 600 pixels')
+    expect(log.notes).toEqual(['done: Applied 1 change to the drawing', 'done: Looked at the drawing'])
+  })
+
+  it('offers looking at the drawing only to a provider that can be shown it', () => {
+    expect(toolsFor(true).map((tool) => tool.name)).toContain('view_drawing')
+    expect(toolsFor(false).map((tool) => tool.name)).not.toContain('view_drawing')
+    expect(toolsFor(false).map((tool) => tool.name)).toContain('view_image')
+    expect(systemPrompt(registry, true)).toContain('Use view_drawing')
+    expect(systemPrompt(registry, false)).not.toContain('Use view_drawing')
+  })
+
   it('reads tool calls out of a text-only reply, as the Claude CLI gives', () => {
     const reply = 'Adding it.\n<opencalque-tool>{"name":"apply_operations","input":{"operations":[]}}</opencalque-tool>\n<opencalque-tool>not json</opencalque-tool>'
     const { text, calls } = parseReply(reply)
@@ -114,7 +160,7 @@ describe('assistant', () => {
     const prompt = systemPrompt(registry)
     for (const kind of registry.parametric.keys()) expect(prompt).toContain(kind)
     expect(prompt).toContain('"wall"')
-    expect(TOOLS.map((t) => t.name)).toEqual(['apply_operations', 'read_document', 'view_image'])
+    expect(TOOLS.map((t) => t.name)).toEqual(['apply_operations', 'read_document', 'describe_drawing', 'view_image', 'view_drawing', 'measure_drawing', 'check_drawing'])
     expect(JSON.stringify(TOOLS[0].schema)).toContain('add_node')
   })
 

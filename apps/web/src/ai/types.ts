@@ -1,26 +1,17 @@
+import type { Picture, ToolSpec } from '@opencalque/core'
+
 /**
  * The seam between the assistant and whichever model service answers it. A provider turns these
  * neutral shapes into its own wire format and keeps the conversation history in that format, so
  * nothing provider-specific (reasoning blocks, tool-call ids) is lost in translation.
  */
 
-export interface ToolSpec {
-  name: string
-  description: string
-  /** JSON Schema of the tool's input object. */
-  schema: Record<string, unknown>
-}
+export type { Picture, ToolSpec }
 
 export interface ToolCall {
   id: string
   name: string
   input: unknown
-}
-
-/** A picture for the model to look at, base64-encoded. */
-export interface Picture {
-  mime: string
-  data: string
 }
 
 export interface ToolResult {

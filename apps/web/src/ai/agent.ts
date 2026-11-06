@@ -1,28 +1,28 @@
 import {
   boundsOf,
-  childrenOf,
   cornerJoin,
+  DRAWING_TOOLS,
+  drawingGuide,
   layersOf,
   leavesOf,
-  nodeJsonSchema,
   nodePrimitives,
-  opsJsonSchema,
-  parseOps,
   roomAt,
   rootOf,
-  unknownProperties,
+  runDrawingTool,
   wallEndsAt,
   wallLength,
   withoutAssets,
   type Bounds,
   type Document,
+  type DrawingHost,
   type Node,
   type Op,
   type Registry,
+  type ToolNote,
   type Vec2,
 } from '@opencalque/core'
 import { t, tn } from '../i18n'
-import type { ChatSession, Picture, ToolCall, ToolResult, ToolSpec, TurnInput } from './types'
+import type { ChatSession, Picture, ToolCall, ToolResult, TurnInput } from './types'
 
 /** What the assistant can see of the editor, and the one thing it can do to it. */
 export interface AgentHost {
@@ -41,7 +41,9 @@ export interface AgentHost {
   /** Applies operations as an edit the user can undo. Throws when they are invalid, changing nothing. */
   apply(ops: Op[]): void
   /** The extensions in use, to work out what the selected objects measure. */
-  registry?: Registry
+  registry: Registry
+  /** Draws an SVG as a picture, for the model to look at the drawing. */
+  picture?: DrawingHost['picture']
 }
 
 /** What goes with one request besides the person's words. */
@@ -63,40 +65,14 @@ const INLINE_LIMIT = 40_000
 /** Above this many characters the selected objects are listed by id and type rather than given whole. */
 const SELECTION_LIMIT = 20_000
 
-const schema = (properties: Record<string, unknown>, required: string[] = []) => ({ type: 'object', properties, required, additionalProperties: false })
+/** The tools of the assistant, which every agent has (`DRAWING_TOOLS`). */
+export const TOOLS = DRAWING_TOOLS
 
-export const TOOLS: ToolSpec[] = [
-  {
-    name: 'apply_operations',
-    description:
-      'Changes the drawing. Takes a list of operations and applies them in order as a single edit. The list is all-or-nothing: if any operation is invalid nothing changes and the error is returned so you can correct it. Returns the ids of the nodes that were added, and lists any property you wrote that the format does not know (usually a misspelling), which was kept but has no effect.',
-    schema: schema({ operations: { ...opsJsonSchema(), $schema: undefined } }, ['operations']),
-  },
-  {
-    name: 'read_document',
-    description:
-      'Returns the current drawing as JSON: its layers, shared colours, materials, dimension styles and nodes. Pass "ids" to get only those nodes, with everything inside the groups among them, or "container" (a page, component or group id) to get what it holds. Use it when the drawing was too large to include with the request, or to check the result of an edit.',
-    schema: schema({
-      container: { type: 'string', description: 'Id of a page, component or group.' },
-      ids: { type: 'array', items: { type: 'string' }, description: 'Ids of the nodes to read.' },
-    }),
-  },
-  {
-    name: 'view_image',
-    description:
-      'Shows you a picture placed in the drawing, such as an imported floor plan, together with where it sits so you can convert positions in the picture to drawing coordinates.',
-    schema: schema({ node: { type: 'string', description: 'Id of the image node.' } }, ['node']),
-  },
-]
+/** The tools a provider can use: looking at the drawing is no use to one that cannot be shown pictures. */
+export const toolsFor = (pictures: boolean) => (pictures ? TOOLS : TOOLS.filter((tool) => tool.name !== 'view_drawing'))
 
 /** The fixed part of the prompt: what the app is, how drawings are stored, and how to edit them. */
-export function systemPrompt(registry: Registry): string {
-  const kinds = [...registry.parametric.values()].map((k) => ({
-    kind: k.kind,
-    what: k.description ? `${k.label}. ${k.description}` : k.label,
-    props: Object.fromEntries(k.params.map((p) => [p.key, `${p.options ? `one of ${p.options.join(' | ')}` : p.type}${p.unit === 'length' ? ' in mm' : ''} (default ${p.default})`])),
-    cutsWalls: Boolean(k.opening),
-  }))
+export function systemPrompt(registry: Registry, pictures = true): string {
   return `You are the drawing assistant built into OpenCalque, a 2D drafting application for architectural plans and layouts. The person you are talking to has a drawing open in the app right now. When you change it, the result appears on their canvas immediately, and all the changes made for one request are undone together by a single Ctrl+Z, so it is fine to act on a clear request without asking for confirmation first.
 
 # What comes with each message
@@ -105,56 +81,7 @@ Each message from the person starts with a <drawing_state> block written by the 
 
 When the person has selected something, the block contains a <selection> with the selected nodes in full, and what they measure (a wall's length, a room's area, where each lies). That is what they mean by "this", "these", "it", "the selected walls" and the like, as a person pointing at the screen would; act on those nodes unless they name others. If nothing is selected and the request needs a target that is not obvious, say what you took it to mean. Only the person's own words after the block are their request.
 
-# How a drawing is stored
-
-A drawing is a flat map of nodes, plus its layers, shared colours, materials and dimension styles. Each node has an "id", a "type", a "parent" and an "order". Pages and components are the roots: their parent is null. Every other node sits in a page, in a component, or in a group, which may itself be in a group, to any depth. "order" sets the stacking among siblings; it is a fractional-indexing key such as "a0" or "a1V". Leave it out when adding a node, which puts the node on top; never invent one such as "top" or "1". Nodes may also carry "name", "layer" (a layer id), "visible", "locked", "style" (stroke, strokeWidth, fill, dash, pattern), "modifiers" and "meta".
-
-All coordinates and lengths are millimetres. X grows to the right and Y grows downward, as on a screen, so a point further down the sheet has a larger Y. Rotations are in degrees, clockwise. A line weight (strokeWidth) is in screen pixels; one pixel prints as 0.25 mm.
-
-This is the JSON Schema of a node, which lists every type and its properties:
-
-${JSON.stringify(nodeJsonSchema())}
-
-# Things that are not obvious from the schema
-
-Walls are defined by a line from "a" to "b" plus a thickness. The line is the wall's middle, or with "justify": "left" or "right" that face of it (as it runs from a to b), the whole thickness then lying on the other side: draw outside walls by their inner face so that rooms keep their size and walls of different thicknesses stay flush inside. Two walls join cleanly only when their ends are exactly the same point, so reuse the same coordinates for a shared corner. A typical interior wall is 100 mm thick and an exterior one 200 to 300 mm. "bulge" bends a wall into an arc. "joins" chooses how an end meets one other wall: "round" or "bevel" on both ends of the corner, or "through" on the wall that runs past and "butt" on the one that stops against it; without it the corner is mitred. "free" on an end joins it to no wall, even where other walls end at the same point.
-
-A dimension style (the document's "dimensionStyles", managed with add_dimension_style, update_dimension_style and remove_dimension_style) defines whichever properties of a dimension it gives a value to; dimensions take it with "dimensionStyle": "<id>" and may still give a value of their own.
-
-A material (the document's "materials", managed with add_material, update_material and remove_material) is what something is built of: a name, and the "fill" and "pattern" it is drawn with. A wall is of one material, with "material": "<id>", and drawn in its colour and pattern; walls of one material that meet are drawn as one, and a line is drawn between walls of different materials that touch. A wall built of several materials (brick, an insulation lining, plaster) is several walls side by side, each of one material and its own thickness, laid face to face: draw them with "justify" on the face they share so that they stay flush. A door or window set in one of them goes through those laid against it. The material of id "default" is what walls are made of until given another: walls of no material take its fill and pattern; it cannot be removed. A room's floor may be of a material too, with "material": "<id>", for its colour and to be counted under it.
-
-A "table" node shows quantities measured on a page, kept up to date: put it at "x", "y" with a "schedule" ("objects", "floors", "rooms", "walls", "materials" or "openings") and a "title". It counts the page it is on unless "source" names another page.
-
-A "parametric" node is an object drawn from parameters. These kinds are available:
-
-${JSON.stringify(kinds)}
-
-Kinds with "cutsWalls" are doors and windows. One cuts an opening when it lies on a wall: put its insertion point (x, y) in the middle of the wall's thickness (on its line for a wall without "justify", half its thickness off it towards the wall otherwise) and set its rotation to the wall's direction, the angle from the wall's "a" to "b". The opening then runs along the wall from the insertion point for its width. It adapts to the wall's thickness by itself, and moves with the wall only by being on it.
-
-A "group" holds several nodes so they are selected, moved and stacked as one. It has no coordinates of its own: to group nodes, add a group and set their "parent" to its id; to move a group, move the nodes inside it. Its "opacity" (0 to 1, 1 when left out) makes everything inside it see-through.
-
-A "component" is a reusable definition and an "instance" places it, with "x", "y", "rotation", "scale" and "flipX", and "scaleX" and "scaleY" to stretch it wider or taller than it is drawn. To repeat the same furniture or symbol several times, make one component and place instances of it; changing the component changes them all. An instance has no look of its own, and what a component holds has no layer: what the component draws without a colour takes the colour of the layer of each instance, so to show placed furniture grey (existing) or red (to demolish), put the instances on a layer of that colour. Giving an instance a "style", or a node inside a component a "layer", is refused.
-
-A shared colour (the document's "colors", managed with add_color, update_color and remove_color) is used by setting a colour property, such as style.stroke, style.fill or a layer's color, to "var(--<id>)"; changing the shared colour then recolours everything that refers to it. A colour property may also be "var(--layer)": the colour of the layer the node is on, for a fill or a text that should follow its layer as a stroke with no colour of its own already does.
-
-"modifiers" is a list of non-destructive changes to how a node is drawn, applied in order: {"type":"crop","frame":{"x":…,"y":…},"params":{"width":…,"height":…}} shows only what is inside that rectangle; {"type":"hatch","params":{"pattern":"Lines"|"Planks"|"Tiles","spacing":…,"angle":…}} gives a closed shape or a room a floor pattern; {"type":"repeat",…} draws copies in rows and columns. Setting "modifiers" replaces the whole list.
-
-A "room" names the space enclosed by the walls around its point (x, y): add one with a "name" at a point inside closed walls, and its floor and area are worked out from the walls each time it is drawn. A "divider" (a to b) splits an open space into two rooms where there is no wall; its ends must lie on walls.
-
-A "paper" is a sheet laid over the drawing that frames what goes on one printed page. Its width and height are in drawing millimetres: the sheet's real size times its "scale" (an A3 lying at 1:100 is 42000 × 29700). It has no children; whatever lies inside its rectangle is on it. Give it "titleBlock": {} (optionally with "project", "author", "date", "number") for a border and a title block; the person exports papers to PDF at their true scale from the File menu.
-
-A "dimension" shows the distance between "a" and "b"; "offset" is how far its line stands off them. An "annotation" is a note with a leader from the tip "a" to the text at "b". Texts may hold fields that are filled in when drawn: {date}, {page}, {page-number}, {pages}, {document}.
-
-# Making changes
-
-Call apply_operations with a list of operations:
-
-- add_node: {"op":"add_node","node":{...}}. Omit "id" and "order" unless you need to refer to the node later in the same list, in which case choose a short unique id. Pages and components take no parent.
-- update_node: {"op":"update_node","id":"...","patch":{...}}. The patch replaces the properties it names; a null value removes a property. Nested objects such as "a", "props" and "style" are replaced whole, so include every field of the one you change. Setting "parent" or "order" moves the node.
-- remove_node: {"op":"remove_node","id":"..."}. It takes along everything inside the node; removing a component also removes its instances.
-- add_layer, update_layer, remove_layer; add_color, update_color, remove_color; add_dimension_style, update_dimension_style, remove_dimension_style, as described above.
-- set_document: renames the drawing, and with "info" sets its project, client, address and author, which every sheet's title block shows.
-- add_asset embeds a picture's file for an image node; it is for the app's own imports, and you will not need it.
+${drawingGuide(registry, { pictures })}
 
 Put new nodes where the person is working (the page, component or group named in the request context) unless they say otherwise, on the layer it names, or on another existing layer that suits them better; inside a component, on no layer.
 
@@ -251,59 +178,42 @@ export function describeState(host: AgentHost, context: RequestContext = { selec
   ].join('\n')
 }
 
-function runTool(call: ToolCall, host: AgentHost, events: AgentEvents): ToolResult {
-  // The model is told what went wrong in English; the person sees a short note in their language.
-  const fail = (content: string, note: string): ToolResult => {
-    events.onActivity('error', note)
-    return { id: call.id, content, isError: true }
-  }
-  // Inputs arrive unvalidated (and possibly cut short), so each tool checks its own before acting.
-  const input = (typeof call.input === 'object' && call.input !== null ? call.input : {}) as Record<string, unknown>
-  const { doc } = host.state()
+/** The editor as the tools see it. */
+export const drawingHost = (host: AgentHost): DrawingHost => ({
+  registry: host.registry,
+  doc: () => host.state().doc,
+  scope: () => host.state().scope,
+  selection: () => host.state().selection,
+  apply: (ops) => host.apply(ops),
+  picture: host.picture,
+})
 
-  if (call.name === 'apply_operations') {
-    try {
-      const ops = parseOps(input.operations)
-      host.apply(ops)
-      const added = Object.keys(host.state().doc.nodes).filter((id) => !doc.nodes[id])
-      events.onActivity('done', tn(ops.length, 'Applied {n} change to the drawing', 'Applied {n} changes to the drawing'))
-      const unknown = unknownProperties(doc, ops)
-      const warning = unknown.length > 0 ? { unknownProperties: unknown, note: 'These properties are not part of the format: they were kept but do nothing. Correct them if you meant something else.' } : {}
-      return { id: call.id, content: JSON.stringify({ applied: ops.length, addedNodeIds: added, ...warning }) }
-    } catch (error) {
-      return fail(`Nothing was changed. ${(error as Error).message}`, t('A change was not valid and was not applied. The assistant has been told why.'))
-    }
+/** A short note for the person, in their language, about what a tool did; the model is told what went wrong in English. */
+function noteOf(note: ToolNote): { kind: 'done' | 'error'; text: string } {
+  switch (note.kind) {
+    case 'applied':
+      return { kind: 'done', text: tn(note.count, 'Applied {n} change to the drawing', 'Applied {n} changes to the drawing') }
+    case 'looked-at-image':
+      return { kind: 'done', text: t('Looked at {name}', { name: note.name ?? t('the picture') }) }
+    case 'looked-at-drawing':
+      return { kind: 'done', text: t('Looked at the drawing') }
+    case 'invalid-operations':
+      return { kind: 'error', text: t('A change was not valid and was not applied. The assistant has been told why.') }
+    case 'not-in-drawing':
+      return { kind: 'error', text: t('The assistant asked for something that is not in the drawing.') }
+    case 'no-such-tool':
+    case 'no-picture':
+      return { kind: 'error', text: t('The assistant tried something it cannot do here.') }
   }
+}
 
-  if (call.name === 'read_document') {
-    const { container, ids } = input
-    if (Array.isArray(ids)) {
-      const missing = ids.filter((id) => typeof id !== 'string' || !doc.nodes[id])
-      if (missing.length > 0) return fail(`There are no nodes with ids ${JSON.stringify(missing)}.`, t('The assistant asked for something that is not in the drawing.'))
-      const nodes = (ids as string[]).map((id) => doc.nodes[id])
-      const inside = nodes.filter((node) => node.type === 'group').flatMap((group) => leavesOf(doc, group.id))
-      return { id: call.id, content: JSON.stringify({ nodes, insideGroups: inside.length > 0 ? inside : undefined }) }
-    }
-    if (container === undefined) return { id: call.id, content: JSON.stringify(withoutAssets(doc)) }
-    if (typeof container !== 'string' || !doc.nodes[container]) return fail(`There is no page, component or group with id ${JSON.stringify(container)}.`, t('The assistant asked for something that is not in the drawing.'))
-    const { nodes: _, ...rest } = withoutAssets(doc)
-    return { id: call.id, content: JSON.stringify({ ...rest, nodes: [doc.nodes[container], ...childrenOf(doc, container)] }) }
+async function runTool(call: ToolCall, host: AgentHost, events: AgentEvents): Promise<ToolResult> {
+  const { note, ...result } = await runDrawingTool(call.name, call.input, drawingHost(host))
+  if (note) {
+    const { kind, text } = noteOf(note)
+    events.onActivity(kind, text)
   }
-
-  if (call.name === 'view_image') {
-    const node = typeof input.node === 'string' ? doc.nodes[input.node] : undefined
-    const asset = node?.type === 'image' ? doc.assets?.[node.asset] : undefined
-    if (node?.type !== 'image' || !asset) return fail(`There is no image node with id ${JSON.stringify(input.node)}.`, t('The assistant asked for something that is not in the drawing.'))
-    events.onActivity('done', t('Looked at {name}', { name: node.name ?? t('the picture') }))
-    const size = asset.width && asset.height ? `It is ${asset.width} × ${asset.height} pixels, so pixel (px, py) is at x = ${node.x} + px × ${node.width / asset.width}, y = ${node.y} + py × ${node.height / asset.height}.` : ''
-    return {
-      id: call.id,
-      content: `The picture covers x from ${node.x} to ${node.x + node.width} and y from ${node.y} to ${node.y + node.height} mm${node.rotation ? `, rotated ${node.rotation}° around its top-left corner` : ''}. ${size} Positions read off a picture are approximate; say so when you trace from it.`,
-      image: { mime: asset.mime, data: asset.data },
-    }
-  }
-
-  return fail(`There is no tool called "${call.name}".`, t('The assistant tried something it cannot do here.'))
+  return { id: call.id, ...result }
 }
 
 /**
@@ -325,7 +235,10 @@ export async function runRequest(
     if (output.stop === 'refused') return events.onActivity('error', t('The model declined this request.'))
     if (output.stop === 'truncated') return events.onActivity('error', t('The reply was cut off before it finished. Try asking for less at once.'))
     if (output.stop === 'done') return
-    input = { results: output.calls.map((call) => runTool(call, host, events)) }
+    // One after the other: each may change what the next one sees.
+    const results: ToolResult[] = []
+    for (const call of output.calls) results.push(await runTool(call, host, events))
+    input = { results }
   }
   events.onActivity('error', t('Stopped after {n} steps without finishing.', { n: MAX_STEPS }))
 }

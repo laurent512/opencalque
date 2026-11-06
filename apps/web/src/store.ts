@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { applyOps, createDocument, holdsChildren, layerIn, layersOf, openingFollowOps, pagesOf, type Document, type NodeInput, type NodeOf, type Op, type Pattern, type Vec2, wallEndsAt } from '@opencalque/core'
+import { applyEdit, createDocument, holdsChildren, layerIn, layersOf, pagesOf, type Document, type NodeInput, type NodeOf, type Op, type Pattern, type Vec2, wallEndsAt } from '@opencalque/core'
 import { registry } from './extensions'
 import type { StoredFile } from './platform'
 import type { Tool } from './tools'
@@ -251,16 +251,8 @@ function record(doc: Document, ops: Op[]): void {
   set({ ...settle(s, doc), base: null, past: [...s.past, { doc: before, ops }].slice(-HISTORY_LIMIT), future: [] })
 }
 
-/**
- * `ops` applied to `doc`, with what follows from them: the doors and windows of the walls they
- * changed, put back in them (`openingFollowOps`), so that no edit of a wall has to see to them.
- */
-function applied(doc: Document, ops: Op[]): { doc: Document; ops: Op[] } {
-  const next = applyOps(doc, ops)
-  const changed = ops.flatMap((op) => (op.op === 'update_node' ? [op.id] : []))
-  const follow = changed.length > 0 ? openingFollowOps(doc, next, changed, registry) : []
-  return follow.length > 0 ? { doc: applyOps(next, follow), ops: [...ops, ...follow] } : { doc: next, ops }
-}
+/** `ops` applied to `doc`, with what follows from them (`applyEdit`). */
+const applied = (doc: Document, ops: Op[]) => applyEdit(doc, ops, registry)
 
 /**
  * Applies operations as one undoable step, or throws when one fails. During a gesture they go on

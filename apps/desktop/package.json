@@ -14,6 +14,8 @@
     "dist": "electron-builder --publish never"
   },
   "devDependencies": {
+    "@opencalque/cli": "workspace:*",
+    "@opencalque/warehouse": "workspace:*",
     "@opencalque/web": "workspace:*",
     "@vitejs/plugin-react": "^5",
     "electron": "^44.7.0",

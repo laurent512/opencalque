@@ -1986,3 +1986,13 @@ test('keeps a door in its wall when the wall is made shorter than where the door
   await expect.poll(() => page.evaluate(() => (window as any).saves.length)).toBe(2)
   expect(JSON.parse(await page.evaluate(() => (window as any).saves[1])).nodes.d).toMatchObject({ x: 4000, y: 0 })
 })
+
+test('the AI preferences of the web app hold the assistant, and no door for agents', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  await page.keyboard.press('Control+,')
+  await page.locator('.prefs-nav button', { hasText: 'AI' }).click()
+  await expect(page.locator('.pref-heading')).toHaveText(['Assistant'])
+  await expect(page.locator('.pref-field', { hasText: 'Provider' })).toBeVisible()
+  await expect(page.getByLabel('Let agents on this computer work on the open drawing')).toHaveCount(0)
+})

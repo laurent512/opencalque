@@ -4,6 +4,18 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### New
+- AI agents can check their own work. After each edit, the assistant is told what it left wrong: a room that does not close and the wall end that may be why, a wall drawn twice, a door or window outside its wall, past its end or over another. It is told only of what the edit caused.
+- The assistant can look at the drawing as it comes out, and measure it: room areas, wall lengths, doors and windows, rather than working them out. Providers that cannot be shown pictures are not offered the picture.
+- An MCP server, so that agents such as Claude Code can work on the drawing open in the desktop app, where each edit can be undone. The installed app is the server: Preferences › AI turns it on, which it never is until you say so, and gives the command that connects Claude Code, with the path of your app. From a checkout, `opencalque mcp` also works on drawings on disk.
+- The CLI has `check`, which lists what is wrong with a drawing, `quantities`, `png`, which draws a page as a picture, and `guide`, which prints how drawings are stored and edited, for an agent to read.
+
+### Fixed
+- `opencalque apply` moves the doors and windows of a wall with it, as the editor does: they used to stay where they were.
+- In the desktop app, the preferences say that the key of a service is encrypted when it is, as it has been since 1.4.0, rather than saying it is not.
+
 ## 1.4.0 — 2026-11-05
 
 ### New

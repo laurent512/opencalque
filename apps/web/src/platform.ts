@@ -38,6 +38,8 @@ export interface Platform {
   claudeCli?(input: { prompt: string; session?: string; model?: string }): Promise<{ text: string; session: string }>
   /** Desktop only: stops the CLI request in progress. */
   cancelClaudeCli?(): void
+  /** Desktop only: lets agents on this computer work on the open drawing (`opencalque mcp --live`). */
+  agentBridge?: AgentBridge
   /** Desktop only: tells the window whether the interface is dark, and whether that is the system's choice, for the system's buttons and dialogs. */
   setTheme?(dark: boolean, followsSystem: boolean): void
   /** The words of the questions the desktop app asks itself: before closing with unsaved changes, before reaching a new service. */
@@ -71,6 +73,23 @@ export interface Platform {
    * way to encrypt them, and they stay with the preferences.
    */
   secrets?: SecretStore
+}
+
+/** What an agent outside the app is told of a tool it called. */
+export interface BridgeResult {
+  content: string
+  isError?: boolean
+  image?: { mime: string; data: string }
+}
+
+/** The door the desktop app opens for agents on the same computer. */
+export interface AgentBridge {
+  /** Opens or closes it. */
+  set(on: boolean): void
+  /** What an agent runs to come in: the app itself, as an MCP server. */
+  command(): Promise<{ command: string; args: string[] }>
+  /** Hears what agents ask for and answers. */
+  onCall(listener: (name: string, input: unknown) => Promise<BridgeResult>): void
 }
 
 /** The keys of the assistant's services, kept apart: by the service they are for. */

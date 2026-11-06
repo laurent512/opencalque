@@ -1,14 +1,19 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, net, safeStorage, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, net, safeStorage, shell, type WebContents } from 'electron'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { cpSync, existsSync, readFileSync } from 'node:fs'
 import { copyFile, mkdir, readdir, readFile, realpath, rename, unlink, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, resolve } from 'node:path'
+import { agentCommand, startBridge, type Bridge } from './bridge'
 import { checkForUpdate, installOnClose, installUpdate, keptOpen, listen } from './updates'
+
+// Started by an agent (mcp.ts): no window, and a profile of its own, to leave the running app's alone.
+const servingAgents = process.argv.includes('--mcp')
+if (servingAgents) app.setPath('userData', join(app.getPath('temp'), 'opencalque-mcp'))
 
 // Settings made while the project was called OpenCAD (preferences, shortcuts, conversations) are
 // carried over the first time the renamed app starts.
 const former = join(app.getPath('appData'), '@opencad', 'desktop')
-if (!existsSync(app.getPath('userData')) && existsSync(former)) cpSync(former, app.getPath('userData'), { recursive: true })
+if (!servingAgents && !existsSync(app.getPath('userData')) && existsSync(former)) cpSync(former, app.getPath('userData'), { recursive: true })
 
 // Files the user chose in a dialog or launched the app with. The window may only write to these.
 const granted = new Set<string>()
@@ -229,6 +234,47 @@ app.on('open-file', (event, path) => {
  */
 const titleBarButtons = (dark: boolean) => ({ color: '#00000000', symbolColor: dark ? '#e6e6e6' : '#1e1e1e', height: 36 })
 
+/** Longest an agent waits for the editor, in ms. */
+const BRIDGE_TIMEOUT = 120_000
+let bridge: Bridge | null = null
+/** The window that answers, which a reload replaces. */
+let bridgeWindow: WebContents | null = null
+let nextBridgeCall = 0
+const bridgeCalls = new Map<number, (result: unknown) => void>()
+/** Turning it on and off are done in turn, so that quick clicks cannot leave two doors open. */
+let bridgeChange: Promise<void> = Promise.resolve()
+
+/** Hands a call from an agent to the window and waits for its answer. */
+function callEditor(name: string, input: unknown): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    if (!bridgeWindow || bridgeWindow.isDestroyed()) return reject(new Error('The window of the app is closed.'))
+    const id = nextBridgeCall++
+    const timer = setTimeout(() => {
+      bridgeCalls.delete(id)
+      reject(new Error('The app did not answer in time.'))
+    }, BRIDGE_TIMEOUT)
+    bridgeCalls.set(id, (result) => {
+      clearTimeout(timer)
+      resolve(result)
+    })
+    bridgeWindow.send('bridge:call', id, name, input)
+  })
+}
+
+function setBridge(on: boolean, sender: WebContents): Promise<void> {
+  bridgeWindow = sender
+  bridgeChange = bridgeChange
+    .then(async () => {
+      if (on && !bridge) bridge = await startBridge(callEditor)
+      if (!on && bridge) {
+        bridge.stop()
+        bridge = null
+      }
+    })
+    .catch((error) => console.error('The door for agents could not be changed:', error))
+  return bridgeChange
+}
+
 function createWindow(): void {
   // On Windows and macOS the window has no title bar of its own: the app's menu bar is the top of
   // the window, with the system's buttons drawn over its end. Linux keeps its usual frame.
@@ -293,6 +339,11 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  if (servingAgents) {
+    app.dock?.hide()
+    // Not app.quit(), which would wait for the read of stdin in progress.
+    return void import('./mcp').then(({ serveAgents }) => serveAgents(app.getVersion(), () => app.exit(0)))
+  }
   Menu.setApplicationMenu(null)
 
   ipcMain.handle('file:open', async (event, extensions: string[]) => {
@@ -388,6 +439,14 @@ app.whenReady().then(() => {
   ipcMain.handle('claude:run', (_, input: { prompt: string; session?: string; model?: string }) => runClaude(input))
   ipcMain.on('claude:cancel', () => claude?.kill())
 
+  // Agents on this computer, while the person lets them (bridge.ts): what they ask runs in the window.
+  ipcMain.on('bridge:set', (event, on: boolean) => void setBridge(on, event.sender))
+  ipcMain.handle('bridge:command', () => agentCommand({ exe: process.execPath, packaged: app.isPackaged, appPath: app.getAppPath(), env: process.env }))
+  ipcMain.on('bridge:result', (_, id: number, result: unknown) => {
+    bridgeCalls.get(id)?.(result)
+    bridgeCalls.delete(id)
+  })
+
   // A newer version of the app: looked for when the window asks (updates.ts).
   ipcMain.on('update:listen', (event) => listen(event.sender))
   ipcMain.on('update:check', () => checkForUpdate())
@@ -395,6 +454,9 @@ app.whenReady().then(() => {
 
   createWindow()
 })
+
+// The door for agents closes with the app, and the file that says where it was goes with it.
+app.on('will-quit', () => bridge?.stop())
 
 // Unless the windows closed to install an update, which then quits the app itself.
 app.on('window-all-closed', () => installOnClose() || app.quit())

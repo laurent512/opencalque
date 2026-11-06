@@ -2,18 +2,23 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { basename, dirname, extname, join } from 'node:path'
 import {
+  applyEdit,
   applyOps,
-  childrenOf,
-  componentsOf,
+  checkDrawing,
   createDocument,
+  describeDrawing,
   documentJsonSchema,
+  drawingGuide,
   dxfOps,
-  layersOf,
   newId,
+  nodeTypes,
+  nodeTypeSchema,
   extensionJsonSchema,
   opsJsonSchema,
   pagesOf,
   parseOps,
+  problemsMadeBy,
+  quantities,
   readDocument,
   serializeDocument,
   toDXF,
@@ -25,22 +30,35 @@ import {
   unknownProperties,
 } from '@opencalque/core'
 import { standardRegistry } from '@opencalque/warehouse'
+import { liveBackend, serve } from './mcp'
+import { fileBackend } from './mcp-files'
+import { renderPng } from './render'
 
 const USAGE = `opencalque <command>
 
   new <file> [name] [--force]  Create an empty document (--force replaces an existing file)
   validate <file>              Check that a file is a valid document; lists what opening it would repair
   describe <file>              Print a JSON summary: pages, layers, components, object counts
-  apply <file> <ops.json>      Apply a JSON array of operations and save the file
+  check <file> [--page <id>]   List what is wrong with the drawing as JSON (rooms that do not close,
+                               walls drawn twice, doors outside a wall); exits 1 if anything is
+  quantities <file> [--page <id>]
+                               Print what a page holds as JSON: rooms and their areas, walls, doors, objects
+  apply <file> <ops.json>      Apply a JSON array of operations and save the file; warns of what they left wrong
   import <file> <drawing.dxf>...
                                Add each DXF as a page of the drawing, which is created when it does
                                not exist. A DXF laid out as a sheet comes in as its paper.
   svg <file> [--page <id>] [--out <file.svg>]
                                Render a page (default: the first) to SVG
+  png <file> [--page <id>] [--size <pixels>] [--out <file.png>]
+                               Draw a page as a picture, 2000 pixels on its longer side unless told otherwise
   pdf <file> [--out <file.pdf>] Export every paper as a page of a PDF, at its real size and scale
   dxf <file> [--page <id>] [--out <file.dxf>]
                                Export a page to DXF for other CAD programs
   schema [--out <dir>]         Print or write the JSON Schemas of documents, operations and extensions written as data
+  guide [--type <type>]        Print how drawings are stored and edited, written for an AI agent, or
+                               the JSON Schema of one type of node
+  mcp [<file>] [--live]        Serve the drawing tools to an AI agent over MCP (stdin and stdout): a file,
+                               one the agent opens, or with --live the drawing open in the desktop app
   --version                    Print the version
 `
 
@@ -77,26 +95,15 @@ function read(file: string): Document {
   return doc
 }
 
-function describe(doc: Document) {
-  const container = (id: string) => {
-    const counts: Record<string, number> = {}
-    for (const n of childrenOf(doc, id)) counts[n.type] = (counts[n.type] ?? 0) + 1
-    return counts
-  }
-  return {
-    name: doc.name,
-    unit: doc.unit,
-    layers: layersOf(doc).map(({ id, name, visible, locked, color }) => ({ id, name, visible, locked, color })),
-    pages: pagesOf(doc).map((p) => ({ id: p.id, name: p.name, objects: container(p.id) })),
-    components: componentsOf(doc).map((c) => ({ id: c.id, name: c.name, objects: container(c.id) })),
-    parametricKinds: [...registry.parametric.values()].map(({ kind, label, params }) => ({ kind, label, params })),
-  }
-}
+const describe = (doc: Document) => ({ ...describeDrawing(doc), parametricKinds: [...registry.parametric.values()].map(({ kind, label, params }) => ({ kind, label, params })) })
 
-function main(): void {
+async function main(): Promise<void> {
   const out = flag('out')
   const page = flag('page')
+  const size = flag('size')
+  const type = flag('type')
   const force = toggle('force')
+  const live = toggle('live')
   if (toggle('version')) return void console.log(VERSION)
   if (toggle('help') || toggle('h')) return void process.stdout.write(USAGE)
   const [command, file, extra] = args
@@ -120,9 +127,22 @@ function main(): void {
     case 'apply': {
       const ops = parseOps(JSON.parse(readFileSync(extra, 'utf8')))
       const doc = read(file)
-      writeFileSync(file, serializeDocument(applyOps(doc, ops)))
+      const after = applyEdit(doc, ops, registry).doc
+      writeFileSync(file, serializeDocument(after))
       for (const warning of unknownProperties(doc, ops)) console.error(`warning: not a property of the format, kept but without effect: ${warning}`)
+      for (const problem of problemsMadeBy(doc, after, registry)) console.error(`warning: ${problem.message}`)
       console.log(`Applied ${ops.length} operations`)
+      return
+    }
+    case 'check': {
+      const problems = checkDrawing(read(file), registry, page ? [page] : undefined)
+      console.log(JSON.stringify(problems, null, 2))
+      if (problems.length > 0) process.exitCode = 1
+      return
+    }
+    case 'quantities': {
+      const doc = read(file)
+      console.log(JSON.stringify(quantities(doc, page ?? pagesOf(doc)[0].id, registry), null, 2))
       return
     }
     case 'import': {
@@ -160,6 +180,15 @@ function main(): void {
       else process.stdout.write(svg)
       return
     }
+    case 'png': {
+      const doc = read(file)
+      const pixels = size === undefined ? 2000 : Number(size)
+      if (!(pixels >= 16 && pixels <= 16000)) throw new Error('--size is a number of pixels from 16 to 16000.')
+      const { png } = renderPng(toSVG(doc, page ?? pagesOf(doc)[0].id, registry), pixels)
+      if (out) writeFileSync(out, png)
+      else process.stdout.write(png)
+      return
+    }
     case 'pdf': {
       const doc = read(file)
       // Letters the standard PDF fonts lack are printed in the fonts the app ships; Chinese
@@ -193,15 +222,22 @@ function main(): void {
       }
       return
     }
+    case 'guide': {
+      if (type === undefined) return void console.log(drawingGuide(registry, { schema: false }))
+      const schema = nodeTypeSchema(type)
+      if (!schema) throw new Error(`There is no type of node "${type}". The types are ${nodeTypes().join(', ')}.`)
+      return void console.log(JSON.stringify(schema, null, 2))
+    }
+    case 'mcp':
+      if (live && file) throw new Error('Give a file, or --live for the drawing open in the app, not both.')
+      return serve(live ? liveBackend() : fileBackend(file, registry), registry, VERSION)
     default:
       process.stdout.write(USAGE)
       process.exitCode = command ? 1 : 0
   }
 }
 
-try {
-  main()
-} catch (error) {
+main().catch((error) => {
   console.error(error instanceof Error ? error.message : error)
   process.exitCode = 1
-}
+})

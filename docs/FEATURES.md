@@ -2,7 +2,7 @@
 
 What the app does today, the ten big features chosen to do next and where each stands, and the longer backlog. For how things are built, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Last updated: 2026-11-05 (1.4.0, in progress).
+Last updated: 2026-11-06 (after 1.4.0).
 
 ## 1. What exists today
 
@@ -71,6 +71,11 @@ Last updated: 2026-11-05 (1.4.0, in progress).
 - **It knows what is selected**: the selected objects (or wall corner) go with each message, in full and with what they measure, so "this" means what you point at; a label above the message box says what will be sent, and can leave it out.
 - Conversations are kept and can be reopened from the selector at the top or with `/resume`; pictures can be pasted or attached; the model is chosen below the message; `/new`, `/model`, `/clear`, `/help`.
 - Providers: Claude with an API key, Claude through the Claude Code CLI on the computer (desktop), a local model through Ollama, or any OpenAI-compatible service.
+- **It checks its own work**: each edit comes back with what it left wrong (a room that does not close, a wall drawn twice, a door outside its wall), and it can look at the drawing and measure it.
+
+### Agents
+- An **MCP server** with the assistant's tools. The installed desktop app is one (`--mcp`), for the drawing open in it, where each edit can be undone: off until turned on in Preferences › AI, which gives the command that connects Claude Code. From a checkout, `opencalque mcp` also works on files.
+- In the CLI: `check`, `quantities`, `png` and `guide`. An edit applied there makes the same drawing as in the editor.
 
 ### Application
 - Desktop app (Windows, macOS, Linux) and web app from the same code, with **installers** built and attached to a GitHub release for each version tag.
@@ -136,7 +141,7 @@ Agreed with the owner in October 2026. The first was built straight away.
 **Assistant**
 - A preview of its changes to accept or refuse before they are applied
 - "Trace this scanned plan": finding the walls in a picture
-- An MCP server, so outside agents can drive a drawing
+- ~~An MCP server, so outside agents can drive a drawing~~ (done, on files and on the open drawing)
 
 ## 3. Backlog, by area
 
