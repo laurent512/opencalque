@@ -12,7 +12,7 @@ pnpm dev:web      # editor in a browser
 pnpm test         # core tests
 pnpm typecheck
 pnpm e2e          # builds the web app and drives it in Chromium (Playwright, e2e/*.e2e.ts); runs in CI
-pnpm build && pnpm smoke   # scripted interaction test; prints a folder of screenshots to inspect
+pnpm build && pnpm smoke   # scripted interaction test; fails if a step left the wrong objects, prints a folder of screenshots to inspect
 pnpm dist         # package the installer for this system (apps/desktop/dist)
 pnpm schema       # regenerate schema/*.json after changing packages/core/src/schema.ts
 pnpm rooms:gallery # draw the plans rooms are tested on, to look them over

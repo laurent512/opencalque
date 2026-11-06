@@ -13,22 +13,14 @@ import {
   useCommands,
   type Command,
 } from './commands'
+import { searchCommands } from './commandSearch'
 import { t } from './i18n'
 import { toast } from './windows'
 
 const close = () => useCommands.setState({ paletteOpen: false })
 
 /**
- * Every word of the query must appear somewhere in the command's category or title. The English
- * names match too, whatever the language, so a shortcut learned from documentation still works.
- */
-function matches(command: Command, query: string): boolean {
-  const text = `${t(command.category)} ${t(command.title)} ${command.category} ${command.title} ${command.keywords ?? ''}`.toLowerCase()
-  return query.toLowerCase().split(/\s+/).every((word) => text.includes(word))
-}
-
-/**
- * Lists every command, filtered as you type. Enter runs the highlighted one. Clicking a command's
+ * Lists every command, filtered as you type, the closest first. Enter runs the highlighted one. Clicking a command's
  * shortcut records a new one for it.
  */
 export function CommandPalette() {
@@ -48,7 +40,7 @@ export function CommandPalette() {
   }, [open])
 
   // `overrides` is a dependency so the shortcuts shown stay current after a change.
-  const commands = useMemo(() => (open ? allCommands().filter((c) => matches(c, query)) : []), [open, query, overrides])
+  const commands = useMemo(() => (open ? searchCommands(allCommands(), query) : []), [open, query, overrides])
   const active = Math.min(index, commands.length - 1)
 
   useEffect(() => {

@@ -12,6 +12,9 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 - An MCP server, so that agents such as Claude Code can work on the drawing open in the desktop app, where each edit can be undone. The installed app is the server: Preferences › AI turns it on, which it never is until you say so, and gives the command that connects Claude Code, with the path of your app. From a checkout, `opencalque mcp` also works on drawings on disk.
 - The CLI has `check`, which lists what is wrong with a drawing, `quantities`, `png`, which draws a page as a picture, and `guide`, which prints how drawings are stored and edited, for an agent to read.
 
+### Improved
+- The command list puts the closest match first, so that Enter runs what you typed: a command named by your words comes before one that merely has a word starting like them. It finds what it found before.
+
 ### Fixed
 - `opencalque apply` moves the doors and windows of a wall with it, as the editor does: they used to stay where they were.
 - In the desktop app, the preferences say that the key of a service is encrypted when it is, as it has been since 1.4.0, rather than saying it is not.
