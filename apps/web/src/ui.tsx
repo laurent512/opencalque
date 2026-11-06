@@ -1,9 +1,10 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { BrickWall, Circle, Hexagon, Component, File, Group, Image, MessageSquare, Minus, RulerDimensionLine, Shapes, SeparatorVertical, Spline, Square, SquareDashed, StickyNote, Table, Type, type LucideIcon } from 'lucide-react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { BrickWall, ChevronDown, Circle, Hexagon, Component, File, Group, Image, Lock, LockOpen, MessageSquare, Minus, RulerDimensionLine, Shapes, SeparatorVertical, Spline, Square, SquareDashed, StickyNote, Table, Type, type LucideIcon } from 'lucide-react'
 import type { Document, Node } from '@opencalque/core'
 import { GridLine } from './icons'
 import { msg, t } from './i18n'
 import { registry } from './extensions'
+import { setPrefs, usePrefs } from './prefs'
 import { collapseHistory, useStore } from './store'
 import { dashIndex, DASHES } from './strokes'
 import { formatNumber, parseLength, parseNumber } from './units'
@@ -217,7 +218,7 @@ export function watchScrubKey(): () => void {
   }
 }
 
-export function Field(props: { label: string; value: string | number; numeric?: boolean; length?: boolean; optional?: boolean; step?: number; min?: number; snap?: number; decimals?: number; placeholder?: string; multiline?: boolean; onCommit: (value: any) => void }) {
+export function Field(props: { label: string; value: string | number; numeric?: boolean; length?: boolean; optional?: boolean; step?: number; min?: number; snap?: number; decimals?: number; placeholder?: string; multiline?: boolean; lead?: ReactNode; onCommit: (value: any) => void }) {
   // A length is kept in mm and shown in the user's unit; any other number is shown as it is, to `decimals` places (2 unless said).
   const places = 10 ** (props.decimals ?? 2)
   const shown = typeof props.value !== 'number' ? props.value : props.length ? formatNumber(props.value) : String(Math.round(props.value * places) / places)
@@ -243,8 +244,9 @@ export function Field(props: { label: string; value: string | number; numeric?: 
     )
   }
   return (
-    <label className={`field${props.numeric ? ' numeric' : ''}`}>
+    <label className={`field${props.numeric ? ' numeric' : ''}${props.lead ? ' with-lead' : ''}`}>
       <span>{props.label}</span>
+      {props.lead}
       <input
         value={text}
         placeholder={props.placeholder}
@@ -259,15 +261,42 @@ export function Field(props: { label: string; value: string | number; numeric?: 
 }
 
 /**
- * Yes or no (or two other `words`), as two tabs side by side, the one that holds lit, in place of a
- * checkbox, which reads less plainly. Neither is lit when what it is about disagrees (several things selected). Not to be
- * put in a label: a label would hand every click to the first tab.
+ * Two values on one row under one name: X and Y, a width and a height. Each is a field of its own,
+ * whose name is hidden here but still names its box for a screen reader. `lock` goes after the name.
  */
-export function YesNo(props: { value: boolean | undefined; onChange: (value: boolean) => void; label: string; title?: string; words?: [yes: string, no: string] }) {
+export function FieldPair(props: { label: string; lock?: ReactNode; children: ReactNode }) {
+  return (
+    <div className="field-pair">
+      <span className="field-pair-name">
+        {props.label}
+        {props.lock}
+      </span>
+      {props.children}
+    </div>
+  )
+}
+
+/** Whether a width and a height typed change together, for whatever is selected: a choice of the person's, not of the drawing's. */
+export function ProportionLock() {
+  const kept = usePrefs((prefs) => prefs.keepProportions)
+  return (
+    <IconButton pressed={kept} title={kept ? t('Proportions kept: click to set width and height apart') : t('Keep the proportions: width and height change together')} onClick={() => setPrefs({ keepProportions: !kept })}>
+      {kept ? <Lock size={12} /> : <LockOpen size={12} className="faint" />}
+    </IconButton>
+  )
+}
+
+/**
+ * Yes or no (or two other `words`, which may be pictures, then said by `titles`), as two tabs side
+ * by side, the one that holds lit, in place of a checkbox, which reads less plainly. Neither is lit
+ * when what it is about disagrees (several things selected). Not to be put in a label: a label would
+ * hand every click to the first tab.
+ */
+export function YesNo(props: { value: boolean | undefined; onChange: (value: boolean) => void; label: string; title?: string; words?: [yes: ReactNode, no: ReactNode]; titles?: [yes: string, no: string] }) {
   return (
     <div className="yes-no" role="radiogroup" aria-label={props.label} title={props.title}>
       {[true, false].map((one) => (
-        <button key={String(one)} type="button" role="radio" aria-checked={props.value === one} className={props.value === one ? 'active' : ''} onClick={() => props.value !== one && props.onChange(one)}>
+        <button key={String(one)} type="button" role="radio" aria-checked={props.value === one} aria-label={props.titles?.[one ? 0 : 1]} title={props.titles?.[one ? 0 : 1]} className={props.value === one ? 'active' : ''} onClick={() => props.value !== one && props.onChange(one)}>
           {props.words ? props.words[one ? 0 : 1] : one ? t('Yes') : t('No')}
         </button>
       ))}
@@ -275,14 +304,36 @@ export function YesNo(props: { value: boolean | undefined; onChange: (value: boo
   )
 }
 
-export function Section(props: { title: string; action?: ReactNode; children: ReactNode }) {
+/** Provided by a panel whose sections fold under their headings. */
+export const FoldingSections = createContext(false)
+
+/**
+ * A heading and what is under it. In a panel that says so (`FoldingSections`) a click on the heading
+ * folds it, and it stays folded for whatever is selected next, known by its title. `count` is shown
+ * after the title and is no part of it, so that a section stays folded whatever it counts.
+ */
+export function Section(props: { title: string; count?: number; action?: ReactNode; children: ReactNode }) {
+  const folding = useContext(FoldingSections)
+  const folded = usePrefs((prefs) => folding && prefs.foldedSections.includes(props.title))
+  const heading = props.count === undefined ? props.title : `${props.title} (${props.count})`
+  const toggle = () => {
+    const list = usePrefs.getState().foldedSections
+    setPrefs({ foldedSections: folded ? list.filter((title) => title !== props.title) : [...list, props.title] })
+  }
   return (
-    <section className="section">
+    <section className={`section${folded ? ' folded' : ''}`}>
       <h3>
-        {props.title}
+        {folding ? (
+          <button type="button" className="section-fold" aria-expanded={!folded} onClick={toggle}>
+            <ChevronDown size={10} strokeWidth={2.5} />
+            {heading}
+          </button>
+        ) : (
+          heading
+        )}
         {props.action}
       </h3>
-      {props.children}
+      {!folded && props.children}
     </section>
   )
 }

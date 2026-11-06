@@ -1,4 +1,4 @@
-import { alignables, boundsFrame, dist, distToSegment, endLineShown, isLocked, wallEndsAt, sceneBounds, sub, wallEdgeLines, wallEndsOf, type Alignable, type Bounds, type Node, type NodeOf, type ResizeFrame, type SceneItem, type Vec2 } from '@opencalque/core'
+import { alignables, boundsFrame, dist, distToSegment, endLineShown, isLocked, wallEndsAt, sceneBounds, sub, wallEdgeLines, wallEndsOf, type Alignable, type Bounds, type Document, type Node, type NodeOf, type ResizeFrame, type SceneItem, type Vec2 } from '@opencalque/core'
 import { registry } from '../extensions'
 import { toWorld, visibleArea } from '../view'
 import { boxGrips } from './draw'
@@ -30,6 +30,12 @@ export function clearanceAt(c: Canvas, at: Vec2): number | null {
   const index = c.clearanceLabels.findIndex((box) => at.x >= box.x && at.x <= box.x + box.width && at.y >= box.y && at.y <= box.y + box.height)
   return index < 0 ? null : index
 }
+
+/**
+ * Whether what is selected holds something locked. It can still be selected from the Structure
+ * panel, to be unlocked or changed in the Properties panel; on the drawing it has nothing to drag.
+ */
+export const lockedAmong = (doc: Document, ids: string[]): boolean => ids.some((id) => doc.nodes[id] && isLocked(doc, doc.nodes[id]))
 
 /** The corner of a draggable modifier outline under a point of the canvas. */
 export function frameCornerAt(c: Canvas, at: Vec2): { index: number; corner: number; outline: Vec2[] } | null {
@@ -87,7 +93,7 @@ export function lineUp(c: Canvas, nodes: Node[]): { moving: Alignable | null; ot
  */
 export function gripBox(c: Canvas): ResizeFrame | null {
   const s = get()
-  if (s.tool !== 'select' || s.selection.length === 0 || (s.selection.length === 1 && (c.handles.length > 0 || c.frame)) || roomsOnly(s.doc, s.selection)) return null
+  if (s.tool !== 'select' || s.selection.length === 0 || lockedAmong(s.doc, s.selection) || (s.selection.length === 1 && (c.handles.length > 0 || c.frame)) || roomsOnly(s.doc, s.selection)) return null
   if (c.ownBox) return c.ownBox
   const bounds = sceneBounds(c.scene.filter((item) => s.selection.includes(item.id)))
   return bounds && boundsFrame(bounds)

@@ -484,6 +484,39 @@ html.dock-dragging .tab-more {
   overflow-wrap: anywhere;
 }
 
+/* A heading that folds its section: the arrow stands in the margin, so that titles and names stay in line. */
+.section-fold {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  min-height: 24px;
+  margin-left: -10px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.section-fold > svg {
+  flex: none;
+  color: var(--muted);
+  transition: transform 0.12s;
+}
+
+.section-fold:hover > svg {
+  color: var(--text);
+}
+
+.section.folded .section-fold > svg {
+  transform: rotate(-90deg);
+}
+
 .row {
   display: flex;
   align-items: center;
@@ -628,6 +661,72 @@ html.dock-dragging .tab-more {
 .field > input:not([type]):focus,
 .field > select:focus {
   border-color: var(--accent);
+}
+
+/* What a thing is, inside the box of its name */
+.field.with-lead {
+  position: relative;
+}
+
+.field.with-lead > .type-icon {
+  position: absolute;
+  left: 102px;
+}
+
+.field.with-lead > input:not([type]) {
+  padding-left: 25px;
+}
+
+/* Two values on one row: the names of their boxes are for screen readers, the row's says it for both. */
+.field-pair {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 2px 12px 2px 16px;
+}
+
+.field-pair-name {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  width: 74px;
+  color: var(--muted);
+}
+
+.field-pair > .field,
+.field-pair > .typed-row {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+}
+
+.field-pair .field > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.field-pair .field > input:not([type]) {
+  width: 100%;
+}
+
+/* Locked or not, seen or not: two pairs of pictures in the room of one value. */
+.status-field {
+  flex-wrap: wrap;
+}
+
+.status-field .yes-no > button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 0 6px;
 }
 
 /* The stack of modifiers of the selected object */
@@ -3771,6 +3870,31 @@ select.faint-choice,
 .color-now > i.none,
 .swatch-box > i.none {
   background: linear-gradient(to top right, transparent calc(50% - 0.75px), var(--danger) calc(50% - 0.75px), var(--danger) calc(50% + 0.75px), transparent calc(50% + 0.75px)), var(--bg);
+}
+
+/* A layer's colour, as an upright bar; a layer with none of its own has an empty one. */
+.color-now > i.layer-mark,
+.color-option > i.layer-mark {
+  width: 4px;
+  height: 14px;
+  border: 0;
+  border-radius: 2px;
+}
+
+.color-now > i.layer-mark.none,
+.color-option > i.layer-mark.none {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--muted);
+}
+
+.layer-choice .color-now {
+  padding-left: 6px;
+}
+
+.layer-choice .color-now > svg {
+  flex: none;
+  margin-left: auto;
+  color: var(--muted);
 }
 
 /* The eyedropper beside the colour's code in the colour window */

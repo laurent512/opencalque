@@ -123,6 +123,7 @@ apps/web
   src/catalog.ts      The warehouse's sources: the bundled libraries and extensions, and web catalogs.
   src/WarehouseDialog.tsx   The warehouse: browse and place components, install extensions.
   src/ContextMenu.tsx The right-click menu, built from command ids.
+  src/LayerChoice.tsx The layer of what is selected, picked from a list that shows each layer's colour.
   src/ColorChoice.tsx, FillChoice.tsx, WeightChoice.tsx   The colour, fill and line weight fields and their windows,
                       which floating.ts places and closes.
   src/CommandPalette.tsx   Ctrl+K palette: search, run, and rebind shortcuts.
@@ -137,7 +138,10 @@ apps/web
   src/canvas/draw.ts          Canvas 2D painting: grid, scene, selection, handles.
   src/panels/LeftPanel.tsx    The Pages, Layers, Components, Structure (`Objects`) and Colours panels.
   src/panels/properties/      The Properties panel: Properties.tsx, fields.ts (FIELDS), FieldRow.tsx, walls.tsx,
-                              dimensions.tsx, paper.tsx, modifiers.tsx.
+                              dimensions.tsx, paper.tsx, modifiers.tsx. Its sections fold (`FoldingSections` in
+                              ui.tsx; `foldedSections` in the preferences, by title). Fields that follow each other
+                              share a row by `PAIRS` in fields.ts (`FieldPair`), each keeping its own hidden name;
+                              `keepProportions`, a preference, makes a size in a pair change the other one.
   src/panels/AssistantPanel.tsx, MaterialsPanel.tsx,
                       DimensionStylesPanel.tsx; properties/tables.tsx, what a table counts and its columns.
   src/actions/tables.ts  A new table of quantities, in the words and numbers of the user's language.
@@ -306,7 +310,7 @@ A `room` node is a point and a name; **its outline is not stored**. `roomAt(doc,
 - A `divider` (a to b) bounds rooms like a wall of no thickness, to split an open space.
 - **Its perimeter** (`regionPerimeter`) is the length of its outline, along the faces of its walls, doors included and what stands inside it left out; a room shows it under its area with `showPerimeter`, and quantities give it per room (`RoomQuantity.perimeter`, measured round the outline as it is placed, so a stretched component lengthens it).
 - The room draws its floor as a path flagged `backdrop: 'floor'` (painted over papers and the pictures stacked under every floor, under walls and everything else, and not clickable), then its name and area as text. It is picked by its name. With no closed space around it, only the name is drawn. Selected on its own (or with other rooms only), it has no box around it (`Overlay.boxless`), only its outline lit, so no grips, and a press or a right-click inside where that box would be is not on it (`roomsOnly` in `canvas/shapes.ts`): it has nothing of its own to scale or turn, only its name to move by dragging it.
-- Its `style` is split between the two: `fill` and `pattern` are the floor's, `stroke` the colour of the name and area. The floor is flagged `over`, so that colour never outlines it. In the Properties panel the room has two sections to match, Name (the name, where it is written, its text size and text colour, said as the text's, whether the area shows) and Floor (colour and pattern).
+- Its `style` is split between the two: `fill` and `pattern` are the floor's, `stroke` the colour of the name and area. The floor is flagged `over`, so that colour never outlines it. In the Properties panel the room has two sections to match, Label (where its name is written, its text size and text colour, said as the text's, whether the area shows) and Floor (colour and pattern); its name is in the Name row every object has.
 - A floor pattern is `style.pattern`, as for any fill; the `hatch` modifier works too, on any closed shape, stacking with other modifiers. Pattern strokes are clipped to the shape, which is why clip outlines may be any simple polygon (`segmentsInside` cuts lines for DXF).
 - In the editor: the room tool (`A`) previews a room wherever the pointer is inside closed walls and places it on click; the divider tool (`Shift+A`) shares its toolbar button.
 

@@ -4,7 +4,7 @@ import { addModifier } from '../../actions'
 import { msg, t } from '../../i18n'
 import { registry, useExtensions } from '../../extensions'
 import { apply } from '../../store'
-import { Field, IconButton, Section, YesNo } from '../../ui'
+import { Field, FieldPair, IconButton, Section, YesNo } from '../../ui'
 
 /* The Modifiers section: the modifiers of the selected object, in order, each with its parameters. */
 
@@ -81,8 +81,10 @@ export function ModifierStack({ node }: { node: Node }) {
             {!kind && <p className="hint">{t('This kind of modifier is not installed, so it is skipped. It stays in the drawing.')}</p>}
             {kind && (
               <>
-                <Field label={t('X')} numeric length value={frame.x} onCommit={(x) => change(index, { frame: { ...frame, x } })} />
-                <Field label={t('Y')} numeric length value={frame.y} onCommit={(y) => change(index, { frame: { ...frame, y } })} />
+                <FieldPair label={t('X, Y')}>
+                  <Field label={t('X')} numeric length value={frame.x} onCommit={(x) => change(index, { frame: { ...frame, x } })} />
+                  <Field label={t('Y')} numeric length value={frame.y} onCommit={(y) => change(index, { frame: { ...frame, y } })} />
+                </FieldPair>
                 {kind.params.map((p) =>
                   p.type === 'number' ? (
                     <Field

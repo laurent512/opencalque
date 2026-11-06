@@ -13,9 +13,12 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 - The CLI has `check`, which lists what is wrong with a drawing, `quantities`, `png`, which draws a page as a picture, and `guide`, which prints how drawings are stored and edited, for an agent to read.
 
 ### Improved
+- The Properties panel is easier to read and to reach into. Its sections fold under their headings and stay folded for whatever is selected next. Every object has a Name, showing what it is until it is given one. The Layer is picked from a list that shows the colour of each layer, and says Mixed when the selection is on several. A Status row locks and hides what is selected. X and Y, and width and height, share a row, and a lock beside the size keeps the proportions when one of them is typed.
+- A room's name is now in the Name row at the top of its properties, like any other object's; what used to be its Name section is called Label.
 - The command list puts the closest match first, so that Enter runs what you typed: a command named by your words comes before one that merely has a word starting like them. It finds what it found before.
 
 ### Fixed
+- A locked object selected from the Structure panel can no longer be resized or turned by its handles on the drawing, which no longer show on it.
 - `opencalque apply` moves the doors and windows of a wall with it, as the editor does: they used to stay where they were.
 - In the desktop app, the preferences say that the key of a service is encrypted when it is, as it has been since 1.4.0, rather than saying it is not.
 

@@ -7,7 +7,7 @@ import { registry } from '../../extensions'
 import { apply, selectCorner, useStore } from '../../store'
 import { ColorChoice } from '../../ColorChoice'
 import { WeightChoice } from '../../WeightChoice'
-import { DashPicker, Field, IconButton, JustifyPicker, Section, YesNo } from '../../ui'
+import { DashPicker, Field, FieldPair, IconButton, JustifyPicker, Section, YesNo } from '../../ui'
 import { formatLength } from '../../units'
 import { MaterialChoice, MaterialNote, type MaterialOption } from '../../MaterialChoice'
 import { unfilledPatch } from '../../materials'
@@ -374,8 +374,10 @@ export function CornerPanel({ at }: { at: { x: number; y: number } }) {
     <>
       <Section title={ends.length > 1 ? t('Corner') : t('Wall end')}>
         <p className="hint">{ends.length > 1 ? t('{n} walls meet here. Drag the corner, or type where it should be: they all follow.', { n: ends.length }) : t('The free end of a wall. Bring it onto another wall’s end to join them.')}</p>
-        <Field label={t('X')} numeric length value={at.x} onCommit={(x) => move({ x, y: at.y })} />
-        <Field label={t('Y')} numeric length value={at.y} onCommit={(y) => move({ x: at.x, y })} />
+        <FieldPair label={t('X, Y')}>
+          <Field label={t('X')} numeric length value={at.x} onCommit={(x) => move({ x, y: at.y })} />
+          <Field label={t('Y')} numeric length value={at.y} onCommit={(y) => move({ x: at.x, y })} />
+        </FieldPair>
         {ends.length === 1 && (
           <div className="pill-row">
             <button className="pill" onClick={() => executeById('wall.extend')}>

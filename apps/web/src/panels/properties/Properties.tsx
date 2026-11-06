@@ -1,16 +1,19 @@
-import { type Bounds, type NodeOf, boundsOf, dist, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, componentUses, rootOf, layersOf, type Node, type Op, roomAt, regionPerimeter, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
+import { type Bounds, type NodeOf, applyOps, boundsOf, dist, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, componentUses, rootOf, type Node, type Op, roomAt, regionPerimeter, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
 import { swapSelectedComponent } from '../../actions'
 import { EntryChoice } from '../../EntryChoice'
 import { entryOf, isModel } from '../../entries'
 import { executeById } from '../../commands'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Eye, EyeOff, Lock, LockOpen } from 'lucide-react'
 import { applyCalibration } from '../../floorplan'
 import { t } from '../../i18n'
+import { LayerChoice } from '../../LayerChoice'
 import { editComponent } from '../../navigation'
+import { usePrefs } from '../../prefs'
 import { registry } from '../../extensions'
 import { apply, useStore } from '../../store'
 import { toast } from '../../windows'
-import { Field, labelOf, Section } from '../../ui'
+import { Field, FieldPair, FoldingSections, labelOf, ProportionLock, Section, TypeIcon, YesNo } from '../../ui'
 import { formatArea, formatLength, parseLength, unit, unitSuffix } from '../../units'
 import { Sections, type Update } from './FieldRow'
 import { AnnotationTool, DimensionTool, GridlineTool, SelectedDimensionStyle } from './dimensions'
@@ -43,6 +46,7 @@ function RoomFacts({ node }: { node: Extract<Node, { type: 'room' }> }) {
  */
 function SelectionSize({ nodes }: { nodes: Node[] }) {
   const doc = useStore((s) => s.doc)
+  const kept = usePrefs((prefs) => prefs.keepProportions)
   const ids = nodes.map((node) => node.id).join()
   const bounds = useMemo(() => {
     const ctx = { doc, registry, depth: 0 }
@@ -54,17 +58,58 @@ function SelectionSize({ nodes }: { nodes: Node[] }) {
   // The difference typed is what the far side moves by, whichever of the two sizes it was typed in.
   const stretch = (box: Bounds, axis: 'x' | 'y') => (typed: number) => {
     if (!(typed > 0)) return
-    apply(stretchOps(doc, nodes, axis, typed - size(box, axis), registry))
+    const ops = stretchOps(doc, nodes, axis, typed - size(box, axis), registry)
+    const across = axis === 'x' ? 'y' : 'x'
+    if (!kept || !(size(box, axis) > 0)) return apply(ops)
+    // Keeping the proportions: the other side goes as far in proportion, from where the first left them.
+    const after = applyOps(doc, ops)
+    apply([...ops, ...stretchOps(after, nodes.map((node) => after.nodes[node.id]), across, (size(box, across) * (typed - size(box, axis))) / size(box, axis), registry)])
   }
   return (
     <>
-      <Field label={t('Width')} numeric length value={size(bounds, 'x')} onCommit={stretch(bounds, 'x')} />
-      <Field label={t('Height')} numeric length value={size(bounds, 'y')} onCommit={stretch(bounds, 'y')} />
+      <FieldPair label={t('W, H')} lock={<ProportionLock />}>
+        <Field label={t('Width')} numeric length value={size(bounds, 'x')} onCommit={stretch(bounds, 'x')} />
+        <Field label={t('Height')} numeric length value={size(bounds, 'y')} onCommit={stretch(bounds, 'y')} />
+      </FieldPair>
       {/* Walls along one line only have no size across them between their axes. */}
-      {axes && size(axes, 'x') > 0.5 && <Field label={t('Width, axis to axis')} numeric length value={size(axes, 'x')} onCommit={stretch(axes, 'x')} />}
-      {axes && size(axes, 'y') > 0.5 && <Field label={t('Height, axis to axis')} numeric length value={size(axes, 'y')} onCommit={stretch(axes, 'y')} />}
+      {axes && (size(axes, 'x') > 0.5 || size(axes, 'y') > 0.5) && (
+        <FieldPair label={t('Axis to axis')}>
+          {/* A size alone stays under the W or the H it is, which is all that says which it is. */}
+          {size(axes, 'x') > 0.5 ? <Field label={t('Width, axis to axis')} numeric length value={size(axes, 'x')} onCommit={stretch(axes, 'x')} /> : <div className="field" />}
+          {size(axes, 'y') > 0.5 ? <Field label={t('Height, axis to axis')} numeric length value={size(axes, 'y')} onCommit={stretch(axes, 'y')} /> : <div className="field" />}
+        </FieldPair>
+      )}
       <p className="hint">{t('A size typed moves what lies along the right side, or the bottom: walls across get longer, keep their thickness and stay joined.')}</p>
     </>
+  )
+}
+
+/**
+ * Whether the selected objects can be picked on the drawing and whether they are drawn, as the
+ * Structure panel's two buttons say it for a row. Objects that disagree light neither side.
+ */
+function SelectionStatus({ nodes }: { nodes: Node[] }) {
+  const set = (patch: Record<string, unknown>) => apply(nodes.map((node): Op => ({ op: 'update_node', id: node.id, patch })))
+  const agreed = (seen: (node: Node) => boolean) => (nodes.every(seen) ? true : nodes.some(seen) ? undefined : false)
+  return (
+    // Not a label: a label would hand every click to the first tab.
+    <div className="field status-field">
+      <span>{t('Status')}</span>
+      <YesNo
+        label={t('Locked')}
+        value={agreed((node) => !node.locked)}
+        onChange={(free) => set({ locked: free ? null : true })}
+        words={[<LockOpen key="free" size={13} />, <Lock key="locked" size={13} />]}
+        titles={[t('Unlock'), t('Lock so it cannot be selected or moved on the drawing')]}
+      />
+      <YesNo
+        label={t('Visible')}
+        value={agreed((node) => node.visible !== false)}
+        onChange={(shown) => set({ visible: shown ? null : false })}
+        words={[<Eye key="shown" size={13} />, <EyeOff key="hidden" size={13} />]}
+        titles={[t('Show'), t('Hide')]}
+      />
+    </div>
   )
 }
 
@@ -78,31 +123,24 @@ function Selection({ nodes }: { nodes: Node[] }) {
   const layered = rootOf(doc, node.parent)?.type !== 'component'
   return (
     <>
-      <Section title={single ? labelOf(doc, node) : t('{n} objects', { n: nodes.length })}>
-        {/* What a thing is called is changed in the Structure panel (double-click its row). A room
-            and a paper are the exceptions: their name is drawn, on the plan and in the title block.
-            A room's is in its Name section, with the rest of what is written. */}
-        {single && node.type === 'paper' && <Field label={t('Name')} value={node.name ?? ''} onCommit={(name) => update(() => ({ name: name || null }))} />}
+      <Section title={t('Selection')} count={nodes.length}>
+        {/* What it says when it has no name of its own is what it is. Emptied, it goes back to that. */}
+        {single && <Field key={node.id} label={t('Name')} lead={<TypeIcon node={node} />} placeholder={labelOf(doc, { ...node, name: undefined })} optional value={node.name ?? ''} onCommit={(name?: string) => update(() => ({ name: name?.trim() || null }))} />}
         {layered && (
-          <label className="field">
+          // Not a label: a label would hand every click to the button inside, opening its list again.
+          <div className="field">
             <span>{t('Layer')}</span>
-            <select value={node.layer ?? ''} onChange={(e) => update(() => ({ layer: e.target.value }))}>
-              {node.layer === undefined && <option value="">{t('None')}</option>}
-              {layersOf(doc).map((layer) => (
-                <option key={layer.id} value={layer.id}>
-                  {layer.name}
-                </option>
-              ))}
-            </select>
-          </label>
+            <LayerChoice nodes={nodes} pick={(layer) => update(() => ({ layer }))} />
+          </div>
         )}
+        <SelectionStatus nodes={nodes} />
         {!single && <SelectionSize nodes={nodes} />}
         {/* Stacking, aligning and spacing are in the toolbar's Arrange menu, not here. */}
         {single && node.type === 'paper' && (
-          <>
+          <FieldPair label={t('X, Y')}>
             <Field label={t('Position X')} numeric length value={node.x} onCommit={(x) => update(() => ({ x }))} />
             <Field label={t('Position Y')} numeric length value={node.y} onCommit={(y) => update(() => ({ y }))} />
-          </>
+          </FieldPair>
         )}
         {nodes.every((n) => n.type === 'wall') && <WallMaterial walls={nodes as NodeOf<'wall'>[]} />}
         {nodes.every((n) => n.type === 'wall') && <WallLine walls={nodes as NodeOf<'wall'>[]} />}
@@ -227,6 +265,7 @@ export function Properties() {
   const onCorner = corner !== null && wallEndsAt(doc, useStore.getState().scope, corner).length > 0
   return (
     <div className="panel-body">
+      <FoldingSections.Provider value>
         {tool === 'calibrate' ? (
           <CalibrateTool />
         ) : onCorner ? (
@@ -266,6 +305,7 @@ export function Properties() {
             </p>
           </Section>
         )}
+      </FoldingSections.Provider>
     </div>
   )
 }

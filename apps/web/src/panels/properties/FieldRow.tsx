@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Pipette, Link2, Undo2, SquareSplitHorizontal } from 'lucide-react'
 import { msg, t } from '../../i18n'
 import { registry } from '../../extensions'
+import { usePrefs } from '../../prefs'
 import { apply, setTool, useStore } from '../../store'
 import { ColorChoice, type LayerOption } from '../../ColorChoice'
 import { FillChoice, type FillChange } from '../../FillChoice'
@@ -10,9 +11,9 @@ import { MaterialChoice, MaterialNote, type MaterialOption } from '../../Materia
 import { unfilledPatch } from '../../materials'
 import { showPanel } from '../../dock'
 import { WeightChoice } from '../../WeightChoice'
-import { DashPicker, Field, IconButton, OpacitySlider, Section, YesNo } from '../../ui'
+import { DashPicker, Field, FieldPair, IconButton, OpacitySlider, ProportionLock, Section, YesNo } from '../../ui'
 import { formatAngle, formatLength } from '../../units'
-import { GEOMETRY, LOOK_SECTIONS, STROKE, type FieldSpec, type Option } from './fields'
+import { GEOMETRY, LOOK_SECTIONS, PAIRS, rowsOf, STROKE, type FieldSpec, type Option } from './fields'
 import { WallEdges } from './walls'
 
 /* One field of the Properties panel, for one object or several, and the sections fields are shown in. */
@@ -228,6 +229,27 @@ function TypedRow(props: { node: Node; nodes: Node[]; field: FieldSpec; update: 
   )
 }
 
+/**
+ * Two fields on one row (`PAIRS`). A size can keep its proportions: the other one then changes by
+ * as much, each object in its own proportions. What has no size yet has none to keep.
+ */
+function PairRow({ fields: [first, second], ...props }: { node: Node; nodes: Node[]; fields: FieldSpec[]; update: Update }) {
+  const pair = PAIRS[first.path]
+  const kept = usePrefs((prefs) => prefs.keepProportions) && pair.size
+  const along = (own: string, other: string): Update => (patch) =>
+    props.update((n) => {
+      const next = patch(n)
+      const [was, to, far] = [read(n, own), next[own], read(n, other)]
+      return typeof was === 'number' && typeof to === 'number' && typeof far === 'number' && was > 0 && to > 0 ? { ...next, [other]: tidy((far * to) / was) } : next
+    })
+  return (
+    <FieldPair label={t(pair.label)} lock={pair.size && <ProportionLock />}>
+      <TypedRow {...props} field={first} update={kept ? along(first.path, second.path) : props.update} />
+      <TypedRow {...props} field={second} update={kept ? along(second.path, first.path) : props.update} />
+    </FieldPair>
+  )
+}
+
 /** What each symbol of a line's end looks like, drawn at the right-hand end of a short line. */
 const END_SHAPES: Record<string, React.ReactNode> = {
   none: null,
@@ -268,7 +290,7 @@ function EndPicker(props: { side: 'start' | 'end'; options: Option[]; value: str
 /** Fields grouped under their section headings, in the order the sections first appear. */
 export function Sections({ node, nodes = [node], fields, update, pick }: { node: Node; nodes?: Node[]; fields: FieldSpec[]; update: Update; pick?: boolean }) {
   // A field that does not apply to every object selected is left out.
-  const shown = fields.filter((f) => (!f.when || nodes.every(f.when)) && (!f.single || nodes.length === 1))
+  const shown = fields.filter((f) => !f.when || nodes.every(f.when))
   const titles = [...new Set(shown.map((f) => f.section ?? GEOMETRY))]
   // A single wall can have its lines styled one by one; the view follows what the wall says, and the button opens it.
   const wall = nodes.length === 1 && node.type === 'wall' ? node : null
@@ -303,11 +325,9 @@ export function Sections({ node, nodes = [node], fields, update, pick }: { node:
             ) : undefined
           }
         >
-          {shown
-            .filter((f) => (f.section ?? GEOMETRY) === title)
-            .map((field) => (
-              <TypedRow key={field.path} node={node} nodes={nodes} field={field} update={update} />
-            ))}
+          {rowsOf(shown.filter((f) => (f.section ?? GEOMETRY) === title)).map((row) =>
+            row.length === 2 ? <PairRow key={row[0].path} node={node} nodes={nodes} fields={row} update={update} /> : <TypedRow key={row[0].path} node={node} nodes={nodes} field={row[0]} update={update} />,
+          )}
           {title === STROKE && wall && split && <WallEdges wall={wall} />}
           {title === GEOMETRY && nodes.length === 1 && 'a' in node && <LengthRow node={node} />}
           {title === GEOMETRY && nodes.length === 1 && (node.type === 'wall' || node.type === 'line') && <AngleRow node={node} />}

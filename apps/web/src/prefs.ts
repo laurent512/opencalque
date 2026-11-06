@@ -35,6 +35,10 @@ export interface Prefs {
   agentBridge: boolean
   /** How the Components panel shows them: one per line, or as pictures side by side. */
   componentsView: 'list' | 'grid'
+  /** The sections of the Properties panel folded under their headings, by title. */
+  foldedSections: string[]
+  /** In the Properties panel, a width or height typed changes the other in proportion. */
+  keepProportions: boolean
   extensions: {
     /** Declarative extensions the user installed, by id. They are data, so they are stored whole. */
     installed: Record<string, DeclarativeExtension>
@@ -90,6 +94,8 @@ const DEFAULTS: Prefs = {
   showClearances: true,
   agentBridge: false,
   componentsView: 'list',
+  foldedSections: [],
+  keepProportions: false,
   extensions: { installed: {}, disabled: [] },
   catalogUrl: '',
   ai: {

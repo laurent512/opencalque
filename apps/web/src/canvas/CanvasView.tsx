@@ -19,7 +19,7 @@ import { DRAW_PRESS, MOVES, PRESSES, RELEASES } from './gestures'
 import { aim, finishPoly, finishShape, polyPoint } from './gestures/drawTools'
 import { finishTurn } from './gestures/turn'
 import { shownClearances, useClearances, type ScreenBox } from './clearances'
-import { titleAt } from './picking'
+import { lockedAmong, titleAt } from './picking'
 import { get, local, reset, syncStep, type Canvas, type Move, type Release, type Shown } from './runtime'
 import { boxLabels, paperLabel, polyline, roomsOnly, sizes, snapName, wallOps } from './shapes'
 
@@ -74,7 +74,7 @@ export function CanvasView() {
 
   const handles = useMemo(() => {
     const node = selection.length === 1 ? doc.nodes[selection[0]] : undefined
-    return node ? (kindOf(node).handles?.(node, registry) ?? []) : []
+    return node && !lockedAmong(doc, selection) ? (kindOf(node).handles?.(node, registry) ?? []) : []
   }, [doc, selection])
 
   /**
@@ -105,7 +105,7 @@ export function CanvasView() {
    */
   const frame = useMemo(() => {
     const node = tool === 'select' && selection.length === 1 ? doc.nodes[selection[0]] : undefined
-    const box = node ? resizeFrame(node, registry, doc) : null
+    const box = node && !lockedAmong(doc, selection) ? resizeFrame(node, registry, doc) : null
     if (!node || !box) return null
     const grips = frameGrips(box)
     // The knob stands off the middle of the top side, away from the box, at the same distance on screen at any zoom.
@@ -172,7 +172,7 @@ export function CanvasView() {
       if (!kind?.outline || modifier.enabled === false) return []
       const frame = modifier.frame ?? { x: 0, y: 0 }
       // Dragging corners keeps the rectangle upright, so it is offered only for one that is.
-      const handles = modifier.type === 'crop' && !frame.rotation && !frame.flipX && (frame.scale ?? 1) === 1
+      const handles = modifier.type === 'crop' && !frame.rotation && !frame.flipX && (frame.scale ?? 1) === 1 && !lockedAmong(doc, selection)
       return [{ index, outline: kind.outline(modifierParams(kind, modifier.params), frame), handles }]
     })
   }, [doc, selection, tool, extensionsVersion])
@@ -244,7 +244,7 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette)
+    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette)
   }, [drawnScene, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines])
 
   // Lets the quick bar finish the shape in progress with the sizes typed there.

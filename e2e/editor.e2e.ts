@@ -531,7 +531,7 @@ test('shows how wide and high the objects selected stand together, and stretches
   await objectRows(page).last().click({ modifiers: ['Shift'] })
   // The first: the walls' own Height field comes further down.
   const size = (name: string) => page.locator('[data-panel="properties"] .field', { has: page.locator(`span:text-is("${name}")`) }).locator('input').first()
-  await expect(page.locator('[data-panel="properties"]')).toContainText('2 objects')
+  await expect(page.locator('[data-panel="properties"]')).toContainText('Selection (2)')
   await expect(size('Width')).toHaveValue('4100')
   await expect(size('Height')).toHaveValue('3100')
   await expect(size('Width, axis to axis')).toHaveValue('4000')
@@ -544,6 +544,15 @@ test('shows how wide and high the objects selected stand together, and stretches
   const doc = JSON.parse(await page.evaluate(() => (window as any).saves.at(-1)))
   expect(doc.nodes.w1).toMatchObject({ a: { x: 0, y: 0 }, b: { x: 5000, y: 0 }, thickness: 200 })
   expect(doc.nodes.w2).toMatchObject({ a: { x: 5000, y: 0 }, b: { x: 5000, y: 3000 }, thickness: 200 })
+  // With the proportions kept, the other side goes as far in proportion, and one undo takes both back.
+  await page.getByRole('button', { name: 'Keep the proportions: width and height change together' }).first().click()
+  await size('Width').fill('10200')
+  await size('Width').press('Enter')
+  await expect(size('Width')).toHaveValue('10200')
+  await expect(size('Height')).toHaveValue('6200')
+  await page.keyboard.press('Control+z')
+  await expect(size('Width')).toHaveValue('5100')
+  await expect(size('Height')).toHaveValue('3100')
 })
 
 test('moves the step between two walls in line by the line across the end of either, the other following', async ({ page }) => {
@@ -1235,8 +1244,7 @@ test('turns a rectangle about its middle from the angle typed, and arranges it f
   await objectRows(page).first().click()
   const label = (name: string) => page.locator('.field', { has: page.locator(`span:text-is("${name}")`) })
   const field = (name: string) => label(name).locator('input')
-  // What it is called is changed in the Structure panel; stacking is in the toolbar.
-  await expect(label('Name')).toHaveCount(0)
+  // Stacking is in the toolbar.
   await expect(label('Order')).toHaveCount(0)
   const x = Number(await field('X').inputValue())
   const y = Number(await field('Y').inputValue())
@@ -1995,4 +2003,142 @@ test('the AI preferences of the web app hold the assistant, and no door for agen
   await expect(page.locator('.pref-heading')).toHaveText(['Assistant'])
   await expect(page.locator('.pref-field', { hasText: 'Provider' })).toBeVisible()
   await expect(page.getByLabel('Let agents on this computer work on the open drawing')).toHaveCount(0)
+})
+
+test('the properties panel: a name, a layer by its colour, its status, and sizes that keep their proportions', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  const rect = (id: string, order: string, layer: string, width = 2000, height = 1000) => ({ id, type: 'rect', parent: 'page_1', order, layer, x: 0, y: 0, width, height })
+  const opened = JSON.parse(drawing({ a: rect('a', 'a1', 'layer_1'), b: rect('b', 'a2', 'walls', 400, 400) }))
+  opened.layers.walls = { id: 'walls', name: 'Walls', order: 'a1', color: '#e11d48' }
+  await choose(page, () => page.keyboard.press('Control+o'), 'panel.opencalque', JSON.stringify(opened))
+  await expect(objectRows(page)).toHaveCount(2)
+  const panel = page.locator('[data-panel="properties"]')
+  const field = (name: string) => panel.locator('.field', { has: page.locator(`span:text-is("${name}")`) }).locator('input')
+  const row = objectRows(page).filter({ has: page.locator('.type-icon') })
+  await row.last().click()
+  await expect(panel.locator('.section h3').first()).toHaveText('Selection (1)')
+
+  // Unnamed, it says what it is; named, the Structure panel says the name; emptied, it goes back.
+  await expect(field('Name')).toHaveAttribute('placeholder', 'Rectangle')
+  await field('Name').fill('Slab')
+  await field('Name').press('Enter')
+  await expect(row.last()).toContainText('Slab')
+  await field('Name').fill('')
+  await field('Name').press('Enter')
+  await expect(row.last()).toContainText('Rectangle')
+
+  // The layer is picked from a list that shows the colour of each.
+  const layer = panel.locator('.layer-choice > button')
+  await expect(layer).toContainText('Layer 1')
+  await layer.click()
+  const walls = page.locator('.layer-menu .color-option', { hasText: 'Walls' })
+  await expect(walls.locator('.layer-mark')).toHaveCSS('background-color', 'rgb(225, 29, 72)')
+  await walls.click()
+  await expect(layer).toContainText('Walls')
+  await expect(layer.locator('.layer-mark')).toHaveCSS('background-color', 'rgb(225, 29, 72)')
+  await page.keyboard.press('Control+z')
+  await expect(layer).toContainText('Layer 1')
+
+  // X and Y side by side, as W and H, each box still named for itself.
+  const pairs = panel.locator('.field-pair')
+  await expect(pairs.locator('.field-pair-name')).toHaveText(['X, Y', 'W, H'])
+  await expect(pairs.first().locator('input')).toHaveCount(2)
+
+  // A size is set alone until the lock says otherwise; then the other follows, and one undo takes both back.
+  await field('W').fill('3000')
+  await field('W').press('Enter')
+  await expect(field('H')).toHaveValue('1000')
+  await page.getByRole('button', { name: 'Keep the proportions: width and height change together' }).click()
+  await field('W').fill('6000')
+  await field('W').press('Enter')
+  await expect(field('H')).toHaveValue('2000')
+  await field('H').fill('1000')
+  await field('H').press('Enter')
+  await expect(field('W')).toHaveValue('3000')
+  await page.keyboard.press('Control+z')
+  await expect(field('W')).toHaveValue('6000')
+  await expect(field('H')).toHaveValue('2000')
+
+  // Two objects together: their layers differ, so the layer says so, and picking one gives it to both.
+  await row.first().click({ modifiers: ['Control'] })
+  await expect(panel.locator('.section h3').first()).toHaveText('Selection (2)')
+  await expect(field('Name')).toHaveCount(0)
+  await expect(layer).toContainText('Mixed')
+  await layer.click()
+  await walls.click()
+  await expect(layer).toContainText('Walls')
+
+  // Status: for both at once, the same as the buttons of their rows.
+  const lock = panel.getByRole('radio', { name: 'Lock so it cannot be selected or moved on the drawing' })
+  const hide = panel.getByRole('radio', { name: 'Hide' })
+  const show = panel.getByRole('radio', { name: 'Show' })
+  await lock.click()
+  await hide.click()
+  await expect(lock).toBeChecked()
+  await expect(hide).toBeChecked()
+  await expect(row.first().getByRole('button', { name: 'Unlock' })).toHaveCount(1)
+  await expect(row.first().getByRole('button', { name: 'Show' })).toHaveCount(1)
+  // One of them shown again: they no longer agree, and neither side is lit.
+  await row.first().getByRole('button', { name: 'Show' }).click()
+  await expect(hide).not.toBeChecked()
+  await expect(show).not.toBeChecked()
+})
+
+test('folds the sections of the properties panel, and keeps them folded', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  const box = (await canvas(page).boundingBox())!
+  const drawRect = async () => {
+    await page.keyboard.press('r')
+    await page.mouse.click(box.x + 300, box.y + 300)
+    await page.mouse.click(box.x + 500, box.y + 400)
+    await page.keyboard.press('v')
+    await objectRows(page).first().click()
+  }
+  await drawRect()
+  const panel = page.locator('[data-panel="properties"]')
+  const heading = panel.getByRole('button', { name: 'Geometry' })
+  const x = panel.locator('.field', { has: page.locator('span:text-is("X")') })
+  await expect(heading).toHaveAttribute('aria-expanded', 'true')
+  await heading.click()
+  await expect(heading).toHaveAttribute('aria-expanded', 'false')
+  await expect(x).toHaveCount(0)
+  await expect(panel.getByRole('button', { name: 'Stroke' })).toHaveAttribute('aria-expanded', 'true')
+  // Still folded after starting again, for the next thing selected.
+  await page.reload()
+  await expect(page.locator('#splash:not(.leaving)')).toHaveCount(0)
+  await drawRect()
+  await expect(heading).toHaveAttribute('aria-expanded', 'false')
+  await heading.click()
+  await expect(x).toHaveCount(1)
+})
+
+test('a locked object selected from the Structure panel cannot be changed by its handles', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  await choose(page, () => page.keyboard.press('Control+o'), 'locked.opencalque', drawing({ a: { id: 'a', type: 'rect', parent: 'page_1', order: 'a1', layer: 'layer_1', x: 0, y: 0, width: 4000, height: 2000 } }))
+  const on = await drawingOnScreen(page)
+  const panel = page.locator('[data-panel="properties"]')
+  const width = panel.locator('.field', { has: page.locator('span:text-is("W")') }).locator('input')
+  const dragCorner = async () => {
+    const [x, y] = on(4000, 2000)
+    await page.mouse.move(x, y)
+    await page.mouse.down()
+    await page.mouse.move(x + 40, y + 30, { steps: 6 })
+    await page.mouse.up()
+  }
+  const row = objectRows(page).filter({ hasText: 'Rectangle' }).first()
+  await row.click()
+  // Its corner can be pulled, which is what makes the rest of this test mean something.
+  await dragCorner()
+  await expect(width).not.toHaveValue('4000')
+  await page.keyboard.press('Control+z')
+  await expect(width).toHaveValue('4000')
+  await panel.getByRole('radio', { name: 'Lock so it cannot be selected or moved on the drawing' }).click()
+  await dragCorner()
+  // There is nothing to take hold of there now: the press is one beside it, which lets it go.
+  await expect(width).toHaveCount(0)
+  await row.click()
+  await expect(width).toHaveValue('4000')
 })

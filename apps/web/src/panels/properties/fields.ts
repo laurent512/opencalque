@@ -40,13 +40,35 @@ export interface FieldSpec {
   filled?: boolean
   /** The options are the symbols of a line's end, shown as pictures to pick from: of its first end or of its last. */
   ends?: 'start' | 'end'
-  /** Set for one object at a time only, as a name: several are not given the same one at once. */
-  single?: boolean
   /** The choice is of one of the drawing's materials, picked from a list showing each with its swatch (`MaterialChoice`). */
   material?: boolean
 }
 
 export const GEOMETRY = msg('Geometry')
+
+/**
+ * Fields shown side by side when one follows the other, by the path of the first: what the second
+ * is and what the row is called. Those that are `size` can keep their proportions.
+ */
+export const PAIRS: Record<string, { second: string; label: string; size?: boolean }> = {
+  x: { second: 'y', label: msg('X, Y') },
+  cx: { second: 'cy', label: msg('X, Y') },
+  'a.x': { second: 'a.y', label: msg('X1, Y1') },
+  'b.x': { second: 'b.y', label: msg('X2, Y2') },
+  width: { second: 'height', label: msg('W, H'), size: true },
+  rx: { second: 'ry', label: msg('Radii'), size: true },
+}
+
+/** Fields in the rows they are shown on: a pair (`PAIRS`) on one, any other alone. */
+export function rowsOf(fields: FieldSpec[]): FieldSpec[][] {
+  const rows: FieldSpec[][] = []
+  for (const field of fields) {
+    const last = rows[rows.length - 1]
+    if (last?.length === 1 && PAIRS[last[0].path]?.second === field.path) last.push(field)
+    else rows.push([field])
+  }
+  return rows
+}
 
 const num = (path: string, label: string, fallback?: number, section?: string): FieldSpec => ({ path, label, type: 'number', fallback, section })
 
@@ -89,8 +111,8 @@ const SHAPE_STYLE: FieldSpec[] = [...stroke(STROKE), fill('none', msg('none'))]
 /** A parametric object draws its own fills, white unless its style says. */
 const STYLE: FieldSpec[] = [...stroke(STROKE), fill('#ffffff', msg('default'))]
 
-/** A room in two parts: the name written in it (with its area), and its floor. */
-const ROOM_NAME = msg('Name')
+/** A room in two parts: what is written in it (its name, its area), and its floor. */
+const ROOM_LABEL = msg('Label')
 
 const FLOOR = msg('Floor')
 
@@ -171,17 +193,15 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
   rect: [len('x', msg('X')), len('y', msg('Y')), len('width', msg('W')), len('height', msg('H')), num('rotation', msg('Rotation'), 0), ...SHAPE_STYLE],
   // A paper's size is its format and scale, and where it lies is typed at the top of its panel: it has no geometry section.
   paper: [],
-  // Its name is drawn, so it is set here rather than only in the Structure panel. Where the name is
-  // written is where the room is: its X and Y are the name's.
+  // Where the name is written is where the room is: its X and Y are the name's.
   room: [
-    { path: 'name', label: msg('Name'), type: 'string', section: ROOM_NAME, optional: true, single: true },
-    len('x', msg('X'), undefined, ROOM_NAME),
-    len('y', msg('Y'), undefined, ROOM_NAME),
-    // Said as the text's: under "Name", a bare size or colour could be taken for the room's.
-    len('size', msg('Text size'), 250, ROOM_NAME),
-    { path: 'style.stroke', label: msg('Text colour'), type: 'color', section: ROOM_NAME, fallback: '#1f1f1f', unset: msg('from layer') },
-    { path: 'showArea', label: msg('Show area'), type: 'boolean', section: ROOM_NAME, fallback: true },
-    { path: 'showPerimeter', label: msg('Show perimeter'), type: 'boolean', section: ROOM_NAME, fallback: false },
+    len('x', msg('X'), undefined, ROOM_LABEL),
+    len('y', msg('Y'), undefined, ROOM_LABEL),
+    // Said as the text's: a bare size or colour could be taken for the room's.
+    len('size', msg('Text size'), 250, ROOM_LABEL),
+    { path: 'style.stroke', label: msg('Text colour'), type: 'color', section: ROOM_LABEL, fallback: '#1f1f1f', unset: msg('from layer') },
+    { path: 'showArea', label: msg('Show area'), type: 'boolean', section: ROOM_LABEL, fallback: true },
+    { path: 'showPerimeter', label: msg('Show perimeter'), type: 'boolean', section: ROOM_LABEL, fallback: false },
     fill('#dfe6f0', msg('default'), { section: FLOOR }),
   ],
   divider: AB,
