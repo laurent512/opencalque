@@ -1,5 +1,5 @@
 import { childrenOf, isVisible, rootOf } from './document'
-import { add, applyTransform, dist, inverseTransform, len, mid, norm, perp, rotate, scale, sub, type Bounds, type Vec2, ellipseArc, smoothPoints, unionBounds } from './geometry'
+import { add, applyTransform, besidePath, dist, inverseTransform, len, mid, norm, parallelPath, perp, rotate, scale, sub, type Bounds, type Vec2, ellipseArc, smoothPoints, unionBounds } from './geometry'
 import { fadeColor, resolveColor } from './colors'
 import { DIMENSION_MARKER_SIZE, DIMENSION_TEXT_SIZE, styledDimension } from './dimensions'
 import { fillFields } from './fields'
@@ -70,6 +70,14 @@ export interface NodeKind<N> {
    * moves the node's modifiers, and goes through what a group holds.
    */
   transform(node: N, t: Placing, registry: Registry): Record<string, unknown> | null
+  /**
+   * The patch that lays the node parallel to itself, `distance` away (the Offset tool, `offset.ts`);
+   * null when it has no such copy at that distance. Which side a sign means is the kind's, and the
+   * same as in `beside`. A type without one is not offset.
+   */
+  parallel?(node: N, distance: number): Record<string, unknown> | null
+  /** How far `p` is from the node, signed as `parallel` takes a distance. */
+  beside?(node: N, p: Vec2): number
 }
 
 const moveXY = (node: { x: number; y: number }, d: Vec2) => ({ x: node.x + d.x, y: node.y + d.y })
@@ -588,6 +596,11 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     handles: handlesAB,
     moveHandle: moveHandleAB,
     transform: (node, t) => ({ ...transformAB(node, t), ...markerSize(node, t) }),
+    parallel: (node, distance) => {
+      const path = parallelPath([node.a, node.b], false, distance)
+      return path && { a: path[0], b: path[1] }
+    },
+    beside: (node, p) => besidePath([node.a, node.b], false, p),
   },
   polyline: {
     primitives: (node) => [{ kind: 'path', points: node.smooth ? smoothPoints(node.points, node.closed) : node.points, closed: node.closed }, ...(node.closed ? [] : endMarkers(node.points, node))],
@@ -595,9 +608,21 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     handles: (node) => node.points,
     moveHandle: (node, index, p) => ({ points: node.points.map((q, i) => (i === index ? p : q)) }),
     transform: (node, t) => ({ points: node.points.map((p) => t.point(p)), ...markerSize(node, t) }),
+    parallel: (node, distance) => {
+      const points = parallelPath(node.points, !!node.closed, distance, node.smooth)
+      return points && { points }
+    },
+    beside: (node, p) => besidePath(node.smooth ? smoothPoints(node.points, node.closed) : node.points, !!node.closed, p),
   },
   rect: {
     primitives: (node) => [{ kind: 'path', points: rectCorners(node), closed: true }],
+    // Its corners run clockwise on screen: a positive distance is inwards.
+    parallel: (node, distance) => {
+      const [width, height] = [node.width - 2 * distance, node.height - 2 * distance]
+      if (width <= 0 || height <= 0) return null
+      return { ...add(node, rotate({ x: distance, y: distance }, node.rotation ?? 0)), width, height }
+    },
+    beside: (node, p) => besidePath(rectCorners(node), true, p),
     move: moveXY,
     // No points of its own to drag: it is resized as a box, by a frame that turns with it (resize.ts).
     transform: transformBox,
@@ -674,6 +699,12 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
       const arc = t.mirror && ends ? { from: turned(180 - ends.to), to: turned(180 - ends.from) } : {}
       return { cx: centre.x, cy: centre.y, rx: t.length(node.rx), ry: t.length(node.ry), rotation: t.angle(node.rotation), ...arc }
     },
+    // What runs parallel to a circle is a circle; to any other ellipse, no ellipse. A positive distance is outwards.
+    parallel: (node, distance) => {
+      const radius = node.rx + distance
+      return Math.abs(node.rx - node.ry) < 1e-6 && radius > 0 ? { rx: radius, ry: radius } : null
+    },
+    beside: (node, p) => dist(p, { x: node.cx, y: node.cy }) - node.rx,
   },
   text: {
     primitives: (node, ctx) => textLines(said(node.text, node.parent, ctx), node, node.size, { rotation: node.rotation, font: node.font, align: node.align, bold: node.bold }),

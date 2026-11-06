@@ -32,6 +32,8 @@ export type Gesture =
   | { kind: 'offset'; id: string; a: Vec2; b: Vec2 }
   /** An arc whose two ends are set; the pointer now chooses a point it goes through. */
   | { kind: 'arc'; id: string; a: Vec2; b: Vec2 }
+  /** The offset tool has taken `node`; the pointer now chooses how far from it the copy goes. `copy` is the copy being shown. */
+  | { kind: 'parallel'; node: Node; copy?: string }
   /** A live reading from `start`. Nothing is added to the drawing. */
   | { kind: 'measure'; start: Vec2 }
   | { kind: 'angle'; vertex: Vec2; a?: Vec2 }

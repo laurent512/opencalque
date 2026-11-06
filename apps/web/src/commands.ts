@@ -325,6 +325,7 @@ const STATIC: Command[] = [
   tool('angle', msg('Measure an angle'), 'Shift+M'),
   tool('split', msg('Split'), 'K'),
   tool('trim', msg('Trim'), 'X'),
+  tool('offset', msg('Offset a line or a shape'), 'Shift+X'),
   tool('rotate', msg('Rotate'), 'E'),
   tool('eyedropper', msg('Eyedropper: copy the look of an object'), 'I'),
   tool('text', msg('Text'), 'T'),

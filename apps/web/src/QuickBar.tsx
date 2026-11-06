@@ -38,6 +38,7 @@ const SIZES: Partial<Record<Tool, Size[]>> = {
   paper: box,
   line: run,
   curve: span,
+  offset: [{ which: 'a', label: msg('Distance'), kind: 'length' }],
   arc: span,
   wall: run,
   divider: run,
@@ -132,8 +133,9 @@ export function QuickBar() {
   const sizes = bending ? bend : SIZES[tool]
   if (!sizes) return null
   // A length or an angle means nothing before there is a point to measure it from. A
-  // width and a height do: typed first, they make a box that one click places.
-  const measurable = sizes === box || started
+  // width and a height do: typed first, they make a box that one click places. So does the
+  // distance of an offset, which a click then places a copy at.
+  const measurable = sizes === box || started || tool === 'offset'
   const setThickness = (text: string) => {
     const mm = parseLength(text)
     if (mm !== null && mm > 0) useStore.setState({ wallThickness: mm })

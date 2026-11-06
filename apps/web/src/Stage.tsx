@@ -54,7 +54,7 @@ import {
 import { canFlipSide, MAX_ZOOM, MIN_ZOOM, zoomBy, zoomTo, zoomToFit } from './actions'
 import { CanvasView } from './canvas/CanvasView'
 import { executeById, formatKey, useShortcutLabel } from './commands'
-import { Arc, GridLine } from './icons'
+import { Arc, GridLine, Offset } from './icons'
 import { msg, t } from './i18n'
 import { QuickBar } from './QuickBar'
 import type { ScopeStep } from './scopePath'
@@ -82,6 +82,7 @@ const ICONS: Partial<Record<Tool, [title: string, icon: LucideIcon]>> = {
   measure: [msg('Measure: read a distance without drawing anything'), Ruler],
   split: [msg('Split: cut a wall, a line or a polyline in two where you click'), Slice],
   trim: [msg('Trim: take away the stretch of a wall or a line you click, up to what crosses it'), Scissors],
+  offset: [msg('Offset: a parallel copy of a line or a shape, at a distance'), Offset],
   rotate: [msg('Rotate: turn the selection about a point you click'), RotateCw],
   angle: [msg('Angle: read the angle between two directions'), Triangle],
   eyedropper: [msg('Eyedropper: copy the look of an object'), Pipette],
@@ -371,7 +372,7 @@ function Toolbar() {
         <LibraryBig size={18} />
       </CommandButton>
       <hr />
-      <ToolGroup tools={CUT_TOOLS} current={cutTool} more={t('Trim')} />
+      <ToolGroup tools={CUT_TOOLS} current={cutTool} more={t('Trim, offset')} />
       {/* Mirroring is not a tool: the selection is flipped on itself, at once, from the same list. */}
       <ToolGroup tools={['rotate']} current="rotate" more={t('Mirror')} actions={FLIPS} />
       <ArrangeMenu />

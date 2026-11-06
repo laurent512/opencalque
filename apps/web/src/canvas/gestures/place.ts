@@ -9,6 +9,7 @@ import { snap } from '../aim'
 import type { SizeLabel } from '../draw'
 import { TWO_POINT, type Keys } from '../gesture'
 import { get, type Canvas, type Move, type Press } from '../runtime'
+import { offsetHover } from './offset'
 
 /*
  * The tools that act where they are clicked, with nothing to drag: the eyedropper, putting down
@@ -132,6 +133,8 @@ export const toolHover: Move<'idle'> = (c, _g, e, _at, world, out) => {
     out.previewed = preview([...(library?.ops ?? []), { op: 'add_node', node }])
   } else if (TWO_POINT.includes(s.tool) || s.tool === 'measure' || s.tool === 'angle' || (s.tool === 'rotate' && s.selection.length > 0)) {
     out.marker = snap(c, world, e, []).marker
+  } else if (s.tool === 'offset') {
+    offsetHover(c, world, out)
   } else if (s.tool === 'trim') {
     const aim = trimAim(c, world)
     if (aim) out.trim = { piece: aim.place.piece, width: aim.node.type === 'wall' ? aim.node.thickness * s.view.zoom : 0 }

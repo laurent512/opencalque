@@ -136,6 +136,8 @@ export interface Overlay {
   face?: Vec2[][]
   /** Where the split tool would cut: a point, the way the thing runs there, and how far the mark reaches to either side. */
   cut?: { at: Vec2; dir: Vec2; half: number; parts?: Vec2[][]; gap?: number }
+  /** The object a tool would act on, lit up as if it were selected. */
+  lit?: string
   /** What the trim tool would take away: the stretch of a wall or a line, along its line, and how wide to show it in pixels (a wall's thickness). */
   trim?: { piece: Vec2[]; width: number }
   /** Temporary dimensions of the one object selected: each line, and its length in a box on screen (`clearanceLabel`). */
@@ -615,7 +617,7 @@ export function drawScene(
   }
 
   const selected = scene.filter((item) => selection.includes(item.id))
-  for (const item of selected) {
+  for (const item of scene.filter((item) => selection.includes(item.id) || item.id === overlay.lit)) {
     for (const prim of item.prims) {
       // The lines of a pattern are a surface, not an outline: lit up, they would hide the shape and what is under it.
       if (prim.kind === 'text' || prim.kind === 'image' || prim.texture) continue

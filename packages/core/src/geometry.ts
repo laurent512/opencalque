@@ -265,6 +265,114 @@ export function arcMiddleOfRadius(a: Vec2, b: Vec2, radius: number, towards: Vec
   return add(middle, scale(across, beside < 0 ? -height : height))
 }
 
+/** Whether two segments cross, each passing from one side of the other to its other side. */
+function segmentsCross(a: Vec2, b: Vec2, c: Vec2, d: Vec2): boolean {
+  const side = (p: Vec2, q: Vec2, r: Vec2) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x)
+  return side(a, b, c) * side(a, b, d) < 0 && side(c, d, a) * side(c, d, b) < 0
+}
+
+/** Whether a path crosses itself. */
+function crossesItself(points: Vec2[], closed: boolean): boolean {
+  const n = points.length
+  const sides = closed ? n : n - 1
+  for (let i = 0; i < sides; i++) {
+    for (let j = i + 2; j < sides; j++) {
+      if (closed && i === 0 && j === n - 1) continue
+      if (segmentsCross(points[i], points[(i + 1) % n], points[j], points[(j + 1) % n])) return true
+    }
+  }
+  return false
+}
+
+/** How near two segments come to each other. */
+function segmentsGap(a: Vec2, b: Vec2, c: Vec2, d: Vec2): number {
+  if (segmentsCross(a, b, c, d)) return 0
+  return Math.min(distToSegment(a, c, d), distToSegment(b, c, d), distToSegment(c, a, b), distToSegment(d, a, b))
+}
+
+/** Whether every side of `moved` stays at least `clear` from every side of `path`. */
+function staysClear(moved: Vec2[], path: Vec2[], closed: boolean, clear: number): boolean {
+  const n = path.length
+  const sides = closed ? n : n - 1
+  for (let i = 0; i < sides; i++) {
+    for (let j = 0; j < sides; j++) {
+      if (segmentsGap(moved[i], moved[(i + 1) % n], path[j], path[(j + 1) % n]) < clear) return false
+    }
+  }
+  return true
+}
+
+/** Past this many points a path moved aside is not looked over for folding: that takes the square of them, and is done as the pointer moves. */
+const MAX_FOLD_CHECK = 300
+
+/**
+ * A path moved `distance` to its right as it runs (to its left when negative), each side staying
+ * parallel to where it was: the sides meet at corners where they now cross. With `smooth`, the
+ * points of a curve (`smoothPoints`) instead move straight out from it, keeping its points: it is
+ * `distance` away at each, and very nearly so between them. Null when the path has no such
+ * parallel: a side would run backwards, or come nearer the path than the distance, which only a
+ * fold does: the two sides of a neck passing each other need not cross. A curve is looked at by
+ * the lines between its points, which cut its corners, so it is allowed half the distance.
+ */
+export function parallelPath(points: Vec2[], closed: boolean, distance: number, smooth = false): Vec2[] | null {
+  const same = (p: Vec2, q: Vec2) => dist(p, q) < 1e-6
+  const path = points.filter((p, i) => i === 0 || !same(p, points[i - 1]))
+  if (closed && path.length > 1 && same(path[0], path[path.length - 1])) path.pop()
+  const n = path.length
+  if (n < 2) return null
+  if (distance === 0) return path
+  const at = (i: number) => (closed ? path[(i + n) % n] : path[Math.max(0, Math.min(n - 1, i))])
+  const moved: Vec2[] = []
+  for (let i = 0; i < n; i++) {
+    const p = path[i]
+    const before = norm(sub(p, at(i - 1)))
+    const after = norm(sub(at(i + 1), p))
+    if (smooth) {
+      const across = perp(norm(sub(at(i + 1), at(i - 1))))
+      if (len(across) === 0) return null
+      moved.push(add(p, scale(across, distance)))
+      continue
+    }
+    const [a, b] = [perp(len(before) === 0 ? after : before), perp(len(after) === 0 ? before : after)]
+    const meeting = 1 + a.x * b.x + a.y * b.y
+    if (meeting < 1e-6) return null
+    moved.push(add(p, scale(add(a, b), distance / meeting)))
+  }
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    const [was, is] = [sub(at(i + 1), path[i]), sub(moved[(i + 1) % n], moved[i])]
+    if (was.x * is.x + was.y * is.y <= 0) return null
+  }
+  const clear = Math.abs(distance) * (smooth ? 0.5 : 1 - 1e-6)
+  if (n <= MAX_FOLD_CHECK && !crossesItself(path, closed) && !staysClear(moved, path, closed, clear)) return null
+  return moved
+}
+
+/** How far `p` is from a path, positive to its right as it runs: the side `parallelPath` takes a positive distance to. */
+export function besidePath(points: Vec2[], closed: boolean, p: Vec2): number {
+  const n = points.length
+  let best = Infinity
+  let foot = points[0]
+  let across = { x: 0, y: 0 }
+  for (let i = 0; i < (closed ? n : n - 1); i++) {
+    const a = points[i]
+    const b = points[(i + 1) % n]
+    const d = sub(b, a)
+    const l2 = d.x * d.x + d.y * d.y
+    if (l2 === 0) continue
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * d.x + (p.y - a.y) * d.y) / l2))
+    const q = add(a, scale(d, t))
+    const gap = dist(p, q)
+    // Nearest to a corner, it is as near both of the sides there, and the way between them tells.
+    if (gap < best - 1e-9) {
+      best = gap
+      foot = q
+      across = perp(norm(d))
+    } else if (gap <= best + 1e-9) across = add(across, perp(norm(d)))
+  }
+  const side = (p.x - foot.x) * across.x + (p.y - foot.y) * across.y
+  return side < 0 ? -best : best
+}
+
 /** The points of an arc of an ellipse, clockwise on screen from one angle to another (a whole turn when they are equal). */
 export function ellipseArc(e: { cx: number; cy: number; rx: number; ry: number; rotation?: number; from: number; to: number }): Vec2[] {
   const sweep = (((e.to - e.from) % 360) + 360) % 360 || 360

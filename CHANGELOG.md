@@ -10,6 +10,7 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 - A Curved line tool, beside the line tool (`Shift+L`): a curve flows through the points as you click them. Curves used to be made by drawing a polyline and curving it afterwards, which still works.
 - An Arc tool (`Shift+O`): click the two ends, then a point the arc goes through. Type a radius instead of the third click, or hold `Shift` for a half circle.
 - Selecting by a box as in CAD: dragged to the right it takes what is wholly inside it, as before; dragged to the left, green and dashed, it takes everything it touches.
+- An Offset tool (`Shift+X`), beside Trim: a parallel copy of a line, a polyline, a curve, a rectangle, a circle or an arc. Type a distance and click the side it goes on, or click the object and let the pointer set the distance, which stays for the next copies.
 
 ### Improved
 - A drawing opens on the layer you were using when it was saved, rather than on the first one.

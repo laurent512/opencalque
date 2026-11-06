@@ -5,7 +5,7 @@ import { t } from './i18n'
  * each step of using one (`hintsFor`). What a tool does on the drawing is in `canvas/gestures/`
  * (`PRESSES`, and the gestures it starts); its command and shortcut are in `commands.ts` (`tool(…)`).
  */
-export type Tool = 'select' | 'hand' | 'line' | 'curve' | 'arc' | 'rect' | 'ellipse' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'rotate' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'place'
+export type Tool = 'select' | 'hand' | 'line' | 'curve' | 'arc' | 'rect' | 'ellipse' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'offset' | 'rotate' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'place'
 
 /** The plain shapes, which share one toolbar button. */
 // A paper is drawn as a rectangle is, by its corners: it is offered with the shapes.
@@ -14,8 +14,8 @@ export const SHAPE_TOOLS: Tool[] = ['line', 'curve', 'arc', 'rect', 'ellipse', '
 export const ROOM_TOOLS: Tool[] = ['room', 'divider']
 /** The tools for writing on the drawing, which share a third. */
 export const TEXT_TOOLS: Tool[] = ['text', 'annotation', 'dimension', 'gridline']
-/** The tools that cut what is drawn: in two, or a stretch away. */
-export const CUT_TOOLS: Tool[] = ['split', 'trim']
+/** The tools that work on the lines of what is drawn: cutting them in two or a stretch away, or copying them alongside. */
+export const CUT_TOOLS: Tool[] = ['split', 'trim', 'offset']
 /** The tools that read something off the drawing without adding to it. */
 export const MEASURE_TOOLS: Tool[] = ['measure', 'angle']
 
@@ -73,6 +73,9 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
       return [['', t('Click a wall, a line or a polyline where it should be cut')], ['', t('the lengths either side are shown')], ['Alt', t('ignores the grid')]]
     case 'trim':
       return [['', t('Click the stretch of a wall or a line to take away, up to what crosses it')], ['', t('walls are cut against the line of the wall crossing them')]]
+    case 'offset':
+      if (step === 0) return [['', t('Click a line or a shape to offset')], ['0-9', t('type the distance first')]]
+      return [['', t('Click where the copy goes')], ['0-9', t('type an exact distance')], free, ['Esc', t('cancels')]]
     case 'measure':
       return step === 0 ? [['', t('Click the first point')], onDrawing] : [['', t('Click the second point')], onDrawing, heldStraight, unsnapped]
     case 'angle':

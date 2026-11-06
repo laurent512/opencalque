@@ -8,6 +8,7 @@ Last updated: 2026-11-06 (after 1.5.0).
 
 ### Drawing
 - Lines, rectangles, ellipses and arcs (an ellipse with a start and an end angle), polylines and polygons, straight or curved through their points, text. The Curved line tool draws the curve as its points are clicked; the Arc tool draws an arc by its two ends and a point it goes through, or a typed radius.
+- **Offset**: a parallel copy of a line, a polyline, a curve, a rectangle, a circle or an arc, at a typed distance or where the pointer says.
 - **Selecting by a box**, as in CAD: dragged to the right it takes what is wholly inside it; dragged to the left, green and dashed, what it touches, by what is drawn rather than by the box around it.
 - Exact sizes while drawing: a bar above the tools takes typed lengths, angles, widths and heights, and the shape shows its sizes as you draw.
 - Walls defined by a line and a thickness, joined cleanly at any angle where their ends meet. The line is the wall's middle, or one of its faces: walls drawn by their inner face keep it flush whatever their thicknesses, and grow outwards when made thicker. A run of walls closes with a double-click.
@@ -134,6 +135,7 @@ Agreed with the owner in October 2026. The first was built straight away.
 - ~~Eyedropper~~ (done)
 - Fills made of a picture, or of a texture (wood, concrete, grass), as more tabs of the fill window
 - ~~Trim for lines~~ (done: the trim tool, for walls, lines and polylines); extend and fillet for lines
+- ~~Offset~~ (done: the offset tool, for lines, polylines, curves, rectangles, circles and arcs; not walls, groups or other ellipses, and a shape that would fold over itself is refused rather than trimmed)
 
 **Import and sharing**
 - ~~DXF import~~ (done, with blocks as groups); blocks as components
@@ -151,7 +153,7 @@ Not ranked within an area.
 
 **Drawing and editing**
 - Rich text; angular and radius dimensions; dimensions that follow what they measure.
-- Extend, offset and fillet for plain lines (walls have extend, and everything the trim tool); boolean operations on shapes.
+- Extend and fillet for plain lines (walls have extend, and everything the trim tool); boolean operations on shapes.
 - Smart guides while drawing and resizing; snapping to tangents and the quarter points of circles.
 - ~~Select similar; select by layer or type~~ (done, and by material); find and replace text.
 - ~~Lock aspect ratio; non-uniform scaling~~ (done for rectangles and ellipses; a selection of several is stretched by a size typed, scaled in proportion by its corners); numeric move and copy.
