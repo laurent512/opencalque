@@ -2,7 +2,7 @@
 
 What the app does today, the ten big features chosen to do next and where each stands, and the longer backlog. For how things are built, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Last updated: 2026-11-06 (after 1.4.0).
+Last updated: 2026-11-06 (after 1.5.0).
 
 ## 1. What exists today
 

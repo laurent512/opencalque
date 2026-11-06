@@ -4,7 +4,7 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
-## Unreleased
+## 1.5.0 — 2026-11-06
 
 ### New
 - AI agents can check their own work. After each edit, the assistant is told what it left wrong: a room that does not close and the wall end that may be why, a wall drawn twice, a door or window outside its wall, past its end or over another. It is told only of what the edit caused.
