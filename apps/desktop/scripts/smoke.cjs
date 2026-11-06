@@ -8,9 +8,13 @@ const root = path.resolve(__dirname, '../../..')
 const out = fs.mkdtempSync(path.join(os.tmpdir(), 'opencalque-smoke-'))
 // A profile of its own, so the test never reads or changes the settings of the real app.
 app.setPath('userData', fs.mkdtempSync(path.join(os.tmpdir(), 'opencalque-smoke-profile-')))
+// Off the screen, Windows would count the window as covered, and Chromium would stop painting it.
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 app.whenReady().then(async () => {
-  const win = new BrowserWindow({ width: 1400, height: 900, show: true })
+  // Shown, as screenshots need, but off the screen and without taking the focus.
+  const win = new BrowserWindow({ width: 1400, height: 900, show: false, x: -10000, y: -10000, skipTaskbar: true })
+  win.showInactive()
   const wc = win.webContents
   wc.on('console-message', (e) => console.log('console:', e.message))
   await win.loadFile(path.join(root, 'apps/desktop/out/renderer/index.html'))

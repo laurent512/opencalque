@@ -21,6 +21,8 @@ pnpm warehouse && pnpm warehouse:gallery # regenerate the bundled component libr
 
 Agent terminals have `ELECTRON_RUN_AS_NODE=1`, which breaks Electron. Prefix Electron commands with `env -u ELECTRON_RUN_AS_NODE`.
 
+The owner works at the computer tests run on: no test may put a window in front of them. `OPENCALQUE_BACKGROUND=1` starts the app off the screen, out of the taskbar and without the focus (`e2e/desktop.e2e.ts` sets it, `smoke.cjs` does the same itself); set it for anything else that starts the app. Do not make the window hidden instead: Chromium stops painting a page nobody can see. A native dialog ignores all this and comes up on the screen, so a test must not cause one.
+
 ## Rules
 
 - Documents are immutable and change only through `applyOps` (`packages/core/src/ops.ts`). In the editor, go through `apply` (or `applyOrThrow`) or `preview`/`commit` in `apps/web/src/store.ts`, which keep the operations with each undo step; a core helper that returns a document also returns the `ops` that make it, and those are what the editor applies.

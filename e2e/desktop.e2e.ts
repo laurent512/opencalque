@@ -9,6 +9,8 @@ import { join, resolve } from 'node:path'
  * built app (`pnpm build`); skipped when it has not been built, as in CI, which builds the web app only.
  */
 const APP = resolve(__dirname, '../apps/desktop')
+// Every test here starts the app: not on top of what the person is working on.
+process.env.OPENCALQUE_BACKGROUND = '1'
 test.skip(!existsSync(join(APP, 'out/main/index.js')), 'Build the desktop app first (pnpm build).')
 
 test('desktop: opens the file it is started with, saves over it with a backup and no temporary file left', async () => {
@@ -177,6 +179,9 @@ test('desktop: an agent works on the open drawing only when let in, each edit a 
     await reloadWith(page, {})
     await expect(page.locator('.stage canvas')).toBeVisible()
     await agent.start()
+
+    // Off the screen, the page still runs as it does for a person: seen, and painting.
+    expect(await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => done(document.visibilityState))))).toBe('visible')
 
     // Nothing reaches the drawing until the person says so.
     expect(existsSync(bridgeFile)).toBe(false)

@@ -6,6 +6,13 @@ import { basename, dirname, extname, join, resolve } from 'node:path'
 import { agentCommand, startBridge, type Bridge } from './bridge'
 import { checkForUpdate, installOnClose, installUpdate, keptOpen, listen } from './updates'
 
+// Under test, on a computer someone is working at: the window is shown, so that the page runs as it
+// does for a person, but off the screen, out of the taskbar and without taking the focus. Windows
+// would count it as covered and Chromium stop painting it, so that is switched off, and nothing
+// asks about unsaved changes: that dialog would come up on the screen, with the focus.
+const inBackground = process.env.OPENCALQUE_BACKGROUND === '1'
+if (inBackground) app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+
 // Started by an agent (mcp.ts): no window, and a profile of its own, to leave the running app's alone.
 const servingAgents = process.argv.includes('--mcp')
 if (servingAgents) app.setPath('userData', join(app.getPath('temp'), 'opencalque-mcp'))
@@ -292,7 +299,9 @@ function createWindow(): void {
     title: 'OpenCalque',
     backgroundColor: dark ? '#1e1e1e' : '#ffffff',
     webPreferences: { preload: join(__dirname, '../preload/index.js'), contextIsolation: true, sandbox: true },
+    ...(inBackground ? { show: false, x: -10000, y: -10000, skipTaskbar: true } : {}),
   })
+  if (inBackground) win.showInactive()
   // A link never opens a window of the app: a web address goes to the user's browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https://')) shell.openExternal(url)
@@ -306,7 +315,7 @@ function createWindow(): void {
     if (input.type === 'keyDown' && input.key === 'F12') win.webContents.toggleDevTools()
   })
   win.on('close', (event) => {
-    if (!dirty) return
+    if (!dirty || inBackground) return
     const choice = dialog.showMessageBoxSync(win, {
       type: 'warning',
       message: labels.unsaved,
