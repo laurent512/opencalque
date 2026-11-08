@@ -10,7 +10,7 @@
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
   <img alt="Runs on Windows, macOS, Linux and the web" src="https://img.shields.io/badge/runs%20on-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux%20%C2%B7%20web-4b5563">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6?logo=typescript&logoColor=white">
-  <img alt="Languages: English, French, Spanish, German, Chinese, Japanese, Korean" src="https://img.shields.io/badge/languages-EN%20%C2%B7%20FR%20%C2%B7%20ES%20%C2%B7%20DE%20%C2%B7%20ZH%20%C2%B7%20JA%20%C2%B7%20KO-0d99ff">
+  <img alt="Languages: English, French, Spanish, German, Chinese, Japanese, Korean, Turkish" src="https://img.shields.io/badge/languages-EN%20%C2%B7%20FR%20%C2%B7%20ES%20%C2%B7%20DE%20%C2%B7%20ZH%20%C2%B7%20JA%20%C2%B7%20KO%20%C2%B7%20TR-0d99ff">
   <a href="#contributing"><img alt="Contributions welcome" src="https://img.shields.io/badge/contributions-welcome-22c55e"></a>
 </p>
 
@@ -192,7 +192,7 @@ While it is on, the desktop app listens on this computer only, on a port of its 
 | --- | --- |
 | Start | The welcome window offers a new drawing, a file, a recent drawing (desktop app) or the example. Switch it off there or under Preferences; bring it back from Preferences → Welcome window |
 | Menus | File, Edit, Object, View and Preferences are in the bar at the top, which in the desktop app is also the window's title bar; the tools are in the bar under the drawing. About shows the version and what is new |
-| Language | English, French, Spanish, German, Chinese (Simplified), Japanese and Korean. The app follows your system language; change it under Preferences |
+| Language | English, French, Spanish, German, Chinese (Simplified), Japanese, Korean and Turkish. The app follows your system language; change it under Preferences |
 | Panels | Drag a panel's tab to another edge, onto another panel to share its tabs, or out to float. Close and reopen panels from View. Preferences → Reset the panel layout puts everything back |
 | Drop files | Drag a picture or a PDF from your file manager onto the drawing to trace it, a `.dxf` to add its geometry, an `.opencalque` file to open it, or an extension `.json` to install it |
 | Trace a floor plan | File → Import, and pick a PDF or a picture (PNG, JPG, WebP…). Then set its scale: click two points whose real distance you know and type that distance, in your unit (`3500` in millimetres) or with a unit after it (`350 cm`, `3.5 m`): the panel says how far apart they are now. The plan is then locked so you can draw over it |

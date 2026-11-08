@@ -100,6 +100,20 @@
         "Desk with chair": "책상과 의자",
         "Wardrobe": "옷장",
         "Coffee table, round": "원형 커피 테이블"
+      },
+      "tr": {
+        "Furniture": "Mobilya",
+        "Beds, seating, tables and storage for furnishing a plan.": "Bir planı döşemek için yataklar, oturma elemanları, masalar ve dolaplar.",
+        "Double bed": "Çift kişilik yatak",
+        "Single bed": "Tek kişilik yatak",
+        "Sofa, two seats": "İki kişilik kanepe",
+        "Armchair": "Koltuk",
+        "Chair": "Sandalye",
+        "Dining table, six chairs": "Yemek masası, altı sandalye",
+        "1800 × 900 table": "1800 × 900 masa",
+        "Desk with chair": "Sandalyeli çalışma masası",
+        "Wardrobe": "Gardırop",
+        "Coffee table, round": "Sehpa, yuvarlak"
       }
     }
   },
@@ -151,6 +165,13 @@
         "Toilet": "양변기",
         "Shower tray": "샤워 트레이",
         "Toilet, wall-hung": "벽걸이 양변기"
+      },
+      "tr": {
+        "Bathroom": "Banyo",
+        "Sanitary fittings.": "Vitrifiye ve armatürler.",
+        "Toilet": "Klozet",
+        "Shower tray": "Duş teknesi",
+        "Toilet, wall-hung": "Asma klozet"
       }
     }
   },
@@ -196,6 +217,12 @@
         "Units and appliances on a 600 mm module.": "600 mm 모듈의 수납장과 가전.",
         "Base unit": "하부장",
         "Washing machine": "세탁기"
+      },
+      "tr": {
+        "Kitchen": "Mutfak",
+        "Units and appliances on a 600 mm module.": "600 mm modülde dolaplar ve cihazlar.",
+        "Base unit": "Alt dolap",
+        "Washing machine": "Çamaşır makinesi"
       }
     }
   },
@@ -385,6 +412,36 @@
         "Smoke detector": "연기 감지기",
         "Extractor fan": "환풍기",
         "Electric radiator": "전기 라디에이터"
+      },
+      "tr": {
+        "Electrical": "Elektrik",
+        "Lights, wall lights, sockets, switches and other symbols for an electrical plan.": "Bir elektrik planı için armatürler, aplikler, prizler, anahtarlar ve diğer semboller.",
+        "Ceiling light": "Tavan armatürü",
+        "Pendant light": "Sarkıt armatür",
+        "Wall light": "Aplik",
+        "Top edge on the wall": "Üst kenarı duvara",
+        "Recessed spotlight": "Gömme spot",
+        "Light strip": "Işık şeridi",
+        "Socket": "Priz",
+        "Double socket": "İkili priz",
+        "Socket, 32 A": "Priz, 32 A",
+        "For a cooker. Top edge on the wall": "Elektrikli ocak için. Üst kenarı duvara",
+        "TV socket": "TV prizi",
+        "Network socket": "Ağ prizi",
+        "Switch": "Anahtar",
+        "One-way": "Tek yönlü",
+        "Double switch": "Komütatör anahtar",
+        "Two circuits": "İki devre",
+        "Two-way switch": "Vaviyen anahtar",
+        "One of two controlling the same light": "Aynı lambayı yöneten iki anahtardan biri",
+        "Push button": "Buton",
+        "Dimmer": "Dimmer",
+        "Switch with a dimmer": "Dimmerli anahtar",
+        "Consumer unit": "Sigorta kutusu",
+        "Junction box": "Buat",
+        "Smoke detector": "Duman dedektörü",
+        "Extractor fan": "Aspiratör",
+        "Electric radiator": "Elektrikli radyatör"
       }
     }
   }

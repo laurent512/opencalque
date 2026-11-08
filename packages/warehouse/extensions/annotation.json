@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "id": "opencalque.annotation",
   "name": "Plan annotations",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "author": "OpenCalque",
   "description": "North arrow, scale bar and level marker.",
   "translations": {
@@ -78,6 +78,18 @@
       "Divisions": "눈금 수",
       "Level": "레벨",
       "Text size": "글자 크기"
+    },
+    "tr": {
+      "Plan annotations": "Plan açıklamaları",
+      "North arrow, scale bar and level marker.": "Kuzey oku, ölçek çubuğu ve kot işareti.",
+      "North arrow": "Kuzey oku",
+      "Scale bar": "Ölçek çubuğu",
+      "Level marker": "Kot işareti",
+      "Size": "Boyut",
+      "Length": "Uzunluk",
+      "Divisions": "Bölmeler",
+      "Level": "Kot",
+      "Text size": "Metin boyutu"
     }
   },
   "objects": [

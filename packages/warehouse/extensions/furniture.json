@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "id": "opencalque.furniture",
   "name": "Adjustable furniture",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "author": "OpenCalque",
   "description": "Tables, beds and shelving whose size and number of seats or bays you set.",
   "translations": {
@@ -78,6 +78,18 @@
       "Depth": "깊이",
       "Seats": "좌석 수",
       "Bays": "칸 수"
+    },
+    "tr": {
+      "Adjustable furniture": "Ayarlanabilir mobilya",
+      "Tables, beds and shelving whose size and number of seats or bays you set.": "Boyutunu ve oturma yeri ya da bölme sayısını ayarladığınız masalar, yataklar ve raflar.",
+      "Table with chairs": "Sandalyeli masa",
+      "Bed": "Yatak",
+      "Shelving unit": "Raf ünitesi",
+      "Length": "Uzunluk",
+      "Width": "Genişlik",
+      "Depth": "Derinlik",
+      "Seats": "Oturma yerleri",
+      "Bays": "Bölmeler"
     }
   },
   "objects": [

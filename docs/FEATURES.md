@@ -60,7 +60,7 @@ Last updated: 2026-11-08 (after 1.6.0).
 
 ### Reusing and extending
 - **Object library**: one searchable, illustrated grid of everything that can be placed: doors, windows, stairs and other parametric objects, and the warehouse libraries, each component taken from one a component of the drawing's own. What the drawing already holds is in the Components panel. Its sections are listed down its left side under Rooms, Building and Drawing, each counting what it holds or what a search found in it; a search looks through all of them. Door and window also have their own toolbar buttons.
-- **Component warehouse**: browse libraries of ready-made symbols (furniture, bathroom, kitchen and electrical ship with the app, named in the app's seven languages; the furniture is listed by room: living room, dining room, bedroom, office; each symbol drawn in detail as seen from above), search, and click or drag onto the drawing to place. What is placed is always the library's symbol: one changed in the drawing since it was brought in stays as it is, beside it. Parametric objects are listed among the components of their kind, marked with a badge. More libraries can come from a catalog published on the web.
+- **Component warehouse**: browse libraries of ready-made symbols (furniture, bathroom, kitchen and electrical ship with the app, named in the app's eight languages; the furniture is listed by room: living room, dining room, bedroom, office; each symbol drawn in detail as seen from above), search, and click or drag onto the drawing to place. What is placed is always the library's symbol: one changed in the drawing since it was brought in stays as it is, beside it. Parametric objects are listed among the components of their kind, marked with a badge. More libraries can come from a catalog published on the web.
 - **Extension warehouse**: install extensions that add new parametric objects (electrical symbols, plan annotations and adjustable furniture ship with the app), from the catalog, a web catalog or a file. The adjustable table, bed and shelving are resized on the plan by their sides, like a rectangle. These extensions are data, not programs, so installing one cannot run code.
 - Any drawing can be imported as a component library.
 
@@ -90,7 +90,7 @@ Last updated: 2026-11-08 (after 1.6.0).
 - **Crash recovery**: unsaved work is copied aside as it changes and offered back after a crash. **Backups** (desktop): each drawing is copied before the app first writes over it.
 - **Drawings stay readable**: what a newer version adds is kept; a newer format is refused with a message; a drawing with a broken reference opens repaired, with a note.
 - A fault in one panel leaves the rest of the window working, and the drawing can always be saved.
-- English, French, Spanish, German, Chinese, Japanese and Korean.
+- English, French, Spanish, German, Chinese, Japanese, Korean and Turkish.
 - Files are readable JSON with a published schema; a command-line tool creates, validates, edits and exports drawings.
 - Export to PDF at true scale (one page per paper, with a title block), to SVG, to PNG (2000 to 8000 pixels wide) and to DXF. Chinese, Japanese, Korean, Greek, Cyrillic and Central European text prints in the PDF, in fonts shipped with the app, only the glyphs used embedded.
 

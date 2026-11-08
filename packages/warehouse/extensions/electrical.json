@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "id": "opencalque.electrical",
   "name": "Electrical symbols",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "author": "OpenCalque",
   "description": "Sockets, switches and light points for electrical layouts.",
   "translations": {
@@ -78,6 +78,18 @@
       "Two-way": "3로",
       "Size": "크기",
       "Place the flat side against the wall.": "평평한 쪽을 벽에 붙여 놓으세요."
+    },
+    "tr": {
+      "Electrical symbols": "Elektrik sembolleri",
+      "Sockets, switches and light points for electrical layouts.": "Elektrik planları için prizler, anahtarlar ve aydınlatma noktaları.",
+      "Socket": "Priz",
+      "Switch": "Anahtar",
+      "Ceiling light": "Tavan armatürü",
+      "Wall light": "Aplik",
+      "Count": "Adet",
+      "Two-way": "Vaviyen",
+      "Size": "Boyut",
+      "Place the flat side against the wall.": "Düz tarafını duvara dayayın."
     }
   },
   "objects": [
