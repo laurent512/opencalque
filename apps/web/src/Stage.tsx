@@ -19,6 +19,7 @@ import {
   Ruler,
   Slice,
   RotateCw,
+  Move,
   FlipHorizontal2,
   FlipVertical2,
   Triangle,
@@ -61,7 +62,7 @@ import type { ScopeStep } from './scopePath'
 import { registry, useExtensions } from './extensions'
 import { leaveTo, returnTo, trailAhead } from './navigation'
 import { redo, setTool, undo, useStore } from './store'
-import { CUT_TOOLS, hintsFor, MEASURE_TOOLS, ROOM_TOOLS, SHAPE_TOOLS, TEXT_TOOLS, type Hint, type Tool } from './tools'
+import { CUT_TOOLS, hintsFor, MEASURE_TOOLS, ROOM_TOOLS, SHAPE_TOOLS, TEXT_TOOLS, TRANSFORM_TOOLS, type Hint, type Tool } from './tools'
 import { TextEditor } from './TextEditor'
 import { ClearanceEditor } from './ClearanceEditor'
 import { IconButton, labelOf, TypeIcon } from './ui'
@@ -84,6 +85,7 @@ const ICONS: Partial<Record<Tool, [title: string, icon: LucideIcon]>> = {
   trim: [msg('Trim: take away the stretch of a wall or a line you click, up to what crosses it'), Scissors],
   offset: [msg('Offset: a parallel copy of a line or a shape, at a distance'), Offset],
   rotate: [msg('Rotate: turn the selection about a point you click'), RotateCw],
+  move: [msg('Move: take the selection by a point and put that point down on another'), Move],
   angle: [msg('Angle: read the angle between two directions'), Triangle],
   eyedropper: [msg('Eyedropper: copy the look of an object'), Pipette],
   text: [msg('Text'), Type],
@@ -358,6 +360,7 @@ function Toolbar() {
   const textTool = useStore((s) => s.textTool)
   const measureTool = useStore((s) => s.measureTool)
   const cutTool = useStore((s) => s.cutTool)
+  const transformTool = useStore((s) => s.transformTool)
   return (
     <div className="toolbar">
       <ToolButton id="select" />
@@ -374,7 +377,7 @@ function Toolbar() {
       <hr />
       <ToolGroup tools={CUT_TOOLS} current={cutTool} more={t('Trim, offset')} />
       {/* Mirroring is not a tool: the selection is flipped on itself, at once, from the same list. */}
-      <ToolGroup tools={['rotate']} current="rotate" more={t('Mirror')} actions={FLIPS} />
+      <ToolGroup tools={TRANSFORM_TOOLS} current={transformTool} more={t('Move, mirror')} actions={FLIPS} />
       <ArrangeMenu />
       <ToolGroup tools={MEASURE_TOOLS} current={measureTool} more={t('Measure an angle')} />
       <ToolGroup tools={TEXT_TOOLS} current={textTool} more={t('Annotation, dimension, grid line')} />

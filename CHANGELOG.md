@@ -4,6 +4,15 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### New
+- A Move tool (`Shift+E`, beside Rotate), as in CAD: click a point of the selection, such as a corner, a middle or its centre, then where that point goes. Both snap, so the point lands exactly on a point of something else. A length and an angle can be typed instead of the second click, the arrow keys hold the move level or upright, and the view can be panned with the middle button between the two clicks. Ctrl leaves a copy there and goes on for more. Walls joined to what moves stay joined, as when dragging.
+- Points snap to the centre of a rectangle and of a closed shape, as they already did to that of a circle, and the mark says Centre.
+
+### Fixed
+- The third click of the Rotate tool snaps to what is drawn, and the selection then turns exactly onto that point. It used to snap to nothing there and keep to whole degrees, so a shape could not be lined up with a wall drawn at an odd angle.
+
 ## 1.6.0 — 2026-11-06
 
 ### New

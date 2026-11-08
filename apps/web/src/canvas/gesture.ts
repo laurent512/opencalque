@@ -42,6 +42,11 @@ export type Gesture =
   // The rotate tool: its pivot, then a point of the line the turn starts from.
   | { kind: 'turn'; nodes: Node[]; pivot: Vec2; from?: Vec2 }
   /**
+   * The move tool: what it moves, what a copy takes (a paper takes what is on it), and the point
+   * they are moved by, which goes where the pointer says.
+   */
+  | { kind: 'displace'; ids: string[]; copies: string[]; from: Vec2 }
+  /**
    * A long face of the selected wall being dragged: the wall gets thicker or thinner from that
    * side, the other face staying where it is. `moving` is what moves with it, which the face does
    * not snap to.

@@ -44,6 +44,7 @@ const SIZES: Partial<Record<Tool, Size[]>> = {
   divider: run,
   gridline: run,
   rotate: [{ which: 'b', label: msg('Angle'), kind: 'angle' }],
+  move: run,
 }
 /**
  * The tools whose shapes take the colour of lines chosen in the bar, and of those the ones that

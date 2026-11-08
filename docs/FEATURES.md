@@ -2,7 +2,7 @@
 
 What the app does today, the ten big features chosen to do next and where each stands, and the longer backlog. For how things are built, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Last updated: 2026-11-06 (after 1.5.0).
+Last updated: 2026-11-08 (after 1.6.0).
 
 ## 1. What exists today
 
@@ -30,7 +30,7 @@ Last updated: 2026-11-06 (after 1.5.0).
 - **Papers**: sheets like frames, drawn at a standard format (A5 to A0, upright or lying, at a drawing scale) or any size, named above their corner, moved on their own over the drawing to frame it, and copied or duplicated with what is drawn on them.
 - Walls stay joined: moving a wall or a corner stretches the walls that meet it, and its doors and windows follow; they follow it however a straight wall is changed (an end dragged, a length or angle typed, trimmed), at their distance from the end that stayed.
 - Numbers in the panels change by holding Alt and dragging sideways.
-- **Transforming** any selection: turn about a clicked point with the Rotate tool (by a base line, or a typed angle), mirror horizontally or vertically, scale and nudge, by dragging the grips of the selection box, from the menus or the keyboard. A rectangle or an ellipse is resized like a box, by its corners and the middles of its sides, turned or not, Shift keeping its proportions.
+- **Transforming** any selection: move it as in CAD with the Move tool, by a point of it put down on a point of something else, both snapped (or by a typed length and angle; Ctrl leaves copies); turn about a clicked point with the Rotate tool (by a base line turned onto a point of the drawing, or a typed angle), mirror horizontally or vertically, scale and nudge, by dragging the grips of the selection box, from the menus or the keyboard. A rectangle or an ellipse is resized like a box, by its corners and the middles of its sides, turned or not, Shift keeping its proportions.
 - **Annotations**: a note with a curved, straight or elbowed leader to what it is about, typed in place, with a choice of symbol at each end.
 - **Grid lines**: the axes of a building, drawn by two clicks from the text button (G), each with its letter or number in a bubble at one end or both, labelled one after the other (A, B, C or 1, 2, 3) and relabelled by double-clicking a bubble, in dash and dot or any other line. Other lines snap onto them.
 - **Corners**: a wall end is a selectable corner shared by the walls that meet there; drag it and they all follow. A corner of two walls can be mitred, rounded, cut off, or have one wall run through. Each line of a wall (its faces, its ends) can have its own look. A wall is cut in two with the Split tool; the two halves show the line between them. A selected wall shows which of its ends are joined, touch a wall without being joined, or nearly meet another; an end can be detached (joined to nothing) or brought onto the end it nearly meets.
@@ -44,7 +44,7 @@ Last updated: 2026-11-06 (after 1.5.0).
 - **Modifiers**: non-destructive changes to how an object is drawn, stacked and applied in order, that can be switched off or removed at any time: crop, hatch, and repeat (copies in rows and columns); extensions can add more.
 - Text can be bold and aligned left, centred or right.
 - Hints and size fields that follow what you are doing: only the next step and the keys usable right now are shown.
-- **Snapping** to the points of objects, the middle of a line, the crossing of two lines, the foot of a perpendicular, the line itself (wall faces and their corners included), and to the grid; angle constraint, drag handles, exact values in the properties panel.
+- **Snapping** to the points of objects, the centre of a rectangle, a circle, an arc or a closed shape, the middle of a line, the crossing of two lines, the foot of a perpendicular, the line itself (wall faces and their corners included), and to the grid; angle constraint, drag handles, exact values in the properties panel.
 - **Holding a direction**: while drawing or dragging, an arrow key keeps the wall, line, object or point upright or level, and pointing at a point elsewhere ends it level with that point.
 - **Splitting** a wall, a line or a polyline with the Split tool, which shows the length on either side of the cut, so a part can be deleted or changed on its own.
 - **Smart guides**: what is moved lines up with the sides and middles of other objects and keeps equal gaps with its neighbours, with lines and gap sizes shown while moving.
@@ -156,7 +156,7 @@ Not ranked within an area.
 - Extend and fillet for plain lines (walls have extend, and everything the trim tool); boolean operations on shapes.
 - Smart guides while drawing and resizing; snapping to tangents and the quarter points of circles.
 - ~~Select similar; select by layer or type~~ (done, and by material); find and replace text.
-- ~~Lock aspect ratio; non-uniform scaling~~ (done for rectangles and ellipses; a selection of several is stretched by a size typed, scaled in proportion by its corners); numeric move and copy.
+- ~~Lock aspect ratio; non-uniform scaling~~ (done for rectangles and ellipses; a selection of several is stretched by a size typed, scaled in proportion by its corners); ~~numeric move and copy~~ (done: the Move tool takes a length and an angle, and Ctrl leaves copies).
 
 **Architecture**
 - Columns, beams, slabs, roofs in plan; curtain walls.

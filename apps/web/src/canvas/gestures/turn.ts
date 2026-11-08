@@ -23,12 +23,17 @@ function turnAim(c: Canvas, g: GestureOf<'turn'>, world: Vec2, e: Keys): { ops: 
     return { ops: [], marker: target.marker, reading: { vertex: g.pivot, a: target.p }, status: t('Click where the turn starts from') }
   }
   const typed = s.drawLocks.b
+  // The line goes to a point of the drawing as any point placed does (not to what is turning,
+  // which follows the pointer), and then turns exactly onto it: a plan at an odd angle is lined
+  // up with by pointing at it, which whole degrees could not do (#12).
+  const target = typed === undefined && !e.shiftKey ? snap(c, world, e, g.nodes.map((n) => n.id)) : null
+  const aimed = target?.marker ? target.p : world
   const along = (p: Vec2) => (Math.atan2(p.y - g.pivot.y, p.x - g.pivot.x) * 180) / Math.PI
-  let raw = along(world) - along(g.from)
+  let raw = along(aimed) - along(g.from)
   raw = ((((raw + 180) % 360) + 360) % 360) - 180
-  // Whole degrees; Shift keeps to steps of 15, Alt turns freely. Clockwise on screen, as the document keeps it.
+  // Otherwise whole degrees; Shift keeps to steps of 15, Alt turns freely. Clockwise on screen, as the document keeps it.
   const step = e.shiftKey ? 15 : e.altKey ? 0.01 : 1
-  const rotation = typed !== undefined ? -typed : Math.round(raw / step) * step
+  const rotation = typed !== undefined ? -typed : target?.marker && dist(aimed, g.pivot) > 1e-6 ? raw : Math.round(raw / step) * step
   const degrees = Math.round((((((-rotation + 180) % 360) + 360) % 360) - 180) * 100) / 100
   // The base line turned by as much: the arc between the two shows the angle.
   const radians = (rotation * Math.PI) / 180
@@ -36,6 +41,7 @@ function turnAim(c: Canvas, g: GestureOf<'turn'>, world: Vec2, e: Keys): { ops: 
   const turned = { x: g.pivot.x + d.x * Math.cos(radians) - d.y * Math.sin(radians), y: g.pivot.y + d.x * Math.sin(radians) + d.y * Math.cos(radians) }
   return {
     ops: transformOps(s.base ?? s.doc, g.nodes, { pivot: g.pivot, rotation }, registry),
+    marker: target?.marker ?? null,
     live: { a: 0, b: degrees },
     reading: { vertex: g.pivot, a: g.from, b: turned, label: `${formatAngle(degrees)}°` },
     status: t('Rotation {degrees}°', { degrees: formatAngle(degrees) }),

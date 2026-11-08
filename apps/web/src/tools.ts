@@ -5,7 +5,7 @@ import { t } from './i18n'
  * each step of using one (`hintsFor`). What a tool does on the drawing is in `canvas/gestures/`
  * (`PRESSES`, and the gestures it starts); its command and shortcut are in `commands.ts` (`tool(…)`).
  */
-export type Tool = 'select' | 'hand' | 'line' | 'curve' | 'arc' | 'rect' | 'ellipse' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'offset' | 'rotate' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'place'
+export type Tool = 'select' | 'hand' | 'line' | 'curve' | 'arc' | 'rect' | 'ellipse' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'offset' | 'rotate' | 'move' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'place'
 
 /** The plain shapes, which share one toolbar button. */
 // A paper is drawn as a rectangle is, by its corners: it is offered with the shapes.
@@ -16,6 +16,8 @@ export const ROOM_TOOLS: Tool[] = ['room', 'divider']
 export const TEXT_TOOLS: Tool[] = ['text', 'annotation', 'dimension', 'gridline']
 /** The tools that work on the lines of what is drawn: cutting them in two or a stretch away, or copying them alongside. */
 export const CUT_TOOLS: Tool[] = ['split', 'trim', 'offset']
+/** The tools that turn or move the selection, which share the button with the flips. */
+export const TRANSFORM_TOOLS: Tool[] = ['rotate', 'move']
 /** The tools that read something off the drawing without adding to it. */
 export const MEASURE_TOOLS: Tool[] = ['measure', 'angle']
 
@@ -69,6 +71,10 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
       if (step === 0) return [['', t('Click the point to turn it about')]]
       if (step === 1) return [['', t('Click where the turn starts from: the line from the pivot to there')], angles, free, ['Esc', t('cancels')]]
       return [['', t('Click where that line goes: the selection turns with it')], ['0-9', t('type an exact angle')], ['Shift', t('keeps to 15° steps')], ['Alt', t('turns freely')], ['Esc', t('cancels')]]
+    case 'move':
+      if (!selected) return [['', t('Select what to move first: click it')]]
+      if (step === 0) return [['', t('Click the point to move it by: a corner, a middle, a centre')], rested]
+      return [['', t('Click where that point goes')], typed, angles, held, ['Ctrl', t('leaves a copy there, for more copies')], ['Alt', t('ignores snapping, and leaves joined walls where they are')], ['Esc', t('cancels')]]
     case 'split':
       return [['', t('Click a wall, a line or a polyline where it should be cut')], ['', t('the lengths either side are shown')], ['Alt', t('ignores the grid')]]
     case 'trim':

@@ -131,7 +131,7 @@ export const toolHover: Move<'idle'> = (c, _g, e, _at, world, out) => {
           ? { ...upright, ...s.placing.table }
           : { ...common, type: 'instance', component: library ? library.id : s.placing.component }
     out.previewed = preview([...(library?.ops ?? []), { op: 'add_node', node }])
-  } else if (TWO_POINT.includes(s.tool) || s.tool === 'measure' || s.tool === 'angle' || (s.tool === 'rotate' && s.selection.length > 0)) {
+  } else if (TWO_POINT.includes(s.tool) || s.tool === 'measure' || s.tool === 'angle' || ((s.tool === 'rotate' || s.tool === 'move') && s.selection.length > 0)) {
     out.marker = snap(c, world, e, []).marker
   } else if (s.tool === 'offset') {
     offsetHover(c, world, out)

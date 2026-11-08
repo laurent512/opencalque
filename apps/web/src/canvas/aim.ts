@@ -20,12 +20,12 @@ export function trackedPoints(c: Canvas): Vec2[] {
 }
 
 /**
- * Follows where the pointer rests: a point (a corner, a middle, a crossing) snapped to for long
+ * Follows where the pointer rests: a point (a corner, a centre, a middle, a crossing) snapped to for long
  * enough is kept, once the pointer leaves it, to line up with. Only those: a point merely passed
  * over is not, and lining up with every point of a plan would find a line almost anywhere.
  */
 function rest(c: Canvas, hit: Snap | null): void {
-  const on = hit && (hit.kind === 'point' || hit.kind === 'middle' || hit.kind === 'crossing') ? hit.p : null
+  const on = hit && (hit.kind === 'point' || hit.kind === 'centre' || hit.kind === 'middle' || hit.kind === 'crossing') ? hit.p : null
   const { resting } = c.tracked
   if (resting && on && dist(on, resting.p) < 1e-6) return
   const now = performance.now()
@@ -73,11 +73,11 @@ export function snap(c: Canvas, world: Vec2, e: Keys, exclude: string[], from?: 
   const hit = snapToObjects ? snapTo(c.scene, world, SNAP_REACH / zoom, { exclude, from, gridded: onGrid ? gridded : undefined, aligners: trackedPoints(c) }) : null
   rest(c, hit)
   if (hit) {
-    // A point of an object is taken exactly as it is, and so is what a place lined up with points
+    // A point of an object (or its centre) is taken exactly as it is, and so is what a place lined up with points
     // takes from them (level with one: its y; upright from one: its x), or it would be a hair off
     // level; the rest of a place worked out on a line is tidied.
     const from = (axis: 'x' | 'y') => (hit.kind === 'aligned' && hit.guides?.some(([q]) => q[axis] === hit.p[axis]) ? hit.p[axis] : round(hit.p[axis]))
-    const p = hit.kind === 'point' ? hit.p : { x: from('x'), y: from('y') }
+    const p = hit.kind === 'point' || hit.kind === 'centre' ? hit.p : { x: from('x'), y: from('y') }
     return { p, marker: { p, kind: hit.kind, ...(hit.guides ? { guides: hit.guides } : {}) } }
   }
   return { p: onGrid ? gridded : world, marker: null }

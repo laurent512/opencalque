@@ -3,7 +3,7 @@ import { applyEdit, createDocument, holdsChildren, layerIn, layersOf, pagesOf, t
 import { registry } from './extensions'
 import type { StoredFile } from './platform'
 import type { Tool } from './tools'
-import { CUT_TOOLS, MEASURE_TOOLS, ROOM_TOOLS, SHAPE_TOOLS, TEXT_TOOLS } from './tools'
+import { CUT_TOOLS, MEASURE_TOOLS, ROOM_TOOLS, SHAPE_TOOLS, TEXT_TOOLS, TRANSFORM_TOOLS } from './tools'
 import type { View } from './view'
 import { closeWindows, toast } from './windows'
 
@@ -135,6 +135,8 @@ interface ToolSettings {
   measureTool: Tool
   /** And for the button of the tools that cut, split and trim. */
   cutTool: Tool
+  /** And for the button of rotating and moving. */
+  transformTool: Tool
   /** Stroke colour given to the shapes drawn next, or null for the layer's colour. */
   drawColor: string | null
   /** The fill of the closed shapes drawn next, its colour and its pattern; null for none. */
@@ -211,6 +213,7 @@ const SETTINGS: ToolSettings = {
   textTool: 'text',
   measureTool: 'measure',
   cutTool: 'split',
+  transformTool: 'rotate',
   drawColor: null,
   drawFill: null,
   drawPattern: null,
@@ -347,7 +350,8 @@ export function setTool(tool: Tool, placing: Placing | null = null): void {
   const textTool = TEXT_TOOLS.includes(tool) ? tool : get().textTool
   const measureTool = MEASURE_TOOLS.includes(tool) ? tool : get().measureTool
   const cutTool = CUT_TOOLS.includes(tool) ? tool : get().cutTool
-  set({ tool, placing, shapeTool, roomTool, textTool, measureTool, cutTool, corner: null, placingRotation: 0, calibration: null, measuring: null, drawLocks: {}, axisLock: null, drawLive: null, drawStep: 0, status: '' })
+  const transformTool = TRANSFORM_TOOLS.includes(tool) ? tool : get().transformTool
+  set({ tool, placing, shapeTool, roomTool, textTool, measureTool, cutTool, transformTool, corner: null, placingRotation: 0, calibration: null, measuring: null, drawLocks: {}, axisLock: null, drawLive: null, drawStep: 0, status: '' })
 }
 
 export function select(ids: string[]): void {

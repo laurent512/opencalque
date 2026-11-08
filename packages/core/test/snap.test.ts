@@ -51,6 +51,28 @@ describe('snapping a point', () => {
     expect(snapTo(scene, { x: 2010, y: 3030 }, 100, { from: { x: 0, y: 3000 } })).toMatchObject({ p: { x: 2010, y: 3000 }, kind: 'aligned' })
   })
 
+  it('takes the centre of a rectangle turned or not, of a circle, and of a closed shape, never of an open one', () => {
+    const scene = sceneOf([
+      add({ type: 'rect', id: 'box', x: 0, y: 0, width: 2000, height: 1000 }),
+      add({ type: 'rect', id: 'turned', x: 5000, y: 0, width: 2000, height: 1000, rotation: 90 }),
+      add({ type: 'ellipse', id: 'round', cx: 0, cy: 5000, rx: 500, ry: 500 }),
+      // A triangle balances a third of the way up from its base, not halfway.
+      add({ type: 'polyline', id: 'triangle', points: [{ x: 3000, y: 6000 }, { x: 6000, y: 6000 }, { x: 4500, y: 3000 }], closed: true }),
+      add({ type: 'polyline', id: 'open', points: [{ x: 9000, y: 6000 }, { x: 12000, y: 6000 }, { x: 10500, y: 3000 }] }),
+    ])
+    expect(snapTo(scene, { x: 1030, y: 520 }, 100)).toEqual({ p: { x: 1000, y: 500 }, kind: 'centre' })
+    // Turned a quarter clockwise about its corner, it hangs down to the left of it.
+    const turned = snapTo(scene, { x: 4510, y: 990 }, 100)
+    expect(turned?.kind).toBe('centre')
+    near(turned?.p, 4500, 1000)
+    // The centre of a circle is one of its points too, and is called its centre.
+    expect(snapTo(scene, { x: 20, y: 5010 }, 100)).toEqual({ p: { x: 0, y: 5000 }, kind: 'centre' })
+    const triangle = snapTo(scene, { x: 4520, y: 4980 }, 100)
+    expect(triangle?.kind).toBe('centre')
+    near(triangle?.p, 4500, 5000)
+    expect(snapTo(scene, { x: 10500, y: 5000 }, 100)).toBeNull()
+  })
+
   it('offers no middle along a curve, and none so short that its ends are as near', () => {
     const arc = sceneOf([add({ type: 'ellipse', id: 'arc', cx: 0, cy: 0, rx: 2000, ry: 2000, from: 0, to: 90 })])
     // Part of the way round the arc there are points the curve is drawn through, but each is only a place on the line.

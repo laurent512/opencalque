@@ -15,7 +15,7 @@ export const round = (n: number) => Math.round(n * 1000) / 1000
 
 /** What a snap is called beside its mark. A point of an object needs no name. */
 export const snapName = (kind: SnapKind): string | undefined =>
-  kind === 'middle' ? t('Middle') : kind === 'crossing' ? t('Crossing') : kind === 'perpendicular' ? t('Perpendicular') : kind === 'edge' ? t('On the line') : kind === 'aligned' ? t('Lined up') : undefined
+  kind === 'centre' ? t('Centre') : kind === 'middle' ? t('Middle') : kind === 'crossing' ? t('Crossing') : kind === 'perpendicular' ? t('Perpendicular') : kind === 'edge' ? t('On the line') : kind === 'aligned' ? t('Lined up') : undefined
 
 /**
  * Applies the sizes typed in the quick bar to where a shape would end: a typed size wins over

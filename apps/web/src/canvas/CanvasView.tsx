@@ -18,6 +18,7 @@ import { TURNING, type Gesture, type PointerAt } from './gesture'
 import { DRAW_PRESS, MOVES, PRESSES, RELEASES } from './gestures'
 import { aim, finishArc, finishPoly, finishShape, polyPoint } from './gestures/drawTools'
 import { finishOffset } from './gestures/offset'
+import { finishMove } from './gestures/move'
 import { finishTurn } from './gestures/turn'
 import { shownClearances, useClearances, type ScreenBox } from './clearances'
 import { lockedAmong, titleAt } from './picking'
@@ -257,6 +258,7 @@ export function CanvasView() {
       else if (g.kind === 'arc') finishArc(c, g, world, keys)
       else if (g.kind === 'parallel') finishOffset(c, g, world, keys)
       else if (g.kind === 'turn' && g.from) finishTurn(c, g, world, keys)
+      else if (g.kind === 'displace') finishMove(c, g, world, keys)
       else if (g.kind === 'poly') {
         g.points.push(polyPoint(c, g, world, keys))
         g.since = performance.now()
@@ -440,7 +442,7 @@ export function CanvasView() {
       // Not in the middle of dragging something: only a drawing being made is put down, as Esc does.
       const g = c.gesture
       if (g.kind === 'poly') finishPoly(c, g, false)
-      else if (['draw', 'offset', 'arc', 'parallel', 'measure', 'angle', 'turn'].includes(g.kind)) reset(c)
+      else if (['draw', 'offset', 'arc', 'parallel', 'measure', 'angle', 'turn', 'displace'].includes(g.kind)) reset(c)
       else if (g.kind !== 'idle') return
       if (get().tool !== 'select') setTool('select')
     }

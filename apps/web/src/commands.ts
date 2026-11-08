@@ -104,7 +104,7 @@ const browsing = () => useWindows.getState().browsing !== null
 /** One parametric object or one table of quantities selected: what can be made into the shapes it draws. */
 const onlyVectorizable = () => get().selection.length === 1 && ['parametric', 'table'].includes(get().doc.nodes[get().selection[0]]?.type ?? '')
 /** A line, a wall or a divider has its first point and is waiting for the next. */
-const drawingLine = () => get().drawStep > 0 && ['line', 'curve', 'wall', 'divider'].includes(get().tool)
+const drawingLine = () => get().drawStep > 0 && ['line', 'curve', 'wall', 'divider', 'move'].includes(get().tool)
 /** Something is being dragged with the select tool: moved, or reshaped by one of its points. */
 const dragging = () => get().tool === 'select' && get().base !== null && !get().editingText
 const canHold = () => drawingLine() || dragging()
@@ -327,6 +327,7 @@ const STATIC: Command[] = [
   tool('trim', msg('Trim'), 'X'),
   tool('offset', msg('Offset a line or a shape'), 'Shift+X'),
   tool('rotate', msg('Rotate'), 'E'),
+  tool('move', msg('Move'), 'Shift+E'),
   tool('eyedropper', msg('Eyedropper: copy the look of an object'), 'I'),
   tool('text', msg('Text'), 'T'),
   tool('annotation', msg('Annotation'), 'Shift+T'),

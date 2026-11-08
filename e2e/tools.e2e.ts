@@ -267,6 +267,56 @@ test('turns the selection a quarter about a point with the rotate tool', async (
   expect((await saved(page)).find((n) => n.type === 'rect')).toMatchObject({ x: 0, y: 0, width: 2000, height: 1000, rotation: 270 })
 })
 
+test('turns the selection exactly onto a point clicked, at an angle that is no whole degree', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('r')
+  await click(page, at(0, 0))
+  await click(page, at(1000, 500))
+  await page.keyboard.press('l')
+  await click(page, at(0, 2500))
+  await click(page, at(3000, 2000))
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('v')
+  await click(page, at(1000, 250))
+  await page.keyboard.press('e')
+  await click(page, at(0, 0))
+  await click(page, at(1000, 0))
+  // The end of the line is 33.69° below level from the pivot: the rectangle's top side goes through it.
+  await page.mouse.move(at(3000, 2000).x, at(3000, 2000).y, { steps: 5 })
+  await expect(status(page)).toHaveText('Rotation -33.69°')
+  await click(page, at(3000, 2000))
+  const rect = (await saved(page)).find((n) => n.type === 'rect')!
+  expect(rect.rotation).toBeCloseTo((Math.atan2(2000, 3000) * 180) / Math.PI, 6)
+})
+
+test('moves the selection by a point of it onto a point of something else, and leaves copies with Ctrl', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('r')
+  await click(page, at(0, 0))
+  await click(page, at(1000, 600))
+  await click(page, at(3000, 0))
+  await click(page, at(4000, 1000))
+  await page.keyboard.press('v')
+  await click(page, at(1000, 300))
+  await page.keyboard.press('Shift+E')
+  // Taken by its centre, put down on the other's top-right corner.
+  await click(page, at(500, 300))
+  await page.mouse.move(at(4000, 0).x, at(4000, 0).y, { steps: 5 })
+  await expect(status(page)).toContainText('Move by 3513')
+  await click(page, at(4000, 0))
+  let rects = (await saved(page)).filter((n) => n.type === 'rect')
+  expect(rects.map((r) => [r.x, r.y])).toEqual([[3500, -300], [3000, 0]])
+  // Taken again by its corner: with Ctrl each click leaves a copy and the tool goes on, the original staying.
+  await click(page, at(3500, -300))
+  await page.keyboard.down('Control')
+  await click(page, at(3000, 1000))
+  await click(page, at(4000, 1000))
+  await page.keyboard.up('Control')
+  await page.keyboard.press('Escape')
+  rects = (await saved(page)).filter((n) => n.type === 'rect')
+  expect(rects.map((r) => [r.x, r.y])).toEqual([[3500, -300], [3000, 0], [3000, 1000], [4000, 1000]])
+})
+
 test('reads a distance and an angle without adding anything', async ({ page }) => {
   const at = await blank(page)
   await page.keyboard.press('m')

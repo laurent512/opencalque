@@ -11,10 +11,11 @@ import type { Document, Node } from './schema'
  */
 
 /**
- * What a point snapped to: a point of an object, the middle of a line, where two lines cross, the
- * foot of a perpendicular, the nearest place on a line, or a place lined up with points around it.
+ * What a point snapped to: a point of an object, the centre of a shape, the middle of a line,
+ * where two lines cross, the foot of a perpendicular, the nearest place on a line, or a place
+ * lined up with points around it.
  */
-export type SnapKind = 'point' | 'middle' | 'crossing' | 'perpendicular' | 'edge' | 'aligned'
+export type SnapKind = 'point' | 'centre' | 'middle' | 'crossing' | 'perpendicular' | 'edge' | 'aligned'
 
 export interface Snap {
   p: Vec2
@@ -37,8 +38,8 @@ export interface SnapOptions {
   gridded?: Vec2
 }
 
-/** Which is kept of two places equally near the pointer: the more specific. */
-const RANK: Record<SnapKind, number> = { point: 0, crossing: 1, middle: 2, perpendicular: 3, edge: 4, aligned: 5 }
+/** Which is kept of two places equally near the pointer: the more specific. The centre of a circle is also one of its points, and is called its centre. */
+const RANK: Record<SnapKind, number> = { centre: 0, point: 1, crossing: 2, middle: 3, perpendicular: 4, edge: 5, aligned: 6 }
 /** A line that turns by less than this (radians, 12°) at a point is a curve passing through it, not a corner. */
 const CORNER = Math.PI / 15
 /** No more than this many stretches of line near the pointer are tried against one another for crossings. */
@@ -100,6 +101,8 @@ export function snapTo(scene: SceneItem[], at: Vec2, reach: number, options: Sna
   for (const item of scene) {
     if (exclude.includes(item.id)) continue
     for (const q of snapPointsOf(item)) offer(q, 'point')
+    const centre = kindOf(item.node).centre?.(item.node)
+    if (centre) offer(centre, 'centre')
     if (!item.bounds || !boundsContainPoint(item.bounds, at, reach)) continue
     for (const line of snapLinesOf(item)) {
       for (let i = 0; i + 1 < line.length; i++) {

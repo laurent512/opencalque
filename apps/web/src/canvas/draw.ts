@@ -1161,10 +1161,17 @@ export function drawScene(
     ctx.lineWidth = 1.5
     ctx.setLineDash([])
     ctx.beginPath()
-    // Each kind of snap has its sign, as in drafting programs: a square on a point, a triangle on
-    // a middle, a cross where lines cross, a square corner for a perpendicular, a diamond on a
-    // line, an upright cross where it lines up with points around.
+    // Each kind of snap has its sign, as in drafting programs: a square on a point, a circle on a
+    // centre, a triangle on a middle, a cross where lines cross, a square corner for a
+    // perpendicular, a diamond on a line, an upright cross where it lines up with points around.
     switch (overlay.marker.kind) {
+      case 'centre':
+        ctx.arc(p.x, p.y, 6, 0, Math.PI * 2)
+        ctx.moveTo(p.x - 2, p.y)
+        ctx.lineTo(p.x + 2, p.y)
+        ctx.moveTo(p.x, p.y - 2)
+        ctx.lineTo(p.x, p.y + 2)
+        break
       case 'aligned':
         ctx.moveTo(p.x, p.y - 6)
         ctx.lineTo(p.x, p.y + 6)

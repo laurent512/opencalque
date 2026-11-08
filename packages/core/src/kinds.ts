@@ -1,5 +1,5 @@
 import { childrenOf, isVisible, rootOf } from './document'
-import { add, applyTransform, besidePath, dist, inverseTransform, len, mid, norm, parallelPath, perp, rotate, scale, sub, type Bounds, type Vec2, ellipseArc, smoothPoints, unionBounds } from './geometry'
+import { add, applyTransform, besidePath, centroid, dist, inverseTransform, len, mid, norm, parallelPath, perp, rotate, scale, sub, type Bounds, type Vec2, ellipseArc, smoothPoints, unionBounds } from './geometry'
 import { fadeColor, resolveColor } from './colors'
 import { DIMENSION_MARKER_SIZE, DIMENSION_TEXT_SIZE, styledDimension } from './dimensions'
 import { fillFields } from './fields'
@@ -62,6 +62,12 @@ export interface NodeKind<N> {
    * a kind does not say.
    */
   snapLines?(node: N, drawn: Vec2[][]): Vec2[][]
+  /**
+   * The centre of a shape, snapped to as such (as a CAD program's centre and geometric centre):
+   * of a circle or an arc, a rectangle, a closed polygon or curve. Null or absent where a node has
+   * none worth pointing at.
+   */
+  centre?(node: N): Vec2 | null
   /**
    * The patch that turns, mirrors and scales the node as `t` says, keeping what the node means:
    * a wall's thickness and a text's size scale with it, a parametric object has its lengths scaled
@@ -613,6 +619,7 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
       return points && { points }
     },
     beside: (node, p) => besidePath(node.smooth ? smoothPoints(node.points, node.closed) : node.points, !!node.closed, p),
+    centre: (node) => (node.closed ? centroid(node.smooth ? smoothPoints(node.points, true) : node.points) : null),
   },
   rect: {
     primitives: (node) => [{ kind: 'path', points: rectCorners(node), closed: true }],
@@ -623,6 +630,7 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
       return { ...add(node, rotate({ x: distance, y: distance }, node.rotation ?? 0)), width, height }
     },
     beside: (node, p) => besidePath(rectCorners(node), true, p),
+    centre: (node) => add(rotate({ x: node.width / 2, y: node.height / 2 }, node.rotation ?? 0), node),
     move: moveXY,
     // No points of its own to drag: it is resized as a box, by a frame that turns with it (resize.ts).
     transform: transformBox,
@@ -705,6 +713,7 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
       return Math.abs(node.rx - node.ry) < 1e-6 && radius > 0 ? { rx: radius, ry: radius } : null
     },
     beside: (node, p) => dist(p, { x: node.cx, y: node.cy }) - node.rx,
+    centre: (node) => ({ x: node.cx, y: node.cy }),
   },
   text: {
     primitives: (node, ctx) => textLines(said(node.text, node.parent, ctx), node, node.size, { rotation: node.rotation, font: node.font, align: node.align, bold: node.bold }),

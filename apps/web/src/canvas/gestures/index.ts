@@ -6,6 +6,7 @@ import { angleDown, angleMove, measureDown, measureMove } from './measure'
 import { offsetDown, parallelMove } from './offset'
 import { eyedropperDown, placeDown, splitDown, toolHover, trimDown } from './place'
 import { cornerMove, cropMove, dragUp, endMove, faceMove, handleMove, hover, marqueeMove, marqueeUp, moveMove, pressMove, pressUp, resizeMove, rotateMove, scaleMove, selectDown } from './select'
+import { displaceMove, moveToolDown } from './move'
 import { rotateDown, turnMove } from './turn'
 
 /*
@@ -26,6 +27,7 @@ export const PRESSES: Partial<Record<Tool, Press>> = {
   offset: offsetDown,
   angle: angleDown,
   rotate: rotateDown,
+  move: moveToolDown,
   measure: measureDown,
   calibrate: measureDown,
   line: lineDown,
@@ -57,6 +59,7 @@ export const MOVES: { [K in Gesture['kind']]: Move<K> } = {
   angle: angleMove,
   poly: polyMove,
   turn: turnMove,
+  displace: displaceMove,
   face: faceMove,
   end: endMove,
 }

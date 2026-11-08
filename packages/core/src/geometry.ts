@@ -135,6 +135,31 @@ export function pointInPolygon(p: Vec2, polygon: Vec2[]): boolean {
   return inside
 }
 
+/**
+ * The centre of the area a closed polygon encloses (its centroid, the point it would balance on),
+ * or null when it encloses none: its points all in a line. Not the average of its points, which
+ * points crowded on one side (a curve) would pull towards them.
+ */
+export function centroid(polygon: Vec2[]): Vec2 | null {
+  if (polygon.length < 3) return null
+  // Worked out from the first point, so that a polygon far from the origin loses no precision.
+  const o = polygon[0]
+  let area = 0
+  let x = 0
+  let y = 0
+  for (let i = 1; i + 1 < polygon.length; i++) {
+    const a = sub(polygon[i], o)
+    const b = sub(polygon[i + 1], o)
+    const cross = a.x * b.y - b.x * a.y
+    area += cross
+    x += (a.x + b.x) * cross
+    y += (a.y + b.y) * cross
+  }
+  const size = Math.max(...polygon.map((p) => dist(p, o)))
+  if (Math.abs(area) <= 1e-9 * size * size) return null
+  return { x: o.x + x / (3 * area), y: o.y + y / (3 * area) }
+}
+
 /** Points along a circular arc, angles in degrees (0 = +X, 90 = +Y). */
 export function arcPoints(center: Vec2, radius: number, startDeg: number, endDeg: number, segments = 24): Vec2[] {
   const points: Vec2[] = []
