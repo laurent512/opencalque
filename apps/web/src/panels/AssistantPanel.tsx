@@ -1,3 +1,4 @@
+import { searchable } from '../search'
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUp, MousePointer2, Paperclip, Plus, Square, Trash2, X } from 'lucide-react'
 import {
@@ -122,7 +123,7 @@ export function AssistantPanel() {
   const suggestions = (): Suggestion[] | null => {
     if (!text.startsWith('/')) return null
     const [, name = '', rest] = /^\/(\S*)(?:\s+(.*))?$/s.exec(text) ?? []
-    const query = (rest ?? '').trim().toLowerCase()
+    const query = searchable((rest ?? '').trim())
     const done = () => setText('')
     if (rest === undefined) {
       return SLASH.filter((c) => c.name.startsWith(name.toLowerCase())).map((c) => ({
@@ -140,11 +141,11 @@ export function AssistantPanel() {
     }
     if (name === 'resume') {
       return conversations
-        .filter((c) => c.id !== current && c.title.toLowerCase().includes(query))
+        .filter((c) => c.id !== current && searchable(c.title).includes(query))
         .map((c) => ({ key: c.id, label: c.title, hint: new Date(c.updated).toLocaleDateString(), run: () => (done(), openConversation(c.id)) }))
     }
     if (name === 'model') {
-      return models.filter(([id, label]) => `${id} ${label}`.toLowerCase().includes(query)).map(([id, label]) => ({ key: id, label, hint: id === model ? t('in use') : undefined, run: () => (done(), setModel(id)) }))
+      return models.filter(([id, label]) => searchable(`${id} ${label}`).includes(query)).map(([id, label]) => ({ key: id, label, hint: id === model ? t('in use') : undefined, run: () => (done(), setModel(id)) }))
     }
     return []
   }

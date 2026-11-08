@@ -12,6 +12,9 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 - OpenCalque speaks Turkish: the interface, the objects and the bundled libraries. It follows a system set to Turkish, or is chosen in Preferences › General.
 - Offset works on walls: it makes a wall like it beside it, of the same material, thickness and look, the distance measured between the two walls' lines. A curved wall gives one round the same centre. Doors and windows are not copied.
 
+### Improved
+- Searching ignores accents everywhere: the command list, the shortcuts, the components, the object library, so "electricite" finds "Électricité". In Turkish, i and ı find each other, and "içe" finds "İçe aktar".
+
 ### Fixed
 - The third click of the Rotate tool snaps to what is drawn, and the selection then turns exactly onto that point. It used to snap to nothing there and keep to whole degrees, so a shape could not be lined up with a wall drawn at an odd angle.
 

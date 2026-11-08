@@ -1,3 +1,4 @@
+import { searchable } from './search'
 import { useEffect, useMemo, useState } from 'react'
 import { Bot, Keyboard, PencilRuler, Puzzle, Settings2, type LucideIcon } from 'lucide-react'
 import { allCommands, eventKey, executeById, formatKey, isCustomised, keysOf, RESERVED_KEYS, resetShortcut, setShortcut, useCommands, type Command } from './commands'
@@ -266,8 +267,8 @@ function DrawingSettings() {
 }
 
 const matches = (command: Command, query: string) => {
-  const text = `${t(command.category)} ${t(command.title)} ${command.category} ${command.title} ${command.keywords ?? ''} ${keysOf(command).map(formatKey).join(' ')}`.toLowerCase()
-  return query.toLowerCase().split(/\s+/).every((word) => text.includes(word))
+  const text = searchable(`${t(command.category)} ${t(command.title)} ${command.category} ${command.title} ${command.keywords ?? ''} ${keysOf(command).map(formatKey).join(' ')}`)
+  return searchable(query).split(/\s+/).every((word) => text.includes(word))
 }
 
 /** Every command with its shortcut, to look through and to change. */

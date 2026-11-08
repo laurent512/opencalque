@@ -1,3 +1,4 @@
+import { searchable } from './search'
 import { useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Check } from 'lucide-react'
@@ -10,8 +11,6 @@ import { t } from './i18n'
 import { parametricPicture } from './pictures'
 import { useStore } from './store'
 
-/** A name as it is searched: without case or accents, so that "prise" finds "Prisé". */
-const plain = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 /**
  * One of the entries of the Components panel (a component, or a model of parametric objects),
@@ -53,7 +52,7 @@ export function EntryChoice(props: { label: string; value?: string; mixed?: bool
       }),
     )
   }, [open, doc])
-  const found = entries.filter((one) => plain(one.name).includes(plain(query.trim())))
+  const found = entries.filter((one) => searchable(one.name).includes(searchable(query.trim())))
   const toggle = () => {
     if (closing.current) return
     if (open) close()

@@ -1,3 +1,4 @@
+import { searchable } from '../search'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { ChevronDown, ChevronRight, Eye, EyeOff, LayoutGrid, List, Lock, LockOpen, Pencil, Plus, Replace, ScanEye, Trash2, Copy } from 'lucide-react'
 import { childrenOf, componentPlacements, componentsOf, layersOf, pagesOf, toSVG, type Document, type Node, type Op, type Variant, colorsOf, colorUses } from '@opencalque/core'
@@ -213,7 +214,7 @@ export function Components() {
   const [search, setSearch] = useState('')
   const components = componentsOf(doc).filter((c) => !c.sheet)
   const models = modelsOf(doc)
-  const words = search.toLowerCase().split(/\s+/).filter(Boolean)
+  const words = searchable(search).split(/\s+/).filter(Boolean)
   const pictures = useMemo(() => new Map(componentsOf(drawn).map((c) => [c.id, svgUrl(toSVG(drawn, c.id, registry))])), [drawn, version])
   const modelPictures = useMemo(
     () =>
@@ -233,7 +234,7 @@ export function Components() {
     ...components.map((component) => ({ entry: component.id, name: component.name ?? component.id, model: undefined as Variant | undefined })),
     ...models.map((model) => ({ entry: modelEntry(model), name: entryName(doc, modelEntry(model)), model })),
   ]
-    .filter((one) => words.every((word) => one.name.toLowerCase().includes(word)))
+    .filter((one) => words.every((word) => searchable(one.name).includes(word)))
     .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }))
   const action = (
     <span className="section-actions">

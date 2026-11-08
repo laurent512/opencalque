@@ -770,6 +770,7 @@ The English text is the key. `t('Save as…')` returns it in the active language
 - **Changing language** remounts the interface (`<App key={language}>` in `main.tsx`), which is why `t` can be a plain function with no subscriptions. The drawing, history and settings live in stores outside React and survive it.
 - **Not translated**: error messages from `@opencalque/core` (they are also read by scripts and by the assistant), the assistant's system prompt, and native file-dialog filter names. Names created in a drawing ("Layer 2", "Reference") are written in the language in use at the time and stay that way.
 - The command palette matches the translated name, the English name, and a command's `keywords`, so documentation written in English still works.
+- **Searching goes through `searchable`** (`search.ts`), on the query and on what is searched: no case, no accents, and the Turkish dotless ı taken as i. `toLowerCase` alone makes "İ" an i with a combining dot, which "i" typed is not found in, and keeps "ı" apart from "i". A new search box uses it too.
 
 ### Panels (`dock.ts`, `Layout.tsx`)
 

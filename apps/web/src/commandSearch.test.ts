@@ -50,6 +50,16 @@ describe('searching the commands', () => {
     expect(searchCommands([place], 'lace')).toEqual([place])
   })
 
+  it('finds a Turkish title whichever i it is typed with, and one with accents typed without them', () => {
+    setLanguage('tr')
+    const importing = command('İçe aktar…', 'File')
+    const grid = command('Izgarayı göster', 'View')
+    // A plain lower case makes İ an i with a dot added, and keeps ı apart from i.
+    for (const query of ['içe', 'İÇE', 'ice']) expect(searchCommands([importing, grid], query)).toEqual([importing])
+    for (const query of ['ızgara', 'izgara', 'IZGARA']) expect(searchCommands([importing, grid], query)).toEqual([grid])
+    expect(searchCommands([command('Élever', 'Edit')], 'elever')).toHaveLength(1)
+  })
+
   it('finds words in scripts without spaces', () => {
     const japanese = command('図面を開く', 'File')
     expect(searchCommands([japanese], '図面')).toEqual([japanese])

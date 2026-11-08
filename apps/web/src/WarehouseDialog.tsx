@@ -1,3 +1,4 @@
+import { searchable } from './search'
 import { parametricPicture } from './pictures'
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import { applyOps, componentsOf, createDocument, declarativeExtension, SCHEDULES, toSVG, type DeclarativeExtension, type Document, type Op, type ParametricKind, type Schedule } from '@opencalque/core'
@@ -260,7 +261,7 @@ function Components({ libraries }: { libraries: Library[] }) {
       // Without storage the library opens on All next time.
     }
   }
-  const words = search.toLowerCase().split(/\s+/).filter(Boolean)
+  const words = searchable(search).split(/\s+/).filter(Boolean)
   const offered = (section: string) => section === 'all' || groups.some((group) => group.id === section)
   // A search looks through every section, narrowed to one only when one is chosen while searching.
   // Otherwise the section looked at last is shown, while it is offered: not a library gone since.
@@ -270,7 +271,7 @@ function Components({ libraries }: { libraries: Library[] }) {
   // Every section with what it holds that matches the search, which the list of sections counts.
   const found = groups.map((group) => ({
     ...group,
-    cards: [...objectCards, ...tableCards, ...libraryCards].filter((card) => card.group === group.id && words.every((word) => `${card.name} ${card.description} ${group.name}`.toLowerCase().includes(word))),
+    cards: [...objectCards, ...tableCards, ...libraryCards].filter((card) => card.group === group.id && words.every((word) => searchable(`${card.name} ${card.description} ${group.name}`).includes(word))),
   }))
   const counts: Record<string, number> = { all: 0 }
   for (const group of found) {

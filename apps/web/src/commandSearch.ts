@@ -1,5 +1,6 @@
 import type { Command } from './commands'
 import { t } from './i18n'
+import { searchable } from './search'
 
 type Searched = Pick<Command, 'title' | 'category' | 'keywords'>
 
@@ -8,11 +9,11 @@ type Searched = Pick<Command, 'title' | 'category' | 'keywords'>
  * names match too, whatever the language, so a shortcut learned from documentation still works.
  */
 export function matchesCommand(command: Searched, query: string): boolean {
-  const text = `${t(command.category)} ${t(command.title)} ${command.category} ${command.title} ${command.keywords ?? ''}`.toLowerCase()
-  return query.toLowerCase().split(/\s+/).every((word) => text.includes(word))
+  const text = searchable(`${t(command.category)} ${t(command.title)} ${command.category} ${command.title} ${command.keywords ?? ''}`)
+  return searchable(query).split(/\s+/).every((word) => text.includes(word))
 }
 
-const wordsOf = (text: string) => text.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean)
+const wordsOf = (text: string) => searchable(text).split(/[^\p{L}\p{N}]+/u).filter(Boolean)
 
 /** How well `word` is found among `words`: as a whole word, as the start of one, or inside one. */
 function closeness(word: string, words: string[]): number {
@@ -39,7 +40,7 @@ function relevance(command: Searched, query: string[]): number {
  */
 export function searchCommands<T extends Searched>(commands: T[], query: string): T[] {
   const found = commands.filter((command) => matchesCommand(command, query))
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  const words = searchable(query).split(/\s+/).filter(Boolean)
   if (words.length === 0) return found
   return found
     .map((command) => ({ command, score: relevance(command, words) }))

@@ -1,3 +1,4 @@
+import { searchable } from './search'
 import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Plus } from 'lucide-react'
@@ -31,8 +32,6 @@ export interface MaterialOption {
   pattern?: Pattern
 }
 
-/** A name as it is searched: without case or accents, so that "beton" finds "Béton". */
-const plain = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 /**
  * What something is made of, picked among the drawing's materials: a button with the swatch and
@@ -52,7 +51,7 @@ export function MaterialChoice(props: { label: string; value: string | undefined
   }
   const { closing, style } = useFloating(open, close, box, menu)
   const now = mixed ? undefined : options.find((option) => option.id === (value ?? ''))
-  const found = options.filter((option) => plain(option.name).includes(plain(query.trim())))
+  const found = options.filter((option) => searchable(option.name).includes(searchable(query.trim())))
   const choose = (id: string) => {
     pick(id)
     close()
