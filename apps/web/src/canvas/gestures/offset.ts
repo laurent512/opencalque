@@ -8,7 +8,7 @@ import type { GestureOf, Keys } from '../gesture'
 import { get, type Canvas, type Move, type Press, type Shown } from '../runtime'
 
 /*
- * The offset tool: a parallel copy of a line or a shape. With a distance typed, the copy follows
+ * The offset tool: a parallel copy of a wall, a line or a shape. With a distance typed, the copy follows
  * the pointer along whatever it rests on, on the side it is on, and a click keeps it. With none,
  * the pointer is on the object and says nothing of how far: a click takes the object, and the
  * pointer then sets the distance (`parallel`). That distance stays for the next copies.
@@ -51,7 +51,7 @@ export function offsetHover(c: Canvas, world: Vec2, out: Shown): void {
   const hit = under(c, world, true)
   if (!hit) {
     cancel()
-    if (under(c, world, false)) out.status = t('Only lines, polylines, curves, rectangles, circles and arcs can be offset')
+    if (under(c, world, false)) out.status = t('Only walls, lines, polylines, curves, rectangles, circles and arcs can be offset')
     return
   }
   out.lit = hit.id

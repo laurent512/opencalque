@@ -8,7 +8,7 @@ Last updated: 2026-11-08 (after 1.6.0).
 
 ### Drawing
 - Lines, rectangles, ellipses and arcs (an ellipse with a start and an end angle), polylines and polygons, straight or curved through their points, text. The Curved line tool draws the curve as its points are clicked; the Arc tool draws an arc by its two ends and a point it goes through, or a typed radius.
-- **Offset**: a parallel copy of a line, a polyline, a curve, a rectangle, a circle or an arc, at a typed distance or where the pointer says.
+- **Offset**: a parallel copy of a wall, a line, a polyline, a curve, a rectangle, a circle or an arc, at a typed distance or where the pointer says. A wall's copy is a wall like it, its line that far from the first, a curved one round the same centre.
 - **Selecting by a box**, as in CAD: dragged to the right it takes what is wholly inside it; dragged to the left, green and dashed, what it touches, by what is drawn rather than by the box around it.
 - Exact sizes while drawing: a bar above the tools takes typed lengths, angles, widths and heights, and the shape shows its sizes as you draw.
 - Walls defined by a line and a thickness, joined cleanly at any angle where their ends meet. The line is the wall's middle, or one of its faces: walls drawn by their inner face keep it flush whatever their thicknesses, and grow outwards when made thicker. A run of walls closes with a double-click.
@@ -135,7 +135,7 @@ Agreed with the owner in October 2026. The first was built straight away.
 - ~~Eyedropper~~ (done)
 - Fills made of a picture, or of a texture (wood, concrete, grass), as more tabs of the fill window
 - ~~Trim for lines~~ (done: the trim tool, for walls, lines and polylines); extend and fillet for lines
-- ~~Offset~~ (done: the offset tool, for lines, polylines, curves, rectangles, circles and arcs; not walls, groups or other ellipses, and a shape that would fold over itself is refused rather than trimmed)
+- ~~Offset~~ (done: the offset tool, for walls, lines, polylines, curves, rectangles, circles and arcs; not groups or other ellipses, and a shape that would fold over itself is refused rather than trimmed)
 
 **Import and sharing**
 - ~~DXF import~~ (done, with blocks as groups); blocks as components

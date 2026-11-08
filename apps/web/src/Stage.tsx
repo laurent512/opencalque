@@ -83,7 +83,7 @@ const ICONS: Partial<Record<Tool, [title: string, icon: LucideIcon]>> = {
   measure: [msg('Measure: read a distance without drawing anything'), Ruler],
   split: [msg('Split: cut a wall, a line or a polyline in two where you click'), Slice],
   trim: [msg('Trim: take away the stretch of a wall or a line you click, up to what crosses it'), Scissors],
-  offset: [msg('Offset: a parallel copy of a line or a shape, at a distance'), Offset],
+  offset: [msg('Offset: a parallel copy of a wall, a line or a shape, at a distance'), Offset],
   rotate: [msg('Rotate: turn the selection about a point you click'), RotateCw],
   move: [msg('Move: take the selection by a point and put that point down on another'), Move],
   angle: [msg('Angle: read the angle between two directions'), Triangle],

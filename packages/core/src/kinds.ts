@@ -14,7 +14,7 @@ import { DEFAULT_MATERIAL, type Asset, type Document, type DrawingSettings, type
 import { DEFAULT_PAPER_SCALE, paperFormat, paperSheet } from './papers'
 import { regionPerimeter, roomAt } from './rooms'
 import { tablePrimitives } from './tables'
-import { bulgeThrough, hostWall, materialSeams, wallMiddle, wallPoints, wallPolygons, wallSeams, wallOutlineRuns, wallSides } from './walls'
+import { bulgeThrough, hostWall, materialSeams, wallArc, wallMiddle, wallParallel, wallPoints, wallPolygons, wallSeams, wallOutlineRuns, wallSides, wallSpot } from './walls'
 
 export const DEFAULT_INK = '#1f1f1f'
 export const WALL_FILL = '#ffffff'
@@ -790,6 +790,19 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     snapPoints: (node) => (node.bulge ? [node.a, node.b, wallMiddle(node)] : [node.a, node.b]),
     // Its faces as drawn, and its line (its middle, or the face it is drawn by), which is where another wall comes to meet it.
     snapLines: (node, drawn) => [...drawn, wallPoints(node)],
+    // A wall like it, its line `distance` from this one's (to its right as it runs, as for a line):
+    // its ends straight out from these, a curved one round the same centre, its bulge growing or
+    // shrinking with its radius, and none once that would pass the centre. Its ends meet nothing
+    // yet, so it keeps no joints; its doors and windows are not its own and stay where they are.
+    parallel: (node, distance) => {
+      const line = wallParallel(node, distance)
+      const [a, b] = [line[0], line[line.length - 1]].map((p) => ({ x: tidy(p.x), y: tidy(p.y) }))
+      const arc = node.bulge ? wallArc(node) : null
+      if (!arc) return { a, b, joins: null }
+      const radius = arc.radius + Math.sign(node.bulge!) * distance
+      return radius > 1 ? { a, b, bulge: tidy((node.bulge! * radius) / arc.radius), joins: null } : null
+    },
+    beside: (node, p) => wallSpot(node, p).across,
     transform: (node, t) => {
       // The side a curved wall bows to, its left and right faces, and the face it is drawn by are
       // matters of handedness, which a mirror reverses: the same face is then on the other hand.

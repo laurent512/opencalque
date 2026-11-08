@@ -9,7 +9,7 @@ import type { Op } from './ops'
  * side, the same for both, and what that side is called does not matter here.
  */
 
-/** Whether the node has a parallel copy of its own kind: a wall, a group or an ellipse has none. */
+/** Whether the node has a parallel copy of its own kind: a group or an ellipse that is no circle has none. */
 export const canOffset = (node: Node): boolean => kindOf(node).parallel?.(node, 0) != null
 
 /** How far `p` is from the node, signed for the side it is on, as `offsetOps` takes a distance. */

@@ -153,10 +153,32 @@ describe('offsetOps', () => {
     expect(offsetOps(doc, source(doc), -500)).toBeNull()
   })
 
-  it('has no copy of an ellipse that is no circle, a wall or a text', () => {
+  it('makes a wall like it beside a wall, its line that far from the other, with no joints of its own', () => {
+    const wall = { type: 'wall', a: { x: 0, y: 0 }, b: { x: 3000, y: 0 }, thickness: 200, material: undefined, joins: { a: 'free', b: 'round' } }
+    const copy = offset(wall, 1500)
+    expect(copy).toMatchObject({ type: 'wall', a: { x: 0, y: 1500 }, b: { x: 3000, y: 1500 }, thickness: 200 })
+    expect(copy.joins).toBeUndefined()
+    // One drawn by a face keeps it: its line, that face, is what is that far.
+    expect(offset({ ...wall, justify: 'left', b: { x: 0, y: 3000 } }, -1000)).toMatchObject({ a: { x: 1000, y: 0 }, b: { x: 1000, y: 3000 }, justify: 'left' })
+  })
+
+  it('makes a curved wall round the same centre, and none past it', () => {
+    // A half circle of radius 1000 about (1000, 0), bowing up the screen (to the left of a to b).
+    const half = { type: 'wall', a: { x: 0, y: 0 }, b: { x: 2000, y: 0 }, thickness: 200, bulge: -1000 }
+    // To the right is towards the centre: radius 600.
+    const inner = offset(half, 400)
+    close([inner.a, inner.b], points(400, 0, 1600, 0))
+    expect(inner.bulge).toBeCloseTo(-600)
+    const outer = offset(half, -500)
+    close([outer.a, outer.b], points(-500, 0, 2500, 0))
+    expect(outer.bulge).toBeCloseTo(-1500)
+    const doc = drawn(half)
+    expect(offsetOps(doc, source(doc), 1000)).toBeNull()
+  })
+
+  it('has no copy of an ellipse that is no circle or a text', () => {
     for (const node of [
       { type: 'ellipse', cx: 0, cy: 0, rx: 500, ry: 300 },
-      { type: 'wall', a: { x: 0, y: 0 }, b: { x: 1000, y: 0 }, thickness: 200 },
       { type: 'text', x: 0, y: 0, text: 'Hall', size: 200 },
     ]) {
       const doc = drawn(node)
@@ -174,6 +196,8 @@ describe('offsetOps', () => {
       { type: 'polyline', smooth: true, points: points(0, 0, 500, 0, 1000, 0) },
       { type: 'rect', x: 0, y: 0, width: 1000, height: 1000 },
       { type: 'ellipse', cx: 700, cy: 0, rx: 100, ry: 100 },
+      { type: 'wall', a: { x: 1000, y: 0 }, b: { x: 0, y: 0 }, thickness: 200, justify: 'right' },
+      { type: 'wall', a: { x: 0, y: 1000 }, b: { x: 1000, y: 1000 }, thickness: 200, bulge: 300 },
     ]) {
       const doc = drawn(node)
       const beside = besideNode(source(doc), towards)

@@ -80,7 +80,7 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
     case 'trim':
       return [['', t('Click the stretch of a wall or a line to take away, up to what crosses it')], ['', t('walls are cut against the line of the wall crossing them')]]
     case 'offset':
-      if (step === 0) return [['', t('Click a line or a shape to offset')], ['0-9', t('type the distance first')]]
+      if (step === 0) return [['', t('Click a wall, a line or a shape to offset')], ['0-9', t('type the distance first')]]
       return [['', t('Click where the copy goes')], ['0-9', t('type an exact distance')], free, ['Esc', t('cancels')]]
     case 'measure':
       return step === 0 ? [['', t('Click the first point')], onDrawing] : [['', t('Click the second point')], onDrawing, heldStraight, unsnapped]
