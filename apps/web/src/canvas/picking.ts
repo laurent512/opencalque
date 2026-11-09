@@ -84,7 +84,7 @@ export function lineUp(c: Canvas, nodes: Node[]): { moving: Alignable | null; ot
   const { view, viewport, base, doc } = get()
   const seen = visibleArea(view, viewport)
   const inSight = (box: Bounds) => !seen || (box.maxX >= seen.minX && box.minX <= seen.maxX && box.maxY >= seen.minY && box.minY <= seen.maxY)
-  return alignables(c.scene, base ?? doc, registry, new Set(nodes.map((n) => n.id)), inSight)
+  return alignables(c.snappable, base ?? doc, registry, new Set(nodes.map((n) => n.id)), inSight)
 }
 
 /**

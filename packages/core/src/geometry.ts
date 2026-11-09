@@ -59,6 +59,24 @@ export function inverseTransform(p: Vec2, t: Transform): Vec2 {
   return { x: (t.flipX ? -x : x) || 0, y: unrotated.y / (k * (t.scaleY ?? 1)) || 0 }
 }
 
+/**
+ * The transform that undoes `t`: what is placed by `t`, placed again by it, is back where it was
+ * drawn. Null where no transform can: a placement both stretched along its own axes and turned
+ * other than by a half turn, whose undoing would stretch along axes of its own, or one squashed flat.
+ */
+export function inverseOf(t: Transform): Transform | null {
+  const k = t.scale ?? 1
+  const [sx, sy] = [k * (t.scaleX ?? 1), k * (t.scaleY ?? 1)]
+  if (!sx || !sy || !Number.isFinite(1 / sx) || !Number.isFinite(1 / sy)) return null
+  const rotation = t.rotation ?? 0
+  const uniform = Math.abs(sx - sy) <= 1e-12 * Math.max(Math.abs(sx), Math.abs(sy))
+  if (!uniform && (((rotation % 180) + 180) % 180) !== 0) return null
+  // Mirrored, turning one way and undoing it the other are the same: a mirror reverses the sense of turning.
+  const undo: Transform = { x: 0, y: 0, rotation: t.flipX ? rotation : -rotation, ...(t.flipX ? { flipX: true } : {}), ...(uniform ? { scale: 1 / sx } : { scaleX: 1 / sx, scaleY: 1 / sy }) }
+  const back = applyTransform({ x: t.x, y: t.y }, undo)
+  return { ...undo, x: -back.x || 0, y: -back.y || 0 }
+}
+
 export function boundsOfPoints(points: Vec2[]): Bounds | null {
   if (points.length === 0) return null
   let minX = Infinity

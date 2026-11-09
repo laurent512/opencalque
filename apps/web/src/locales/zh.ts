@@ -1048,4 +1048,10 @@ export const zh: Record<string, string> = {
   "type an exact distance": "输入精确距离",
   "Too far: the shape would fold over itself": "距离过大：图形会折叠到自身",
   "Only walls, lines, polylines, curves, rectangles, circles and arcs can be offset": "只有墙、直线、多段线、曲线、矩形、圆和圆弧可以偏移",
+  "Editing inside a group": "在编组内编辑",
+  "Show the rest of the drawing faded": "淡显图纸的其余部分",
+  "Show the group alone": "仅显示编组",
+  "Editing a component": "编辑组件",
+  "Show the component alone": "仅显示组件",
+  "Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.": "淡显时，图纸的其余部分可以捕捉，但不能选择。从组件面板或对象库打开的组件，或同时被拉伸和旋转放置的组件，始终单独显示。",
 }

@@ -57,6 +57,11 @@ export interface Canvas {
 
   /** What the canvas shows, as worked out for the latest render. */
   scene: SceneItem[]
+  /**
+   * What is snapped to: the scene, and the rest of the drawing shown faded around a group or a
+   * component being edited (`surroundings`), which is not picked up.
+   */
+  snappable: SceneItem[]
   titles: PaperTitle[]
   frames: ModifierOutline[]
   /** The handles of the one selected object. */

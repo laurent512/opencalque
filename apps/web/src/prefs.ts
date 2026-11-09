@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { SecretStore } from './platform'
 import type { DeclarativeExtension } from '@opencalque/core'
 import { msg } from './i18n'
+import type { Surroundings } from './surroundings'
 
 /**
  * Settings that belong to the person using the app, not to a drawing. They are kept in the
@@ -31,6 +32,10 @@ export interface Prefs {
   snapToObjects: boolean
   /** Show how far the one object selected stands from the walls around it, as dimensions to type into. */
   showClearances: boolean
+  /** While editing inside a group: the rest of the drawing shown faded around it, to see and snap to, or not shown. */
+  editGroups: Surroundings
+  /** The same, while editing a component gone into by one of its placements. */
+  editComponents: Surroundings
   /** Desktop app: let agents on this computer work on the open drawing. Off until the person turns it on. */
   agentBridge: boolean
   /** How the Components panel shows them: one per line, or as pictures side by side. */
@@ -92,6 +97,8 @@ const DEFAULTS: Prefs = {
   snapToGrid: true,
   snapToObjects: true,
   showClearances: true,
+  editGroups: 'faded',
+  editComponents: 'alone',
   agentBridge: false,
   componentsView: 'list',
   foldedSections: [],

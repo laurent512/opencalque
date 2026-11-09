@@ -262,6 +262,21 @@ function DrawingSettings() {
       <Toggle label={t('Snap to existing objects, and line up what is moved with them')} checked={prefs.snapToObjects} onChange={(snapToObjects) => setPrefs({ snapToObjects })} />
       <p className="hint">{t('A point being placed snaps to the points of objects, the middle of a line, where two lines cross, the foot of a perpendicular, or the line itself. An object being moved lines up with the sides and middles of the others, and keeps equal gaps with its neighbours.')}</p>
       <p className="hint">{t('Holding Alt while drawing or moving turns snapping off for that moment.')}</p>
+      <label className="pref-field">
+        <span>{t('Editing inside a group')}</span>
+        <select value={prefs.editGroups} onChange={(e) => setPrefs({ editGroups: e.target.value as typeof prefs.editGroups })}>
+          <option value="faded">{t('Show the rest of the drawing faded')}</option>
+          <option value="alone">{t('Show the group alone')}</option>
+        </select>
+      </label>
+      <label className="pref-field">
+        <span>{t('Editing a component')}</span>
+        <select value={prefs.editComponents} onChange={(e) => setPrefs({ editComponents: e.target.value as typeof prefs.editComponents })}>
+          <option value="faded">{t('Show the rest of the drawing faded')}</option>
+          <option value="alone">{t('Show the component alone')}</option>
+        </select>
+      </label>
+      <p className="hint">{t('Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.')}</p>
     </>
   )
 }

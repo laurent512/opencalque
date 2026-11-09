@@ -1048,4 +1048,10 @@ export const ko: Record<string, string> = {
   "type an exact distance": "정확한 거리 입력",
   "Too far: the shape would fold over itself": "너무 멉니다: 도형이 겹쳐 접히게 됩니다",
   "Only walls, lines, polylines, curves, rectangles, circles and arcs can be offset": "벽, 선, 폴리선, 곡선, 사각형, 원, 호만 간격을 띄울 수 있습니다",
+  "Editing inside a group": "그룹 안에서 편집",
+  "Show the rest of the drawing faded": "도면의 나머지를 흐리게 표시",
+  "Show the group alone": "그룹만 표시",
+  "Editing a component": "컴포넌트 편집",
+  "Show the component alone": "컴포넌트만 표시",
+  "Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.": "흐리게 표시된 도면의 나머지에는 스냅할 수 있지만 선택할 수는 없습니다. 컴포넌트 패널이나 객체 라이브러리에서 연 컴포넌트, 또는 늘이고 회전해 배치한 컴포넌트는 항상 단독으로 표시됩니다.",
 }

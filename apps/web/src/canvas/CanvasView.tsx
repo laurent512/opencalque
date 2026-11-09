@@ -7,6 +7,7 @@ import { commandFor, onCommand } from '../commands'
 import { registry, useExtensions } from '../extensions'
 import { editComponent, forgetTrail } from '../navigation'
 import { usePrefs } from '../prefs'
+import { surroundings } from '../surroundings'
 import { apply, commit, preview, select, setTool, useStore } from '../store'
 import { useTheme } from '../theme'
 import { formatLength, formatNumber, unitSuffix } from '../units'
@@ -73,6 +74,16 @@ export function CanvasView() {
   const scene = useMemo(() => buildScene(doc, scope, registry), [doc, scope, extensionsVersion])
   // A component being edited is drawn as it is where it is placed, its unfilled shapes backed with white.
   const shown = useMemo(() => placedScene(doc, scope, scene), [doc, scope, scene])
+  // Inside a group or a component, the rest of the drawing faded around it, as the preferences say.
+  const page = useStore((s) => s.page)
+  const through = useStore((s) => s.through)
+  const editGroups = usePrefs((p) => p.editGroups)
+  const editComponents = usePrefs((p) => p.editComponents)
+  const around = useMemo(
+    () => surroundings(doc, page, scope, through, registry, { groups: editGroups, components: editComponents }),
+    [doc, page, scope, through, editGroups, editComponents, extensionsVersion],
+  )
+  const snappable = useMemo(() => (around.length > 0 ? [...scene, ...around] : scene), [scene, around])
 
   const handles = useMemo(() => {
     const node = selection.length === 1 ? doc.nodes[selection[0]] : undefined
@@ -194,6 +205,7 @@ export function CanvasView() {
     placed: newId(),
     tracked: { tool: 'select', points: [], resting: null },
     scene: [],
+    snappable: [],
     titles: [],
     frames: [],
     handles: [],
@@ -206,7 +218,7 @@ export function CanvasView() {
     setGripCursor,
   }
   const c = runtime.current
-  Object.assign(c, { scene, titles, frames, handles, frame, ownBox, gripCursor, clearanceLabels: clearanceLines?.map((line) => line.label) ?? [] })
+  Object.assign(c, { scene, snappable, titles, frames, handles, frame, ownBox, gripCursor, clearanceLabels: clearanceLines?.map((line) => line.label) ?? [] })
 
   // Switching tool or container abandons whatever was in progress.
   useEffect(() => {
@@ -246,8 +258,8 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette)
-  }, [drawnScene, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines])
+    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette, around)
+  }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines])
 
   // Lets the quick bar finish the shape in progress with the sizes typed there.
   useEffect(() => {

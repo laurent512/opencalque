@@ -667,6 +667,35 @@ test('brings a washbasin against a wall of a plan whose walls are grouped', asyn
   await expect(field('X')).toHaveValue('100')
 })
 
+test('inside a group, lines up what is moved with what is around the group, which cannot be picked', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  // A post on the page, its left side at x = 3033, off the grid; a group holding two boxes.
+  const rect = (id: string, parent: string, order: string, x: number, y: number) => ({ id, type: 'rect', parent, order, x, y, width: 500, height: 500, layer: 'layer_1' })
+  const plan = drawing({
+    post: rect('post', 'page_1', 'a1', 3033, 0),
+    set: { id: 'set', type: 'group', name: 'Set', parent: 'page_1', order: 'a2' },
+    box: rect('box', 'set', 'a0', 0, 1000),
+    other: rect('other', 'set', 'a1', 0, 2000),
+  })
+  await choose(page, () => page.keyboard.press('Control+o'), 'around.opencalque', plan)
+  await expect(objectRows(page)).toHaveCount(2)
+  const onScreen = await drawingOnScreen(page)
+  await page.mouse.dblclick(...onScreen(250, 1000))
+  await expect(page.locator('.breadcrumb')).toContainText('Set')
+  // The post is there, faded, but a click on its side picks nothing up.
+  await page.mouse.click(...onScreen(3283, 0))
+  await expect(page.locator('.breadcrumb')).toContainText('Set')
+  const field = (name: string) => page.locator('.field', { has: page.locator(`span:text-is("${name}")`) }).locator('input')
+  await expect(field('X')).toBeHidden()
+  // Dragged to just short of below it, the box lines up with its side, where the grid would not put it.
+  await page.mouse.move(...onScreen(250, 1000))
+  await page.mouse.down()
+  await page.mouse.move(...onScreen(250 + 3020, 1000), { steps: 6 })
+  await page.mouse.up()
+  await expect(field('X')).toHaveValue('3033')
+})
+
 test('lists the furniture by room in the object library, the adjustable pieces with the rest', async ({ page }) => {
   // The adjustable furniture installed as 1.0.0-rc.3 shipped it, all of it listed as furniture: the copy that ships now replaces it.
   const furniture = JSON.parse(readFileSync('packages/warehouse/extensions/furniture.json', 'utf8'))

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyOps, applyTransform, boundsOf, buildScene, createDocument, frameGrips, frameMiddle, Registry, transformOps, turnedBox, turnToOps, type Document, type Extension, type Op, type Similarity } from '../src'
+import { applyOps, applyTransform, inverseOf, inverseTransform, boundsOf, buildScene, createDocument, frameGrips, frameMiddle, Registry, transformOps, turnedBox, turnToOps, type Document, type Extension, type Op, type Similarity, type Transform } from '../src'
 
 const boxes: Extension = {
   id: 'test.boxes',
@@ -162,5 +162,44 @@ describe('the box around a turned object', () => {
       expect(frameGrips(box)[0].x).toBeCloseTo(corner.x, 4)
       expect(frameGrips(box)[0].y).toBeCloseTo(corner.y, 4)
     }
+  })
+})
+
+describe('undoing a placement', () => {
+  const near = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+    expect(a.x).toBeCloseTo(b.x, 9)
+    expect(a.y).toBeCloseTo(b.y, 9)
+  }
+  const points = [
+    { x: 0, y: 0 },
+    { x: 1200, y: -350 },
+    { x: -40.5, y: 777 },
+  ]
+
+  it('brings back every point a placement moved, turned, mirrored or scaled', () => {
+    const placements: Transform[] = [
+      { x: 3000, y: 1500 },
+      { x: -200, y: 40, rotation: 30 },
+      { x: 10, y: 20, rotation: 135, flipX: true },
+      { x: 500, y: -900, rotation: 270, scale: 2.5 },
+      { x: 7, y: 8, flipX: true, scale: 0.5, rotation: 12 },
+      // Stretched along its own axes, unturned or turned half round.
+      { x: 100, y: 200, scaleX: 1.5, scaleY: 0.8 },
+      { x: 100, y: 200, scaleX: 2, scale: 1.2, rotation: 180, flipX: true },
+    ]
+    for (const t of placements) {
+      const back = inverseOf(t)!
+      expect(back).not.toBeNull()
+      for (const p of points) {
+        near(applyTransform(applyTransform(p, t), back), p)
+        near(applyTransform(p, back), inverseTransform(p, t))
+      }
+    }
+  })
+
+  it('has none for a placement stretched and turned, or squashed flat', () => {
+    expect(inverseOf({ x: 0, y: 0, scaleX: 2, rotation: 30 })).toBeNull()
+    expect(inverseOf({ x: 0, y: 0, scaleY: 0.5, rotation: 90 })).toBeNull()
+    expect(inverseOf({ x: 0, y: 0, scale: 0 })).toBeNull()
   })
 })

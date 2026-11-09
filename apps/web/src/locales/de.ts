@@ -1048,4 +1048,10 @@ export const de: Record<string, string> = {
   "type an exact distance": "genauen Abstand eingeben",
   "Too far: the shape would fold over itself": "Zu weit: Die Form würde sich überschlagen",
   "Only walls, lines, polylines, curves, rectangles, circles and arcs can be offset": "Nur Wände, Linien, Polylinien, Kurven, Rechtecke, Kreise und Bögen lassen sich versetzen",
+  "Editing inside a group": "Bearbeiten in einer Gruppe",
+  "Show the rest of the drawing faded": "Den Rest der Zeichnung abgeblendet zeigen",
+  "Show the group alone": "Die Gruppe allein zeigen",
+  "Editing a component": "Bearbeiten einer Komponente",
+  "Show the component alone": "Die Komponente allein zeigen",
+  "Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.": "Abgeblendet kann am Rest der Zeichnung eingerastet, er aber nicht ausgewählt werden. Eine Komponente, die aus dem Panel Komponenten oder der Objektbibliothek geöffnet wird oder zugleich gestreckt und gedreht platziert ist, wird immer allein gezeigt.",
 }

@@ -249,7 +249,7 @@ export const faceMove: Move<'face'> = (c, g, e, _at, world, out) => {
   // Alt, as everywhere, leaves out both. With Ctrl (Cmd on a Mac) the wall grows both ways,
   // its middle line staying put, as Ctrl resizes from the middle in office programs.
   const both = e.ctrlKey || e.metaKey
-  const hit = !e.altKey && usePrefs.getState().snapToObjects ? snapTo(c.scene, world, SNAP_REACH / s.view.zoom, { exclude: g.moving }) : null
+  const hit = !e.altKey && usePrefs.getState().snapToObjects ? snapTo(c.snappable, world, SNAP_REACH / s.view.zoom, { exclude: g.moving }) : null
   const across = wallSpot(g.wall, hit ? hit.p : world).across
   // From the face that stays to the pointer; or, both ways, twice as far as the pointer is from the middle of the thickness.
   const middle = (faceAcross(g.wall, 'right') + faceAcross(g.wall, 'left')) / 2
@@ -275,7 +275,7 @@ export const endMove: Move<'end'> = (c, g, e, _at, world, out) => {
   // walls it meets at that end follow it, to stay joined.
   const fixed = g.end === 'a' ? g.wall.b : g.wall.a
   const along = norm(sub(g.wall[g.end], fixed))
-  const hit = !e.altKey && usePrefs.getState().snapToObjects ? snapTo(c.scene, world, SNAP_REACH / s.view.zoom, { exclude: [g.wall.id, ...g.joined.map((other) => other.id)] }) : null
+  const hit = !e.altKey && usePrefs.getState().snapToObjects ? snapTo(c.snappable, world, SNAP_REACH / s.view.zoom, { exclude: [g.wall.id, ...g.joined.map((other) => other.id)] }) : null
   const target = hit ? hit.p : world
   const raw = (target.x - fixed.x) * along.x + (target.y - fixed.y) * along.y
   const step = gridStep(s.view.zoom)

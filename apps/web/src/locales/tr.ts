@@ -1048,4 +1048,10 @@ export const tr: Record<string, string> = {
   "type an exact distance": "tam bir mesafe yazın",
   "Too far: the shape would fold over itself": "Çok uzak: şekil kendi üzerine katlanır",
   "Only walls, lines, polylines, curves, rectangles, circles and arcs can be offset": "Yalnızca duvarlar, çizgiler, çoklu çizgiler, eğriler, dikdörtgenler, daireler ve yaylar ötelenebilir",
+  "Editing inside a group": "Bir grubun içinde düzenleme",
+  "Show the rest of the drawing faded": "Çizimin geri kalanını soluk göster",
+  "Show the group alone": "Yalnızca grubu göster",
+  "Editing a component": "Bir bileşeni düzenleme",
+  "Show the component alone": "Yalnızca bileşeni göster",
+  "Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.": "Soluk gösterilen çizimin geri kalanına yakalanabilir ama seçilemez. Bileşenler panelinden veya nesne kitaplığından açılan ya da hem uzatılıp hem döndürülerek yerleştirilen bir bileşen her zaman tek başına gösterilir.",
 }

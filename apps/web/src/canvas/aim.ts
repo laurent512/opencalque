@@ -70,7 +70,7 @@ export function snap(c: Canvas, world: Vec2, e: Keys, exclude: string[], from?: 
     return measuring ? heldMeasure(c, world, from, angle, exclude) : heldLine(c, world, from, angle, exclude)
   }
   const gridded = { x: Math.round(world.x / step) * step, y: Math.round(world.y / step) * step }
-  const hit = snapToObjects ? snapTo(c.scene, world, SNAP_REACH / zoom, { exclude, from, gridded: onGrid ? gridded : undefined, aligners: trackedPoints(c) }) : null
+  const hit = snapToObjects ? snapTo(c.snappable, world, SNAP_REACH / zoom, { exclude, from, gridded: onGrid ? gridded : undefined, aligners: trackedPoints(c) }) : null
   rest(c, hit)
   if (hit) {
     // A point of an object (or its centre) is taken exactly as it is, and so is what a place lined up with points
@@ -99,7 +99,7 @@ function heldMeasure(c: Canvas, world: Vec2, from: Vec2, angle: number, exclude:
   const pointed = along(world)
   if (usePrefs.getState().snapToObjects) {
     // A place merely somewhere along a line is not something pointed at; a point, a middle or a crossing is.
-    const target = snapTo(c.scene, world, SNAP_REACH / zoom, { exclude })
+    const target = snapTo(c.snappable, world, SNAP_REACH / zoom, { exclude })
     if (target && target.kind !== 'edge') {
       const p = at(along(target.p))
       return { p, marker: target, ...(dist(p, target.p) > 1e-6 ? { link: [target.p, p] as [Vec2, Vec2] } : {}) }
@@ -107,7 +107,7 @@ function heldMeasure(c: Canvas, world: Vec2, from: Vec2, angle: number, exclude:
     // The drawn lines the held line crosses, the nearest to the pointer within reach.
     let reach = SNAP_REACH / zoom
     let crossing: number | null = null
-    for (const item of c.scene) {
+    for (const item of c.snappable) {
       if (exclude.includes(item.id)) continue
       for (const prim of item.prims) {
         // Hatching and the sheets and floors things lie on are not what is measured.
@@ -166,7 +166,7 @@ export function alongLine(c: Canvas, world: Vec2, from: Vec2, angle: number, exc
     length = t
     crossing = true
   }
-  for (const item of snapToObjects ? c.scene : []) {
+  for (const item of snapToObjects ? c.snappable : []) {
     if (exclude.includes(item.id) || (item.bounds && !boundsContainPoint(item.bounds, here, reach))) continue
     // A curved wall is crossed somewhere along its curve. Hatching, and the sheets and floors things lie on, are not crossed.
     const lines = [

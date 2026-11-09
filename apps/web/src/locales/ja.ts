@@ -1048,4 +1048,10 @@ export const ja: Record<string, string> = {
   "type an exact distance": "正確な距離を入力",
   "Too far: the shape would fold over itself": "遠すぎます：図形が折り重なってしまいます",
   "Only walls, lines, polylines, curves, rectangles, circles and arcs can be offset": "オフセットできるのは壁、線、ポリライン、曲線、長方形、円、円弧のみです",
+  "Editing inside a group": "グループ内の編集",
+  "Show the rest of the drawing faded": "図面の残りを淡く表示",
+  "Show the group alone": "グループのみを表示",
+  "Editing a component": "コンポーネントの編集",
+  "Show the component alone": "コンポーネントのみを表示",
+  "Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.": "淡く表示された図面の残りにはスナップできますが、選択はできません。コンポーネントパネルやオブジェクトライブラリから開いたコンポーネント、または伸縮と回転の両方をして配置されたコンポーネントは、常に単独で表示されます。",
 }
