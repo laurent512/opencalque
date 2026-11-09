@@ -8,6 +8,7 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 
 ### Improved
 - Editing inside a group no longer hides the rest of the drawing: it stays on screen faded, and what is drawn or moved in the group snaps to it and lines up with it, but it cannot be selected. Preferences › Drawing chooses this for groups and for components each, between the rest of the drawing faded and the group or component alone; components still open alone unless that is changed.
+- Preferences are laid out in titled sections, each setting on a line of its own with its name on the left and its control on the right, so names no longer break over several lines in longer languages. Settings turned on or off are switches.
 
 ## 1.7.0 — 2026-11-08
 

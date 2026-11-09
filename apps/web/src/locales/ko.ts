@@ -1054,4 +1054,8 @@ export const ko: Record<string, string> = {
   "Editing a component": "컴포넌트 편집",
   "Show the component alone": "컴포넌트만 표시",
   "Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.": "흐리게 표시된 도면의 나머지에는 스냅할 수 있지만 선택할 수는 없습니다. 컴포넌트 패널이나 객체 라이브러리에서 연 컴포넌트, 또는 늘이고 회전해 배치한 컴포넌트는 항상 단독으로 표시됩니다.",
+  "Language and appearance": "언어 및 모양",
+  "Starting and saving": "시작 및 저장",
+  "Grid and snapping": "그리드 및 스냅",
+  "Groups and components": "그룹 및 컴포넌트",
 }

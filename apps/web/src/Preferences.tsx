@@ -24,24 +24,55 @@ function KeyNote(props: { encrypted: string; plain: string }) {
   return <p className="hint">{encrypted ? props.encrypted : props.plain}</p>
 }
 
-function Toggle(props: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+/** What a setting does, said under it: a sentence, or what is given as it is. */
+function Hint({ hint }: { hint?: React.ReactNode }) {
+  if (hint === undefined || hint === null || hint === false) return null
+  return typeof hint === 'string' ? <p className="hint">{hint}</p> : <>{hint}</>
+}
+
+/** A titled part of a page of the preferences: its settings in one box, one under another. */
+function Section(props: { title: string; children: React.ReactNode }) {
   return (
-    <label className="pref-row">
-      <input type="checkbox" checked={props.checked} onChange={(e) => props.onChange(e.target.checked)} />
-      {props.label}
-    </label>
+    <section className="pref-section">
+      <h3 className="pref-heading">{props.title}</h3>
+      <div className="pref-card">{props.children}</div>
+    </section>
+  )
+}
+
+/** One setting: its name on the left, what sets it on the right, what it does under both. */
+function Setting(props: { label: string; hint?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="pref-item">
+      <label className="pref-field">
+        <span>{props.label}</span>
+        {props.children}
+      </label>
+      <Hint hint={props.hint} />
+    </div>
+  )
+}
+
+function Toggle(props: { label: string; checked: boolean; onChange: (checked: boolean) => void; hint?: React.ReactNode }) {
+  return (
+    <div className="pref-item">
+      <label className="pref-row">
+        <span>{props.label}</span>
+        <input type="checkbox" role="switch" className="pref-switch" checked={props.checked} onChange={(e) => props.onChange(e.target.checked)} />
+      </label>
+      <Hint hint={props.hint} />
+    </div>
   )
 }
 
 /** A text setting saved when the field is left, so a key is not written to storage on every keystroke. */
-function TextSetting(props: { label: string; value: string; secret?: boolean; placeholder?: string; onCommit: (value: string) => void }) {
+function TextSetting(props: { label: string; value: string; secret?: boolean; placeholder?: string; hint?: React.ReactNode; onCommit: (value: string) => void }) {
   const [text, setText] = useState(props.value)
   useEffect(() => {
     setText(props.value)
   }, [props.value])
   return (
-    <label className="pref-field">
-      <span>{props.label}</span>
+    <Setting label={props.label} hint={props.hint}>
       <input
         type={props.secret ? 'password' : 'text'}
         autoComplete="off"
@@ -51,7 +82,7 @@ function TextSetting(props: { label: string; value: string; secret?: boolean; pl
         onChange={(e) => setText(e.target.value)}
         onBlur={() => text.trim() !== props.value && props.onCommit(text.trim())}
       />
-    </label>
+    </Setting>
   )
 }
 
@@ -59,13 +90,13 @@ function TextSetting(props: { label: string; value: string; secret?: boolean; pl
 function AiSettings() {
   return (
     <>
-      <h3 className="pref-heading">{t('Assistant')}</h3>
-      <AssistantSettings />
+      <Section title={t('Assistant')}>
+        <AssistantSettings />
+      </Section>
       {platform.agentBridge && (
-        <>
-          <h3 className="pref-heading">{t('Agents')}</h3>
+        <Section title={t('Agents')}>
           <AgentSettings />
-        </>
+        </Section>
       )}
     </>
   )
@@ -76,8 +107,7 @@ function AssistantSettings() {
   const custom = !CLAUDE_MODELS.some(([id]) => id === ai.anthropic.model)
   return (
     <>
-      <label className="pref-field">
-        <span>{t('Provider')}</span>
+      <Setting label={t('Provider')} hint={t('When you use the assistant, your drawing is sent to the provider you chose. Imported pictures are left out unless the assistant asks to look at one.')}>
         <select value={ai.provider} onChange={(e) => setAiPrefs({ provider: e.target.value as typeof ai.provider })}>
           <option value="anthropic">{t('Claude, with an API key')}</option>
           {/* Starting a program is something only the desktop app can do. */}
@@ -87,13 +117,24 @@ function AssistantSettings() {
           <option value="ollama">{t('Local model, through Ollama')}</option>
           <option value="compatible">{t('Other (OpenAI-compatible)')}</option>
         </select>
-      </label>
+      </Setting>
 
       {ai.provider === 'anthropic' && (
         <>
-          <TextSetting label={t('API key')} secret placeholder="sk-ant-…" value={ai.anthropic.apiKey} onCommit={(apiKey) => setAiPrefs({ anthropic: { ...ai.anthropic, apiKey } })} />
-          <label className="pref-field">
-            <span>{t('Model')}</span>
+          <TextSetting
+            label={t('API key')}
+            secret
+            placeholder="sk-ant-…"
+            value={ai.anthropic.apiKey}
+            onCommit={(apiKey) => setAiPrefs({ anthropic: { ...ai.anthropic, apiKey } })}
+            hint={
+              <>
+                <p className="hint">{t('Create a key at console.anthropic.com. Usage is billed to your Anthropic account.')}</p>
+                <KeyNote encrypted={t('The key is stored on this computer, encrypted by the system, and is sent only to Anthropic.')} plain={t('The key is stored on this computer, unencrypted, and is sent only to Anthropic.')} />
+              </>
+            }
+          />
+          <Setting label={t('Model')}>
             <select value={custom ? '' : ai.anthropic.model} onChange={(e) => setAiPrefs({ anthropic: { ...ai.anthropic, model: e.target.value } })}>
               {CLAUDE_MODELS.map(([id, label]) => (
                 <option key={id} value={id}>
@@ -102,28 +143,39 @@ function AssistantSettings() {
               ))}
               {custom && <option value="">{ai.anthropic.model}</option>}
             </select>
-          </label>
-          <p className="hint">{t('Create a key at console.anthropic.com. Usage is billed to your Anthropic account.')}</p>
-          <KeyNote encrypted={t('The key is stored on this computer, encrypted by the system, and is sent only to Anthropic.')} plain={t('The key is stored on this computer, unencrypted, and is sent only to Anthropic.')} />
+          </Setting>
         </>
       )}
 
       {ai.provider === 'claude-cli' && (
-        <>
-          <TextSetting label={t('Model')} placeholder={t('Leave empty to use the CLI’s default')} value={ai.claudeCli.model} onCommit={(model) => setAiPrefs({ claudeCli: { model } })} />
-          <p className="hint">
-            {t('Uses the Claude Code command-line program installed on this computer, with the account it is signed in to, so no API key is needed here. It must be installed and signed in (run “claude” in a terminal once).')}
-          </p>
-          <p className="hint">{t('It runs with its command and file tools switched off, in an empty folder. It cannot look at imported pictures.')}</p>
-        </>
+        <TextSetting
+          label={t('Model')}
+          placeholder={t('Leave empty to use the CLI’s default')}
+          value={ai.claudeCli.model}
+          onCommit={(model) => setAiPrefs({ claudeCli: { model } })}
+          hint={
+            <>
+              <p className="hint">{t('Uses the Claude Code command-line program installed on this computer, with the account it is signed in to, so no API key is needed here. It must be installed and signed in (run “claude” in a terminal once).')}</p>
+              <p className="hint">{t('It runs with its command and file tools switched off, in an empty folder. It cannot look at imported pictures.')}</p>
+            </>
+          }
+        />
       )}
 
       {ai.provider === 'ollama' && (
         <>
           <TextSetting label={t('Model')} placeholder={t('A model you have pulled, as listed by “ollama list”')} value={ai.ollama.model} onCommit={(model) => setAiPrefs({ ollama: { ...ai.ollama, model } })} />
-          <TextSetting label={t('Address')} value={ai.ollama.baseUrl} onCommit={(baseUrl) => setAiPrefs({ ollama: { ...ai.ollama, baseUrl } })} />
-          <p className="hint">{t('Runs entirely on this computer: nothing is sent over the internet. The model must support tool calling.')}</p>
-          {!platform.desktop && <p className="hint">{t('In a browser, Ollama must be told to accept requests from this page (its OLLAMA_ORIGINS setting). The desktop app does not need that.')}</p>}
+          <TextSetting
+            label={t('Address')}
+            value={ai.ollama.baseUrl}
+            onCommit={(baseUrl) => setAiPrefs({ ollama: { ...ai.ollama, baseUrl } })}
+            hint={
+              <>
+                <p className="hint">{t('Runs entirely on this computer: nothing is sent over the internet. The model must support tool calling.')}</p>
+                {!platform.desktop && <p className="hint">{t('In a browser, Ollama must be told to accept requests from this page (its OLLAMA_ORIGINS setting). The desktop app does not need that.')}</p>}
+              </>
+            }
+          />
         </>
       )}
 
@@ -131,13 +183,20 @@ function AssistantSettings() {
         <>
           <TextSetting label={t('Address')} placeholder="https://api.openai.com/v1" value={ai.compatible.baseUrl} onCommit={(baseUrl) => setAiPrefs({ compatible: { ...ai.compatible, baseUrl } })} />
           <TextSetting label={t('Model')} placeholder={t('The model name your service expects')} value={ai.compatible.model} onCommit={(model) => setAiPrefs({ compatible: { ...ai.compatible, model } })} />
-          <TextSetting label={t('API key')} secret value={ai.compatible.apiKey} onCommit={(apiKey) => setAiPrefs({ compatible: { ...ai.compatible, apiKey } })} />
-          <p className="hint">{t('Works with any service that accepts the OpenAI chat-completions format and supports tool calling.')}</p>
-          <KeyNote encrypted={t('The key is stored on this computer, encrypted by the system, and is sent only to the address above.')} plain={t('The key is stored on this computer, unencrypted, and is sent only to the address above.')} />
+          <TextSetting
+            label={t('API key')}
+            secret
+            value={ai.compatible.apiKey}
+            onCommit={(apiKey) => setAiPrefs({ compatible: { ...ai.compatible, apiKey } })}
+            hint={
+              <>
+                <p className="hint">{t('Works with any service that accepts the OpenAI chat-completions format and supports tool calling.')}</p>
+                <KeyNote encrypted={t('The key is stored on this computer, encrypted by the system, and is sent only to the address above.')} plain={t('The key is stored on this computer, unencrypted, and is sent only to the address above.')} />
+              </>
+            }
+          />
         </>
       )}
-
-      <p className="hint">{t('When you use the assistant, your drawing is sent to the provider you chose. Imported pictures are left out unless the assistant asks to look at one.')}</p>
     </>
   )
 }
@@ -155,23 +214,33 @@ function AgentSettings() {
   const copy = () => void navigator.clipboard.writeText(connect).then(() => toast(t('Copied to the clipboard')))
   return (
     <>
-      <Toggle label={t('Let agents on this computer work on the open drawing')} checked={agentBridge} onChange={(on) => setPrefs({ agentBridge: on })} />
-      <p className="hint">{t('Programs on this computer that know how to reach it, such as Claude Code through the OpenCalque MCP server, can then read the open drawing and change it. Each change can be undone.')}</p>
-      <p className="hint">{t('Any program you run on this computer can then reach the open drawing, so turn this off when you are not using it.')}</p>
-      <p className="hint">{t('To connect Claude Code, run this once in a terminal:')}</p>
-      {connect && (
-        <div className="pref-command">
-          <code>{connect}</code>
-          <button className="text-button" onClick={copy}>
-            {t('Copy')}
-          </button>
-        </div>
-      )}
-      <p className="hint">
-        <a href={`${REPOSITORY}#ai-agents`} target="_blank" rel="noreferrer">
-          {t('Other agents, and working on files')}
-        </a>
-      </p>
+      <Toggle
+        label={t('Let agents on this computer work on the open drawing')}
+        checked={agentBridge}
+        onChange={(on) => setPrefs({ agentBridge: on })}
+        hint={
+          <>
+            <p className="hint">{t('Programs on this computer that know how to reach it, such as Claude Code through the OpenCalque MCP server, can then read the open drawing and change it. Each change can be undone.')}</p>
+            <p className="hint">{t('Any program you run on this computer can then reach the open drawing, so turn this off when you are not using it.')}</p>
+          </>
+        }
+      />
+      <div className="pref-item">
+        <p className="hint">{t('To connect Claude Code, run this once in a terminal:')}</p>
+        {connect && (
+          <div className="pref-command">
+            <code>{connect}</code>
+            <button className="text-button" onClick={copy}>
+              {t('Copy')}
+            </button>
+          </div>
+        )}
+        <p className="hint">
+          <a href={`${REPOSITORY}#ai-agents`} target="_blank" rel="noreferrer">
+            {t('Other agents, and working on files')}
+          </a>
+        </p>
+      </div>
     </>
   )
 }
@@ -180,75 +249,84 @@ function GeneralSettings() {
   const prefs = usePrefs()
   return (
     <>
-      <label className="pref-field">
-        <span>{t('Language')}</span>
-        <select value={prefs.language} onChange={(e) => setPrefs({ language: e.target.value })}>
-          <option value="auto">{t('Same as the system')}</option>
-          {LANGUAGES.map(([code, name]) => (
-            <option key={code} value={code}>
-              {name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="pref-field">
-        <span>{t('Theme')}</span>
-        <select value={prefs.theme} onChange={(e) => setPrefs({ theme: e.target.value as typeof prefs.theme })}>
-          <option value="system">{t('Same as the system')}</option>
-          <option value="light">{t('Light')}</option>
-          <option value="dark">{t('Dark')}</option>
-        </select>
-      </label>
-      {prefs.theme !== 'light' && (
-        <>
-          <Toggle label={t('Dark drawing area')} checked={prefs.darkCanvas} onChange={(darkCanvas) => setPrefs({ darkCanvas })} />
-          <p className="hint">{t('In the dark theme, the drawing is shown light on dark. Turned off, it keeps the colours it will have on paper. Exports are never changed.')}</p>
-        </>
-      )}
-      <Toggle label={t('Show the welcome window when the app starts')} checked={prefs.showWelcome} onChange={(showWelcome) => setPrefs({ showWelcome })} />
-      {platform.checkForUpdate && (
-        <>
-          <Toggle label={t('Check for a new version when the app starts')} checked={prefs.checkUpdates} onChange={(checkUpdates) => setPrefs({ checkUpdates })} />
-          <p className="hint">{t('OpenCalque asks GitHub, where it is published, whether a newer version is out. Where it can, it downloads it and installs it when the app closes.')}</p>
-        </>
-      )}
-      <label className="pref-field">
-        <span>{t('Unit')}</span>
-        <select value={prefs.unit} onChange={(e) => setPrefs({ unit: e.target.value as typeof prefs.unit })}>
-          {UNITS.map(([code, name]) => (
-            <option key={code} value={code}>
-              {t(name)}
-            </option>
-          ))}
-        </select>
-      </label>
-      {prefs.unit === 'ft-in' && (
-        <label className="pref-field">
-          <span>{t('To the nearest')}</span>
-          <select value={prefs.fraction} onChange={(e) => setPrefs({ fraction: Number(e.target.value) })}>
-            {FRACTIONS.map((under) => (
-              <option key={under} value={under}>
-                1/{under}"
+      <Section title={t('Language and appearance')}>
+        <Setting label={t('Language')}>
+          <select value={prefs.language} onChange={(e) => setPrefs({ language: e.target.value })}>
+            <option value="auto">{t('Same as the system')}</option>
+            {LANGUAGES.map(([code, name]) => (
+              <option key={code} value={code}>
+                {name}
               </option>
             ))}
           </select>
-        </label>
-      )}
-      <p className="hint">{t('Lengths are shown and typed in this unit. A different unit can always be typed after a number, such as 350 cm.')}</p>
-      <label className="pref-field">
-        <span>{t('Decimal mark')}</span>
-        <select value={prefs.decimal} onChange={(e) => setPrefs({ decimal: e.target.value as typeof prefs.decimal })}>
-          <option value="auto">{t('As the language writes it')}</option>
-          <option value=".">{t('With a point: 1.5')}</option>
-          <option value=",">{t('With a comma: 1,5')}</option>
-        </select>
-      </label>
-      <p className="hint">{t('Numbers in the panels are shown with it, and new drawings write theirs with it; a drawing’s own is in File › Drawing settings. Either mark can be typed.')}</p>
-      <Toggle label={t('Save automatically')} checked={prefs.autosave} onChange={(autosave) => setPrefs({ autosave })} />
-      <p className="hint">{t('A drawing is saved to its file a moment after each change. A new drawing has to be saved once first, to give it a file.')}</p>
-      <button className="text-button" onClick={resetLayout}>
-        {t('Reset the panel layout')}
-      </button>
+        </Setting>
+        <Setting label={t('Theme')}>
+          <select value={prefs.theme} onChange={(e) => setPrefs({ theme: e.target.value as typeof prefs.theme })}>
+            <option value="system">{t('Same as the system')}</option>
+            <option value="light">{t('Light')}</option>
+            <option value="dark">{t('Dark')}</option>
+          </select>
+        </Setting>
+        {prefs.theme !== 'light' && (
+          <Toggle
+            label={t('Dark drawing area')}
+            checked={prefs.darkCanvas}
+            onChange={(darkCanvas) => setPrefs({ darkCanvas })}
+            hint={t('In the dark theme, the drawing is shown light on dark. Turned off, it keeps the colours it will have on paper. Exports are never changed.')}
+          />
+        )}
+        <div className="pref-item">
+          <button className="text-button" onClick={resetLayout}>
+            {t('Reset the panel layout')}
+          </button>
+        </div>
+      </Section>
+      <Section title={t('Units')}>
+        <Setting label={t('Unit')} hint={t('Lengths are shown and typed in this unit. A different unit can always be typed after a number, such as 350 cm.')}>
+          <select value={prefs.unit} onChange={(e) => setPrefs({ unit: e.target.value as typeof prefs.unit })}>
+            {UNITS.map(([code, name]) => (
+              <option key={code} value={code}>
+                {t(name)}
+              </option>
+            ))}
+          </select>
+        </Setting>
+        {prefs.unit === 'ft-in' && (
+          <Setting label={t('To the nearest')}>
+            <select value={prefs.fraction} onChange={(e) => setPrefs({ fraction: Number(e.target.value) })}>
+              {FRACTIONS.map((under) => (
+                <option key={under} value={under}>
+                  1/{under}"
+                </option>
+              ))}
+            </select>
+          </Setting>
+        )}
+        <Setting label={t('Decimal mark')} hint={t('Numbers in the panels are shown with it, and new drawings write theirs with it; a drawing’s own is in File › Drawing settings. Either mark can be typed.')}>
+          <select value={prefs.decimal} onChange={(e) => setPrefs({ decimal: e.target.value as typeof prefs.decimal })}>
+            <option value="auto">{t('As the language writes it')}</option>
+            <option value=".">{t('With a point: 1.5')}</option>
+            <option value=",">{t('With a comma: 1,5')}</option>
+          </select>
+        </Setting>
+      </Section>
+      <Section title={t('Starting and saving')}>
+        <Toggle
+          label={t('Save automatically')}
+          checked={prefs.autosave}
+          onChange={(autosave) => setPrefs({ autosave })}
+          hint={t('A drawing is saved to its file a moment after each change. A new drawing has to be saved once first, to give it a file.')}
+        />
+        <Toggle label={t('Show the welcome window when the app starts')} checked={prefs.showWelcome} onChange={(showWelcome) => setPrefs({ showWelcome })} />
+        {platform.checkForUpdate && (
+          <Toggle
+            label={t('Check for a new version when the app starts')}
+            checked={prefs.checkUpdates}
+            onChange={(checkUpdates) => setPrefs({ checkUpdates })}
+            hint={t('OpenCalque asks GitHub, where it is published, whether a newer version is out. Where it can, it downloads it and installs it when the app closes.')}
+          />
+        )}
+      </Section>
     </>
   )
 }
@@ -257,26 +335,38 @@ function DrawingSettings() {
   const prefs = usePrefs()
   return (
     <>
-      <Toggle label={t('Show the grid')} checked={prefs.showGrid} onChange={(showGrid) => setPrefs({ showGrid })} />
-      <Toggle label={t('Snap to the grid')} checked={prefs.snapToGrid} onChange={(snapToGrid) => setPrefs({ snapToGrid })} />
-      <Toggle label={t('Snap to existing objects, and line up what is moved with them')} checked={prefs.snapToObjects} onChange={(snapToObjects) => setPrefs({ snapToObjects })} />
-      <p className="hint">{t('A point being placed snaps to the points of objects, the middle of a line, where two lines cross, the foot of a perpendicular, or the line itself. An object being moved lines up with the sides and middles of the others, and keeps equal gaps with its neighbours.')}</p>
-      <p className="hint">{t('Holding Alt while drawing or moving turns snapping off for that moment.')}</p>
-      <label className="pref-field">
-        <span>{t('Editing inside a group')}</span>
-        <select value={prefs.editGroups} onChange={(e) => setPrefs({ editGroups: e.target.value as typeof prefs.editGroups })}>
-          <option value="faded">{t('Show the rest of the drawing faded')}</option>
-          <option value="alone">{t('Show the group alone')}</option>
-        </select>
-      </label>
-      <label className="pref-field">
-        <span>{t('Editing a component')}</span>
-        <select value={prefs.editComponents} onChange={(e) => setPrefs({ editComponents: e.target.value as typeof prefs.editComponents })}>
-          <option value="faded">{t('Show the rest of the drawing faded')}</option>
-          <option value="alone">{t('Show the component alone')}</option>
-        </select>
-      </label>
-      <p className="hint">{t('Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.')}</p>
+      <Section title={t('Grid and snapping')}>
+        <Toggle label={t('Show the grid')} checked={prefs.showGrid} onChange={(showGrid) => setPrefs({ showGrid })} />
+        <Toggle label={t('Snap to the grid')} checked={prefs.snapToGrid} onChange={(snapToGrid) => setPrefs({ snapToGrid })} />
+        <Toggle
+          label={t('Snap to existing objects, and line up what is moved with them')}
+          checked={prefs.snapToObjects}
+          onChange={(snapToObjects) => setPrefs({ snapToObjects })}
+          hint={
+            <>
+              <p className="hint">{t('A point being placed snaps to the points of objects, the middle of a line, where two lines cross, the foot of a perpendicular, or the line itself. An object being moved lines up with the sides and middles of the others, and keeps equal gaps with its neighbours.')}</p>
+              <p className="hint">{t('Holding Alt while drawing or moving turns snapping off for that moment.')}</p>
+            </>
+          }
+        />
+      </Section>
+      <Section title={t('Groups and components')}>
+        <Setting label={t('Editing inside a group')}>
+          <select value={prefs.editGroups} onChange={(e) => setPrefs({ editGroups: e.target.value as typeof prefs.editGroups })}>
+            <option value="faded">{t('Show the rest of the drawing faded')}</option>
+            <option value="alone">{t('Show the group alone')}</option>
+          </select>
+        </Setting>
+        <Setting
+          label={t('Editing a component')}
+          hint={t('Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.')}
+        >
+          <select value={prefs.editComponents} onChange={(e) => setPrefs({ editComponents: e.target.value as typeof prefs.editComponents })}>
+            <option value="faded">{t('Show the rest of the drawing faded')}</option>
+            <option value="alone">{t('Show the component alone')}</option>
+          </select>
+        </Setting>
+      </Section>
     </>
   )
 }

@@ -1054,4 +1054,8 @@ export const zh: Record<string, string> = {
   "Editing a component": "编辑组件",
   "Show the component alone": "仅显示组件",
   "Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.": "淡显时，图纸的其余部分可以捕捉，但不能选择。从组件面板或对象库打开的组件，或同时被拉伸和旋转放置的组件，始终单独显示。",
+  "Language and appearance": "语言和外观",
+  "Starting and saving": "启动和保存",
+  "Grid and snapping": "网格和捕捉",
+  "Groups and components": "编组和组件",
 }

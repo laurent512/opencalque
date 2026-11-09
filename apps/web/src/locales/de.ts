@@ -1054,4 +1054,8 @@ export const de: Record<string, string> = {
   "Editing a component": "Bearbeiten einer Komponente",
   "Show the component alone": "Die Komponente allein zeigen",
   "Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.": "Abgeblendet kann am Rest der Zeichnung eingerastet, er aber nicht ausgewählt werden. Eine Komponente, die aus dem Panel Komponenten oder der Objektbibliothek geöffnet wird oder zugleich gestreckt und gedreht platziert ist, wird immer allein gezeigt.",
+  "Language and appearance": "Sprache und Darstellung",
+  "Starting and saving": "Start und Speichern",
+  "Grid and snapping": "Raster und Einrasten",
+  "Groups and components": "Gruppen und Komponenten",
 }

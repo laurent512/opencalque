@@ -1054,4 +1054,8 @@ export const es: Record<string, string> = {
   "Editing a component": "Edición de un componente",
   "Show the component alone": "Mostrar solo el componente",
   "Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.": "Atenuado, el resto del dibujo sirve para ajustar, pero no se puede seleccionar. Un componente abierto desde el panel Componentes o la biblioteca de objetos, o colocado a la vez estirado y girado, siempre se muestra solo.",
+  "Language and appearance": "Idioma y apariencia",
+  "Starting and saving": "Inicio y guardado",
+  "Grid and snapping": "Cuadrícula y ajuste",
+  "Groups and components": "Grupos y componentes",
 }

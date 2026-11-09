@@ -1054,4 +1054,8 @@ export const ja: Record<string, string> = {
   "Editing a component": "コンポーネントの編集",
   "Show the component alone": "コンポーネントのみを表示",
   "Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.": "淡く表示された図面の残りにはスナップできますが、選択はできません。コンポーネントパネルやオブジェクトライブラリから開いたコンポーネント、または伸縮と回転の両方をして配置されたコンポーネントは、常に単独で表示されます。",
+  "Language and appearance": "言語と外観",
+  "Starting and saving": "起動と保存",
+  "Grid and snapping": "グリッドとスナップ",
+  "Groups and components": "グループとコンポーネント",
 }

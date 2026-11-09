@@ -1054,4 +1054,8 @@ export const tr: Record<string, string> = {
   "Editing a component": "Bir bileşeni düzenleme",
   "Show the component alone": "Yalnızca bileşeni göster",
   "Faded, the rest of the drawing can be snapped to but not selected. A component opened from the Components panel or the object library, or placed both stretched and turned, is always shown alone.": "Soluk gösterilen çizimin geri kalanına yakalanabilir ama seçilemez. Bileşenler panelinden veya nesne kitaplığından açılan ya da hem uzatılıp hem döndürülerek yerleştirilen bir bileşen her zaman tek başına gösterilir.",
+  "Language and appearance": "Dil ve görünüm",
+  "Starting and saving": "Başlatma ve kaydetme",
+  "Grid and snapping": "Izgara ve yakalama",
+  "Groups and components": "Gruplar ve bileşenler",
 }
