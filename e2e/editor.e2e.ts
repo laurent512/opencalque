@@ -696,6 +696,23 @@ test('inside a group, lines up what is moved with what is around the group, whic
   await expect(field('X')).toHaveValue('3033')
 })
 
+test('says in the Structure list when an object is locked by its layer, which picking it on the drawing does not', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  const rect = (id: string, name: string, layer: string, x: number) => ({ id, name, type: 'rect', parent: 'page_1', order: `a${x / 1000}`, x, y: 0, width: 800, height: 800, layer })
+  const plan = drawing(
+    { mine: rect('mine', 'Mine', 'layer_1', 1000), held: rect('held', 'Held', 'floor', 3000) },
+    { layers: { layer_1: { id: 'layer_1', name: 'Layer 1', order: 'a0' }, floor: { id: 'floor', name: 'Floor', order: 'a1', locked: true } } },
+  )
+  await choose(page, () => page.keyboard.press('Control+o'), 'locked.opencalque', plan)
+  const row = (name: string) => objectRows(page).filter({ hasText: name })
+  await expect(row('Held').getByTitle('Locked with its layer “Floor”: unlock it in the Layers panel')).toBeVisible()
+  await expect(row('Mine').getByTitle('Lock so it cannot be selected or moved on the drawing')).toBeVisible()
+  // Its own lock is still its own: once given, it is what the row says.
+  await row('Held').getByTitle('Locked with its layer “Floor”: unlock it in the Layers panel').click()
+  await expect(row('Held').getByTitle('Unlock', { exact: true })).toBeVisible()
+})
+
 test('lists the furniture by room in the object library, the adjustable pieces with the rest', async ({ page }) => {
   // The adjustable furniture installed as 1.0.0-rc.3 shipped it, all of it listed as furniture: the copy that ships now replaces it.
   const furniture = JSON.parse(readFileSync('packages/warehouse/extensions/furniture.json', 'utf8'))

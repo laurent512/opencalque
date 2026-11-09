@@ -1058,4 +1058,5 @@ export const ja: Record<string, string> = {
   "Starting and saving": "起動と保存",
   "Grid and snapping": "グリッドとスナップ",
   "Groups and components": "グループとコンポーネント",
+  "Locked with its layer “{layer}”: unlock it in the Layers panel": "レイヤー「{layer}」とともにロックされています。レイヤーパネルでロックを解除してください",
 }

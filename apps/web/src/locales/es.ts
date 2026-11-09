@@ -1058,4 +1058,5 @@ export const es: Record<string, string> = {
   "Starting and saving": "Inicio y guardado",
   "Grid and snapping": "Cuadrícula y ajuste",
   "Groups and components": "Grupos y componentes",
+  "Locked with its layer “{layer}”: unlock it in the Layers panel": "Bloqueado con su capa «{layer}»: desbloquéela en el panel Capas",
 }

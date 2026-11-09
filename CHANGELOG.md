@@ -4,6 +4,11 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### Improved
+- In the Structure list, an object on a locked layer shows a faint closed padlock, and its tooltip names the layer to unlock in the Layers panel. It used to show as unlocked while it could not be picked on the drawing.
+
 ## 1.8.0 — 2026-11-09
 
 ### Improved

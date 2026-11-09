@@ -1058,4 +1058,5 @@ export const tr: Record<string, string> = {
   "Starting and saving": "Başlatma ve kaydetme",
   "Grid and snapping": "Izgara ve yakalama",
   "Groups and components": "Gruplar ve bileşenler",
+  "Locked with its layer “{layer}”: unlock it in the Layers panel": "Katmanı “{layer}” ile birlikte kilitli: Katmanlar panelinden kilidini açın",
 }

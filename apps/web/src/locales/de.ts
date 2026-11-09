@@ -1058,4 +1058,5 @@ export const de: Record<string, string> = {
   "Starting and saving": "Start und Speichern",
   "Grid and snapping": "Raster und Einrasten",
   "Groups and components": "Gruppen und Komponenten",
+  "Locked with its layer “{layer}”: unlock it in the Layers panel": "Mit seiner Ebene „{layer}“ gesperrt: im Panel Ebenen entsperren",
 }

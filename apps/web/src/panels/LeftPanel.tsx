@@ -370,6 +370,9 @@ function ObjectRow({ node, depth, open, toggle, show }: { node: Node; depth: num
   const selection = useStore((s) => s.selection)
   const top = node.parent === scope
   const selected = top && selection.includes(node.id)
+  const layer = node.layer === undefined ? undefined : doc.layers[node.layer]
+  /** The name of the locked layer it is on, if it is. */
+  const layerLock = layer?.locked ? layer.name : null
 
   /** Selects as a file manager does: a click picks one, Ctrl (or Cmd) adds or removes one, Shift takes everything from the last one clicked to this one. */
   const pick = (keys: { shiftKey?: boolean; ctrlKey?: boolean; metaKey?: boolean } = {}) => {
@@ -443,11 +446,12 @@ function ObjectRow({ node, depth, open, toggle, show }: { node: Node; depth: num
       )}
       <TypeIcon node={node} />
       <EditableText value={labelOf(doc, node)} onChange={rename(node.id)} />
+      {/* Locked by its layer, it shows so, faintly: nothing else on the row says why it cannot be picked on the drawing. */}
       <IconButton
-        title={node.locked ? t('Unlock') : t('Lock so it cannot be selected or moved on the drawing')}
+        title={node.locked ? t('Unlock') : layerLock ? t('Locked with its layer “{layer}”: unlock it in the Layers panel', { layer: layerLock }) : t('Lock so it cannot be selected or moved on the drawing')}
         onClick={() => apply([{ op: 'update_node', id: node.id, patch: { locked: node.locked ? null : true } }])}
       >
-        {node.locked ? <Lock size={13} /> : <LockOpen size={13} className="faint" />}
+        {node.locked ? <Lock size={13} /> : layerLock ? <Lock size={13} className="faint" /> : <LockOpen size={13} className="faint" />}
       </IconButton>
       <IconButton
         title={node.visible === false ? t('Show') : t('Hide')}

@@ -1058,4 +1058,5 @@ export const fr: Record<string, string> = {
   "Starting and saving": "Démarrage et enregistrement",
   "Grid and snapping": "Grille et aimantation",
   "Groups and components": "Groupes et composants",
+  "Locked with its layer “{layer}”: unlock it in the Layers panel": "Verrouillé avec son calque « {layer} » : déverrouillez-le dans le panneau Calques",
 }

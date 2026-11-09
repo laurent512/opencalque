@@ -1058,4 +1058,5 @@ export const ko: Record<string, string> = {
   "Starting and saving": "시작 및 저장",
   "Grid and snapping": "그리드 및 스냅",
   "Groups and components": "그룹 및 컴포넌트",
+  "Locked with its layer “{layer}”: unlock it in the Layers panel": "레이어 \"{layer}\"와 함께 잠겨 있습니다. 레이어 패널에서 잠금을 해제하세요",
 }

@@ -1058,4 +1058,5 @@ export const zh: Record<string, string> = {
   "Starting and saving": "启动和保存",
   "Grid and snapping": "网格和捕捉",
   "Groups and components": "编组和组件",
+  "Locked with its layer “{layer}”: unlock it in the Layers panel": "随图层“{layer}”一起锁定：请在图层面板中解锁",
 }
