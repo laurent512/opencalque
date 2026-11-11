@@ -4,7 +4,7 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
-## Unreleased
+## 1.9.0 — 2026-11-11
 
 ### New
 - Sockets, switches and wall lights of the Electrical symbols extension are fixed on the face of a wall: placed or dragged beside a wall, one goes on the face on that side, standing out of it, and slides along it; it then follows the wall when the wall is moved, turned, made shorter or thicker. Alt still places it freely. Each has a height above the floor, shown and typed in Properties, which starts at the usual one: 300 mm for a socket, 1100 for a switch, 1800 for a wall light. Sockets and switches placed before are left where they are until they are put on a wall again.
