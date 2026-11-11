@@ -1,5 +1,9 @@
 import {
   add,
+  elevationItemAt,
+  elevationMovePatch,
+  heightAboveFloor,
+  isLocked,
   alignMove,
   boundsOfPoints,
   dist,
@@ -11,14 +15,19 @@ import {
   itemsTouching,
   kindOf,
   moveCornerOps,
+  moveViewCorner,
+  perp,
+  keepViewsOps,
   moveGuides,
   moveOps,
+  mountOf,
   norm,
   openingSpan,
   paperScaleTo,
   resizeFrame,
   resizePatch,
   rotate,
+  snapMountToWall,
   snapOpeningToWall,
   snapTo,
   sub,
@@ -42,8 +51,8 @@ import { commit, preview, select, selectCorner, useStore, cancel } from '../../s
 import { gridStep } from '../../view'
 import { formatLength, formatNumber } from '../../units'
 import { heldNearest, lineEnd, snap, squareFrom, type Target } from '../aim'
-import { ALIGN_REACH, SNAP_REACH, type GestureOf } from '../gesture'
-import { clearanceAt, cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, lineUp, titleAt } from '../picking'
+import { ALIGN_REACH, MOUNT_REACH, SNAP_REACH, type GestureOf } from '../gesture'
+import { clearanceAt, cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, lineUp, titleAt, viewEdgeAt, viewLineHandleAt } from '../picking'
 import { get, type Canvas, type Move, type Press, type Release } from '../runtime'
 import { faceAcross, faceOf, paperLabel, resizeCursor, round, sizes, thicknessLabel, thicknessStep, wallNormal } from '../shapes'
 
@@ -107,7 +116,8 @@ export const selectDown: Press = (c, e, at, world) => {
   }
   // A wall end is a corner of the plan, shared by the walls that meet there: pressing on one
   // selects the corner, and dragging takes them all. With Alt, only the wall that was selected.
-  const corner = cornerAt(c, at)
+  // The selected view line's own points and edges come first: its far corners lie at the corners of a room.
+  const corner = viewLineHandleAt(c, at) ? null : cornerAt(c, at)
   if (corner) {
     const alone = e.altKey && s.selection.length === 1 && s.doc.nodes[s.selection[0]]?.type === 'wall' ? s.selection[0] : undefined
     selectCorner(corner)
@@ -116,7 +126,10 @@ export const selectDown: Press = (c, e, at, world) => {
   }
   const index = handleAt(c, at)
   if (index >= 0) {
-    c.gesture = { kind: 'handle', node: s.doc.nodes[s.selection[0]], index }
+    const node = s.doc.nodes[s.selection[0]]
+    // An end of a view line is taken by its arrow, anywhere along it: the end keeps that far from the pointer.
+    const end = node.type === 'viewline' && (index === 1 || index === 2) ? (index === 1 ? node.a : node.b) : null
+    c.gesture = { kind: 'handle', node, index, ...(end ? { grab: sub(world, end) } : {}) }
     return
   }
   const face = faceAt(c, at)
@@ -124,6 +137,14 @@ export const selectDown: Press = (c, e, at, world) => {
     const moving = (wallThicknessOps(s.doc, face.wall, face.wall.thickness + 10, face.side, registry) ?? []).flatMap((op) => (op.op === 'update_node' ? [op.id] : []))
     c.gesture = { kind: 'face', wall: face.wall, side: face.side, moving }
     useStore.setState({ wallFace: 'drag' })
+    return
+  }
+  // A socket, a switch, a door shown in an elevation is the one of the plan: pressed there, it is
+  // selected, and dragged, it moves on the plan, along its wall and up or down.
+  const shown = e.shiftKey || e.ctrlKey || e.metaKey ? null : elevationAt(c, world)
+  if (shown) {
+    select([shown.item.node.id])
+    c.gesture = { kind: 'elevated', view: shown.view, node: shown.item.node, start: world, role: shown.item.role, raises: shown.item.raises }
     return
   }
   const hit = titleAt(c, at) ?? hitTest(c.scene, world, 5 / s.view.zoom)
@@ -169,6 +190,15 @@ export const moveMove: Move<'move'> = (_c, g, e, _at, world, out) => {
       return
     }
   }
+  // Something fixed on walls slides along their faces, and goes over to the face the pointer is beside.
+  if (only?.type === 'parametric' && !e.altKey && mountOf(only, registry)) {
+    const target = { x: only.x + world.x - g.start.x, y: only.y + world.y - g.start.y }
+    const onWall = snapMountToWall(s.base ?? s.doc, s.scope, registry, only, target, MOUNT_REACH / s.view.zoom, step)
+    if (onWall) {
+      out.previewed = preview([{ op: 'update_node', id: only.id, patch: onWall }])
+      return
+    }
+  }
   // What is moved lines up with what is around it, and keeps equal gaps with its neighbours;
   // along an axis where nothing is near enough for that, it goes by the grid.
   if (g.moving && !e.altKey && usePrefs.getState().snapToObjects) {
@@ -204,18 +234,33 @@ export const handleMove: Move<'handle'> = (c, g, e, _at, world, out) => {
   const ends = 'a' in g.node && 'b' in g.node && g.index < 2 ? { moved: g.index === 0 ? g.node.a : g.node.b, fixed: g.index === 0 ? g.node.b : g.node.a } : null
   const own = ends && dist(ends.moved, ends.fixed) > 1e-6 ? [{ at: ends.fixed, angle: Math.atan2(ends.moved.y - ends.fixed.y, ends.moved.x - ends.fixed.x) }] : []
   const held = e.shiftKey && ends ? heldNearest(c, world, [...own, ...squareFrom(ends.fixed)], [g.node.id]) : null
+  // The end of a line or a wall also snaps onto the way it already goes, shown dashed, to make it longer or shorter only.
+  const carriedOn = own.length > 0 && ['line', 'wall', 'divider', 'gridline'].includes(g.node.type) ? [{ from: ends!.fixed, dir: norm(sub(ends!.moved, ends!.fixed)) }] : []
   // The end that stays put is where a perpendicular onto another line would be dropped from.
   // Held level or upright by an arrow key, the point stays on that line through where it was,
   // and may be brought level with something pointed at elsewhere.
   const was = s.axisLock ? kindOf(g.node).handles?.(g.node, registry)[g.index] : undefined
-  const target: Target = was ? lineEnd(c, world, e, [g.node.id], was) : held ? held.target : snap(c, world, { altKey: e.altKey, shiftKey: false }, [g.node.id], ends?.fixed)
+  // Taken by an arrow away from its point, it goes by the grid (Alt: exactly where the pointer says).
+  const step = e.altKey ? 0 : gridStep(s.view.zoom)
+  const grabbed = g.grab && sub(world, g.grab)
+  const target: Target = grabbed
+    ? { p: step > 0 ? { x: Math.round(grabbed.x / step) * step, y: Math.round(grabbed.y / step) * step } : grabbed, marker: null }
+    : was
+      ? lineEnd(c, world, e, [g.node.id], was)
+      : held
+        ? held.target
+        : snap(c, world, { altKey: e.altKey, shiftKey: false }, [g.node.id], ends?.fixed, carriedOn)
   if (was && s.axisLock) out.guide = { at: was, angle: s.axisLock === 'x' ? 0 : Math.PI / 2 }
   else if (held) out.guide = held.line
   out.link = target.link
   out.marker = target.marker
   // The other walls that end at a wall's corner come along with it, unless Alt is held.
   const joined = e.altKey ? [] : wallEndFollowOps(s.base ?? s.doc, g.node, g.index, target.p)
-  out.previewed = preview([{ op: 'update_node', id: g.node.id, patch: kindOf(g.node).moveHandle!(g.node, g.index, target.p, registry) }, ...joined])
+  // A corner of what a view line sees turns it about the corner across; with Shift, it keeps its way and sets its depth.
+  const patch = g.node.type === 'viewline' && g.index >= 3 && g.index <= 6 ? moveViewCorner(g.node, (g.index - 3) as 0 | 1 | 2 | 3, target.p, e.shiftKey ? 'stretch' : 'turn') : kindOf(g.node).moveHandle!(g.node, g.index, target.p, registry)
+  // Its views keep what they still show where it was on the sheet.
+  const views = g.node.type === 'viewline' ? keepViewsOps(s.base ?? s.doc, g.node, patch) : []
+  out.previewed = preview([{ op: 'update_node', id: g.node.id, patch }, ...views, ...joined])
 }
 
 export const cornerMove: Move<'corner'> = (c, g, e, _at, world, out) => {
@@ -359,19 +404,68 @@ export const marqueeMove: Move<'marquee'> = (c, g, _e, _at, world, out) => {
  * With nothing in progress, the pointer says what a press there would do: resize along a diagonal,
  * turn, move a point, make a wall thicker by its face or longer by its end.
  */
+/** The object of the plan that an elevation on the drawing shows under the pointer, and that elevation; locked ones are left out. */
+function elevationAt(c: Canvas, world: Vec2) {
+  const s = get()
+  for (const item of c.scene) {
+    if (item.node.type !== 'elevation') continue
+    const found = elevationItemAt(item.node, s.doc, registry, world, 3 / s.view.zoom)
+    if (found && !isLocked(s.doc, found.node) && !isLocked(s.doc, item.node)) return { view: item.node, item: found }
+  }
+  return null
+}
+
+/**
+ * An object dragged in an elevation: by whole steps of the grid, across the view along its wall
+ * and, for what is fixed on the face, up and down. Shift keeps it to whichever way it went further;
+ * Alt lets it go off the grid. Its height is said as it goes.
+ */
+export const elevatedMove: Move<'elevated'> = (_c, g, e, _at, world, out) => {
+  const s = get()
+  const step = e.altKey ? 0.001 : gridStep(s.view.zoom)
+  let ds = Math.round((world.x - g.start.x) / step) * step
+  let dh = g.raises ? Math.round((g.start.y - world.y) / step) * step : 0
+  if (e.shiftKey) {
+    if (Math.abs(ds) >= Math.abs(dh)) dh = 0
+    else ds = 0
+  }
+  const before = s.base ?? s.doc
+  const patch = elevationMovePatch(g.view, before, registry, g.node, ds, dh)
+  if (!patch) return
+  out.previewed = preview([{ op: 'update_node', id: g.node.id, patch }])
+  if (g.role === 'fixed') out.status = t('{height} above the floor', { height: formatLength(Number(patch.z ?? heightAboveFloor(g.node, registry) ?? 0)) })
+  else if (g.raises && g.node.type === 'parametric') {
+    const kind = registry.parametric.get(g.node.kind)
+    const sill = kind?.sill
+    const props = registry.resolveProps(kind!, (patch.props ?? g.node.props) as Record<string, unknown>)
+    if (sill) out.status = t('Sill {height} above the floor', { height: formatLength(Number(props[sill])) })
+  }
+}
+
 export const hover: Move<'idle'> = (c, _g, _e, at, world, out) => {
   const s = get()
+  // Over what an elevation shows of the plan, a press takes it.
+  const inView = s.tool === 'select' ? elevationAt(c, world) : null
+  if (inView) {
+    out.status = inView.item.raises ? t('Drag it along the wall, or up and down to change its height') : t('Drag it along the wall')
+    if (c.gripCursor !== 'move') c.setGripCursor('move')
+    if (s.wallFace !== null) useStore.setState({ wallFace: null })
+    return
+  }
   const { handles } = c
   const framed = frameCornerAt(c, at) ? null : frameGripAt(c, at)
   const grip = framed !== null ? null : (frameCornerAt(c, at) ?? gripAt(c, at))
   // On the line across a free end of the selected wall, a press makes it longer or shorter.
   const ending = framed === null && !grip ? endAt(c, at) : null
-  const onCorner = s.tool === 'select' && framed === null && !grip && !ending && cornerAt(c, at) !== null
+  const onCorner = s.tool === 'select' && framed === null && !grip && !ending && !viewLineHandleAt(c, at) && cornerAt(c, at) !== null
   const own = onCorner ? 0 : s.tool === 'select' ? handleAt(c, at) : -1
   const boxed = ['rect', 'paper'].includes(s.doc.nodes[s.selection[0]]?.type ?? '')
   const diagonal = (corner: number, turn = 0) => resizeCursor(rotate({ x: corner === 1 || corner === 2 ? 1 : -1, y: corner >= 2 ? 1 : -1 }, turn))
   const stretched = s.doc.nodes[s.selection[0]]?.type === 'parametric' && handles.length === 2
-  const pointer = ending ? resizeCursor(sub(ending.wall.b, ending.wall.a)) : framed !== null ? (framed === 'knob' ? 'grab' : frameCursor(c, framed)) : grip ? (grip.corner === 'knob' ? 'grab' : diagonal(grip.corner, 'box' in grip ? grip.box.rotation : 0)) : own >= 0 ? (boxed ? diagonal(own) : stretched ? resizeCursor(sub(handles[1], handles[0])) : 'move') : null
+  // On an edge of what a view line sees (not on one of its corners), a press drags it across: the edge is shown, and the pointer says across.
+  const edged = own === 0 || own >= 7 ? viewEdgeAt(c, at) : null
+  if (edged) out.face = [edged.edge]
+  const pointer = edged ? resizeCursor(perp(sub(edged.edge[1], edged.edge[0]))) : ending ? resizeCursor(sub(ending.wall.b, ending.wall.a)) : framed !== null ? (framed === 'knob' ? 'grab' : frameCursor(c, framed)) : grip ? (grip.corner === 'knob' ? 'grab' : diagonal(grip.corner, 'box' in grip ? grip.box.rotation : 0)) : own >= 0 ? (boxed ? diagonal(own) : stretched ? resizeCursor(sub(handles[1], handles[0])) : 'move') : null
   // On a face of the selected wall, a press makes it thicker or thinner: the face is shown, and the pointer says across.
   const faced = pointer === null ? faceAt(c, at) : null
   if (faced) out.face = faceOf(faced.wall, s.doc, faced.side)

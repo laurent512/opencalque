@@ -3,11 +3,15 @@
   "formatVersion": 1,
   "id": "opencalque.electrical",
   "name": "Electrical symbols",
-  "version": "1.1.2",
+  "version": "1.5.0",
   "author": "OpenCalque",
   "description": "Sockets, switches and light points for electrical layouts.",
   "translations": {
     "fr": {
+      "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "Placée près d’un mur, elle se met sur sa face. Plusieurs se mettent côte à côte, ou superposées.",
+      "Arrangement": "Disposition",
+      "Side by side": "Côte à côte",
+      "Stacked": "Superposées",
       "Electrical symbols": "Symboles électriques",
       "Sockets, switches and light points for electrical layouts.": "Prises, interrupteurs et points lumineux pour les plans électriques.",
       "Socket": "Prise",
@@ -17,9 +21,29 @@
       "Count": "Nombre",
       "Two-way": "Va-et-vient",
       "Size": "Taille",
-      "Place the flat side against the wall.": "Placez le côté plat contre le mur."
+      "Place the flat side against the wall.": "Placez le côté plat contre le mur.",
+      "Pendant light": "Suspension",
+      "Recessed spotlight": "Spot encastré",
+      "Light strip": "Réglette lumineuse",
+      "Socket, 32 A": "Prise 32 A",
+      "TV socket": "Prise TV",
+      "Network socket": "Prise réseau",
+      "Push button": "Bouton-poussoir",
+      "Dimmer": "Variateur",
+      "Consumer unit": "Tableau électrique",
+      "Junction box": "Boîte de dérivation",
+      "Smoke detector": "Détecteur de fumée",
+      "Extractor fan": "Extracteur d’air (VMC)",
+      "Electric radiator": "Radiateur électrique",
+      "Switch with a dimmer": "Interrupteur avec variateur",
+      "Two circuits": "Deux circuits",
+      "Length": "Longueur"
     },
     "es": {
+      "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "Colocado junto a un muro, va en su cara. Varios van uno al lado del otro, o uno encima de otro.",
+      "Arrangement": "Disposición",
+      "Side by side": "Uno al lado del otro",
+      "Stacked": "Apilados",
       "Electrical symbols": "Símbolos eléctricos",
       "Sockets, switches and light points for electrical layouts.": "Enchufes, interruptores y puntos de luz para planos eléctricos.",
       "Socket": "Enchufe",
@@ -29,9 +53,29 @@
       "Count": "Cantidad",
       "Two-way": "Conmutado",
       "Size": "Tamaño",
-      "Place the flat side against the wall.": "Coloque el lado plano contra el muro."
+      "Place the flat side against the wall.": "Coloque el lado plano contra el muro.",
+      "Pendant light": "Lámpara colgante",
+      "Recessed spotlight": "Foco empotrado",
+      "Light strip": "Regleta de luz",
+      "Socket, 32 A": "Enchufe de 32 A",
+      "TV socket": "Toma de TV",
+      "Network socket": "Toma de red",
+      "Push button": "Pulsador",
+      "Dimmer": "Regulador de luz",
+      "Consumer unit": "Cuadro eléctrico",
+      "Junction box": "Caja de derivación",
+      "Smoke detector": "Detector de humo",
+      "Extractor fan": "Extractor de aire",
+      "Electric radiator": "Radiador eléctrico",
+      "Switch with a dimmer": "Interruptor con regulador",
+      "Two circuits": "Dos circuitos",
+      "Length": "Longitud"
     },
     "de": {
+      "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "Neben einer Wand platziert, kommt sie an deren Seite. Mehrere stehen nebeneinander oder übereinander.",
+      "Arrangement": "Anordnung",
+      "Side by side": "Nebeneinander",
+      "Stacked": "Übereinander",
       "Electrical symbols": "Elektrosymbole",
       "Sockets, switches and light points for electrical layouts.": "Steckdosen, Schalter und Leuchten für Elektropläne.",
       "Socket": "Steckdose",
@@ -41,9 +85,29 @@
       "Count": "Anzahl",
       "Two-way": "Wechselschalter",
       "Size": "Größe",
-      "Place the flat side against the wall.": "Die flache Seite an die Wand setzen."
+      "Place the flat side against the wall.": "Die flache Seite an die Wand setzen.",
+      "Pendant light": "Pendelleuchte",
+      "Recessed spotlight": "Einbaustrahler",
+      "Light strip": "Lichtleiste",
+      "Socket, 32 A": "Steckdose, 32 A",
+      "TV socket": "TV-Dose",
+      "Network socket": "Netzwerkdose",
+      "Push button": "Taster",
+      "Dimmer": "Dimmer",
+      "Consumer unit": "Sicherungskasten",
+      "Junction box": "Abzweigdose",
+      "Smoke detector": "Rauchmelder",
+      "Extractor fan": "Abluftventilator",
+      "Electric radiator": "Elektroheizkörper",
+      "Switch with a dimmer": "Schalter mit Dimmer",
+      "Two circuits": "Zwei Stromkreise",
+      "Length": "Länge"
     },
     "zh": {
+      "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "放在墙边时，会贴在墙面上。多个插座可并排或上下叠放。",
+      "Arrangement": "排列",
+      "Side by side": "并排",
+      "Stacked": "上下叠放",
       "Electrical symbols": "电气符号",
       "Sockets, switches and light points for electrical layouts.": "用于电气布置的插座、开关和灯位。",
       "Socket": "插座",
@@ -53,9 +117,29 @@
       "Count": "数量",
       "Two-way": "双控",
       "Size": "大小",
-      "Place the flat side against the wall.": "将平直的一边靠墙放置。"
+      "Place the flat side against the wall.": "将平直的一边靠墙放置。",
+      "Pendant light": "吊灯",
+      "Recessed spotlight": "嵌入式射灯",
+      "Light strip": "灯带",
+      "Socket, 32 A": "32 A 插座",
+      "TV socket": "电视插座",
+      "Network socket": "网络插座",
+      "Push button": "按钮开关",
+      "Dimmer": "调光器",
+      "Consumer unit": "配电箱",
+      "Junction box": "接线盒",
+      "Smoke detector": "烟雾探测器",
+      "Extractor fan": "排气扇",
+      "Electric radiator": "电暖器",
+      "Switch with a dimmer": "带调光的开关",
+      "Two circuits": "两路",
+      "Length": "长度"
     },
     "ja": {
+      "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "壁の近くに置くと、その壁面に付きます。複数のときは横並びか縦並びにします。",
+      "Arrangement": "配置",
+      "Side by side": "横並び",
+      "Stacked": "縦並び",
       "Electrical symbols": "電気記号",
       "Sockets, switches and light points for electrical layouts.": "電気設備図のためのコンセント、スイッチ、照明。",
       "Socket": "コンセント",
@@ -65,9 +149,29 @@
       "Count": "数",
       "Two-way": "3 路",
       "Size": "サイズ",
-      "Place the flat side against the wall.": "平らな側を壁に付けて置いてください。"
+      "Place the flat side against the wall.": "平らな側を壁に付けて置いてください。",
+      "Pendant light": "ペンダントライト",
+      "Recessed spotlight": "ダウンライト",
+      "Light strip": "ライン照明",
+      "Socket, 32 A": "32 A コンセント",
+      "TV socket": "テレビ端子",
+      "Network socket": "LAN 端子",
+      "Push button": "押しボタン",
+      "Dimmer": "調光器",
+      "Consumer unit": "分電盤",
+      "Junction box": "ジョイントボックス",
+      "Smoke detector": "煙感知器",
+      "Extractor fan": "換気扇",
+      "Electric radiator": "電気ヒーター",
+      "Switch with a dimmer": "調光スイッチ",
+      "Two circuits": "2 回路",
+      "Length": "長さ"
     },
     "ko": {
+      "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "벽 옆에 놓으면 그 벽면에 붙습니다. 여러 개는 나란히 또는 위아래로 놓습니다.",
+      "Arrangement": "배치",
+      "Side by side": "나란히",
+      "Stacked": "위아래로",
       "Electrical symbols": "전기 기호",
       "Sockets, switches and light points for electrical layouts.": "전기 설비도에 쓰는 콘센트, 스위치, 조명 기호.",
       "Socket": "콘센트",
@@ -77,9 +181,29 @@
       "Count": "개수",
       "Two-way": "3로",
       "Size": "크기",
-      "Place the flat side against the wall.": "평평한 쪽을 벽에 붙여 놓으세요."
+      "Place the flat side against the wall.": "평평한 쪽을 벽에 붙여 놓으세요.",
+      "Pendant light": "펜던트 조명",
+      "Recessed spotlight": "매입등",
+      "Light strip": "라인 조명",
+      "Socket, 32 A": "32 A 콘센트",
+      "TV socket": "TV 단자",
+      "Network socket": "LAN 단자",
+      "Push button": "푸시 버튼",
+      "Dimmer": "조광기",
+      "Consumer unit": "분전반",
+      "Junction box": "정션 박스",
+      "Smoke detector": "연기 감지기",
+      "Extractor fan": "환풍기",
+      "Electric radiator": "전기 라디에이터",
+      "Switch with a dimmer": "조광 스위치",
+      "Two circuits": "2회로",
+      "Length": "길이"
     },
     "tr": {
+      "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "Bir duvarın yanına konunca yüzüne yerleşir. Birden fazlası yan yana ya da üst üste durur.",
+      "Arrangement": "Düzen",
+      "Side by side": "Yan yana",
+      "Stacked": "Üst üste",
       "Electrical symbols": "Elektrik sembolleri",
       "Sockets, switches and light points for electrical layouts.": "Elektrik planları için prizler, anahtarlar ve aydınlatma noktaları.",
       "Socket": "Priz",
@@ -89,31 +213,71 @@
       "Count": "Adet",
       "Two-way": "Vaviyen",
       "Size": "Boyut",
-      "Place the flat side against the wall.": "Düz tarafını duvara dayayın."
+      "Place the flat side against the wall.": "Düz tarafını duvara dayayın.",
+      "Pendant light": "Sarkıt armatür",
+      "Recessed spotlight": "Gömme spot",
+      "Light strip": "Işık şeridi",
+      "Socket, 32 A": "Priz, 32 A",
+      "TV socket": "TV prizi",
+      "Network socket": "Ağ prizi",
+      "Push button": "Buton",
+      "Dimmer": "Dimmer",
+      "Consumer unit": "Sigorta kutusu",
+      "Junction box": "Buat",
+      "Smoke detector": "Duman dedektörü",
+      "Extractor fan": "Aspiratör",
+      "Electric radiator": "Elektrikli radyatör",
+      "Switch with a dimmer": "Dimmerli anahtar",
+      "Two circuits": "İki devre",
+      "Length": "Uzunluk"
     }
   },
   "objects": [
     {
       "kind": "elec.socket",
       "category": "electrical",
+      "mount": { "on": "wall", "height": 300 },
       "label": "Socket",
-      "description": "Place the flat side against the wall.",
-      "params": [{ "key": "count", "label": "Count", "type": "number", "default": 1 }],
+      "description": "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.",
+      "params": [
+        { "key": "count", "label": "Count", "type": "number", "default": 1 },
+        { "key": "layout", "label": "Arrangement", "type": "string", "default": "Side by side", "options": ["Side by side", "Stacked"] }
+      ],
       "draw": [
-        { "repeat": { "count": "max(1, count)" }, "arc": { "cx": "i * 240", "cy": 0, "r": 100, "from": 0, "to": 180 } },
-        { "repeat": { "count": "max(1, count)" }, "path": [["i * 240 - 100", 0], ["i * 240 + 100", 0]] },
-        { "repeat": { "count": "max(1, count)" }, "path": [["i * 240", 100], ["i * 240", 190]] }
+        { "when": "layout != 'Stacked'", "repeat": { "count": "max(1, count)" }, "arc": { "cx": "i * 240", "cy": 0, "r": 100, "from": 0, "to": 180 } },
+        { "when": "layout != 'Stacked'", "repeat": { "count": "max(1, count)" }, "path": [["i * 240 - 100", 0], ["i * 240 + 100", 0]] },
+        { "when": "layout != 'Stacked'", "repeat": { "count": "max(1, count)" }, "path": [["i * 240", 100], ["i * 240", 190]] },
+        { "when": "layout == 'Stacked'", "repeat": { "count": "max(1, min(count, 6))" }, "arc": { "cx": 0, "cy": 0, "r": "100 + i * 30", "from": 0, "to": 180 } },
+        { "when": "layout == 'Stacked'", "path": [["-100 - (max(1, min(count, 6)) - 1) * 30", 0], ["100 + (max(1, min(count, 6)) - 1) * 30", 0]] },
+        { "when": "layout == 'Stacked'", "path": [[0, "100 + (max(1, min(count, 6)) - 1) * 30"], [0, "190 + (max(1, min(count, 6)) - 1) * 30"]] }
+      ],
+      "front": [
+        { "repeat": { "count": "max(1, count)" }, "path": [["layout == 'Stacked' ? -40 : i * 80 - 40", "layout == 'Stacked' ? -i * 80 - 40 : -40"], ["layout == 'Stacked' ? 40 : i * 80 + 40", "layout == 'Stacked' ? -i * 80 - 40 : -40"], ["layout == 'Stacked' ? 40 : i * 80 + 40", "layout == 'Stacked' ? -i * 80 + 40 : 40"], ["layout == 'Stacked' ? -40 : i * 80 - 40", "layout == 'Stacked' ? -i * 80 + 40 : 40"]], "closed": true, "radius": 8 },
+        { "repeat": { "count": "max(1, count)" }, "ellipse": { "cx": "layout == 'Stacked' ? 0 : i * 80", "cy": "layout == 'Stacked' ? -i * 80 : 0", "rx": 22, "ry": 22 } },
+        { "repeat": { "count": "max(1, count)" }, "ellipse": { "cx": "(layout == 'Stacked' ? 0 : i * 80) - 10", "cy": "layout == 'Stacked' ? -i * 80 : 0", "rx": 3.5, "ry": 3.5 } },
+        { "repeat": { "count": "max(1, count)" }, "ellipse": { "cx": "(layout == 'Stacked' ? 0 : i * 80) + 10", "cy": "layout == 'Stacked' ? -i * 80 : 0", "rx": 3.5, "ry": 3.5 } }
       ]
     },
     {
       "kind": "elec.switch",
       "category": "electrical",
+      "mount": { "on": "wall", "back": 60, "out": "up", "height": 1100 },
       "label": "Switch",
-      "params": [{ "key": "twoWay", "label": "Two-way", "type": "boolean", "default": false }],
+      "params": [
+        { "key": "twoWay", "label": "Two-way", "type": "boolean", "default": false },
+        { "key": "double", "label": "Two circuits", "type": "boolean", "default": false }
+      ],
       "draw": [
         { "ellipse": { "cx": 0, "cy": 0, "rx": 60, "ry": 60 } },
         { "path": [[42, -42], [180, -180], [230, -130]] },
-        { "when": "twoWay", "path": [[-42, 42], [-180, 180], [-230, 130]] }
+        { "when": "twoWay", "path": [[-42, 42], [-180, 180], [-230, 130]] },
+        { "when": "double", "path": [[130, -130], [180, -80]] }
+      ],
+      "front": [
+        { "path": [[-40, -40], [40, -40], [40, 40], [-40, 40]], "closed": true, "radius": 8 },
+        { "path": [[-15, -25], [15, -25], [15, 25], [-15, 25]], "closed": true, "radius": 3, "when": "!double" },
+        { "when": "double", "path": [[-32, -25], [-4, -25], [-4, 25], [-32, 25]], "closed": true, "radius": 3 },
+        { "when": "double", "path": [[4, -25], [32, -25], [32, 25], [4, 25]], "closed": true, "radius": 3 }
       ]
     },
     {
@@ -130,13 +294,197 @@
     {
       "kind": "elec.walllight",
       "category": "electrical",
+      "mount": { "on": "wall", "height": 1800 },
       "label": "Wall light",
-      "description": "Place the flat side against the wall.",
       "params": [{ "key": "size", "label": "Size", "type": "number", "default": 240, "unit": "length" }],
       "draw": [
         { "arc": { "cx": 0, "cy": 0, "r": "size / 2", "from": 0, "to": 180 } },
         { "path": [["-size / 2", 0], ["size / 2", 0]] },
         { "path": [[0, 0], [0, "size / 2"]] }
+      ],
+      "front": [
+        { "ellipse": { "cx": 0, "cy": 0, "rx": "size / 2", "ry": "size / 3" } },
+        { "path": [["-size / 2", 0], ["size / 2", 0]] }
+      ]
+    },
+    {
+      "kind": "elec.pendant",
+      "category": "electrical",
+      "label": "Pendant light",
+      "params": [{ "key": "size", "label": "Size", "type": "number", "default": 300, "unit": "length" }],
+      "draw": [
+        { "ellipse": { "cx": 0, "cy": 0, "rx": "size / 2", "ry": "size / 2" } },
+        { "ellipse": { "cx": 0, "cy": 0, "rx": "size * 0.3", "ry": "size * 0.3" } },
+        { "path": [["-size * 0.212", "-size * 0.212"], ["size * 0.212", "size * 0.212"]] },
+        { "path": [["-size * 0.212", "size * 0.212"], ["size * 0.212", "-size * 0.212"]] }
+      ]
+    },
+    {
+      "kind": "elec.spot",
+      "category": "electrical",
+      "label": "Recessed spotlight",
+      "params": [{ "key": "size", "label": "Size", "type": "number", "default": 120, "unit": "length" }],
+      "draw": [
+        { "ellipse": { "cx": 0, "cy": 0, "rx": "size / 2", "ry": "size / 2" } },
+        { "fill": "stroke", "ellipse": { "cx": 0, "cy": 0, "rx": "size * 0.21", "ry": "size * 0.21" } }
+      ]
+    },
+    {
+      "kind": "elec.strip",
+      "category": "electrical",
+      "label": "Light strip",
+      "params": [{ "key": "length", "label": "Length", "type": "number", "default": 1200, "unit": "length" }],
+      "size": { "x": "length" },
+      "draw": [
+        { "path": [[0, -50], ["length", -50], ["length", 50], [0, 50]], "closed": true },
+        { "path": [[0, 0], ["length", 0]] }
+      ]
+    },
+    {
+      "kind": "elec.socket32",
+      "category": "electrical",
+      "label": "Socket, 32 A",
+      "mount": { "on": "wall", "height": 300 },
+      "params": [],
+      "draw": [
+        { "path": [[0, 0], [0, 100]] },
+        { "fill": "stroke", "closed": true, "arc": { "cx": 0, "cy": 250, "r": 150, "from": 180, "to": 360 } }
+      ],
+      "front": [
+        { "path": [[-50, -50], [50, -50], [50, 50], [-50, 50]], "closed": true, "radius": 8 },
+        { "ellipse": { "cx": 0, "cy": 0, "rx": 30, "ry": 30 } },
+        { "ellipse": { "cx": -14, "cy": 6, "rx": 5, "ry": 5 } },
+        { "ellipse": { "cx": 14, "cy": 6, "rx": 5, "ry": 5 } },
+        { "ellipse": { "cx": 0, "cy": -14, "rx": 5, "ry": 5 } }
+      ]
+    },
+    {
+      "kind": "elec.tv",
+      "category": "electrical",
+      "label": "TV socket",
+      "mount": { "on": "wall", "height": 300 },
+      "params": [],
+      "draw": [
+        { "arc": { "cx": 0, "cy": 0, "r": 100, "from": 0, "to": 180 } },
+        { "path": [[-100, 0], [100, 0]] },
+        { "path": [[0, 100], [0, 190]] },
+        { "text": { "x": 0, "y": 330, "value": "TV", "size": 120, "align": "center" } }
+      ],
+      "front": [
+        { "path": [[-40, -40], [40, -40], [40, 40], [-40, 40]], "closed": true, "radius": 8 },
+        { "ellipse": { "cx": 0, "cy": 0, "rx": 22, "ry": 22 } },
+        { "fill": "stroke", "ellipse": { "cx": 0, "cy": 0, "rx": 5, "ry": 5 } }
+      ]
+    },
+    {
+      "kind": "elec.network",
+      "category": "electrical",
+      "label": "Network socket",
+      "mount": { "on": "wall", "height": 300 },
+      "params": [],
+      "draw": [
+        { "path": [[-150, 0], [150, 0], [150, 300], [-150, 300]], "closed": true },
+        { "text": { "x": 0, "y": 195, "value": "RJ45", "size": 100, "align": "center" } }
+      ],
+      "front": [
+        { "path": [[-40, -40], [40, -40], [40, 40], [-40, 40]], "closed": true, "radius": 8 },
+        { "path": [[-15, -12], [15, -12], [15, 12], [-15, 12]], "closed": true }
+      ]
+    },
+    {
+      "kind": "elec.pushbutton",
+      "category": "electrical",
+      "label": "Push button",
+      "mount": { "on": "wall", "height": 1100 },
+      "params": [],
+      "draw": [
+        { "ellipse": { "cx": 0, "cy": 100, "rx": 100, "ry": 100 } },
+        { "ellipse": { "cx": 0, "cy": 100, "rx": 45, "ry": 45 } }
+      ],
+      "front": [
+        { "path": [[-40, -40], [40, -40], [40, 40], [-40, 40]], "closed": true, "radius": 8 },
+        { "ellipse": { "cx": 0, "cy": 0, "rx": 18, "ry": 18 } }
+      ]
+    },
+    {
+      "kind": "elec.dimmer",
+      "category": "electrical",
+      "label": "Dimmer",
+      "description": "Switch with a dimmer",
+      "mount": { "on": "wall", "back": 60, "out": "up", "height": 1100 },
+      "params": [],
+      "draw": [
+        { "ellipse": { "cx": 0, "cy": 0, "rx": 60, "ry": 60 } },
+        { "path": [[42, -42], [180, -180], [230, -130]] },
+        { "fill": "stroke", "path": [[0, -30], [26, 15], [-26, 15]], "closed": true }
+      ],
+      "front": [
+        { "path": [[-40, -40], [40, -40], [40, 40], [-40, 40]], "closed": true, "radius": 8 },
+        { "ellipse": { "cx": 0, "cy": 0, "rx": 24, "ry": 24 } },
+        { "path": [[0, -24], [0, -12]] }
+      ]
+    },
+    {
+      "kind": "elec.board",
+      "category": "electrical",
+      "label": "Consumer unit",
+      "mount": { "on": "wall", "height": 1400 },
+      "params": [],
+      "draw": [
+        { "path": [[-300, 0], [300, 0], [300, 250], [-300, 250]], "closed": true },
+        { "fill": "stroke", "path": [[-300, 250], [300, 0], [300, 250]], "closed": true }
+      ],
+      "front": [
+        { "path": [[-300, -400], [300, -400], [300, 400], [-300, 400]], "closed": true, "radius": 10 },
+        { "repeat": { "count": 3 }, "path": [[-260, "-150 + i * 200"], [260, "-150 + i * 200"]] }
+      ]
+    },
+    {
+      "kind": "elec.junction",
+      "category": "electrical",
+      "label": "Junction box",
+      "params": [],
+      "draw": [
+        { "path": [[-100, -100], [100, -100], [100, 100], [-100, 100]], "closed": true },
+        { "path": [[-70, -70], [70, 70]] },
+        { "path": [[-70, 70], [70, -70]] }
+      ]
+    },
+    {
+      "kind": "elec.smoke",
+      "category": "electrical",
+      "label": "Smoke detector",
+      "params": [],
+      "draw": [
+        { "path": [[-150, -150], [150, -150], [150, 150], [-150, 150]], "closed": true },
+        { "ellipse": { "cx": 0, "cy": 0, "rx": 100, "ry": 100 } },
+        { "fill": "stroke", "ellipse": { "cx": 0, "cy": 0, "rx": 30, "ry": 30 } }
+      ]
+    },
+    {
+      "kind": "elec.fan",
+      "category": "electrical",
+      "label": "Extractor fan",
+      "params": [],
+      "draw": [
+        { "ellipse": { "cx": 0, "cy": 0, "rx": 200, "ry": 200 } },
+        { "path": [[-140, -100], [140, 100], [140, -100], [-140, 100]], "closed": true }
+      ]
+    },
+    {
+      "kind": "elec.radiator",
+      "category": "electrical",
+      "label": "Electric radiator",
+      "mount": { "on": "wall", "height": 450 },
+      "params": [{ "key": "length", "label": "Length", "type": "number", "default": 1000, "unit": "length" }],
+      "size": { "x": "length" },
+      "draw": [
+        { "path": [[0, 0], ["length", 0], ["length", 120], [0, 120]], "closed": true },
+        { "repeat": { "count": "floor(length / 100) - 1" }, "path": [["(i + 1) * 100", 0], ["(i + 1) * 100", 120]] }
+      ],
+      "front": [
+        { "path": [[0, -300], ["length", -300], ["length", 300], [0, 300]], "closed": true, "radius": 10 },
+        { "repeat": { "count": "floor(length / 100) - 1" }, "path": [["(i + 1) * 100", -270], ["(i + 1) * 100", 270]] }
       ]
     }
   ]

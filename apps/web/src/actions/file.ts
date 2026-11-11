@@ -136,8 +136,24 @@ export const saveDocument = (saveAs = false) =>
     const { doc, file } = get()
     const token = saveAs ? undefined : (file?.token ?? undefined)
     const stored = await platform.save(serializeDocument(forFile(doc)), file?.name ?? `${baseName()}.opencalque`, token)
-    if (stored) useStore.setState({ saved: doc, file: stored })
+    if (!stored) return
+    useStore.setState({ saved: doc, file: stored })
+    // Saved under a new name (the first time, or with Save as), the drawing takes that name, which
+    // the title bar and the names of exports give, and is written again with it. A download (a
+    // browser that cannot write files) cannot be written again, and keeps the name it had.
+    const named = drawingName(stored.name)
+    if (stored.name === file?.name || !stored.token || !named || named === doc.name.trim()) return
+    apply([{ op: 'set_document', name: named }])
+    const renamed = get().doc
+    if (await platform.save(serializeDocument(forFile(renamed)), stored.name, stored.token)) useStore.setState({ saved: renamed })
   })
+
+/** The name of a drawing saved as `fileName`: the file's name without its extension. */
+export const drawingName = (fileName: string) => {
+  const dot = fileName.lastIndexOf('.')
+  const extension = dot > 0 ? fileName.slice(dot + 1).toLowerCase() : ''
+  return (DRAWING_EXTENSIONS.includes(extension) ? fileName.slice(0, dot) : fileName).trim()
+}
 
 /** What a PDF export is doing, told to the export window as it goes. */
 export type PdfExportStage = 'fonts' | 'rendering' | 'saving'

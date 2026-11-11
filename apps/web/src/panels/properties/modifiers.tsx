@@ -92,6 +92,7 @@ export function ModifierStack({ node }: { node: Node }) {
                       label={t(p.label)}
                       numeric
                       length={p.unit === 'length'}
+                      suffix={p.unit === 'angle' ? '°' : undefined}
                       min={p.unit === 'length' ? 1 : undefined}
                       value={params[p.key]}
                       onCommit={(value) => change(index, { params: { ...modifier.params, [p.key]: value } })}

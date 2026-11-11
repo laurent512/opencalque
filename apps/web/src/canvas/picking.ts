@@ -1,7 +1,7 @@
 import { alignables, boundsFrame, dist, distToSegment, endLineShown, isLocked, wallEndsAt, sceneBounds, sub, wallEdgeLines, wallEndsOf, type Alignable, type Bounds, type Document, type Node, type NodeOf, type ResizeFrame, type SceneItem, type Vec2 } from '@opencalque/core'
 import { registry } from '../extensions'
 import { toWorld, visibleArea } from '../view'
-import { boxGrips } from './draw'
+import { boxGrips, viewArrow } from './draw'
 import { END_POINT, FACE_MIN } from './gesture'
 import { get, type BoxFrame, type Canvas } from './runtime'
 import { faceOf, resizeCursor, roomsOnly } from './shapes'
@@ -167,8 +167,52 @@ export function endAt(c: Canvas, at: Vec2): { wall: NodeOf<'wall'>; end: 'a' | '
   return null
 }
 
+/**
+ * The edge of what the one selected view line sees under a point of the canvas, within a few
+ * pixels: its handle (0 its far side, 7 the line, 8 and 9 the sides at its start and end) and its
+ * two ends, dragged across as a wall's face is.
+ */
+export function viewEdgeAt(c: Canvas, at: Vec2): { index: number; edge: [Vec2, Vec2] } | null {
+  const { view, doc, selection } = get()
+  const node = selection.length === 1 ? doc.nodes[selection[0]] : undefined
+  if (node?.type !== 'viewline' || c.handles.length !== 10) return null
+  const toScreen = (p: Vec2) => ({ x: p.x * view.zoom + view.x, y: p.y * view.zoom + view.y })
+  const [a, b, farB, farA] = c.handles.slice(3, 7)
+  const edges: [number, Vec2, Vec2][] = [[7, a, b], [0, farA, farB], [8, farA, a], [9, b, farB]]
+  let best: { index: number; edge: [Vec2, Vec2] } | null = null
+  let nearest = 6
+  for (const [index, p, q] of edges) {
+    const off = distToSegment(at, toScreen(p), toScreen(q))
+    if (off < nearest) {
+      nearest = off
+      best = { index, edge: [p, q] }
+    }
+  }
+  return best
+}
+
+/** Whether a point of the canvas is on a handle of the one selected view line: a corner, an arrow or an edge of what it sees. */
+export function viewLineHandleAt(c: Canvas, at: Vec2): boolean {
+  const { doc, selection, tool } = get()
+  return tool === 'select' && selection.length === 1 && doc.nodes[selection[0]]?.type === 'viewline' && handleAt(c, at) >= 0
+}
+
 /** The handle of the one selected object under a point of the canvas, as its index, or -1. */
 export function handleAt(c: Canvas, at: Vec2): number {
-  const { view } = get()
-  return c.handles.findIndex((h) => dist({ x: h.x * view.zoom + view.x, y: h.y * view.zoom + view.y }, at) < 7)
+  const { view, doc, selection } = get()
+  const toScreen = (p: Vec2) => ({ x: p.x * view.zoom + view.x, y: p.y * view.zoom + view.y })
+  // The ends of a selected view line are taken by the arrow drawn at each, anywhere along it (`viewArrow`).
+  const node = selection.length === 1 ? doc.nodes[selection[0]] : undefined
+  if (node?.type === 'viewline' && c.handles.length === 10) {
+    // The corners of what it sees first, taken a little further off than an edge is, so that the
+    // edges meeting there do not take them; then the arrows at its ends, then its edges, anywhere along.
+    const point = [3, 4, 5, 6].find((index) => dist(toScreen(c.handles[index]), at) < 10)
+    if (point !== undefined) return point
+    for (const [index, end] of [[1, 'a'], [2, 'b']] as const) {
+      const arrow = viewArrow(node.a, node.b, end, toScreen)
+      if (arrow && distToSegment(at, arrow.from, arrow.tip) < 7) return index
+    }
+    return viewEdgeAt(c, at)?.index ?? -1
+  }
+  return c.handles.findIndex((h) => dist(toScreen(h), at) < 7)
 }

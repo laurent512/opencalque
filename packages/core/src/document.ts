@@ -189,6 +189,7 @@ export function checkIntegrity(doc: Document): string[] {
     if (node.layer !== undefined && rootOf(doc, node.parent)?.type === 'component') problems.push(`Node ${key}: is inside a component and has a layer`)
     if (node.type === 'instance' && node.style !== undefined) problems.push(`Node ${key}: an instance has a style`)
     if (node.type === 'image' && !doc.assets?.[node.asset]) problems.push(`Node ${key}: unknown asset "${node.asset}"`)
+    if (node.type === 'elevation' && doc.nodes[node.line]?.type !== 'viewline') problems.push(`Node ${key}: unknown view line "${node.line}"`)
     if (node.type === 'instance') {
       const component = doc.nodes[node.component]
       if (component?.type !== 'component') problems.push(`Node ${key}: unknown component "${node.component}"`)
@@ -211,5 +212,8 @@ export function serializeDocument(doc: Document): string {
   const used = new Set(Object.values(doc.nodes).flatMap((n) => (n.type === 'image' ? [n.asset] : [])))
   const assets = Object.fromEntries(Object.entries(doc.assets ?? {}).filter(([id]) => used.has(id)))
   const { assets: _, ...rest } = doc
-  return JSON.stringify(used.size > 0 ? { ...rest, assets } : rest, null, 2) + '\n'
+  // A drawing with no elevation nor view line holds nothing version 2 did not know, and says it is of version 2,
+  // so that the versions of the app before elevations (1.8 and earlier) still open it.
+  const version = Object.values(doc.nodes).some((n) => n.type === 'elevation' || n.type === 'viewline') ? doc.version : Math.min(doc.version, 2)
+  return JSON.stringify(used.size > 0 ? { ...rest, version, assets } : { ...rest, version }, null, 2) + '\n'
 }

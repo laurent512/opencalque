@@ -9,7 +9,7 @@ import { carry, svgUrl } from './carry'
 import { language, msg, t, tn } from './i18n'
 import { platform } from './platform'
 import { setPrefs, usePrefs } from './prefs'
-import { BUILT_IN_EXTENSION, loadExtensions, registry, useExtensions } from './extensions'
+import { ALWAYS_ON, BUILT_IN_EXTENSION, loadExtensions, registry, useExtensions } from './extensions'
 import { applyOrThrow, setTool, useStore } from './store'
 import { toast, useWindows } from './windows'
 import { IconButton } from './ui'
@@ -93,6 +93,7 @@ const CATEGORIES: Record<string, string> = {
   bedroom: msg('Bedroom'),
   office: msg('Office'),
   heating: msg('Heating'),
+  electrical: msg('Electrical'),
 }
 /**
  * The headings of the list of sections, each with the sections the app knows under it, in the
@@ -444,11 +445,15 @@ function Extensions({ catalog }: { catalog: DeclarativeExtension[] }) {
         {all.map((extension) => (
           <div key={extension.id} className="warehouse-row">
             <div>
-              <strong>{own(extension, extension.name)}</strong> <span className="faint">{extension.version}</span>
+              <strong>{own(extension, extension.name)}</strong> <span className="faint">{ALWAYS_ON.includes(extension.id) ? t('built in') : extension.version}</span>
               {extension.description && <p className="hint">{own(extension, extension.description)}</p>}
               <p className="hint">{extension.objects.map((o) => own(extension, o.label)).join(' · ')}</p>
             </div>
-            {installed[extension.id] ? (
+            {ALWAYS_ON.includes(extension.id) ? (
+              <button className="pill" onClick={() => change({ disabled: disabled.includes(extension.id) ? disabled.filter((id) => id !== extension.id) : [...disabled, extension.id] })}>
+                {disabled.includes(extension.id) ? t('Turn on') : t('Turn off')}
+              </button>
+            ) : installed[extension.id] ? (
               <button className="pill" onClick={() => remove(extension.id)}>
                 {t('Remove')}
               </button>

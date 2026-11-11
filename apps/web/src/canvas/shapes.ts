@@ -15,7 +15,7 @@ export const round = (n: number) => Math.round(n * 1000) / 1000
 
 /** What a snap is called beside its mark. A point of an object needs no name. */
 export const snapName = (kind: SnapKind): string | undefined =>
-  kind === 'centre' ? t('Centre') : kind === 'middle' ? t('Middle') : kind === 'crossing' ? t('Crossing') : kind === 'perpendicular' ? t('Perpendicular') : kind === 'edge' ? t('On the line') : kind === 'aligned' ? t('Lined up') : undefined
+  kind === 'centre' ? t('Centre') : kind === 'middle' ? t('Middle') : kind === 'crossing' ? t('Crossing') : kind === 'perpendicular' ? t('Perpendicular') : kind === 'edge' ? t('On the line') : kind === 'aligned' ? t('Lined up') : kind === 'extension' ? t('Extension') : undefined
 
 /**
  * Applies the sizes typed in the quick bar to where a shape would end: a typed size wins over
@@ -81,8 +81,9 @@ export function sizes(tool: Tool, start: Vec2, p: Vec2): { live: { a: number; b:
   if (turn > 90 || turn <= -90) turn += 180
   const up = { x: Math.sin((turn * Math.PI) / 180), y: -Math.cos((turn * Math.PI) / 180) }
   const length: SizeLabel = { at: { x: (start.x + p.x) / 2, y: (start.y + p.y) / 2 }, dx: up.x * 16, dy: up.y * 16, text: formatLength(len(d)), rotation: turn }
-  // The way from one point of a curve or an arc to the next is not the way the line drawn goes: it has no angle to show.
-  const straight = tool !== 'curve' && tool !== 'arc'
+  // The way from one point of a curve or an arc to the next is not the way the line drawn goes, nor
+  // is a circle's radius: they have no angle to show.
+  const straight = tool !== 'curve' && tool !== 'arc' && tool !== 'circle'
   return { live: { a: len(d), b: angle }, labels: [length], ...(straight ? { angle: { at: start, degrees: angle } } : {}) }
 }
 
@@ -169,7 +170,7 @@ export function wallOps(id: string, a: Vec2, b: Vec2): Op[] {
 /** The node a two-point tool makes from its two points. */
 export function shape(tool: Tool, id: string, a: Vec2, b: Vec2, offset = 0): NodeInput {
   const { scope, wallThickness, wallMaterial, annotationTemplate, gridlineTemplate, paperScale, base, doc } = get()
-  const common = { id, parent: scope, ...layerHere(), ...(tool !== 'dimension' && tool !== 'paper' ? currentStyle(tool === 'rect' || tool === 'ellipse') : {}) }
+  const common = { id, parent: scope, ...layerHere(), ...(tool !== 'dimension' && tool !== 'paper' ? currentStyle(tool === 'rect' || tool === 'ellipse' || tool === 'circle') : {}) }
   switch (tool) {
     case 'paper': {
       // Counted in the drawing as it was before this paper started to be drawn.
@@ -201,6 +202,9 @@ export function shape(tool: Tool, id: string, a: Vec2, b: Vec2, offset = 0): Nod
       return { ...common, type: 'rect', x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) }
     case 'ellipse':
       return { ...common, type: 'ellipse', cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, rx: Math.abs(b.x - a.x) / 2, ry: Math.abs(b.y - a.y) / 2 }
+    case 'circle':
+      // From its centre to a point it goes through.
+      return { ...common, type: 'ellipse', cx: a.x, cy: a.y, rx: round(dist(a, b)), ry: round(dist(a, b)) }
     default:
       return { ...common, type: 'line', a, b }
   }

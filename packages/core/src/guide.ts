@@ -38,8 +38,10 @@ export function drawingGuide(registry: Registry, { pictures = true, schema = tru
   const kinds = [...registry.parametric.values()].map((k) => ({
     kind: k.kind,
     what: k.description ? `${k.label}. ${k.description}` : k.label,
-    props: Object.fromEntries(k.params.map((p) => [p.key, `${p.options ? `one of ${p.options.join(' | ')}` : p.type}${p.unit === 'length' ? ' in mm' : ''} (default ${p.default})`])),
+    props: Object.fromEntries(k.params.map((p) => [p.key, `${p.options ? `one of ${p.options.join(' | ')}` : p.type}${p.unit === 'length' ? ' in mm' : p.unit === 'angle' ? ' in degrees' : ''} (default ${p.default})`])),
     cutsWalls: Boolean(k.opening),
+    fixedOnWall: k.mount?.on === 'wall' ? { back: k.mount.back ?? 0, out: k.mount.out ?? 'down', height: k.mount.height } : undefined,
+    againstWall: k.mount?.on === 'floor' ? { back: k.mount.back ?? 0, out: k.mount.out ?? 'down' } : undefined,
   }))
   return `# How a drawing is stored
 
@@ -71,6 +73,8 @@ ${JSON.stringify(kinds)}
 
 Kinds with "cutsWalls" are doors and windows. One cuts an opening when it lies on a wall: put its insertion point (x, y) in the middle of the wall's thickness (on its line for a wall without "justify", half its thickness off it towards the wall otherwise) and set its rotation to the wall's direction, the angle from the wall's "a" to "b". The opening then runs along the wall from the insertion point for its width. It adapts to the wall's thickness by itself, and moves with the wall only by being on it.
 
+Kinds with "fixedOnWall" (sockets, switches, wall lights) are fixed on a face of a wall, and follow the wall when it changes only while they are exactly on it. Their own point (0, back) lies on the face, their own X along it, and they stand out of the wall into the room towards their own +Y, or -Y when "out" is "up". For a wall whose direction from "a" to "b" is the angle θ, that is rotation θ on its right face (the face to the right as it runs from a to b, at +90° from its direction since Y grows downward) and θ + 180 on its left face, adding 180 to either when "out" is "up"; then place the insertion point so that (0, back) turned by that rotation lands on the face. "z" on such an object is its height above the floor in mm, to its centre; left out, it is the "height" given. Kinds with "againstWall" (kitchen units, a fridge, a washbasin) stand on the floor with their back against a face, placed by the same rule, and have no height above the floor.
+
 A "group" holds several nodes so they are selected, moved and stacked as one. It has no coordinates of its own: to group nodes, add a group and set their "parent" to its id; to move a group, move the nodes inside it. Its "opacity" (0 to 1, 1 when left out) makes everything inside it see-through.
 
 A "component" is a reusable definition and an "instance" places it, with "x", "y", "rotation", "scale" and "flipX", and "scaleX" and "scaleY" to stretch it wider or taller than it is drawn. To repeat the same furniture or symbol several times, make one component and place instances of it; changing the component changes them all. An instance has no look of its own, and what a component holds has no layer: what the component draws without a colour takes the colour of the layer of each instance, so to show placed furniture grey (existing) or red (to demolish), put the instances on a layer of that colour. Giving an instance a "style", or a node inside a component a "layer", is refused.
@@ -80,6 +84,8 @@ A shared colour (the document's "colors", managed with add_color, update_color a
 "modifiers" is a list of non-destructive changes to how a node is drawn, applied in order: {"type":"crop","frame":{"x":…,"y":…},"params":{"width":…,"height":…}} shows only what is inside that rectangle; {"type":"hatch","params":{"pattern":"Lines"|"Planks"|"Tiles","spacing":…,"angle":…}} gives a closed shape or a room a floor pattern; {"type":"repeat",…} draws copies in rows and columns. Setting "modifiers" replaces the whole list.
 
 A "room" names the space enclosed by the walls around its point (x, y): add one with a "name" at a point inside closed walls, and its floor and area are worked out from the walls each time it is drawn. A "divider" (a to b) splits an open space into two rooms where there is no wall; its ends must lie on walls.
+
+An elevation or a section is two nodes: a "viewline" on the plan (a to b, and depth), which says what is seen, and an "elevation" that refers to it by "line" and says where its view is drawn (x, y, on any page). For an elevation of a wall's face, put the viewline 1000 in front of the face, with depth 1000, running so that the face is on its left (seen from its right); add the viewline before its view. Removing a viewline removes its views.
 
 A "paper" is a sheet laid over the drawing that frames what goes on one printed page. Its width and height are in drawing millimetres: the sheet's real size times its "scale" (an A3 lying at 1:100 is 42000 × 29700). It has no children; whatever lies inside its rectangle is on it. Give it "titleBlock": {} (optionally with "project", "author", "date", "number") for a border and a title block; the person exports papers to PDF at their true scale from the File menu.
 

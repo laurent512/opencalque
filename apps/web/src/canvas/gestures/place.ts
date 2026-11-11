@@ -1,4 +1,4 @@
-import { canSplit, hitTest, newId, roomAt, snapOpeningToWall, splitOps, splitPlace, trimOps, trimPlace, wallSides, type Document, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
+import { canSplit, hitTest, newId, roomAt, snapMountToWall, snapOpeningToWall, splitOps, splitPlace, trimOps, trimPlace, viewOfFace, wallFaceAt, wallSides, type Document, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
 import { libraryOps, pickStyle } from '../../actions'
 import { registry } from '../../extensions'
 import { t } from '../../i18n'
@@ -7,9 +7,10 @@ import { formatLength } from '../../units'
 import { gridStep } from '../../view'
 import { snap } from '../aim'
 import type { SizeLabel } from '../draw'
-import { TWO_POINT, type Keys } from '../gesture'
+import { MOUNT_REACH, TWO_POINT, type Keys } from '../gesture'
 import { get, type Canvas, type Move, type Press } from '../runtime'
 import { offsetHover } from './offset'
+import { extendHover, filletHover } from './fit'
 
 /*
  * The tools that act where they are clicked, with nothing to drag: the eyedropper, putting down
@@ -26,12 +27,12 @@ export const eyedropperDown: Press = (c, _e, _at, world) => {
 /**
  * What follows the pointer is put down, and the next one follows it. A library's component comes
  * in with the first: the next ones are placements of that same one, not further copies. A table of
- * quantities is put down once, and selected, to be set up.
+ * quantities, or an elevation, is put down once, and selected, to be set up.
  */
 export const placeDown: Press = (c) => {
   const { base, placing } = get()
   if (!base) return
-  if (placing?.type === 'table') {
+  if (placing?.type === 'table' || placing?.type === 'elevation') {
     const id = c.placed
     commit()
     setTool('select')
@@ -43,6 +44,59 @@ export const placeDown: Press = (c) => {
   commit()
   if (brought) useStore.setState({ placing: { type: 'instance', component: brought, carried: placing?.carried } })
   c.placed = newId()
+}
+
+/** A section's line, its ends swapped so that it is seen from the side `p` is on: its right, which is where a view is seen from. */
+function facing<T extends { a: Vec2; b: Vec2 }>(view: T, p: Vec2): T {
+  const right = (view.b.x - view.a.x) * (p.y - view.a.y) - (view.b.y - view.a.y) * (p.x - view.a.x) >= 0
+  return right ? view : { ...view, a: view.b, b: view.a }
+}
+
+/**
+ * The tool of views. A click beside a wall makes an elevation of its face, seen from that side; a
+ * click elsewhere starts a section line, which the next click ends, wherever it is. Either view
+ * then follows the pointer, and is put down where it is drawn; for a section, the side of its line
+ * it is put down on is the side it is seen from.
+ */
+export const elevationDown: Press = (c, e, at, world) => {
+  const s = get()
+  if (c.gesture.kind !== 'section') {
+    const face = wallFaceAt(s.base ?? s.doc, s.scope, world, MOUNT_REACH / s.view.zoom)
+    if (face) {
+      // Its line 1 m in front of the face, where whoever looks at it stands, and its far side on the face.
+      setTool('place', viewPlacing(s.doc, viewOfFace(face), t('Elevation {n}', { n: String(count(s.doc, 'elevation') + 1) })))
+      return
+    }
+  }
+  sectionDown(c, e, at, world)
+}
+
+/** A section line, drawn by its two ends: the first starts it, the second puts its view on the pointer. */
+const sectionDown: Press = (c, e, _at, world) => {
+  const s = get()
+  const p = snap(c, world, e, []).p
+  if (c.gesture.kind !== 'section') {
+    c.gesture = { kind: 'section', from: p }
+    return
+  }
+  const from = c.gesture.from
+  if (Math.hypot(p.x - from.x, p.y - from.y) < 1) return
+  c.gesture = { kind: 'idle' }
+  setTool('place', { ...viewPlacing(s.doc, { a: from, b: p }, t('Section {n}', { n: String(count(s.doc, 'elevation') + 1) })), sided: true })
+}
+
+const count = (doc: Document, type: 'elevation' | 'viewline') => Object.values(doc.nodes).filter((n) => n.type === type).length
+
+/** A view to put down, named `name`, with a new line, seen from it as it says, named in turn. */
+function viewPlacing(doc: Document, line: { a: Vec2; b: Vec2; depth?: number }, name: string): Extract<Placing, { type: 'elevation' }> {
+  return { type: 'elevation', name, lineId: newId(), line: { type: 'viewline', ...line, name: t('View line {n}', { n: String(count(doc, 'viewline') + 1) }) } }
+}
+
+/** The section line drawn so far, from where it starts to the pointer. */
+export const sectionMove: Move<'section'> = (c, g, e, _at, world, out) => {
+  const target = snap(c, world, e, [])
+  out.marker = target.marker
+  out.face = [[g.from, target.p]]
 }
 
 /**
@@ -110,14 +164,23 @@ export const toolHover: Move<'idle'> = (c, _g, e, _at, world, out) => {
       cancel()
       out.status = t('No closed space here: the walls around it must meet all the way round')
     }
+  } else if (s.tool === 'elevation') {
+    // Beside a wall, the face lit is the one an elevation will show, seen from this side; elsewhere,
+    // a click starts a section line, from the point marked.
+    const face = wallFaceAt(s.base ?? s.doc, s.scope, world, MOUNT_REACH / s.view.zoom)
+    if (face) out.face = [[face.a, face.b]]
+    else out.marker = snap(c, world, e, []).marker
   } else if (s.tool === 'place' && s.placing) {
     const target = snap(c, world, e, [c.placed])
     out.marker = target.marker
     const common = { id: c.placed, rotation: s.placingRotation, parent: s.scope, ...layerHere(s), x: target.p.x, y: target.p.y }
-    // Doors and windows jump onto the wall under the cursor and turn to follow it.
+    // Doors and windows jump onto the wall under the cursor and turn to follow it; what is fixed
+    // on walls (a socket, a switch) goes on the face beside the cursor, standing out of the wall.
+    const placed = s.placing.type === 'parametric' ? { kind: s.placing.kind, props: s.placing.props ?? {} } : null
     const onWall =
-      s.placing.type === 'parametric' && !e.altKey
-        ? snapOpeningToWall(s.base ?? s.doc, s.scope, registry, { kind: s.placing.kind, props: s.placing.props ?? {} }, world, 10 / s.view.zoom, gridStep(s.view.zoom))
+      placed && !e.altKey
+        ? (snapOpeningToWall(s.base ?? s.doc, s.scope, registry, placed, world, 10 / s.view.zoom, gridStep(s.view.zoom)) ??
+          snapMountToWall(s.base ?? s.doc, s.scope, registry, placed, world, MOUNT_REACH / s.view.zoom, gridStep(s.view.zoom)))
         : null
     if (onWall) out.marker = null
     // A library's component comes in with its first placement, in the same step.
@@ -129,12 +192,21 @@ export const toolHover: Move<'idle'> = (c, _g, e, _at, world, out) => {
         ? { ...common, ...onWall, type: 'parametric', kind: s.placing.kind, props: s.placing.props ?? {} }
         : s.placing.type === 'table'
           ? { ...upright, ...s.placing.table }
-          : { ...common, type: 'instance', component: library ? library.id : s.placing.component }
-    out.previewed = preview([...(library?.ops ?? []), { op: 'add_node', node }])
+          : s.placing.type === 'elevation'
+            ? { ...upright, type: 'elevation', line: s.placing.lineId, name: s.placing.name }
+            : { ...common, type: 'instance', component: library ? library.id : s.placing.component }
+    // A view comes with its line, on the plan.
+    const line: Op[] =
+      s.placing.type === 'elevation' ? [{ op: 'add_node', node: { ...(s.placing.sided ? facing(s.placing.line, target.p) : s.placing.line), id: s.placing.lineId, parent: s.scope, ...layerHere(s) } }] : []
+    out.previewed = preview([...(library?.ops ?? []), ...line, { op: 'add_node', node }])
   } else if (TWO_POINT.includes(s.tool) || s.tool === 'measure' || s.tool === 'angle' || ((s.tool === 'rotate' || s.tool === 'move') && s.selection.length > 0)) {
     out.marker = snap(c, world, e, []).marker
   } else if (s.tool === 'offset') {
     offsetHover(c, world, out)
+  } else if (s.tool === 'extend') {
+    extendHover(c, world, out)
+  } else if (s.tool === 'fillet') {
+    filletHover(c, world, out)
   } else if (s.tool === 'trim') {
     const aim = trimAim(c, world)
     if (aim) out.trim = { piece: aim.place.piece, width: aim.node.type === 'wall' ? aim.node.thickness * s.view.zoom : 0 }

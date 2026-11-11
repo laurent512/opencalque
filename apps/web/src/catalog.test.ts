@@ -17,20 +17,30 @@ const PLACES: Record<string, (string | null)[]> = {
   bathroom: ['Toilet', null, null, 'Shower tray', null, 'Toilet, wall-hung'],
   // 2, 3 and 4: the sink unit, the hob and the fridge, parametric objects since 1.0.0-rc.4.
   kitchen: ['Base unit', null, null, null, 'Washing machine'],
-  electrical: [
-    'Ceiling light', 'Pendant light', 'Wall light', 'Recessed spotlight', 'Light strip', 'Socket', 'Double socket', 'Socket, 32 A', 'TV socket', 'Network socket',
-    'Switch', 'Double switch', 'Two-way switch', 'Push button', 'Dimmer', 'Consumer unit', 'Junction box', 'Smoke detector', 'Extractor fan', 'Electric radiator',
-  ],
 }
+
+/**
+ * Libraries taken out whole, whose id is never given to a library again, so that none of their
+ * places is ever filled. The electrical symbols, in 1.9: they are the parametric objects of the
+ * Electrical symbols extension, which is always on.
+ */
+const RETIRED = ['electrical']
 
 describe('the libraries that ship with the app', () => {
   it('keep each component at its place for good', async () => {
     const libraries = bundledLibraries()
     expect(libraries.map((library) => library.id).sort()).toEqual(Object.keys(PLACES).sort())
+    expect(libraries.filter((library) => RETIRED.includes(library.id))).toEqual([])
     for (const library of libraries) {
       const held = Object.fromEntries(componentsOf(await library.load()).map((component) => [component.id, component.name]))
       const expected = Object.fromEntries(PLACES[library.id].flatMap((name, i) => (name === null ? [] : [[`${library.id}_${i + 1}`, name]])))
       expect(held, library.id).toEqual(expected)
+    }
+  })
+
+  it('say how tall each component stands, which elevations draw it as', async () => {
+    for (const library of bundledLibraries()) {
+      for (const component of componentsOf(await library.load())) expect(component.type === 'component' && component.height, `${library.id} ${component.name}`).toBeGreaterThan(0)
     }
   })
 

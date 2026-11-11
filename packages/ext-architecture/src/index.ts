@@ -1,9 +1,9 @@
-import type { Extension, Op } from '@opencalque/core'
+import type { Extension, Op, ParametricKind } from '@opencalque/core'
 import { bathtub, washbasin } from './bathroom'
 import { compass } from './compass'
 import { cornerSofa } from './furniture'
 import { radiator } from './heating'
-import { fridge, hob, sink } from './kitchen'
+import { fridge, hob, sink, wallCabinet } from './kitchen'
 import { door, windowKind } from './openings'
 import { pt } from './shared'
 import { lStair, spiralStair, straightStair, uStair } from './stairs'
@@ -24,15 +24,22 @@ export const architecture: Extension = {
   translations,
   activate(api) {
     for (const kind of [door, windowKind, straightStair, lStair, uStair, spiralStair]) api.registerParametric(kind)
-    api.registerParametric(washbasin('arch.washbasin', 'Washbasin', 600, 450, 1))
-    api.registerParametric(washbasin('arch.washbasin.double', 'Double washbasin', 1200, 500, 2))
-    api.registerParametric(bathtub)
-    api.registerParametric(hob)
-    api.registerParametric(sink)
-    api.registerParametric(fridge('arch.fridge', 'Fridge', 600, 650, 1))
-    api.registerParametric(fridge('arch.fridge.american', 'American fridge', 910, 730, 2))
-    api.registerParametric(cornerSofa)
-    api.registerParametric(radiator)
+    // How tall each stands on the floor, which an elevation draws them as, and, for those whose back
+    // goes against a wall (their own Y = 0), standing against it: they snap to walls and follow them.
+    const tall = (kind: ParametricKind, mm: number, against = true): ParametricKind => ({ ...kind, height: () => mm, ...(against ? { mount: { on: 'floor' } } : {}) })
+    api.registerParametric(tall(washbasin('arch.washbasin', 'Washbasin', 600, 450, 1), 850))
+    api.registerParametric(tall(washbasin('arch.washbasin.double', 'Double washbasin', 1200, 500, 2), 850))
+    api.registerParametric(tall(bathtub, 580))
+    // On a worktop.
+    api.registerParametric(tall(hob, 900))
+    api.registerParametric(tall(sink, 900))
+    api.registerParametric(tall(fridge('arch.fridge', 'Fridge', 600, 650, 1), 1850))
+    api.registerParametric(tall(fridge('arch.fridge.american', 'American fridge', 910, 730, 2), 1780))
+    // Hung on the wall at its height, not standing on the floor.
+    api.registerParametric(wallCabinet)
+    // Against two walls, which a snap to one cannot put it against.
+    api.registerParametric(tall(cornerSofa, 850, false))
+    api.registerParametric(tall(radiator, 600))
     api.registerParametric(compass)
 
     api.registerCommand({

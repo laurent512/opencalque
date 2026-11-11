@@ -1,9 +1,10 @@
 import { componentsOf, leavesOf, pagesOf, rootOf } from './document'
-import { add, dist, scale, type Vec2 } from './geometry'
+import { add, applyTransform, dist, scale, type Vec2 } from './geometry'
 import type { Registry } from './registry'
 import { GAP, roomAt } from './rooms'
 import type { Document, Node, NodeOf } from './schema'
 import { courseOf, cross, distToBody, dot, middleAcross, wallContains, wallSides, type Wall } from './walls/course'
+import { mountedOn, mountOf } from './walls/mount'
 import { hostWall, openingSpan, wallOpenings } from './walls/openings'
 import { wallIndex, wallsOver } from './walls/spatial'
 
@@ -14,7 +15,7 @@ import { wallIndex, wallsOver } from './walls/spatial'
  * says what to do about it. A drawing with problems is still a valid drawing.
  */
 
-export type ProblemKind = 'room-not-enclosed' | 'rooms-in-one-space' | 'wall-gap' | 'walls-overlap' | 'opening-not-in-wall' | 'opening-past-wall-end' | 'openings-overlap'
+export type ProblemKind = 'room-not-enclosed' | 'rooms-in-one-space' | 'wall-gap' | 'walls-overlap' | 'opening-not-in-wall' | 'opening-past-wall-end' | 'openings-overlap' | 'fixed-off-wall'
 
 export interface DrawingProblem {
   kind: ProblemKind
@@ -36,6 +37,12 @@ export const WALL_GAP = 300
 const LOOK_STEP = 10
 /** Lengths under this, in mm, do not count as an overlap or as sticking out. */
 const SLACK = 1
+/**
+ * An object fixed on walls (a socket, a switch) whose back is closer than this, in mm, to a wall it
+ * is not on was meant to be on it: it does not follow the wall, nor show in its elevations. Further
+ * off, it was put there on purpose (a symbol in a legend, a detail beside the plan).
+ */
+export const FIXED_NEAR = 150
 /** The sine of the angle under which two walls run the same way. */
 const PARALLEL = 0.01
 
@@ -139,6 +146,28 @@ function roomProblems(doc: Document, rooms: NodeOf<'room'>[]): DrawingProblem[] 
   return problems
 }
 
+/** An object fixed on walls lying near a wall, or in it, but not on its face: it does not follow the wall. */
+function fixedOffWall(doc: Document, node: Node, registry: Registry): DrawingProblem | null {
+  const mount = mountOf(node, registry)
+  // A unit standing on the floor may be meant to stand free, as an island: only what is fixed on walls is reported.
+  if (mount?.on !== 'wall' || node.type !== 'parametric' || mountedOn(doc, node, registry)) return null
+  const back = applyTransform({ x: 0, y: mount.back ?? 0 }, node)
+  let near: Wall | null = null
+  let off = Infinity
+  for (const wall of wallsOver(wallIndex(doc, node.parent), back, FIXED_NEAR)) {
+    const distance = distToBody(back, wall)
+    if (distance < off) [near, off] = [wall, distance]
+  }
+  if (!near || off > FIXED_NEAR) return null
+  const where = off < SLACK ? 'inside wall' : `${mm(off)} mm off the face of wall`
+  return {
+    kind: 'fixed-off-wall',
+    message: `The ${node.kind} ${named(node)} at ${point(node)} is ${where} ${named(near)} and not on it, so it does not follow the wall nor show in its elevations. Put its back on the face, turned to stand out of the wall (drag it onto the wall in the editor).`,
+    nodes: [near.id, node.id].sort(),
+    at: { x: node.x, y: node.y },
+  }
+}
+
 function openingProblems(doc: Document, openings: NodeOf<'parametric'>[], walls: Wall[], registry: Registry): DrawingProblem[] {
   const problems: DrawingProblem[] = []
   for (const node of openings) {
@@ -210,6 +239,7 @@ export function checkDrawing(doc: Document, registry: Registry, roots?: Iterable
     }
     const openings = leaves.filter((node): node is NodeOf<'parametric'> => openingSpan(node, registry) !== null)
     openingProblems(doc, openings, index.walls, registry).forEach(keep)
+    for (const node of leaves) keep(fixedOffWall(doc, node, registry))
   }
   return [...found.values()]
 }

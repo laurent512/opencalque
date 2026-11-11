@@ -29,12 +29,14 @@ const run: Size[] = [
 ]
 /** A curve and an arc are not going the way their points lie: of those, only how far apart they are can be typed. */
 const span: Size[] = [run[0]]
-/** What can be typed once an arc has its two ends. */
+/** What can be typed once an arc has its two ends, for a circle, and for the corner a fillet rounds. */
 const bend: Size[] = [{ which: 'a', label: msg('Radius'), kind: 'length' }]
 /** The sizes each tool lets you type: lengths, an angle, or for resizing a percentage. */
 const SIZES: Partial<Record<Tool, Size[]>> = {
   rect: box,
   ellipse: box,
+  circle: bend,
+  fillet: bend,
   paper: box,
   line: run,
   curve: span,
@@ -51,8 +53,8 @@ const SIZES: Partial<Record<Tool, Size[]>> = {
  * make closed shapes, which take its fill too (the line tool closes a polygon). Line weights and
  * kinds of line are set afterwards, in the properties.
  */
-const INKED: Tool[] = ['rect', 'ellipse', 'line', 'curve', 'arc', 'wall', 'gridline']
-const FILLED: Tool[] = ['rect', 'ellipse', 'line', 'curve']
+const INKED: Tool[] = ['rect', 'ellipse', 'circle', 'line', 'curve', 'arc', 'wall', 'gridline']
+const FILLED: Tool[] = ['rect', 'ellipse', 'circle', 'line', 'curve']
 
 /**
  * One size of the shape being drawn. It follows the pointer until a value is typed into it; a
@@ -135,8 +137,9 @@ export function QuickBar() {
   if (!sizes) return null
   // A length or an angle means nothing before there is a point to measure it from. A
   // width and a height do: typed first, they make a box that one click places. So does the
-  // distance of an offset, which a click then places a copy at.
-  const measurable = sizes === box || started || tool === 'offset'
+  // distance of an offset, which a click then places a copy at, the radius of a circle, which a
+  // click places by its centre, and that of a fillet, which stays for the corners made next.
+  const measurable = sizes === box || started || tool === 'offset' || tool === 'circle' || tool === 'fillet'
   const setThickness = (text: string) => {
     const mm = parseLength(text)
     if (mm !== null && mm > 0) useStore.setState({ wallThickness: mm })

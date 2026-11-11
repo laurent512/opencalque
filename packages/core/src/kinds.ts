@@ -13,14 +13,43 @@ import type { Registry } from './registry'
 import { DEFAULT_MATERIAL, type Asset, type Document, type DrawingSettings, type Node, type NodeOf, type NodeType, type WallEdge } from './schema'
 import { DEFAULT_PAPER_SCALE, paperFormat, paperSheet } from './papers'
 import { regionPerimeter, roomAt } from './rooms'
+import { drawElevationsWith, elevationPrimitives, moveViewCorner, moveViewEdge, moveViewEnd, seenArea } from './elevation'
 import { tablePrimitives } from './tables'
-import { bulgeThrough, hostWall, materialSeams, wallArc, wallMiddle, wallParallel, wallPoints, wallPolygons, wallSeams, wallOutlineRuns, wallSides, wallSpot } from './walls'
+import { bulgeThrough, heightAboveFloor, hostWall, materialSeams, mountOf, wallArc, wallMiddle, wallParallel, wallPoints, wallPolygons, wallSeams, wallOutlineRuns, wallSides, wallSpot } from './walls'
 
 export const DEFAULT_INK = '#1f1f1f'
 export const WALL_FILL = '#ffffff'
 /** The floor of a room, light enough to draw on, and the line of a divider between two rooms. */
 export const ROOM_FILL = 'rgba(96, 125, 170, 0.13)'
 export const DIVIDER_INK = '#8b9099'
+/** How long the arrows at the ends of a view line are, the way it looks, in mm; and their heads. */
+const VIEW_LINE_ARROW = 500
+const VIEW_LINE_HEAD = 180
+
+/**
+ * A view line on the plan, as the mark of a section is drawn: a line of dashes and dots from end to
+ * end, and at each end an arrow the way its views look, filled.
+ */
+function viewLinePrimitives(node: NodeOf<'viewline'>): Primitive[] {
+  const length = Math.hypot(node.b.x - node.a.x, node.b.y - node.a.y)
+  const line: Primitive = { kind: 'path', points: [node.a, node.b], dash: [14, 4, 2, 4], own: true }
+  if (length < 1e-6) return [line]
+  const d = { x: (node.b.x - node.a.x) / length, y: (node.b.y - node.a.y) / length }
+  // The way it looks: to the left of the way it runs, away from whoever looks.
+  const look = { x: d.y, y: -d.x }
+  const head = VIEW_LINE_HEAD
+  return [
+    line,
+    ...[node.a, node.b].flatMap((p): Primitive[] => {
+      const tip = { x: p.x + look.x * VIEW_LINE_ARROW, y: p.y + look.y * VIEW_LINE_ARROW }
+      const base = { x: tip.x - look.x * head, y: tip.y - look.y * head }
+      return [
+        { kind: 'path', points: [p, base], own: true },
+        { kind: 'path', points: [tip, { x: base.x + d.x * head * 0.4, y: base.y + d.y * head * 0.4 }, { x: base.x - d.x * head * 0.4, y: base.y - d.y * head * 0.4 }], closed: true, fill: 'stroke', own: true },
+      ]
+    }),
+  ]
+}
 /** A sheet of paper and its edge. */
 export const PAPER_FILL = '#ffffff'
 export const PAPER_EDGE = '#c4c8cf'
@@ -165,6 +194,30 @@ export function roomArea(node: Pick<NodeOf<'room'>, 'system' | 'decimal'>, area:
 }
 
 /** How far it is round a room's floor, from its perimeter in mm, as `roomArea` writes its area: in m, or in ft. */
+/** A height above the floor as the plan writes it: in metres, or in inches for a drawing in feet. */
+export function heightText(z: number, drawing: DrawingSettings = {}): string {
+  return drawing.system === 'imperial' ? `h ${Math.round(z / 25.4)}"` : `h ${(z / 1000).toFixed(2).replace('.', drawing.decimal ?? '.')}`
+}
+
+/** How tall the height written beside an object fixed on a wall is, in mm. */
+const HEIGHT_LABEL = 110
+
+/**
+ * The height above the floor of an object fixed on a wall, written beside it on the plan when it
+ * says so (`showHeight`): just past what it draws, on the side it stands out to, upright whichever
+ * way the object is turned. `own` is what it draws, in its own coordinates.
+ */
+function heightLabel(node: NodeOf<'parametric'>, own: Primitive[], ctx: KindContext): Primitive[] {
+  const mount = node.showHeight ? mountOf(node, ctx.registry) : null
+  const z = mount?.on === 'wall' ? heightAboveFloor(node, ctx.registry) : null
+  if (!mount || z === null) return []
+  const box = own.map(primitiveBounds).reduce<Bounds | null>((all, one) => unionBounds(all, one), null)
+  const up = mount.out === 'up'
+  const local = { x: box ? (box.minX + box.maxX) / 2 : 0, y: up ? (box?.minY ?? 0) - HEIGHT_LABEL * 0.9 : (box?.maxY ?? 0) + HEIGHT_LABEL * 0.9 }
+  const at = applyTransform(local, node)
+  return [{ kind: 'text', x: at.x, y: at.y + HEIGHT_LABEL * 0.35, text: heightText(z, ctx.doc.settings), size: HEIGHT_LABEL, align: 'center' }]
+}
+
 export function roomPerimeter(node: Pick<NodeOf<'room'>, 'system' | 'decimal'>, perimeter: number, drawing: DrawingSettings = {}): string {
   const [value, unit] = (node.system ?? drawing.system) === 'imperial' ? [perimeter / 304.8, 'ft'] : [perimeter / 1000, 'm']
   return `${value.toFixed(2).replace('.', node.decimal ?? drawing.decimal ?? '.')} ${unit}`
@@ -662,6 +715,38 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     // A table stays upright and readable: it goes to where its corner is taken, its text scaled.
     transform: (node, t) => ({ ...t.point(node), ...(node.size === undefined && t.scale === 1 ? {} : { size: t.length(node.size ?? 200) }) }),
   },
+  viewline: {
+    primitives: viewLinePrimitives,
+    move: moveAB,
+    // The edges of what it sees, by their middles, dragged across as a wall's faces are (0 its far
+    // side, which sets how far it sees; 7 the line; 8 and 9 the sides at its start and its end);
+    // its ends (1, 2), dragged along it, make its views look at part of the face only; the four
+    // corners of what it sees (3 to 6), dragged, turn that area about the corner across, a rectangle still.
+    handles: (node) => {
+      const area = seenArea(node)
+      return [mid(area[2], area[3]), node.a, node.b, ...area, mid(area[0], area[1]), mid(area[3], area[0]), mid(area[1], area[2])]
+    },
+    moveHandle: (node, index, p) =>
+      index === 0 || index >= 7
+        ? moveViewEdge(node, (['far', 'line', 'start', 'end'] as const)[index === 0 ? 0 : index - 6], p)
+        : index < 3
+          ? moveViewEnd(node, index === 1 ? 'a' : 'b', p)
+          : moveViewCorner(node, (index - 3) as 0 | 1 | 2 | 3, p),
+    snapPoints: (node) => [node.a, node.b],
+    // Mirrored, it keeps looking at what it looked at, mirrored too: its ends change places.
+    transform: (node, t) => (t.mirror ? { a: t.point(node.b), b: t.point(node.a) } : transformAB(node, t)),
+  },
+  elevation: {
+    // Its dimensions are drawn as dimensions are, in the drawing's way of writing numbers.
+    primitives: (node, ctx) =>
+      elevationPrimitives(node, ctx.doc, ctx.registry, (a, b, offset) =>
+        dimensionPrimitives(styledDimension(ctx.doc, { id: node.id, type: 'dimension', parent: node.parent, order: node.order, a, b, offset }), ctx.doc.settings),
+      ),
+    // Moved, it is drawn elsewhere; what it shows is set by its line.
+    move: moveXY,
+    // A view stays upright, to be read: it goes to where its corner is taken.
+    transform: (node, t) => ({ ...t.point(node) }),
+  },
   divider: {
     primitives: (node) => [{ kind: 'path', points: [node.a, node.b], stroke: DIVIDER_INK, dash: [8, 6], own: true }],
     move: moveAB,
@@ -863,7 +948,10 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     transform: (node, t) => ({ ...t.point(node), rotation: t.angle(node.rotation), ...(t.mirror ? { flipX: !node.flipX } : {}), ...(t.scale === 1 ? {} : { scale: tidy((node.scale ?? 1) * t.scale) }) }),
   },
   parametric: {
-    primitives: (node, ctx) => parametricPrimitives(node, ctx).map((p) => transformPrimitive(p, node)),
+    primitives: (node, ctx) => {
+      const own = parametricPrimitives(node, ctx)
+      return [...own.map((p) => transformPrimitive(p, node)), ...heightLabel(node, own, ctx)]
+    },
     move: moveXY,
     // One whose kind says which of its lengths is its size along its X axis (a door's or a window's
     // width) has the two ends of that size to drag, on that axis: each moves alone, the other
@@ -913,6 +1001,9 @@ function stretchOf(node: NodeOf<'parametric'>, registry: Registry | undefined): 
   const value = Number(registry!.resolveProps(kind, node.props)[key])
   return Number.isFinite(value) ? { key, value } : null
 }
+
+// Elevations read where furniture is from how it is drawn.
+drawElevationsWith((node, doc, registry) => nodePrimitives(node, { doc, registry, depth: 0 }))
 
 export function kindOf(node: Node): NodeKind<any> {
   return KINDS[node.type]

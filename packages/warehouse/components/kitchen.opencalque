@@ -1,6 +1,6 @@
 {
   "format": "opencalque",
-  "version": 1,
+  "version": 2,
   "id": "warehouse.kitchen",
   "name": "Kitchen",
   "unit": "mm",
@@ -25,7 +25,8 @@
       "parent": null,
       "order": "a1",
       "type": "component",
-      "description": "600 × 600"
+      "description": "600 × 600",
+      "height": 900
     },
     "kitchen_1_1": {
       "id": "kitchen_1_1",
@@ -43,7 +44,8 @@
       "parent": null,
       "order": "a2",
       "type": "component",
-      "description": "600 × 600"
+      "description": "600 × 600",
+      "height": 850
     },
     "kitchen_5_1": {
       "id": "kitchen_5_1",

@@ -246,9 +246,48 @@ export function carriesWallTypes(doc: Raw): boolean {
 }
 
 /**
+ * Whether a drawing holds views as a development build of OpenCalque 1.9 saved them (version 3):
+ * carrying their own line, before a view and its line were two nodes, or saying whether they show
+ * the walls in the way (`obstructions`) where they now say whether they show walls (`walls`).
+ * `readDocument` puts them right with `withViewLines`.
+ */
+export function carriesOwnLines(doc: Raw): boolean {
+  return isPlain(doc.nodes) && Object.values(doc.nodes).some((node) => isPlain(node) && node.type === 'elevation' && ((!('line' in node) && 'a' in node) || 'obstructions' in node))
+}
+
+/**
+ * Each view that carries its own line given a line of its own, as the app now makes them: the line
+ * (`viewline`) beside it, on its layer and named after it, with its ends and depth; the view keeps
+ * its id, its name and where it is drawn, and refers to the line. One that says `obstructions`
+ * says it as `walls`.
+ */
+export function withViewLines(doc: Raw): Raw {
+  if (!isPlain(doc.nodes)) return doc
+  const nodes: Raw = { ...doc.nodes }
+  for (const [key, found] of Object.entries(doc.nodes)) {
+    if (!isPlain(found) || found.type !== 'elevation') continue
+    const { obstructions, ...rest } = found
+    const node: Raw = 'obstructions' in found ? { ...rest, ...('walls' in found || obstructions === undefined ? {} : { walls: obstructions }) } : found
+    nodes[key] = node
+    if ('line' in node || !('a' in node)) continue
+    const { a, b, depth, ...view } = node
+    let id = `${typeof node.id === 'string' ? node.id : key}_line`
+    while (id in nodes) id = `${id}_`
+    const named = typeof node.name === 'string' ? { name: `${node.name}, line` } : {}
+    nodes[id] = { id, type: 'viewline', parent: node.parent, order: node.order, ...('layer' in node ? { layer: node.layer } : {}), ...named, a, b, ...(depth === undefined ? {} : { depth }) }
+    nodes[key] = { ...view, line: id }
+  }
+  return { ...doc, nodes }
+}
+
+/**
  * The steps that bring a drawing from one version of the format to the next, as plain JSON: the
  * one at index 0 turns version 1 into version 2, and so on.
  */
 // Wall types go first: what one gave a wall inside a component is then the wall's own, and the
 // colour of the wall's layer can be given to it as to any other line.
-export const MIGRATIONS: ((doc: Raw) => Raw)[] = [(doc) => toVersion2(withoutWallTypes(doc))]
+export const MIGRATIONS: ((doc: Raw) => Raw)[] = [
+  (doc) => toVersion2(withoutWallTypes(doc)),
+  // Version 3 brings elevations and sections (the `viewline` and `elevation` node types) and nothing that changes what was there.
+  (doc) => doc,
+]

@@ -6,7 +6,7 @@ z.config({ jitless: true })
 export const FORMAT = 'opencalque'
 /** What `format` was before the project was renamed. Such drawings are still read. */
 export const FORMER_FORMAT = 'opencad'
-export const FORMAT_VERSION = 2
+export const FORMAT_VERSION = 3
 
 const Id = z.string().min(1)
 
@@ -198,6 +198,7 @@ export const NodeSchema = z
         ...base,
         type: z.literal('component'),
         description: z.string().optional(),
+        height: z.number().positive().optional().describe('How tall what it holds stands on the floor, in mm: a bed, a wardrobe. Elevations draw its placements in front of the face they look at as boxes this tall; without it, they leave them out.'),
         sheet: z
           .object({ width: z.number().positive(), height: z.number().positive() })
           .optional()
@@ -301,6 +302,30 @@ export const NodeSchema = z
         language: z.string().optional().describe('The language code its rows are named in where they take a name from an extension, as "fr".'),
       })
       .describe('A table of quantities placed on the drawing, its top-left corner at (x, y): what is on a page, counted and measured, and kept up to date as the drawing changes.'),
+    z
+      .object({
+        ...base,
+        type: z.literal('viewline'),
+        a: Vec2Schema.describe('Where the line starts on the plan: the left end of the views taken from it.'),
+        b: Vec2Schema.describe('Where it ends: the right end of those views.'),
+        depth: z.number().nonnegative().optional().describe('How far beyond the line its views see, in mm: their far side, which lies on the face of the wall for an elevation of it. Defaults to 6000.'),
+      })
+      .describe(
+        "The line on the plan an elevation or a section is taken from, drawn on the plan as a reference line with an arrow at each end, the way it looks: a cut along the line from a to b, seen from the right of that line (as it runs from a to b, which is below a line drawn from left to right, since Y grows downward), so that a is on the left of its views, looking beyond it up to depth. What the line crosses is drawn cut through (walls, above and below the doors and windows they are cut at); beyond it, up to depth, the faces turned towards it with their doors, windows and what is fixed on them at its height, the furniture, and the walls in the way. A line whose far side (depth beyond it) lies on the face of a wall makes elevations of that wall, and follows the wall when the wall changes: usually 1000 in front of the face, with depth 1000. One across the plan makes sections. What it sees is drawn by the elevation nodes that refer to it, any number, anywhere; removing the line removes them.",
+      ),
+    z
+      .object({
+        ...base,
+        type: z.literal('elevation'),
+        line: Id.describe('The id of the viewline it is the view of: what it sees, and from where.'),
+        x: z.number(),
+        y: z.number(),
+        walls: z.boolean().optional().describe('false leaves out the walls in front of the faces it sees, to see all of them: those its line cuts, and those in the way (a wall at an angle within what it sees). Shown when left out, all plain grey.'),
+        dimensions: z.boolean().optional().describe('false leaves out the dimensions it draws by itself: along the floor from its start to each object fixed on the face, and the height of each above the floor. Shown when left out.'),
+      })
+      .describe(
+        'An elevation or a section: the view of what its viewline sees, drawn from the plan each time it is drawn, on any page, with (x, y) the point of the floor under the start of its line (a); heights go up from there. Moving it moves only where it is drawn; what it shows is set by its line.',
+      ),
     z
       .object({ ...base, type: z.literal('divider'), a: Vec2Schema, b: Vec2Schema })
       .describe('A line that separates two rooms where there is no wall, for example between a kitchen and a living room in one open space. It bounds rooms as a wall does and takes no space.'),
@@ -475,6 +500,12 @@ export const NodeSchema = z
         y: z.number(),
         rotation,
         flipX: z.boolean().optional(),
+        z: z
+          .number()
+          .nonnegative()
+          .optional()
+          .describe("How high above the floor it is, in mm, to its centre: a socket's or a switch's height. Left out, its kind's usual height for an object fixed on a wall, else none. The plan writes it only with showHeight."),
+        showHeight: z.boolean().optional().describe('For an object fixed on a wall: its height above the floor is written beside it on the plan, as electrical plans do.'),
       })
       .describe('An object generated from parameters by an extension. Unknown kinds are preserved and drawn as a placeholder.'),
   ])

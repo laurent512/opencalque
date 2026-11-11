@@ -1,4 +1,4 @@
-import { boundsContainPoint, dist, snapTo, sub, wallPoints, type Snap, type Vec2 } from '@opencalque/core'
+import { boundsContainPoint, dist, norm, snapLinesOf, snapTo, sub, wallPoints, type Snap, type Vec2 } from '@opencalque/core'
 import { usePrefs } from '../prefs'
 import { gridStep } from '../view'
 import { MEASURING, SNAP_REACH, type Keys } from './gesture'
@@ -11,6 +11,39 @@ import { round } from './shapes'
 const REST = 250
 /** How many points rested on are kept to line up with: one across, one up and down, and one more. */
 const TRACKED = 3
+/** How many lines ending at a point rested on are carried on past it, at most. */
+const CARRIED = 8
+
+/** A line carried on past a point rested on: the point, and the way the line goes on from it. */
+type Carried = { from: Vec2; dir: Vec2 }
+/** The lines that end at each point kept, found once when it is kept. */
+const carriedFrom = new WeakMap<Vec2, Carried[]>()
+
+/**
+ * The lines of what is drawn that end at `p` (or turn there, as at the corner of a rectangle),
+ * each carried on past it the way it was going.
+ */
+function linesEndingAt(c: Canvas, p: Vec2): Carried[] {
+  const ways: Carried[] = []
+  const add = (from: Vec2) => {
+    const dir = norm(sub(p, from))
+    if (dist(from, p) > 1e-6 && !ways.some((w) => dist(w.dir, dir) < 1e-6) && ways.length < CARRIED) ways.push({ from: p, dir })
+  }
+  for (const item of c.snappable) {
+    if (!item.bounds || !boundsContainPoint(item.bounds, p, 1)) continue
+    for (const line of snapLinesOf(item)) {
+      for (let i = 0; i < line.length; i++) {
+        if (dist(line[i], p) > 1e-6) continue
+        if (i > 0) add(line[i - 1])
+        if (i + 1 < line.length) add(line[i + 1])
+      }
+    }
+  }
+  return ways
+}
+
+/** The lines carried on past the points rested on lately. */
+const carriedLines = (c: Canvas): Carried[] => trackedPoints(c).flatMap((q) => carriedFrom.get(q) ?? [])
 
 /** The points the pointer rested on lately, the latest first: what is drawn lines up with them. Another tool forgets them. */
 export function trackedPoints(c: Canvas): Vec2[] {
@@ -29,7 +62,11 @@ function rest(c: Canvas, hit: Snap | null): void {
   const { resting } = c.tracked
   if (resting && on && dist(on, resting.p) < 1e-6) return
   const now = performance.now()
-  if (resting && now - resting.since >= REST) c.tracked.points = [resting.p, ...trackedPoints(c).filter((q) => dist(q, resting.p) > 1e-6)].slice(0, TRACKED)
+  if (resting && now - resting.since >= REST) {
+    c.tracked.points = [resting.p, ...trackedPoints(c).filter((q) => dist(q, resting.p) > 1e-6)].slice(0, TRACKED)
+    // A point where lines end also carries them on past it, as CAD programs track.
+    if (!carriedFrom.has(resting.p)) carriedFrom.set(resting.p, linesEndingAt(c, resting.p))
+  }
   c.tracked.resting = on ? { p: on, since: now } : null
 }
 
@@ -50,12 +87,12 @@ const stepFrom = (from: Vec2, dir: Vec2, t: number): Vec2 => ({ x: from.x + roun
 /**
  * Where a point lands after snapping: on what is drawn nearby (a point, the middle of a line, a
  * crossing, the foot of a perpendicular from `from`, a place upright from one point and level with
- * another, of those the pointer rested on and `from`, the line itself, or upright or level with
- * one of them), else on the grid.
+ * another, of those the pointer rested on and `from`, a line ending at one of those carried on past
+ * it, or `carried`, the line itself, or upright or level with one of them), else on the grid.
  * Shift holds it to 45° steps from `from`, where it still lines up with what is drawn
  * (`heldLine`); Alt turns snapping off.
  */
-export function snap(c: Canvas, world: Vec2, e: Keys, exclude: string[], from?: Vec2): Target {
+export function snap(c: Canvas, world: Vec2, e: Keys, exclude: string[], from?: Vec2, carried: Carried[] = []): Target {
   const { zoom } = get().view
   const { snapToGrid, snapToObjects } = usePrefs.getState()
   if (e.altKey) return { p: world, marker: null }
@@ -70,7 +107,7 @@ export function snap(c: Canvas, world: Vec2, e: Keys, exclude: string[], from?: 
     return measuring ? heldMeasure(c, world, from, angle, exclude) : heldLine(c, world, from, angle, exclude)
   }
   const gridded = { x: Math.round(world.x / step) * step, y: Math.round(world.y / step) * step }
-  const hit = snapToObjects ? snapTo(c.snappable, world, SNAP_REACH / zoom, { exclude, from, gridded: onGrid ? gridded : undefined, aligners: trackedPoints(c) }) : null
+  const hit = snapToObjects ? snapTo(c.snappable, world, SNAP_REACH / zoom, { exclude, from, gridded: onGrid ? gridded : undefined, aligners: trackedPoints(c), extensions: [...carried, ...carriedLines(c)] }) : null
   rest(c, hit)
   if (hit) {
     // A point of an object (or its centre) is taken exactly as it is, and so is what a place lined up with points

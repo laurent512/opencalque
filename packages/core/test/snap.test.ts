@@ -51,6 +51,32 @@ describe('snapping a point', () => {
     expect(snapTo(scene, { x: 2010, y: 3030 }, 100, { from: { x: 0, y: 3000 } })).toMatchObject({ p: { x: 2010, y: 3000 }, kind: 'aligned' })
   })
 
+  it('carries a line on past the end it is given, stopping where that meets a line or a level through a point', () => {
+    // A line on the slant ending at (1000, 1000), carried on down and to the right; an upright line further on.
+    const scene = sceneOf([line('slant', 0, 0, 1000, 1000), line('upright', 3000, 0, 3000, 5000)])
+    const extensions = [{ from: { x: 1000, y: 1000 }, dir: { x: Math.SQRT1_2, y: Math.SQRT1_2 } }]
+    const on = snapTo(scene, { x: 2030, y: 1970 }, 100, { extensions })
+    expect(on?.kind).toBe('extension')
+    near(on?.p, 2000, 2000)
+    expect(on?.guides).toEqual([[{ x: 1000, y: 1000 }, on!.p]])
+    // Where it meets the upright line, that is taken rather than the place on the line.
+    const meets = snapTo(scene, { x: 2960, y: 3000 }, 100, { extensions })
+    expect(meets?.kind).toBe('extension')
+    near(meets?.p, 3000, 3000)
+    // And where it is level with a point rested on, with a guide from that point.
+    const level = snapTo(scene, { x: 2510, y: 2480 }, 100, { extensions, aligners: [{ x: 0, y: 2500 }] })
+    near(level?.p, 2500, 2500)
+    expect(level?.guides).toHaveLength(2)
+    // Behind its end, or far from its way, nothing.
+    expect(snapTo(scene, { x: 500, y: 520 }, 100, { extensions, exclude: ['slant'] })).toBeNull()
+    expect(snapTo(scene, { x: 2000, y: 1500 }, 100, { extensions })).toBeNull()
+    // Along a level line carried on, by grid steps when the grid is on.
+    const flat = sceneOf([line('level', 0, 0, 1000, 0)])
+    expect(snapTo(flat, { x: 2034, y: 30 }, 100, { extensions: [{ from: { x: 1000, y: 0 }, dir: { x: 1, y: 0 } }], gridded: { x: 2000, y: 0 } })).toMatchObject({ p: { x: 2000, y: 0 }, kind: 'extension' })
+    // A point of the drawing still wins over the line carried on.
+    expect(snapTo(scene, { x: 3020, y: 20 }, 100, { extensions })).toEqual({ p: { x: 3000, y: 0 }, kind: 'point' })
+  })
+
   it('takes the centre of a rectangle turned or not, of a circle, and of a closed shape, never of an open one', () => {
     const scene = sceneOf([
       add({ type: 'rect', id: 'box', x: 0, y: 0, width: 2000, height: 1000 }),

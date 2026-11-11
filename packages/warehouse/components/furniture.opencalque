@@ -1,6 +1,6 @@
 {
   "format": "opencalque",
-  "version": 1,
+  "version": 2,
   "id": "warehouse.furniture",
   "name": "Furniture",
   "unit": "mm",
@@ -25,7 +25,8 @@
       "parent": null,
       "order": "a1",
       "type": "component",
-      "description": "1600 × 2000"
+      "description": "1600 × 2000",
+      "height": 500
     },
     "furniture_1_1": {
       "id": "furniture_1_1",
@@ -449,7 +450,8 @@
       "parent": null,
       "order": "a2",
       "type": "component",
-      "description": "900 × 2000"
+      "description": "900 × 2000",
+      "height": 500
     },
     "furniture_2_1": {
       "id": "furniture_2_1",
@@ -752,7 +754,8 @@
       "parent": null,
       "order": "a3",
       "type": "component",
-      "description": "1600 × 850"
+      "description": "1600 × 850",
+      "height": 850
     },
     "furniture_3_1": {
       "id": "furniture_3_1",
@@ -1481,7 +1484,8 @@
       "parent": null,
       "order": "a4",
       "type": "component",
-      "description": "850 × 850"
+      "description": "850 × 850",
+      "height": 850
     },
     "furniture_4_1": {
       "id": "furniture_4_1",
@@ -1968,7 +1972,8 @@
       "parent": null,
       "order": "a5",
       "type": "component",
-      "description": "450 × 480"
+      "description": "450 × 480",
+      "height": 850
     },
     "furniture_5_1": {
       "id": "furniture_5_1",
@@ -2366,7 +2371,8 @@
       "parent": null,
       "order": "a6",
       "type": "component",
-      "description": "1800 × 900 table"
+      "description": "1800 × 900 table",
+      "height": 750
     },
     "furniture_6_1": {
       "id": "furniture_6_1",
@@ -4724,7 +4730,8 @@
       "parent": null,
       "order": "a7",
       "type": "component",
-      "description": "1400 × 700"
+      "description": "1400 × 700",
+      "height": 750
     },
     "furniture_7_1": {
       "id": "furniture_7_1",
@@ -6515,7 +6522,8 @@
       "parent": null,
       "order": "a8",
       "type": "component",
-      "description": "1800 × 600"
+      "description": "1800 × 600",
+      "height": 2100
     },
     "furniture_8_1": {
       "id": "furniture_8_1",
@@ -6943,7 +6951,8 @@
       "parent": null,
       "order": "a9",
       "type": "component",
-      "description": "Ø 900"
+      "description": "Ø 900",
+      "height": 400
     },
     "furniture_9_1": {
       "id": "furniture_9_1",

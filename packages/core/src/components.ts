@@ -165,12 +165,22 @@ export function transplantOps(
   source: Document,
   from: string,
   to: string,
-  options: { components: Record<string, string>; only?: Set<string>; fallbackLayer?: string; onTop?: boolean },
-): { ops: Op[]; top: string[] } {
+  options: {
+    components: Record<string, string>
+    only?: Set<string>
+    fallbackLayer?: string
+    onTop?: boolean
+    /** Nodes that keep their id where they land, as the lines a clipboard refers to. */
+    keep?: Set<string>
+    /** The ids of the view lines, copied before, that the views copied here are of. */
+    lines?: Map<string, string>
+  },
+): { ops: Op[]; top: string[]; ids: Map<string, string> } {
   const layerByName = new Map(layersOf(target).map((l) => [l.name, l.id]))
   const layered = rootOf(target, to)?.type !== 'component'
   const ops: Op[] = []
   const top: string[] = []
+  const ids = new Map<string, string>()
   const copyInto = (parent: string, into: string, depth: number) => {
     for (const child of childrenOf(source, parent)) {
       if (depth === 0 && options.only && !options.only.has(child.id)) continue
@@ -196,7 +206,8 @@ export function transplantOps(
       }
       const sourceLayer = child.layer === undefined ? undefined : source.layers[child.layer]
       const layer = layered ? ((sourceLayer && layerByName.get(sourceLayer.name)) ?? options.fallbackLayer) : undefined
-      const node = { ...child, id: newId(child.type === 'group' ? 'group' : 'n'), parent: into, layer }
+      const node = { ...child, id: options.keep?.has(child.id) ? child.id : newId(child.type === 'group' ? 'group' : 'n'), parent: into, layer }
+      ids.set(child.id, node.id)
       if (node.layer === undefined) delete node.layer
       // Added without an order, each goes on top of the last: the children are taken bottom first.
       if (depth === 0 && options.onTop) delete (node as { order?: string }).order
@@ -211,7 +222,18 @@ export function transplantOps(
     }
   }
   copyInto(from, to, 0)
-  return { ops, top }
+  // A view is of the copy of its line, when its line was copied too, and comes after it, once it is there.
+  const views: Op[] = []
+  const rest: Op[] = []
+  for (const op of ops) {
+    if (op.op !== 'add_node' || op.node.type !== 'elevation') rest.push(op)
+    else {
+      const line = ids.get(op.node.line) ?? options.lines?.get(op.node.line)
+      if (line) op.node.line = line
+      views.push(op)
+    }
+  }
+  return { ops: [...rest, ...views], top, ids }
 }
 
 /**

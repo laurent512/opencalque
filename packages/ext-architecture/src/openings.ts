@@ -13,7 +13,7 @@ export const door: ParametricKind = {
     HEIGHT(2040),
     { key: 'type', label: 'Type', type: 'string', default: 'Single', options: ['Single', 'Double', 'Sliding', 'Opening only'] },
     { key: 'hinge', label: 'Hinge', type: 'string', default: 'Left', options: ['Left', 'Right'] },
-    { key: 'angle', label: 'Open angle', type: 'number', default: 90 },
+    { key: 'angle', label: 'Open angle', type: 'number', default: 90, unit: 'angle' },
     OTHER_SIDE,
   ],
   opening: ({ width }) => ({ from: 0, to: atLeast(1, width) }),
@@ -40,6 +40,17 @@ export const door: ParametricKind = {
     if (hinge === 'Right') prims = mirrorAlong(prims, w)
     return flip ? mirrorAcross(prims) : prims
   },
+  // Seen from in front: its frame from the floor to its height, the leaves, and a handle on the side that opens.
+  front({ width, height, type, hinge }) {
+    const w = atLeast(1, width)
+    const top = -atLeast(1, height)
+    const prims: Primitive[] = [outline([pt(0, 0), pt(w, 0), pt(w, top), pt(0, top)])]
+    if (type === 'Double' || type === 'Sliding') prims.push(line([pt(w / 2, 0), pt(w / 2, top)], THIN))
+    const handle = (x: number, toward: 1 | -1) => line([pt(x, -1000), pt(x + toward * 100, -1000)], HEAVY)
+    if (type === 'Single') prims.push(hinge === 'Right' ? handle(80, 1) : handle(w - 80, -1))
+    else if (type === 'Double') prims.push(handle(w / 2 - 80, -1), handle(w / 2 + 80, 1))
+    return prims
+  },
 }
 
 export const windowKind: ParametricKind = {
@@ -53,10 +64,12 @@ export const windowKind: ParametricKind = {
     { key: 'glazing', label: 'Glazing', type: 'string', default: 'Double', options: ['Single', 'Double', 'Triple'] },
     HEIGHT(1250),
     { key: 'sill', label: 'Sill depth', type: 'number', default: 50, unit: 'length' },
+    { key: 'sillHeight', label: 'Sill height', type: 'number', default: 900, unit: 'length' },
     OTHER_SIDE,
   ],
   opening: ({ width }) => ({ from: 0, to: atLeast(1, width) }),
   size: { x: 'width' },
+  sill: 'sillHeight',
   build({ width, panes, glazing, sill, flip }, env) {
     const w = atLeast(1, width)
     const h = (env.wallThickness ?? LOOSE_WALL) / 2
@@ -78,5 +91,19 @@ export const windowKind: ParametricKind = {
     }
     if (sill > 0) prims.push(outline([pt(-30, -h), pt(w + 30, -h), pt(w + 30, -h - sill), pt(-30, -h - sill)], THIN))
     return flip ? mirrorAcross(prims) : prims
+  },
+  // Seen from in front: from its sill height up, its frame, and a line between each pane.
+  front({ width, height, panes, sillHeight }) {
+    const w = atLeast(1, width)
+    const bottom = -Math.max(0, Number(sillHeight) || 0) || 0
+    const top = bottom - atLeast(1, height)
+    const frame = Math.min(50, w / 4)
+    const prims: Primitive[] = [outline([pt(0, bottom), pt(w, bottom), pt(w, top), pt(0, top)]), outline([pt(frame, bottom - frame), pt(w - frame, bottom - frame), pt(w - frame, top + frame), pt(frame, top + frame)], THIN)]
+    const n = count(panes)
+    for (let i = 1; i < n; i++) {
+      const x = frame + ((w - 2 * frame) * i) / n
+      prims.push(line([pt(x, bottom - frame), pt(x, top + frame)], THIN))
+    }
+    return prims
   },
 }

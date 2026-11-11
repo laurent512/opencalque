@@ -1,7 +1,8 @@
 import { useWindows } from '../windows'
 import { stopBrowsing } from '../actions/instances'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { type NodeOf, type Primitive, dist, gridlineBubbles, wallEndState, boundsFrame, buildScene, connectedWalls, frameContains, frameGrips, hitTest, kindOf, modifierKind, modifierParams, newId, placedScene, resizeFrame, rotate, sceneBounds, turnedBox, wallEdgeLines, wallLength, wallMiddle } from '@opencalque/core'
+import { type NodeOf, type Primitive, dist, lineOf, rootOf, seenArea, shownInElevations, viewsOf, gridlineBubbles, wallEndState, boundsFrame, buildScene, connectedWalls, frameContains, frameGrips, hitTest, kindOf, modifierKind, modifierParams, newId, placedScene, resizeFrame, rotate, sceneBounds, turnedBox, wallEdgeLines, wallLength, wallMiddle } from '@opencalque/core'
+import { t } from '../i18n'
 import { finishTextEdit, zoomToFit } from '../actions'
 import { commandFor, onCommand } from '../commands'
 import { registry, useExtensions } from '../extensions'
@@ -137,6 +138,32 @@ export function CanvasView() {
   }, [doc, selection, extensionsVersion])
 
   // The sizes of the one selected shape, shown beside it while nothing is being drawn.
+  // What is selected, where an elevation shows it too.
+  const inViews = useMemo(() => shownInElevations(doc, registry, selection).map(({ box }) => box), [doc, selection, extensionsVersion])
+  // The view lines selected, or those of the views selected, when on this page: what they see, up to
+  // their depth, and where their start and end are on each view of them on this page, over its top
+  // at its left and right.
+  const viewLines = useMemo(() => {
+    const here = rootOf(doc, scope)?.id
+    const lines = new Map<string, NodeOf<'viewline'>>()
+    for (const id of selection) {
+      const node = doc.nodes[id]
+      const line = node?.type === 'viewline' ? node : node?.type === 'elevation' ? lineOf(doc, node) : null
+      if (line && rootOf(doc, line.parent)?.id === here) lines.set(line.id, line)
+    }
+    return [...lines.values()].map((line) => ({
+      a: line.a,
+      b: line.b,
+      area: seenArea(line),
+      marks: viewsOf(doc, line.id).flatMap((view) => {
+        const item = scene.find((one) => one.id === view.id)
+        const box = item ? sceneBounds([item]) : null
+        return box ? [{ start: { x: view.x, y: box.minY }, end: { x: view.x + dist(line.a, line.b), y: box.minY } }] : []
+      }),
+    }))
+  }, [doc, selection, scene, scope])
+  // A view line's ends are dragged by their arrows, and the edges of what it sees anywhere along them: only its corners are drawn as points.
+  const drawnHandles = useMemo(() => (selection.length === 1 && doc.nodes[selection[0]]?.type === 'viewline' ? handles.slice(3, 7) : handles), [handles, selection, doc])
   const selectionLabels = useMemo((): SizeLabel[] => {
     const node = tool === 'select' && selection.length === 1 ? doc.nodes[selection[0]] : undefined
     if (node?.type === 'paper') return paperLabel(node)
@@ -258,8 +285,8 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, handles, { ...overlay, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette, around)
-  }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines])
+    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, viewLines, viewWords: { start: t('Start'), end: t('End') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette, around)
+  }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines, inViews, viewLines, drawnHandles])
 
   // Lets the quick bar finish the shape in progress with the sizes typed there.
   useEffect(() => {
@@ -332,7 +359,7 @@ export function CanvasView() {
     // A finished measurement stays on screen until the next one starts.
     const { marker } = out
     const tracked = trackedPoints(c)
-    setOverlay((o) => ({ tracked: tracked.length > 0 ? tracked : undefined, cut: out.cut, trim: out.trim, lit: out.lit, face: out.face, box: out.turning, marker: marker && { ...marker, label: snapName(marker.kind) }, smart: out.smart ?? (marker?.guides ? { lines: marker.guides, gaps: [] } : undefined), link: out.link, labels: out.labels, angle: out.angle, axis: out.axis, guide: out.guide, ghosts: out.ghosts, marquee: out.marquee, clearanceHover: out.clearanceHover, measure: out.measure ?? o.measure, angleReading: out.angleReading ?? o.angleReading }))
+    setOverlay((o) => ({ tracked: tracked.length > 0 ? tracked : undefined, cut: out.cut, trim: out.trim, lit: out.lit, face: out.face, box: out.turning, marker: marker && { ...marker, label: snapName(marker.kind) }, smart: out.smart ?? (marker?.guides ? { lines: marker.guides, gaps: [], dashed: marker.kind === 'extension' } : undefined), link: out.link, labels: out.labels, angle: out.angle, axis: out.axis, guide: out.guide, ghosts: out.ghosts, marquee: out.marquee, clearanceHover: out.clearanceHover, measure: out.measure ?? o.measure, angleReading: out.angleReading ?? o.angleReading }))
     // A failed preview has put its reason in the status bar; keep it there.
     if (out.previewed) useStore.setState({ status: out.status, drawLive: out.live })
   }
@@ -454,7 +481,7 @@ export function CanvasView() {
       // Not in the middle of dragging something: only a drawing being made is put down, as Esc does.
       const g = c.gesture
       if (g.kind === 'poly') finishPoly(c, g, false)
-      else if (['draw', 'offset', 'arc', 'parallel', 'measure', 'angle', 'turn', 'displace'].includes(g.kind)) reset(c)
+      else if (['draw', 'offset', 'arc', 'parallel', 'fillet', 'measure', 'angle', 'turn', 'displace'].includes(g.kind)) reset(c)
       else if (g.kind !== 'idle') return
       if (get().tool !== 'select') setTool('select')
     }

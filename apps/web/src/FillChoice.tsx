@@ -78,7 +78,7 @@ export function HatchRows({ value, onChange, layer }: { value: Pattern; onChange
       </div>
       {/* No finer than the pattern is drawn: what shows is what is drawn. */}
       <Field label={t('Spacing')} numeric length min={finest} value={Math.max(finest, value.spacing ?? usual.spacing)} onCommit={(spacing: number) => spacing > 0 && onChange({ ...value, spacing: Math.max(finest, spacing) })} />
-      <Field label={t('Angle')} numeric value={value.angle ?? usual.angle} onCommit={(angle: number) => onChange({ ...value, angle })} />
+      <Field label={t('Angle')} numeric suffix="°" value={value.angle ?? usual.angle} onCommit={(angle: number) => onChange({ ...value, angle })} />
     </div>
   )
 }

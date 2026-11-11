@@ -79,7 +79,7 @@ export const OpSchema = z.discriminatedUnion('op', [
     .describe('Changes properties of a node. Set "parent" or "order" to move it. "id" and "type" cannot change.'),
   z
     .object({ op: z.literal('remove_node'), id: z.string() })
-    .describe('Removes a node and everything inside it. Removing a component also removes its instances.'),
+    .describe('Removes a node and everything inside it. Removing a component also removes its instances, and removing a viewline the elevations drawn from it.'),
   z.object({ op: z.literal('add_layer'), layer: z.looseObject({ name: z.string() }) }),
   z.object({ op: z.literal('update_layer'), id: z.string(), patch }),
   z
@@ -178,7 +178,7 @@ function raise(batch: Batch, parent: string | null, order: string): void {
 
 /**
  * Removes nodes as `remove_node` operations one after the other would: each with everything
- * inside it however deeply, and a component with its instances. Naming a node that an earlier one
+ * inside it however deeply, a component with its instances, and a view line with its views. Naming a node that an earlier one
  * of them took along is an error, as it would be one at a time.
  */
 function removeNodes(d: Document, ids: string[]): void {
@@ -191,10 +191,12 @@ function removeNodes(d: Document, ids: string[]): void {
       if (list) list.push(node.id)
       else children.set(node.parent, [node.id])
     }
-    if (node.type === 'instance') {
-      const list = instances.get(node.component)
+    // A view is removed with its line, as a placement is with its component.
+    const used = node.type === 'instance' ? node.component : node.type === 'elevation' ? node.line : null
+    if (used !== null) {
+      const list = instances.get(used)
       if (list) list.push(node.id)
-      else instances.set(node.component, [node.id])
+      else instances.set(used, [node.id])
     }
     if (node.type === 'page') pages++
   }
@@ -208,7 +210,8 @@ function removeNodes(d: Document, ids: string[]): void {
       if (doomed.has(next)) continue
       doomed.add(next)
       queue.push(...(children.get(next) ?? []))
-      if (d.nodes[next]?.type === 'component') queue.push(...(instances.get(next) ?? []))
+      const type = d.nodes[next]?.type
+      if (type === 'component' || type === 'viewline') queue.push(...(instances.get(next) ?? []))
     }
   }
   for (const id of doomed) delete d.nodes[id]
@@ -268,6 +271,7 @@ function checkNode(d: Document, node: Node): void {
   if (node.type === 'dimension' && node.dimensionStyle !== undefined && !d.dimensionStyles?.[node.dimensionStyle]) throw new OpError(`Unknown dimension style "${node.dimensionStyle}"`)
   if (node.type === 'room' && node.material !== undefined && !d.materials?.[node.material]) throw new OpError(`Unknown material "${node.material}"`)
   if (node.type === 'wall' && node.material !== undefined && !d.materials?.[node.material]) throw new OpError(`Wall ${node.id}: unknown material "${node.material}"`)
+  if (node.type === 'elevation' && d.nodes[node.line]?.type !== 'viewline') throw new OpError(`Node ${node.id}: unknown view line "${node.line}"; a view is drawn from a viewline of the drawing`)
   if (node.type === 'instance') {
     if (d.nodes[node.component]?.type !== 'component') throw new OpError(`Unknown component "${node.component}"`)
     if (root.type === 'component' && componentUses(d, node.component, root.id)) {

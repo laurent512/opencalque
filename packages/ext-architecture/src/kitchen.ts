@@ -1,5 +1,5 @@
 import type { ParametricKind, Primitive } from '@opencalque/core'
-import { atLeast, circle, clamp, count, DEPTH, line, MAX_BOWLS, outline, pt, roundBox, sizedBox, THIN, WIDTH } from './shared'
+import { atLeast, circle, clamp, count, DEPTH, HEIGHT, line, MAX_BOWLS, outline, pt, roundBox, sizedBox, THIN, WIDTH } from './shared'
 
 // Kitchen pieces stand against the wall by their top edge, as the units of the kitchen library do,
 // each in its stretch of worktop: placed side by side, they make a run of units.
@@ -130,3 +130,48 @@ export const fridge = (kind: string, label: string, width: number, depth: number
     return prims
   },
 })
+
+/** The most doors a wall cabinet is drawn with: a value typed by mistake must not draw a thousand. */
+const MAX_DOORS = 8
+/** What is above the plane a plan is cut at is drawn dashed. */
+const ABOVE = [6, 4]
+
+/**
+ * A wall cabinet ("meuble haut"): hung on the wall above the worktop, its back against the face
+ * (its own Y = 0), at a height that is that of its underside, as a fitter measures it. On the plan,
+ * as what is above the cut, dashed, crossed corner to corner; seen from in front, its doors, each
+ * with its handle near the bottom.
+ */
+export const wallCabinet: ParametricKind = {
+  kind: 'arch.wallcabinet',
+  label: 'Wall cabinet',
+  category: 'kitchen',
+  description: 'Hung on the wall above the worktop, drawn dashed as what is above the cut is. Its height above the floor is that of its underside.',
+  params: [{ ...WIDTH, default: 600 }, DEPTH(350), HEIGHT(700), { key: 'doors', label: 'Doors', type: 'number', default: 1 }],
+  box: sizedBox('width', 'depth', MIN_COUNTER_UNIT, 200),
+  mount: { on: 'wall', height: 1450, measured: 'bottom' },
+  build({ width, depth }) {
+    const w = atLeast(1, width)
+    const d = atLeast(1, depth)
+    return [
+      { kind: 'path', points: [pt(0, 0), pt(w, 0), pt(w, d), pt(0, d)], closed: true, dash: ABOVE },
+      line([pt(0, 0), pt(w, d)], { strokeWidth: 0.5, dash: ABOVE }),
+      line([pt(w, 0), pt(0, d)], { strokeWidth: 0.5, dash: ABOVE }),
+    ]
+  },
+  front({ width, height, doors }) {
+    const w = atLeast(1, width)
+    const h = atLeast(1, height)
+    const n = Math.min(MAX_DOORS, count(doors))
+    const prims: Primitive[] = [outline([pt(0, 0), pt(w, 0), pt(w, -h), pt(0, -h)])]
+    for (let i = 1; i < n; i++) prims.push(line([pt((w * i) / n, 0), pt((w * i) / n, -h)], THIN))
+    // A handle along the bottom of each door, in its middle, where it is reached from below.
+    for (let i = 0; i < n; i++) {
+      const middle = (w * (i + 0.5)) / n
+      const reach = Math.min(50, w / n / 4)
+      prims.push(line([pt(middle - reach, -45), pt(middle + reach, -45)], { strokeWidth: 2 }))
+    }
+    return prims
+  },
+}
+

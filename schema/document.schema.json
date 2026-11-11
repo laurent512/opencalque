@@ -8,7 +8,7 @@
     },
     "version": {
       "type": "number",
-      "const": 2
+      "const": 3
     },
     "id": {
       "type": "string",
@@ -758,6 +758,11 @@
               },
               "description": {
                 "type": "string"
+              },
+              "height": {
+                "description": "How tall what it holds stands on the floor, in mm: a bed, a wardrobe. Elevations draw its placements in front of the face they look at as boxes this tall; without it, they leave them out.",
+                "type": "number",
+                "exclusiveMinimum": 0
               },
               "sheet": {
                 "description": "Makes the component what is on every sheet of the drawing: a title, a logo, a north arrow. It is the size, in millimetres of real paper, of the sheet its children are drawn on (297 × 210 for an A4 lying), from that sheet's top-left corner. Every paper draws them over itself at its own scale, each kept at its distance from the corner of the sheet it is nearest to, so a sheet of another size has them in its own corners. In their texts, {sheet}, {scale}, {format}, {page}, {project} and the other fields are filled in for each sheet. A drawing has one such component; a paper that is \"plain\" leaves it out.",
@@ -2157,6 +2162,437 @@
             ],
             "additionalProperties": false,
             "description": "A table of quantities placed on the drawing, its top-left corner at (x, y): what is on a page, counted and measured, and kept up to date as the drawing changes."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top). A key of the fractional-indexing package, such as \"a0\", \"a1\" or \"a0V\"; leave it out when adding a node to put it on top."
+              },
+              "layer": {
+                "description": "Id of the layer the node is on. A node inside a component has none: what a component holds is drawn on the layer of each of its instances.",
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color. An instance has none: it looks as its component is drawn.",
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'. Any colour property may instead be a shared colour, \"var(--<id>)\", or \"var(--layer)\": the colour of the node's layer.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none', a shared colour \"var(--<id>)\", or \"var(--layer)\" to fill with the colour of the node's layer.",
+                    "type": "string"
+                  },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a material."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      },
+                      "strokeWidth": {
+                        "description": "The weight of its strokes, in screen pixels as in a style. 0.6 when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "opacity": {
+                        "description": "How opaque its strokes are, from 0 (not at all) to 1 (the default), on top of the opacity of their colour.",
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "viewline"
+              },
+              "a": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false,
+                "description": "Where the line starts on the plan: the left end of the views taken from it."
+              },
+              "b": {
+                "type": "object",
+                "properties": {
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "x",
+                  "y"
+                ],
+                "additionalProperties": false,
+                "description": "Where it ends: the right end of those views."
+              },
+              "depth": {
+                "description": "How far beyond the line its views see, in mm: their far side, which lies on the face of the wall for an elevation of it. Defaults to 6000.",
+                "type": "number",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "a",
+              "b"
+            ],
+            "additionalProperties": false,
+            "description": "The line on the plan an elevation or a section is taken from, drawn on the plan as a reference line with an arrow at each end, the way it looks: a cut along the line from a to b, seen from the right of that line (as it runs from a to b, which is below a line drawn from left to right, since Y grows downward), so that a is on the left of its views, looking beyond it up to depth. What the line crosses is drawn cut through (walls, above and below the doors and windows they are cut at); beyond it, up to depth, the faces turned towards it with their doors, windows and what is fixed on them at its height, the furniture, and the walls in the way. A line whose far side (depth beyond it) lies on the face of a wall makes elevations of that wall, and follows the wall when the wall changes: usually 1000 in front of the face, with depth 1000. One across the plan makes sections. What it sees is drawn by the elevation nodes that refer to it, any number, anywhere; removing the line removes them."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top). A key of the fractional-indexing package, such as \"a0\", \"a1\" or \"a0V\"; leave it out when adding a node to put it on top."
+              },
+              "layer": {
+                "description": "Id of the layer the node is on. A node inside a component has none: what a component holds is drawn on the layer of each of its instances.",
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color. An instance has none: it looks as its component is drawn.",
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'. Any colour property may instead be a shared colour, \"var(--<id>)\", or \"var(--layer)\": the colour of the node's layer.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none', a shared colour \"var(--<id>)\", or \"var(--layer)\" to fill with the colour of the node's layer.",
+                    "type": "string"
+                  },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a material."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      },
+                      "strokeWidth": {
+                        "description": "The weight of its strokes, in screen pixels as in a style. 0.6 when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "opacity": {
+                        "description": "How opaque its strokes are, from 0 (not at all) to 1 (the default), on top of the opacity of their colour.",
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "elevation"
+              },
+              "line": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The id of the viewline it is the view of: what it sees, and from where."
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "walls": {
+                "description": "false leaves out the walls in front of the faces it sees, to see all of them: those its line cuts, and those in the way (a wall at an angle within what it sees). Shown when left out, all plain grey.",
+                "type": "boolean"
+              },
+              "dimensions": {
+                "description": "false leaves out the dimensions it draws by itself: along the floor from its start to each object fixed on the face, and the height of each above the floor. Shown when left out.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "line",
+              "x",
+              "y"
+            ],
+            "additionalProperties": false,
+            "description": "An elevation or a section: the view of what its viewline sees, drawn from the plan each time it is drawn, on any page, with (x, y) the point of the floor under the start of its line (a); heights go up from there. Moving it moves only where it is drawn; what it shows is set by its line."
           },
           {
             "type": "object",
@@ -4950,6 +5386,15 @@
                 "type": "number"
               },
               "flipX": {
+                "type": "boolean"
+              },
+              "z": {
+                "description": "How high above the floor it is, in mm, to its centre: a socket's or a switch's height. Left out, its kind's usual height for an object fixed on a wall, else none. The plan writes it only with showHeight.",
+                "type": "number",
+                "minimum": 0
+              },
+              "showHeight": {
+                "description": "For an object fixed on a wall: its height above the floor is written beside it on the plan, as electrical plans do.",
                 "type": "boolean"
               }
             },

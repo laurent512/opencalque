@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { BrickWall, ChevronDown, Circle, Hexagon, Component, File, Group, Image, Lock, LockOpen, MessageSquare, Minus, RulerDimensionLine, Shapes, SeparatorVertical, Spline, Square, SquareDashed, StickyNote, Table, Type, type LucideIcon } from 'lucide-react'
+import { BrickWall, ChevronDown, MoveHorizontal, ScanEye, Circle, Hexagon, Component, File, Group, Image, Lock, LockOpen, MessageSquare, Minus, RulerDimensionLine, Shapes, SeparatorVertical, Spline, Square, SquareDashed, StickyNote, Table, Type, type LucideIcon } from 'lucide-react'
 import type { Document, Node } from '@opencalque/core'
 import { GridLine } from './icons'
 import { msg, t } from './i18n'
@@ -7,7 +7,7 @@ import { registry } from './extensions'
 import { setPrefs, usePrefs } from './prefs'
 import { collapseHistory, useStore } from './store'
 import { dashIndex, DASHES } from './strokes'
-import { formatNumber, parseLength, parseNumber } from './units'
+import { formatNumber, parseLength, parseNumber, unitSuffix } from './units'
 
 const TYPE_LABELS: Record<Node['type'], string> = {
   page: msg('Page'),
@@ -21,6 +21,8 @@ const TYPE_LABELS: Record<Node['type'], string> = {
   gridline: msg('Grid line'),
   room: msg('Room'),
   divider: msg('Room divider'),
+  elevation: msg('Elevation'),
+  viewline: msg('View line'),
   table: msg('Table of quantities'),
   ellipse: msg('Ellipse'),
   text: msg('Text'),
@@ -43,6 +45,8 @@ const TYPE_ICONS: Record<Node['type'], LucideIcon> = {
   gridline: GridLine,
   room: SquareDashed,
   divider: SeparatorVertical,
+  elevation: ScanEye,
+  viewline: MoveHorizontal,
   table: Table,
   ellipse: Circle,
   text: Type,
@@ -218,7 +222,11 @@ export function watchScrubKey(): () => void {
   }
 }
 
-export function Field(props: { label: string; value: string | number; numeric?: boolean; length?: boolean; optional?: boolean; step?: number; min?: number; snap?: number; decimals?: number; placeholder?: string; multiline?: boolean; lead?: ReactNode; onCommit: (value: any) => void }) {
+export function Field(props: { label: string; value: string | number; numeric?: boolean; length?: boolean; optional?: boolean; step?: number; min?: number; snap?: number; decimals?: number; placeholder?: string; multiline?: boolean; lead?: ReactNode; suffix?: string; onCommit: (value: any) => void }) {
+  // What the number is counted in, written faint inside the box after it and not part of what is
+  // typed: the user's unit for a length (none for feet and inches, which carry their marks), or `suffix`.
+  usePrefs((prefs) => prefs.unit)
+  const suffix = props.suffix ?? (props.length ? unitSuffix() : '')
   // A length is kept in mm and shown in the user's unit; any other number is shown as it is, to `decimals` places (2 unless said).
   const places = 10 ** (props.decimals ?? 2)
   const shown = typeof props.value !== 'number' ? props.value : props.length ? formatNumber(props.value) : String(Math.round(props.value * places) / places)
@@ -244,7 +252,7 @@ export function Field(props: { label: string; value: string | number; numeric?: 
     )
   }
   return (
-    <label className={`field${props.numeric ? ' numeric' : ''}${props.lead ? ' with-lead' : ''}`}>
+    <label className={`field${props.numeric ? ' numeric' : ''}${props.lead ? ' with-lead' : ''}${suffix ? ' with-unit' : ''}`}>
       <span>{props.label}</span>
       {props.lead}
       <input
@@ -256,6 +264,11 @@ export function Field(props: { label: string; value: string | number; numeric?: 
         onBlur={commit}
         onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
       />
+      {suffix && (
+        <span className="field-unit" aria-hidden="true">
+          {suffix}
+        </span>
+      )}
     </label>
   )
 }

@@ -1,6 +1,6 @@
 {
   "format": "opencalque",
-  "version": 1,
+  "version": 2,
   "id": "warehouse.bathroom",
   "name": "Bathroom",
   "unit": "mm",
@@ -25,7 +25,8 @@
       "parent": null,
       "order": "a1",
       "type": "component",
-      "description": "380 × 700"
+      "description": "380 × 700",
+      "height": 800
     },
     "bathroom_1_1": {
       "id": "bathroom_1_1",
@@ -495,7 +496,8 @@
       "parent": null,
       "order": "a2",
       "type": "component",
-      "description": "900 × 900"
+      "description": "900 × 900",
+      "height": 100
     },
     "bathroom_4_1": {
       "id": "bathroom_4_1",
@@ -847,7 +849,8 @@
       "parent": null,
       "order": "a3",
       "type": "component",
-      "description": "360 × 540"
+      "description": "360 × 540",
+      "height": 400
     },
     "bathroom_6_1": {
       "id": "bathroom_6_1",

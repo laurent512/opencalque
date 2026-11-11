@@ -163,7 +163,7 @@ export const hatchModifier: ModifierKind = {
   params: [
     { key: 'pattern', label: 'Pattern', type: 'string', default: 'Lines', options: [...HATCH_PATTERNS] },
     { key: 'spacing', label: 'Spacing', type: 'number', default: 150, unit: 'length' },
-    { key: 'angle', label: 'Angle', type: 'number', default: 0 },
+    { key: 'angle', label: 'Angle', type: 'number', default: 0, unit: 'angle' },
   ],
   apply: (prims, params, frame) => [
     ...prims,

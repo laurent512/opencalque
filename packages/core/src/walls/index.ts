@@ -9,12 +9,14 @@
  *   outline   what a wall draws: its pieces, the lines across its ends, which lines are shown
  *   seams     the lines between walls of different materials, drawn over the walls
  *   edit      changes that keep the plan in one piece: following a move, thickness, splitting, extending
- *   follow    doors and windows put back in the wall an edit changed
+ *   mount     what is fixed on a wall's face (sockets, switches): which face, putting one there
+ *   follow    doors and windows, and what is fixed on faces, put back on the wall an edit changed
  */
 export { bulgeThrough, distToWall, wallArc, wallContains, wallLength, wallMiddle, wallParallel, wallPoints, wallSides, wallSpot, type WallArc } from './course'
 export { autoJoinCuts, connectedWalls, cornerJoin, cornerJoinOps, looseEndOps, moveCornerOps, NEAR_JOIN, wallEndState, wallEndsAt, wallEndsOf, type NearEnd, type WallEnd, type WallJoin } from './joints'
 export { hostWall, openingSpan, snapOpeningToWall, wallOpenings } from './openings'
-export { openingFollowOps } from './follow'
+export { mountFollowOps, openingFollowOps } from './follow'
+export { faceStretch, fixedOnWall, heightAboveFloor, mountAt, mountedOn, mountOf, snapMountToWall, wallMounted, type Mounting } from './mount'
 export { endLineOps, endLineShown, endLineUsual, wallEdgeLines, wallOutline, wallOutlineRuns, wallParts, wallPolygons, wallSeams, withEdge, type WallPiece, type WallParts } from './outline'
 export type { Stop } from './joints'
 export { materialSeams } from './seams'

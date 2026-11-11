@@ -2,12 +2,13 @@
 
 What the app does today, the ten big features chosen to do next and where each stands, and the longer backlog. For how things are built, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Last updated: 2026-11-09 (after 1.8.0).
+Last updated: 2026-11-11 (after 1.8.0).
 
 ## 1. What exists today
 
 ### Drawing
-- Lines, rectangles, ellipses and arcs (an ellipse with a start and an end angle), polylines and polygons, straight or curved through their points, text. The Curved line tool draws the curve as its points are clicked; the Arc tool draws an arc by its two ends and a point it goes through, or a typed radius.
+- Lines, rectangles, ellipses and arcs (an ellipse with a start and an end angle), polylines and polygons, straight or curved through their points, text. The Curved line tool draws the curve as its points are clicked; the Arc tool draws an arc by its two ends and a point it goes through, or a typed radius; the Circle tool a circle by its centre and a point it goes through, or a typed radius.
+- **Extend**: the end of a line, a polyline or a wall clicked runs straight on to the next thing in its way (for a wall, the next wall), and again to the one after. **Fillet**: two lines clicked meet at their corner, each cut back or carried on to it, or are joined by an arc of a typed radius.
 - **Offset**: a parallel copy of a wall, a line, a polyline, a curve, a rectangle, a circle or an arc, at a typed distance or where the pointer says. A wall's copy is a wall like it, its line that far from the first, a curved one round the same centre.
 - **Selecting by a box**, as in CAD: dragged to the right it takes what is wholly inside it; dragged to the left, green and dashed, what it touches, by what is drawn rather than by the box around it.
 - Exact sizes while drawing: a bar above the tools takes typed lengths, angles, widths and heights, and the shape shows its sizes as you draw.
@@ -15,8 +16,13 @@ Last updated: 2026-11-09 (after 1.8.0).
 - **Thicker or thinner from one side**: drag a face of the selected wall and only that face moves; the other stays, joined walls stay joined, walls that stop against it keep reaching it, and its doors and windows stay in its middle. Ctrl (⌘) moves both faces; Alt ignores snapping, as everywhere. **Longer or shorter** by the line across a free end, the wall keeping its direction.
 - **Curved walls**: a wall bent into an arc by dragging the handle in its middle or typing its curve. It joins its neighbours, takes doors and windows, bounds rooms and is measured round its curve.
 - Doors and windows that snap onto a wall, cut the opening, adapt to the wall's thickness and slide along it, and are made wider or narrower by dragging either end. Door type, hinge side, angle; window panes, glazing, sill.
+- Sockets, switches and wall lights (the Electrical symbols extension) fixed on the face of a wall: placed beside a wall they go on the face on that side, standing out of it, slide along it when dragged, and follow the wall when it is moved, turned, made shorter or thicker. Each stands at a height above the floor (300 mm for a socket, 1100 for a switch, 1800 for a wall light) that can be typed in Properties. Several sockets are side by side or stacked one above the other.
+- **Elevations**: the face of a wall seen from in front, made by pointing beside a wall and putting the view down, then drawn from the plan each time: the wall's face at its height, its doors and windows, the sockets and switches on it at their heights, the walls at the corners cut through. It follows the wall when the wall is moved, made thicker, longer or shorter. A socket, a switch or a door clicked in the view is selected on the plan, and dragged there it moves along the wall, and a socket or a switch up and down to its height.
+- **Sections**: a cut through the plan along a line, seen from the side its view is put on: the walls crossed cut through, above and below the doors and windows, and the faces behind seen up to a depth, with what is on them and in front of them.
+- Elevations dimension the sockets and switches on their face, and show the furniture in front of it as boxes of its height.
 - Stairs: straight, L-shaped, U-shaped, spiral, each with its own parameters, and resized on the plan by their sides in whole steps: pull the top of a straight stair and it gains steps, its side and it widens. A compass rose for north.
 - Washbasins with one bowl or two, whose counter is made longer or deeper by pulling its sides while the bowls and taps keep their size; and a bathtub made longer or wider the same way, its rim keeping its thickness and its drain its size.
+- Wall cabinets (meubles hauts), hung on the wall at the height of their underside, dashed on the plan, drawn with their doors in elevations.
 - In the kitchen, a hob, a sink and a fridge made wider by their sides: the hob keeps the size of its zones (five from 75 cm, for hobs of 80 and 90), the sink its bowls, with a draining board on either side or none, and an American fridge with two doors stands beside the plain one. In the living room, a corner sofa, its corner on the left or the right, taking a seat for about every 65 cm of each side. Under Heating, a radiator made longer by its sides, its sections keeping their width, its valve at either end.
 - Dimensions with configurable line, end markers, extension lines, text, font, unit and decimals, and vertical text that reads from bottom to top or from top to bottom; and a separate measure tool that only reads a distance.
 - **Dimension styles**: whichever of those settings a style defines, shared by the dimensions drawn in it, each of which may still differ from it.
@@ -44,7 +50,7 @@ Last updated: 2026-11-09 (after 1.8.0).
 - **Modifiers**: non-destructive changes to how an object is drawn, stacked and applied in order, that can be switched off or removed at any time: crop, hatch, and repeat (copies in rows and columns); extensions can add more.
 - Text can be bold and aligned left, centred or right.
 - Hints and size fields that follow what you are doing: only the next step and the keys usable right now are shown.
-- **Snapping** to the points of objects, the centre of a rectangle, a circle, an arc or a closed shape, the middle of a line, the crossing of two lines, the foot of a perpendicular, the line itself (wall faces and their corners included), and to the grid; angle constraint, drag handles, exact values in the properties panel.
+- **Snapping** to the points of objects, the centre of a rectangle, a circle, an arc or a closed shape, the middle of a line, the crossing of two lines, the foot of a perpendicular, the line itself (wall faces and their corners included), a line carried on past an end the pointer rested on (extension tracking, dashed), and to the grid; angle constraint, drag handles, exact values in the properties panel.
 - **Holding a direction**: while drawing or dragging, an arrow key keeps the wall, line, object or point upright or level, and pointing at a point elsewhere ends it level with that point.
 - **Splitting** a wall, a line or a polyline with the Split tool, which shows the length on either side of the cut, so a part can be deleted or changed on its own.
 - **Smart guides**: what is moved lines up with the sides and middles of other objects and keeps equal gaps with its neighbours, with lines and gap sizes shown while moving.
@@ -106,7 +112,7 @@ Ranked by how much each one moves the app from "promising" to "usable for real w
 | 4 | **Cut, copy, paste** | **Done**, including across drawings. |
 | 5 | **DXF export** | **Done** (lines, circles, text, layers), and DXF import: geometry, blocks (as groups), hatches, dimensions, leaders, and sheets laid out in paper space. Blocks do not become components yet. |
 | 6 | **Sheets and printing**: paper size, drawing scale, title block, PDF export to scale | **Done**: papers with format, direction, scale and a title block; vector PDF export at true scale, one page per paper. Views of the plan at another scale on a sheet are in the ideas below. |
-| 7 | **More drawing tools**: polyline and polygon tool, arcs and curves, typed lengths while drawing, room areas | **Mostly done**: one line tool for lines, polylines and polygons (a double-click closes the shape), typed sizes, room areas, arcs (by three points, a typed radius, or angles) and curves drawn as they are clicked, snapping to middles, crossings, perpendiculars and lines. An arc is still changed afterwards by its frame and angles, not by dragging its ends. |
+| 7 | **More drawing tools**: polyline and polygon tool, arcs and curves, typed lengths while drawing, room areas | **Mostly done**: one line tool for lines, polylines and polygons (a double-click closes the shape), typed sizes, room areas, arcs (by three points, a typed radius, or angles), circles by their centre, and curves drawn as they are clicked, snapping to middles, crossings, perpendiculars and lines. An arc is still changed afterwards by its frame and angles, not by dragging its ends. |
 | 8 | **Transforming**: rotate and scale handles, align and distribute, mirror, array | **Mostly done**: rotate (a tool, about a clicked point), mirror, uniform scale and nudge for any selection, from grips on the selection box, menus and shortcuts. Align, distribute, a repeat (array) modifier and smart guides while moving are done. One object is made wider or taller by the sides of its frame (a rectangle, an ellipse, a placed component, a stair, a washbasin, a bathtub, a hob, a sink, a fridge, a corner sofa, a radiator, the adjustable furniture); several selected together are stretched by their far side when a width or height is typed (walls keep their thickness and stay joined), and scaled evenly by the box's corners. |
 | 9 | **Walls as a system**: openings that follow their wall, walls trimmed where they meet mid-span, moving a wall drags its neighbours, rooms detected from walls | **Done**, with selectable corners, joint types, walls of layers and curved walls; temporary dimensions to the walls around a selected wall, door, window or object, typed to move it; flipping a wall or a door with `Shift+Space`; a trim tool. |
 | 10 | **Hosted version**: accounts, cloud storage, sharing by link, realtime collaboration | Not started. The data model is prepared for it (see ARCHITECTURE §10). |
@@ -134,7 +140,7 @@ Agreed with the owner in October 2026. The first was built straight away.
 - ~~Snapping to midpoints, perpendiculars and intersections~~ (done, with the nearest point on a line); tangents and the quarter points of circles
 - ~~Eyedropper~~ (done)
 - Fills made of a picture, or of a texture (wood, concrete, grass), as more tabs of the fill window
-- ~~Trim for lines~~ (done: the trim tool, for walls, lines and polylines); extend and fillet for lines
+- ~~Trim for lines~~ (done: the trim tool, for walls, lines and polylines); ~~extend and fillet for lines~~ (done: extend for lines, polylines and walls; fillet for straight lines, not yet polylines or walls)
 - ~~Offset~~ (done: the offset tool, for walls, lines, polylines, curves, rectangles, circles and arcs; not groups or other ellipses, and a shape that would fold over itself is refused rather than trimmed)
 
 **Import and sharing**
@@ -153,7 +159,8 @@ Not ranked within an area.
 
 **Drawing and editing**
 - Rich text; angular and radius dimensions; dimensions that follow what they measure.
-- Extend and fillet for plain lines (walls have extend, and everything the trim tool); boolean operations on shapes.
+- ~~Extend and fillet for plain lines~~ (done); fillet for polylines and walls; extending to circles and arcs; boolean operations on shapes.
+- Construction lines: endless lines through two points to draw against, never printed (asked for in #17).
 - Smart guides while drawing and resizing; snapping to tangents and the quarter points of circles.
 - ~~Select similar; select by layer or type~~ (done, and by material); find and replace text.
 - ~~Lock aspect ratio; non-uniform scaling~~ (done for rectangles and ellipses; a selection of several is stretched by a size typed, scaled in proportion by its corners); ~~numeric move and copy~~ (done: the Move tool takes a length and an angle, and Ctrl leaves copies).
@@ -163,7 +170,8 @@ Not ranked within an area.
 - Curved walls drawn directly with the wall tool, extended and trimmed, and dimensioned along their curve.
 - ~~Schedules of doors, windows and rooms placed on a sheet~~ (done, with floors, walls and materials); a table of each wall or each door one by one, with a mark drawn beside each on the plan.
 - Walls of materials: a command that lays a lining against a face of the selected wall; walls laid against one another moved together.
-- Sections and elevations linked to the plan.
+- Floors and ceilings in elevations and sections; faces at an angle in sections.
+- Electrical and other networks (water, drainage, heating): what each device is, circuits, links between devices (a switch and the lights it controls, a cable or a pipe), and a view that shows them and what is left unconnected (ARCHITECTURE §10).
 - More stairs: winders, landings of any shape, handrails, break line.
 
 **Components and extensions**

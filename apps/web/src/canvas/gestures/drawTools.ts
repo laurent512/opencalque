@@ -19,7 +19,8 @@ import { arcNode, axisOf, constrain, currentStyle, paperFormats, polyline, shape
 export function aim(c: Canvas, g: GestureOf<'draw'>, world: Vec2, e: Keys): Target {
   const { tool } = get()
   if (CHAINED.includes(tool)) return lineEnd(c, world, e, [g.id], g.start)
-  return snap(c, world, e, [g.id], tool === 'dimension' || tool === 'gridline' || tool === 'arc' ? g.start : undefined)
+  // From a circle's centre, the foot of a perpendicular onto a line is where a circle touching it goes through.
+  return snap(c, world, e, [g.id], tool === 'dimension' || tool === 'gridline' || tool === 'arc' || tool === 'circle' ? g.start : undefined)
 }
 
 /**
@@ -178,9 +179,10 @@ export const drawDown: Press = (c, e, at, world) => {
     }
     const drawn: GestureOf<'draw'> = { kind: 'draw', id: newId(), start, press: { ...at, time: performance.now() }, origin: start, segments: 0, since: 0 }
     c.gesture = drawn
-    // A box whose width and height were both typed needs no second point: one click places it.
+    // A box whose width and height were both typed needs no second point: one click places it; so
+    // does a circle whose radius was typed, by its centre.
     const { a, b } = s.drawLocks
-    if (BOXES.includes(s.tool) && a !== undefined && b !== undefined) finishShape(c, drawn, { x: start.x + 1, y: start.y + 1 }, false)
+    if ((BOXES.includes(s.tool) && a !== undefined && b !== undefined) || (s.tool === 'circle' && a !== undefined)) finishShape(c, drawn, { x: start.x + 1, y: start.y + 1 }, false)
   }
 }
 
@@ -198,7 +200,7 @@ export const drawMove: Move<'draw'> = (c, g, e, _at, world, out) => {
   out.previewed = preview(s.tool === 'wall' ? wallOps(g.id, g.start, end) : [{ op: 'add_node', node: shape(s.tool, g.id, g.start, end) }])
   const d = sub(end, g.start)
   if (constrained) out.axis = axisOf(g.start, end)
-  out.status = constrained ? t('Length {value}', { value: formatLength(len(d)) }) : `${formatNumber(Math.abs(d.x))} × ${formatLength(Math.abs(d.y))}`
+  out.status = s.tool === 'circle' ? t('Radius {value}', { value: formatLength(len(d)) }) : constrained ? t('Length {value}', { value: formatLength(len(d)) }) : `${formatNumber(Math.abs(d.x))} × ${formatLength(Math.abs(d.y))}`
   if (s.tool !== 'dimension' && s.tool !== 'annotation') Object.assign(out, sizes(s.tool, g.start, end))
 }
 

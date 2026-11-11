@@ -46,8 +46,8 @@ export function fillPatch(node: Node, change: FillChange): Record<string, unknow
 
 export type Update = (patch: (node: Node) => Record<string, unknown>) => void
 
-/** Properties that are sizes, which dragging must not take below zero. */
-const SIZES = /(^|\.)(width|height|thickness|rx|ry|size|markerSize|extensionGap|strokeWidth|opacity|decimals)$/
+/** Properties that are sizes, or a height above the floor, which dragging must not take below zero. */
+const SIZES = /(^|\.)(width|height|thickness|rx|ry|size|markerSize|extensionGap|strokeWidth|opacity|decimals|z)$/
 
 export function FieldRow({ node, nodes, field, update }: { node: Node; nodes: Node[]; field: FieldSpec; update: Update }) {
   const doc = useStore((s) => s.doc)
@@ -74,6 +74,7 @@ export function FieldRow({ node, nodes, field, update }: { node: Node; nodes: No
         multiline={field.multiline}
         numeric={field.type === 'number'}
         length={field.length}
+        suffix={field.angle || field.path === 'rotation' ? '°' : undefined}
         optional={field.optional}
         step={field.path === 'opacity' || field.path === 'bend' ? 0.01 : field.path.endsWith('strokeWidth') ? 0.1 : undefined}
         min={SIZES.test(field.path) || (field.length && field.path.startsWith('props.')) ? 0 : undefined}
@@ -329,7 +330,8 @@ export function Sections({ node, nodes = [node], fields, update, pick }: { node:
             row.length === 2 ? <PairRow key={row[0].path} node={node} nodes={nodes} fields={row} update={update} /> : <TypedRow key={row[0].path} node={node} nodes={nodes} field={row[0]} update={update} />,
           )}
           {title === STROKE && wall && split && <WallEdges wall={wall} />}
-          {title === GEOMETRY && nodes.length === 1 && 'a' in node && <LengthRow node={node} />}
+          {/* A view's a-b is the line on the plan it looks at, not a length of its own to set. */}
+          {title === GEOMETRY && nodes.length === 1 && 'a' in node && node.type !== 'viewline' && <LengthRow node={node} />}
           {title === GEOMETRY && nodes.length === 1 && (node.type === 'wall' || node.type === 'line') && <AngleRow node={node} />}
         </Section>
       ))}
@@ -429,7 +431,7 @@ function AngleRow({ node }: { node: NodeOf<'wall'> | NodeOf<'line'> }) {
   }
   return (
     <>
-      <Field label={t('Angle')} numeric value={shown} decimals={3} snap={1} onCommit={(to: number) => turn(to)} />
+      <Field label={t('Angle')} numeric suffix="°" value={shown} decimals={3} snap={1} onCommit={(to: number) => turn(to)} />
       {length * Math.sin((off * Math.PI) / 180) >= DRIFT && off < NEARLY && (
         <p className="hint warning">
           {square % 180 === 0 ? t('Not quite level: {angle}° off', { angle: smallAngle(off) }) : t('Not quite upright: {angle}° off', { angle: smallAngle(off) })}{' '}

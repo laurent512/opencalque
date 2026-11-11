@@ -1,4 +1,4 @@
-import { type Bounds, type NodeOf, applyOps, boundsOf, dist, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, componentUses, rootOf, type Node, type Op, roomAt, regionPerimeter, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
+import { type Bounds, type NodeOf, applyOps, boundsOf, dist, mountedOn, mountOf, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, componentUses, rootOf, type Node, type Op, roomAt, regionPerimeter, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
 import { swapSelectedComponent } from '../../actions'
 import { EntryChoice } from '../../EntryChoice'
 import { entryOf, isModel } from '../../entries'
@@ -166,7 +166,9 @@ function Selection({ nodes }: { nodes: Node[] }) {
             </button>
           </>
         )}
+        {single && mountOf(node, registry)?.on === 'wall' && !mountedOn(doc, node, registry) && <p className="hint">{t('It is on no wall, so it does not follow one nor show in its elevations. Drag it onto a wall to fix it there.')}</p>}
         {nodes.every((n) => n.type === 'instance' || n.type === 'parametric') && <InstanceComponent instances={nodes as (NodeOf<'instance'> | NodeOf<'parametric'>)[]} />}
+        {single && node.type === 'instance' && <ComponentHeight instance={node} />}
         {single && node.type === 'instance' && (
           <>
             <p className="hint">{t('It looks as its component does. Lines the component gives no colour take the colour of the layer it is placed on.')}</p>
@@ -315,6 +317,27 @@ export function Properties() {
  * to be made placements of another, each where it is, as it is turned. Inside a component, the
  * components that would hold it are not offered.
  */
+/**
+ * How tall what a component holds stands, which elevations draw its placements as: a property of
+ * the component, so the same for every placement of it. Empty, they are left out of elevations.
+ */
+function ComponentHeight({ instance }: { instance: NodeOf<'instance'> }) {
+  const component = useStore((s) => s.doc.nodes[instance.component])
+  if (component?.type !== 'component') return null
+  return (
+    <Field
+      label={t('Height in elevations')}
+      numeric
+      length
+      optional
+      min={0}
+      value={component.height ?? ''}
+      placeholder={t('None')}
+      onCommit={(height?: number) => apply([{ op: 'update_node', id: component.id, patch: { height: height && height > 0 ? height : null } }])}
+    />
+  )
+}
+
 function InstanceComponent({ instances }: { instances: (NodeOf<'instance'> | NodeOf<'parametric'>)[] }) {
   const doc = useStore((s) => s.doc)
   const scope = useStore((s) => s.scope)

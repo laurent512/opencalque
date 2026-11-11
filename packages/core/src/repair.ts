@@ -143,6 +143,10 @@ export function repairDocument(input: Document): { doc: Document; repairs: strin
       delete nodes[node.id]
       repairs.push(`Picture "${node.id}" was removed: its file ("${node.asset}") is not in the drawing.`)
     }
+    if (node.type === 'elevation' && nodes[node.line]?.type !== 'viewline') {
+      delete nodes[node.id]
+      repairs.push(`View "${node.id}" was removed: its line ("${node.line}") is not in the drawing.`)
+    }
     if (node.type === 'instance' && nodes[node.component]?.type !== 'component') {
       delete nodes[node.id]
       repairs.push(`Component placement "${node.id}" was removed: its component ("${node.component}") is not in the drawing.`)

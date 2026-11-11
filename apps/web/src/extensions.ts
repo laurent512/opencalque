@@ -6,6 +6,12 @@ import { setPrefs, usePrefs } from './prefs'
 
 /** The one extension that is compiled into the app. It can be switched off but not removed. */
 export const BUILT_IN_EXTENSION = architecture.id
+/**
+ * Extensions that ship with the app and are in use from the start, as the built-in one is: switched
+ * off and on, never installed or removed, and always the copy that ships. The electrical symbols,
+ * whose objects took the place of the library of electrical components.
+ */
+export const ALWAYS_ON = ['opencalque.electrical']
 
 /**
  * The extensions in use. It is always this same object; `loadExtensions` refills it, and
@@ -24,7 +30,8 @@ const later = (a: string, b: string) => {
 }
 
 /**
- * Puts the built-in extension (unless switched off) and every installed one into the registry.
+ * Puts the built-in extension and those always on (unless switched off), and every installed one,
+ * into the registry.
  * An installed extension that no longer loads is skipped, so one bad file cannot stop the app. One
  * installed from those that ship with the app is replaced by the one that ships now, when that is
  * a later version: it was installed as a copy, and would otherwise never get what was added to it.
@@ -37,7 +44,9 @@ export function loadExtensions(): void {
   const { installed, disabled } = usePrefs.getState().extensions
   registry.clear()
   if (!disabled.includes(BUILT_IN_EXTENSION)) registry.use(architecture)
-  for (const extension of Object.values(installed)) {
+  for (const extension of bundledExtensions()) if (ALWAYS_ON.includes(extension.id) && !disabled.includes(extension.id)) registry.use(declarativeExtension(extension))
+  // A copy of one always on, installed before it was, is left for the one that ships.
+  for (const extension of Object.values(installed).filter((one) => !ALWAYS_ON.includes(one.id))) {
     try {
       registry.use(declarativeExtension(extension))
     } catch (error) {

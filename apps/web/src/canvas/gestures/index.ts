@@ -4,8 +4,9 @@ import type { Move, Press, Release } from '../runtime'
 import { arcMove, drawDown, drawMove, drawUp, lineDown, offsetMove, polyMove, polyUp, textDown } from './drawTools'
 import { angleDown, angleMove, measureDown, measureMove } from './measure'
 import { offsetDown, parallelMove } from './offset'
-import { eyedropperDown, placeDown, splitDown, toolHover, trimDown } from './place'
-import { cornerMove, cropMove, dragUp, endMove, faceMove, handleMove, hover, marqueeMove, marqueeUp, moveMove, pressMove, pressUp, resizeMove, rotateMove, scaleMove, selectDown } from './select'
+import { extendDown, filletDown, filletMove } from './fit'
+import { elevationDown, eyedropperDown, placeDown, sectionMove, splitDown, toolHover, trimDown } from './place'
+import { cornerMove, cropMove, dragUp, elevatedMove, endMove, faceMove, handleMove, hover, marqueeMove, marqueeUp, moveMove, pressMove, pressUp, resizeMove, rotateMove, scaleMove, selectDown } from './select'
 import { displaceMove, moveToolDown } from './move'
 import { rotateDown, turnMove } from './turn'
 
@@ -22,8 +23,11 @@ export const PRESSES: Partial<Record<Tool, Press>> = {
   text: textDown,
   place: placeDown,
   room: placeDown,
+  elevation: elevationDown,
   split: splitDown,
   trim: trimDown,
+  extend: extendDown,
+  fillet: filletDown,
   offset: offsetDown,
   angle: angleDown,
   rotate: rotateDown,
@@ -43,6 +47,8 @@ export const MOVES: { [K in Gesture['kind']]: Move<K> } = {
     toolHover(c, g, e, at, world, out)
   },
   press: pressMove,
+  elevated: elevatedMove,
+  section: sectionMove,
   move: moveMove,
   handle: handleMove,
   corner: cornerMove,
@@ -55,6 +61,7 @@ export const MOVES: { [K in Gesture['kind']]: Move<K> } = {
   offset: offsetMove,
   arc: arcMove,
   parallel: parallelMove,
+  fillet: filletMove,
   measure: measureMove,
   angle: angleMove,
   poly: polyMove,
@@ -67,6 +74,7 @@ export const MOVES: { [K in Gesture['kind']]: Move<K> } = {
 /** What letting go of the button does during each gesture that cares. */
 export const RELEASES: { [K in Gesture['kind']]?: Release<K> } = {
   press: pressUp,
+  elevated: dragUp,
   move: dragUp,
   handle: dragUp,
   corner: dragUp,

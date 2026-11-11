@@ -37,6 +37,39 @@ test('saves a drawing, then saves each change by itself', async ({ page }) => {
   expect((await page.evaluate(() => (window as any).saves[1])).match(/"type": "wall"/g)).toHaveLength(2)
 })
 
+test('a drawing saved under a name of its own takes that name, which exports then use', async ({ page }) => {
+  await startWith(page)
+  // A save dialog in which the user types "Cabin" over the name suggested.
+  await page.addInitScript(() => {
+    const saves: { name: string; content: string }[] = []
+    ;(window as any).saves = saves
+    ;(window as any).showSaveFilePicker = async ({ suggestedName }: { suggestedName: string }) => {
+      const name = suggestedName.endsWith('.opencalque') ? 'Cabin.opencalque' : suggestedName
+      return {
+        name,
+        createWritable: async () => {
+          let content = ''
+          return { write: async (data: unknown) => void (content = typeof data === 'string' ? data : '(bytes)'), close: async () => void saves.push({ name, content }) }
+        },
+      }
+    }
+  })
+  await openEditor(page)
+  await expect(page.locator('.menubar-name')).toContainText('Untitled')
+  await drawWall(page, [300, 300], [700, 300])
+  await page.keyboard.press('Control+s')
+  await expect(page.locator('.menubar-name')).toContainText('Cabin')
+  // Written again with its new name, and left saved.
+  await expect.poll(() => page.evaluate(() => (window as any).saves.length)).toBe(2)
+  expect(JSON.parse(await page.evaluate(() => (window as any).saves[1].content)).name).toBe('Cabin')
+  await expect(page.locator('.menubar-saved')).toBeVisible()
+  await expect(page).toHaveTitle(/^Cabin\.opencalque/)
+  await page.keyboard.press('Control+e')
+  await page.getByRole('radio', { name: /SVG/ }).click()
+  await page.getByRole('button', { name: 'Export…' }).click()
+  await expect.poll(() => page.evaluate(() => (window as any).saves.at(-1).name)).toBe('Cabin.svg')
+})
+
 test('opens a drawing that needs repairs, and says so; refuses one from a newer version', async ({ page }) => {
   await startWith(page)
   // "Discard unsaved changes?" before opening the second file.

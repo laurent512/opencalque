@@ -672,6 +672,29 @@ html.dock-dragging .tab-more {
   border-color: var(--accent);
 }
 
+/* The unit a number is in, faint at the end of its box: shown, not typed. */
+.field.with-unit {
+  position: relative;
+}
+
+.field.with-unit > input:not([type]) {
+  padding-right: 28px;
+}
+
+.field > span.field-unit {
+  position: absolute;
+  right: 18px;
+  width: auto;
+  color: var(--muted);
+  opacity: 0.75;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.field-pair > .field > span.field-unit {
+  right: 6px;
+}
+
 /* What a thing is, inside the box of its name */
 .field.with-lead {
   position: relative;
@@ -712,7 +735,7 @@ html.dock-dragging .tab-more {
   padding: 0;
 }
 
-.field-pair .field > span {
+.field-pair .field > span:not(.field-unit) {
   position: absolute;
   width: 1px;
   height: 1px;

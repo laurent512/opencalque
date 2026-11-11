@@ -2,10 +2,12 @@ import { InstanceBar } from './InstanceBar'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { rootOf, type Document } from '@opencalque/core'
 import {
+  ArrowRightToLine,
   BrickWall,
   ChevronRight,
   ChevronUp,
   Circle,
+  CircleDot,
   DoorOpen,
   Grid2x2,
   Hand,
@@ -45,12 +47,14 @@ import {
   BringToFront,
   AlignVerticalSpaceAround,
   Scissors,
+  SquareRoundCorner,
   Spline,
   Crosshair,
   Grid3x3,
   Magnet,
   Plus,
   SlidersHorizontal,
+  ScanEye,
 } from 'lucide-react'
 import { canFlipSide, MAX_ZOOM, MIN_ZOOM, zoomBy, zoomTo, zoomToFit } from './actions'
 import { CanvasView } from './canvas/CanvasView'
@@ -78,11 +82,14 @@ const ICONS: Partial<Record<Tool, [title: string, icon: LucideIcon]>> = {
   arc: [msg('Arc: click its two ends, then a point it goes through'), Arc],
   rect: [msg('Rectangle'), Square],
   ellipse: [msg('Ellipse'), Circle],
+  circle: [msg('Circle: click its centre, then a point it goes through'), CircleDot],
   wall: [msg('Wall'), BrickWall],
   dimension: [msg('Dimension: annotate a distance on the drawing'), RulerDimensionLine],
   measure: [msg('Measure: read a distance without drawing anything'), Ruler],
   split: [msg('Split: cut a wall, a line or a polyline in two where you click'), Slice],
   trim: [msg('Trim: take away the stretch of a wall or a line you click, up to what crosses it'), Scissors],
+  extend: [msg('Extend: carry a line or a wall on, from the end you click, to the next thing in its way'), ArrowRightToLine],
+  fillet: [msg('Fillet: make two lines meet at a corner, or round it with a radius'), SquareRoundCorner],
   offset: [msg('Offset: a parallel copy of a wall, a line or a shape, at a distance'), Offset],
   rotate: [msg('Rotate: turn the selection about a point you click'), RotateCw],
   move: [msg('Move: take the selection by a point and put that point down on another'), Move],
@@ -94,6 +101,7 @@ const ICONS: Partial<Record<Tool, [title: string, icon: LucideIcon]>> = {
   paper: [msg('Paper: a sheet that frames what goes on one page'), StickyNote],
   room: [msg('Room: name the space inside closed walls'), SquareDashed],
   divider: [msg('Room divider: separates two rooms where there is no wall'), SeparatorVertical],
+  elevation: [msg('Elevation or section: the face of a wall seen from in front, or a cut along a line, drawn from the plan'), ScanEye],
 }
 
 /**
@@ -297,6 +305,8 @@ function Hints() {
   const selected = useStore((s) => s.selection.length > 0)
   const measured = useStore((s) => s.calibration !== null)
   const opening = useStore((s) => s.placing?.type === 'parametric' && Boolean(registry.parametric.get(s.placing.kind)?.opening))
+  const mounted = useStore((s) => s.placing?.type === 'parametric' && Boolean(registry.parametric.get(s.placing.kind)?.mount))
+  const view = useStore((s) => (s.placing?.type === 'elevation' ? (s.placing.sided ? 'section' : 'elevation') : null))
   // Whether Shift+Space would flip something: the wall tool drawing by a face, a door being placed.
   const flips = useStore((s) => (s.tool === 'wall' ? s.wallJustify !== 'center' : canFlipSide()))
   // With the select tool, a preview in progress is an object being moved, reshaped, scaled or turned.
@@ -336,7 +346,7 @@ function Hints() {
   else if (dragging && boxed) hints = [['Shift', t('keeps its proportions, from a corner')], ['Alt', t('ignores the grid and snapping')]]
   else if (boxed) hints = [['', t('Drag the middle of a side to change one size, a corner to change both')], ['', t('the knob above turns it')]]
   else if (dragging) hints = walls ? [['', t('Joined walls stretch to stay joined')], ['↑ ←', t('holds it upright or level')], ['Alt', t('moves it alone, off the grid')]] : [['Shift', t('keeps an end on its own line, or level, upright or at 45° with its other end')], ['↑ ←', t('holds it upright or level')], ['Alt', t('ignores the grid and snapping')]]
-  else hints = hintsFor(tool, step, opening, selected, flips)
+  else hints = hintsFor(tool, step, opening, selected, flips, mounted, view)
   // With nothing else to say, inside a component: what its space is.
   if (hints.length === 0 && inside) hints = [['', t(inside)]]
   if (hints.length === 0 || browsing) return null
@@ -368,14 +378,14 @@ function Toolbar() {
       <hr />
       <ToolGroup tools={SHAPE_TOOLS} current={shapeTool} more={t('More shapes')} />
       <ToolButton id="wall" />
-      <ToolGroup tools={ROOM_TOOLS} current={roomTool} more={t('Room divider')} />
+      <ToolGroup tools={ROOM_TOOLS} current={roomTool} more={t('Room divider, elevation or section')} />
       <PlaceButton kind="arch.door" icon={DoorOpen} />
       <PlaceButton kind="arch.window" icon={Grid2x2} />
       <CommandButton command="warehouse.components" title={t('Object library: stairs, furniture and every other object')} onClick={() => executeById('warehouse.components')}>
         <LibraryBig size={18} />
       </CommandButton>
       <hr />
-      <ToolGroup tools={CUT_TOOLS} current={cutTool} more={t('Trim, offset')} />
+      <ToolGroup tools={CUT_TOOLS} current={cutTool} more={t('Trim, extend, fillet, offset')} />
       {/* Mirroring is not a tool: the selection is flipped on itself, at once, from the same list. */}
       <ToolGroup tools={TRANSFORM_TOOLS} current={transformTool} more={t('Move, mirror')} actions={FLIPS} />
       <ArrangeMenu />

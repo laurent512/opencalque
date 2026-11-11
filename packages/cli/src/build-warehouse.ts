@@ -33,23 +33,6 @@ const arcPoints = (cx: number, cy: number, r: number, from: number, to: number):
   })
 /** Part of a circle as a polyline. */
 const arc = (cx: number, cy: number, r: number, from: number, to: number): Shape => poly(arcPoints(cx, cy, r, from, to))
-const cross = (cx: number, cy: number, r: number): Shape[] => {
-  const d = Math.round(r * Math.SQRT1_2)
-  return [line(cx - d, cy - d, cx + d, cy + d), line(cx - d, cy + d, cx + d, cy - d)]
-}
-// Electrical symbols that go on a wall are drawn hanging from their top edge: place that edge on the wall.
-/** An earthed socket outlet: a half circle on a stem from the wall, with the earth contact as a bar where they meet. */
-const socket = (x: number): Shape[] => [line(x + 150, 0, x + 150, 100), line(x + 90, 100, x + 210, 100), arc(x + 150, 250, 150, 180, 360)]
-/** A switch: a small circle with a lever that ends in `ticks` strokes, drawn up to the right or down to the left. */
-const lever = (cx: number, cy: number, up: boolean, ticks = 1): Shape[] => {
-  const s = up ? 1 : -1
-  const end = { x: cx + s * 225, y: cy - s * 225 }
-  return [
-    line(cx + s * 53, cy - s * 53, end.x, end.y),
-    ...Array.from({ length: ticks }, (_, i) => line(end.x - s * i * 60, end.y + s * i * 60, end.x - s * i * 60 + s * 60, end.y + s * i * 60 + s * 60)),
-  ]
-}
-
 // Furniture and fittings are drawn as they are seen from above, with what tells one from another:
 // the cushions of a sofa, the pillows and turned-back duvet of a bed, the backrest of a chair. Their
 // outlines are drawn at the usual weight and what lies within them in thin lines, the weight the
@@ -377,6 +360,24 @@ interface Library {
   components: ([name: string, description: string, shapes: Shape[], room?: string] | null)[]
 }
 
+/** How tall each component stands on the floor, in mm, by its name: what elevations draw it as. */
+const HEIGHTS: Record<string, number> = {
+  'Double bed': 500,
+  'Single bed': 500,
+  'Sofa, two seats': 850,
+  Armchair: 850,
+  Chair: 850,
+  'Dining table, six chairs': 750,
+  'Desk with chair': 750,
+  Wardrobe: 2100,
+  'Coffee table, round': 400,
+  Toilet: 800,
+  'Shower tray': 100,
+  'Toilet, wall-hung': 400,
+  'Base unit': 900,
+  'Washing machine': 850,
+}
+
 const LIBRARIES: Library[] = [
   {
     id: 'furniture',
@@ -431,33 +432,6 @@ const LIBRARIES: Library[] = [
   },
 ]
 
-LIBRARIES.push({
-  id: 'electrical',
-  name: 'Electrical',
-  description: 'Lights, wall lights, sockets, switches and other symbols for an electrical plan.',
-  components: [
-    ['Ceiling light', 'Ø 300', [oval(150, 150, 150), ...cross(150, 150, 150)]],
-    ['Pendant light', 'Ø 300', [oval(150, 150, 150), oval(150, 150, 90), ...cross(150, 150, 90)]],
-    ['Wall light', 'Top edge on the wall', [line(0, 0, 300, 0), arc(150, 0, 150, 0, 180), line(150, 0, 256, 106), line(150, 0, 44, 106)]],
-    ['Recessed spotlight', 'Ø 120', [oval(60, 60, 60), filled(oval(60, 60, 25))]],
-    ['Light strip', '1200 × 100', [rect(0, 0, 1200, 100), line(0, 50, 1200, 50)]],
-    ['Socket', 'Top edge on the wall', socket(0)],
-    ['Double socket', 'Top edge on the wall', [...socket(0), ...socket(330)]],
-    ['Socket, 32 A', 'For a cooker. Top edge on the wall', [line(150, 0, 150, 100), filled({ ...arc(150, 250, 150, 180, 360), closed: true })]],
-    ['TV socket', 'Top edge on the wall', [...socket(0), text(75, 400, 'TV', 130)]],
-    ['Network socket', 'RJ45', [rect(0, 0, 300, 300), text(25, 195, 'RJ45', 100)]],
-    ['Switch', 'One-way', [oval(75, 300, 75), ...lever(75, 300, true)]],
-    ['Double switch', 'Two circuits', [oval(75, 300, 75), ...lever(75, 300, true, 2)]],
-    ['Two-way switch', 'One of two controlling the same light', [oval(300, 300, 75), ...lever(300, 300, true), ...lever(300, 300, false)]],
-    ['Push button', 'Ø 200', [oval(100, 100, 100), oval(100, 100, 45)]],
-    ['Dimmer', 'Switch with a dimmer', [oval(75, 300, 75), ...lever(75, 300, true), filled(poly([[75, 262], [108, 322], [42, 322]], true))]],
-    ['Consumer unit', '600 × 250', [rect(0, 0, 600, 250), filled(poly([[0, 250], [600, 0], [600, 250]], true))]],
-    ['Junction box', '200 × 200', [rect(0, 0, 200, 200), ...cross(100, 100, 141)]],
-    ['Smoke detector', '300 × 300', [rect(0, 0, 300, 300), oval(150, 150, 100), filled(oval(150, 150, 30))]],
-    ['Extractor fan', 'Ø 400', [oval(200, 200, 200), poly([[60, 100], [340, 300], [340, 100], [60, 300]], true)]],
-    ['Electric radiator', '1000 × 120', [rect(0, 0, 1000, 120), ...[100, 200, 300, 400, 500, 600, 700, 800, 900].map((x) => line(x, 0, x, 120))]],
-  ],
-})
 
 /** Names and descriptions in French, Spanish, German, Chinese, Japanese, Korean and Turkish, in that order, by the English text. Sizes need none. */
 const TRANSLATIONS: Record<string, [fr: string, es: string, de: string, zh: string, ja: string, ko: string, tr: string]> = {
@@ -482,34 +456,6 @@ const TRANSLATIONS: Record<string, [fr: string, es: string, de: string, zh: stri
   'Units and appliances on a 600 mm module.': ['Meubles et appareils sur un module de 600 mm.', 'Muebles y electrodomésticos en módulo de 600 mm.', 'Schränke und Geräte im 600-mm-Raster.', '按 600 mm 模数排布的橱柜和电器。', '600 mm モジュールのキャビネットと家電。', '600 mm 모듈의 수납장과 가전.', '600 mm modülde dolaplar ve cihazlar.'],
   'Base unit': ['Meuble bas', 'Mueble bajo', 'Unterschrank', '地柜', 'ベースキャビネット', '하부장', 'Alt dolap'],
   'Washing machine': ['Lave-linge', 'Lavadora', 'Waschmaschine', '洗衣机', '洗濯機', '세탁기', 'Çamaşır makinesi'],
-  Electrical: ['Électricité', 'Electricidad', 'Elektro', '电气', '電気', '전기', 'Elektrik'],
-  'Lights, wall lights, sockets, switches and other symbols for an electrical plan.': ['Luminaires, appliques, prises, interrupteurs et autres symboles pour un plan électrique.', 'Luminarias, apliques, enchufes, interruptores y otros símbolos para un plano eléctrico.', 'Leuchten, Wandleuchten, Steckdosen, Schalter und weitere Symbole für einen Elektroplan.', '灯具、壁灯、插座、开关及其他电气平面图符号。', '照明、ブラケット、コンセント、スイッチなど電気設備図の記号。', '전기 설비도에 쓰는 조명, 벽등, 콘센트, 스위치 등의 기호.', 'Bir elektrik planı için armatürler, aplikler, prizler, anahtarlar ve diğer semboller.'],
-  'Ceiling light': ['Plafonnier', 'Luz de techo', 'Deckenleuchte', '吸顶灯', 'シーリングライト', '천장등', 'Tavan armatürü'],
-  'Pendant light': ['Suspension', 'Lámpara colgante', 'Pendelleuchte', '吊灯', 'ペンダントライト', '펜던트 조명', 'Sarkıt armatür'],
-  'Wall light': ['Applique murale', 'Aplique de pared', 'Wandleuchte', '壁灯', 'ブラケット', '벽등', 'Aplik'],
-  'Top edge on the wall': ['Bord supérieur contre le mur', 'Borde superior contra la pared', 'Oberkante an die Wand', '上边靠墙', '上辺を壁に付ける', '위쪽 변을 벽에 붙임', 'Üst kenarı duvara'],
-  'Recessed spotlight': ['Spot encastré', 'Foco empotrado', 'Einbaustrahler', '嵌入式射灯', 'ダウンライト', '매입등', 'Gömme spot'],
-  'Light strip': ['Réglette lumineuse', 'Regleta de luz', 'Lichtleiste', '灯带', 'ライン照明', '라인 조명', 'Işık şeridi'],
-  Socket: ['Prise de courant', 'Enchufe', 'Steckdose', '插座', 'コンセント', '콘센트', 'Priz'],
-  'Double socket': ['Prise double', 'Enchufe doble', 'Doppelsteckdose', '双联插座', '2 口コンセント', '2구 콘센트', 'İkili priz'],
-  'Socket, 32 A': ['Prise 32 A', 'Enchufe de 32 A', 'Steckdose, 32 A', '32 A 插座', '32 A コンセント', '32 A 콘센트', 'Priz, 32 A'],
-  'For a cooker. Top edge on the wall': ['Pour une cuisinière. Bord supérieur contre le mur', 'Para una cocina. Borde superior contra la pared', 'Für einen Herd. Oberkante an die Wand', '用于电灶。上边靠墙', '電気コンロ用。上辺を壁に付ける', '전기레인지용. 위쪽 변을 벽에 붙임', 'Elektrikli ocak için. Üst kenarı duvara'],
-  'TV socket': ['Prise TV', 'Toma de TV', 'TV-Dose', '电视插座', 'テレビ端子', 'TV 단자', 'TV prizi'],
-  'Network socket': ['Prise réseau', 'Toma de red', 'Netzwerkdose', '网络插座', 'LAN 端子', 'LAN 단자', 'Ağ prizi'],
-  Switch: ['Interrupteur', 'Interruptor', 'Schalter', '开关', 'スイッチ', '스위치', 'Anahtar'],
-  'One-way': ['Simple allumage', 'Simple', 'Ausschalter', '单控', '片切', '단로', 'Tek yönlü'],
-  'Double switch': ['Interrupteur double', 'Interruptor doble', 'Serienschalter', '双联开关', '2 連スイッチ', '2구 스위치', 'Komütatör anahtar'],
-  'Two circuits': ['Deux circuits', 'Dos circuitos', 'Zwei Stromkreise', '两路', '2 回路', '2회로', 'İki devre'],
-  'Two-way switch': ['Va-et-vient', 'Conmutador', 'Wechselschalter', '双控开关', '3 路スイッチ', '3로 스위치', 'Vaviyen anahtar'],
-  'One of two controlling the same light': ['L’un des deux qui commandent la même lumière', 'Uno de los dos que controlan la misma luz', 'Einer von zweien für dieselbe Leuchte', '两个开关之一，共同控制同一盏灯', '同じ照明を 2 か所で入り切りするスイッチの一方', '같은 조명을 두 곳에서 켜고 끄는 스위치 중 하나', 'Aynı lambayı yöneten iki anahtardan biri'],
-  'Push button': ['Bouton-poussoir', 'Pulsador', 'Taster', '按钮开关', '押しボタン', '푸시 버튼', 'Buton'],
-  Dimmer: ['Variateur', 'Regulador de luz', 'Dimmer', '调光器', '調光器', '조광기', 'Dimmer'],
-  'Switch with a dimmer': ['Interrupteur avec variateur', 'Interruptor con regulador', 'Schalter mit Dimmer', '带调光的开关', '調光スイッチ', '조광 스위치', 'Dimmerli anahtar'],
-  'Consumer unit': ['Tableau électrique', 'Cuadro eléctrico', 'Sicherungskasten', '配电箱', '分電盤', '분전반', 'Sigorta kutusu'],
-  'Junction box': ['Boîte de dérivation', 'Caja de derivación', 'Abzweigdose', '接线盒', 'ジョイントボックス', '정션 박스', 'Buat'],
-  'Smoke detector': ['Détecteur de fumée', 'Detector de humo', 'Rauchmelder', '烟雾探测器', '煙感知器', '연기 감지기', 'Duman dedektörü'],
-  'Extractor fan': ['Extracteur d’air (VMC)', 'Extractor de aire', 'Abluftventilator', '排气扇', '換気扇', '환풍기', 'Aspiratör'],
-  'Electric radiator': ['Radiateur électrique', 'Radiador eléctrico', 'Elektroheizkörper', '电暖器', '電気ヒーター', '전기 라디에이터', 'Elektrikli radyatör'],
 }
 
 /** The translations of the texts one library shows, by language code and then by the English text. */
@@ -532,7 +478,7 @@ const index = LIBRARIES.map((library) => {
     if (!component) return
     const [name, description, shapes] = component
     const id = `${library.id}_${i + 1}`
-    ops.push({ op: 'add_node', node: { type: 'component', id, name, description } })
+    ops.push({ op: 'add_node', node: { type: 'component', id, name, description, ...(HEIGHTS[name] ? { height: HEIGHTS[name] } : {}) } })
     // Ids of their own, the same each time, so that a library changes only where its components do.
     shapes.forEach((shape, j) => ops.push({ op: 'add_node', node: { ...shape, id: `${id}_${j + 1}`, parent: id } as NodeInput }))
   })

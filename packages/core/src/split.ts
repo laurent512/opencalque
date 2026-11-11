@@ -4,7 +4,7 @@ import { rectCorners } from './kinds'
 import type { NodeInput, Op } from './ops'
 import type { Document, Node } from './schema'
 import { courseOf, cross, dot, JOIN_TOLERANCE, tidy, wallArc, wallParallel, wallPoints, wallSides } from './walls/course'
-import { splitWallOps } from './walls/edit'
+import { extendWallOps, splitWallOps } from './walls/edit'
 
 /** A place to cut something in two: the point, which way the thing runs there, and how long it is on either side. */
 export interface SplitPlace {
@@ -142,7 +142,7 @@ function runPoints(node: Node): Vec2[] | null {
 /**
  * The lines that cut what is trimmed, among what lies beside it: for a wall, the lines of the
  * other walls, so that what is left of it ends against them as a T; for a line, the other lines,
- * dividers, polylines and rectangles, and the faces of walls.
+ * dividers, polylines, rectangles and grid lines, and the faces of walls.
  */
 function cuttingEdges(doc: Document, node: Node): Vec2[][] {
   const edges: Vec2[][] = []
@@ -152,7 +152,7 @@ function cuttingEdges(doc: Document, node: Node): Vec2[][] {
       if (other.type === 'wall') edges.push(wallPoints(other))
       continue
     }
-    if (other.type === 'line' || other.type === 'divider') edges.push([other.a, other.b])
+    if (other.type === 'line' || other.type === 'divider' || other.type === 'gridline') edges.push([other.a, other.b])
     else if (other.type === 'polyline') edges.push(other.closed ? [...other.points, other.points[0]] : other.points)
     else if (other.type === 'rect') edges.push([...rectCorners(other), rectCorners(other)[0]])
     else if (other.type === 'wall') {
@@ -241,4 +241,62 @@ export function trimOps(node: Node, place: TrimPlace, newId: string): Op[] | nul
     { op: 'update_node', id: node.id, patch: { points: before, endMarker: null } },
     { op: 'add_node', node: { ...rest, id: newId, points: after } as NodeInput },
   ]
+}
+
+/** What the extend tool would add to something: the end that runs on (`a` or `b`, the first or last point of a polyline), from where it is to where it would stop. */
+export interface ExtendPlace {
+  end: 'a' | 'b'
+  from: Vec2
+  to: Vec2
+}
+
+/**
+ * What the extend tool does to `node` for a pointer at `p`, as CAD programs extend: the end nearer
+ * the pointer, along it, runs straight on to the first thing in its way (what trims it: other
+ * lines, polylines, rectangles, grid lines and the faces of walls; for a wall, the line of another
+ * wall, at a free end only). Null when nothing lies ahead, or it cannot be extended (a curved wall,
+ * a curve, a closed shape).
+ */
+export function extendPlace(doc: Document, node: Node, p: Vec2): ExtendPlace | null {
+  if (node.parent === null) return null
+  if (node.type === 'polyline' && node.smooth) return null
+  const points = runPoints(node)
+  const run = points && along(node)
+  if (!points || !run || run.length < 1e-6) return null
+  const end = run.project(p) < run.length / 2 ? 'a' : 'b'
+  const tip = end === 'a' ? points[0] : points[points.length - 1]
+  if (node.type === 'wall') {
+    // A wall ends against the line of the next wall, as Extend in the menu does; a joined end does not move.
+    const patch = extendWallOps(doc, [node]).flatMap((op) => (op.op === 'update_node' ? [op.patch as Record<string, Vec2>] : []))[0]
+    return patch?.[end] ? { end, from: tip, to: patch[end] } : null
+  }
+  const behind = end === 'a' ? points[1] : points[points.length - 2]
+  const d = sub(tip, behind)
+  const reach = Math.hypot(d.x, d.y)
+  if (reach < 1e-9) return null
+  const dir = scale(d, 1 / reach)
+  let ahead = Infinity
+  for (const edge of cuttingEdges(doc, node)) {
+    for (let j = 0; j + 1 < edge.length; j++) {
+      const e = sub(edge[j + 1], edge[j])
+      const denom = cross(dir, e)
+      if (Math.abs(denom) < 1e-9) continue
+      const between = sub(edge[j], tip)
+      const t = cross(between, e) / denom
+      const u = cross(between, dir) / denom
+      // What the end already touches is not in its way.
+      if (t > JOIN_TOLERANCE && t < ahead && u >= -1e-6 && u <= 1 + 1e-6) ahead = t
+    }
+  }
+  if (!Number.isFinite(ahead)) return null
+  const to = add(tip, scale(dir, ahead))
+  return { end, from: tip, to: { x: tidy(to.x), y: tidy(to.y) } }
+}
+
+/** The operation that extends `node` as `place` (from `extendPlace`) says. */
+export function extendOps(node: Node, place: ExtendPlace): Op[] | null {
+  if (node.type === 'wall' || node.type === 'line' || node.type === 'divider') return [{ op: 'update_node', id: node.id, patch: { [place.end]: place.to } }]
+  if (node.type !== 'polyline' || node.points.length < 2) return null
+  const points = place.end === 'a' ? [place.to, ...node.points.slice(1)] : [...node.points.slice(0, -1), place.to]
+  return [{ op: 'update_node', id: node.id, patch: { points } }]
 }

@@ -5,17 +5,17 @@ import { t } from './i18n'
  * each step of using one (`hintsFor`). What a tool does on the drawing is in `canvas/gestures/`
  * (`PRESSES`, and the gestures it starts); its command and shortcut are in `commands.ts` (`tool(…)`).
  */
-export type Tool = 'select' | 'hand' | 'line' | 'curve' | 'arc' | 'rect' | 'ellipse' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'offset' | 'rotate' | 'move' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'place'
+export type Tool = 'select' | 'hand' | 'line' | 'curve' | 'arc' | 'rect' | 'ellipse' | 'circle' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'extend' | 'fillet' | 'offset' | 'rotate' | 'move' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'elevation' | 'place'
 
 /** The plain shapes, which share one toolbar button. */
 // A paper is drawn as a rectangle is, by its corners: it is offered with the shapes.
-export const SHAPE_TOOLS: Tool[] = ['line', 'curve', 'arc', 'rect', 'ellipse', 'paper']
-/** The tools for naming spaces, which share another. */
-export const ROOM_TOOLS: Tool[] = ['room', 'divider']
+export const SHAPE_TOOLS: Tool[] = ['line', 'curve', 'arc', 'rect', 'ellipse', 'circle', 'paper']
+/** The tools for naming spaces, and for the views of their walls, which share another. */
+export const ROOM_TOOLS: Tool[] = ['room', 'divider', 'elevation']
 /** The tools for writing on the drawing, which share a third. */
 export const TEXT_TOOLS: Tool[] = ['text', 'annotation', 'dimension', 'gridline']
-/** The tools that work on the lines of what is drawn: cutting them in two or a stretch away, or copying them alongside. */
-export const CUT_TOOLS: Tool[] = ['split', 'trim', 'offset']
+/** The tools that work on the lines of what is drawn: cutting them in two or a stretch away, carrying them on, making two meet, or copying them alongside. */
+export const CUT_TOOLS: Tool[] = ['split', 'trim', 'extend', 'fillet', 'offset']
 /** The tools that turn or move the selection, which share the button with the flips. */
 export const TRANSFORM_TOOLS: Tool[] = ['rotate', 'move']
 /** The tools that read something off the drawing without adding to it. */
@@ -29,7 +29,7 @@ export type Hint = [key: string, text: string]
  * shown that cannot be used yet. Each hint is a key and what it does; an empty key is a plain
  * instruction, and the first one is always the next thing to do.
  */
-export function hintsFor(tool: Tool, step: number, opening: boolean, selected = false, flips = false): Hint[] {
+export function hintsFor(tool: Tool, step: number, opening: boolean, selected = false, flips = false, mounted = false, view: 'elevation' | 'section' | null = null): Hint[] {
   const free: Hint = ['Alt', t('ignores the grid and snapping')]
   // What measures the drawing never takes a point from the grid (MEASURING in canvas/gesture.ts).
   const unsnapped: Hint = ['Alt', t('ignores snapping')]
@@ -48,6 +48,10 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
       return [['', t('Click the next corner')], typed, angles, held, ...flip(t('puts it on the other side of the points')), free, ...(step >= 3 ? [['', t('Double-click closes the loop')] as Hint] : []), ['Esc', t('finishes')]]
     case 'room':
       return [['', t('Click inside a closed region of walls')]]
+    case 'elevation':
+      return step === 0
+        ? [['', t('Click beside a wall for an elevation of its face on that side')], ['', t('click elsewhere to start a section line')]]
+        : [['', t('Click where the section line ends')], ['Esc', t('cancels')]]
     case 'divider':
       return step === 0 ? [['', t('Click where the divider starts, on a wall')]] : [['', t('Click where it ends, on the wall opposite')], angles, held, free, ['Esc', t('finishes')]]
     case 'line':
@@ -62,6 +66,8 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
     case 'rect':
     case 'ellipse':
       return step === 0 ? [['', t('Click a corner, or type a width and a height first and click to place it')]] : [['', t('Click the opposite corner')], ['0-9', t('type an exact size')], free]
+    case 'circle':
+      return step === 0 ? [['', t('Click the centre, or type a radius first and click to place it')], rested] : [['', t('Click a point the circle goes through')], ['0-9', t('type a radius')], free, ['Esc', t('cancels')]]
     case 'paper':
       return step === 0 ? [['', t('Click a corner of the sheet')]] : [['', t('Pull towards a format to take it, or click anywhere for a size of your own')], ['Alt', t('any size')]]
     case 'dimension':
@@ -79,6 +85,11 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
       return [['', t('Click a wall, a line or a polyline where it should be cut')], ['', t('the lengths either side are shown')], ['Alt', t('ignores the grid')]]
     case 'trim':
       return [['', t('Click the stretch of a wall or a line to take away, up to what crosses it')], ['', t('walls are cut against the line of the wall crossing them')]]
+    case 'extend':
+      return [['', t('Click a line or a wall near the end to carry on, to the next thing in its way')], ['', t('click again to go on to the one after')]]
+    case 'fillet':
+      if (step === 0) return [['', t('Click the first of two lines to make meet')], ['0-9', t('type a radius to round the corner')]]
+      return [['', t('Click the second line, on the side to keep')], ['0-9', t('type a radius to round the corner')], ['Esc', t('cancels')]]
     case 'offset':
       if (step === 0) return [['', t('Click a wall, a line or a shape to offset')], ['0-9', t('type the distance first')]]
       return [['', t('Click where the copy goes')], ['0-9', t('type an exact distance')], free, ['Esc', t('cancels')]]
@@ -93,7 +104,12 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
     case 'gridline':
       return step === 0 ? [['', t('Click where the grid line starts, at its bubble')], rested] : [['', t('Click where it ends')], typed, angles, free, ['', t('the next one takes the next letter or number')]]
     case 'place':
-      return opening ? [['', t('Click a wall to place it')], ['R', t('rotates')], ...flip(t('hinges it on its other side')), ['Alt', t('places it freely, off walls and grid')]] : [['', t('Click to place it')], ['R', t('rotates')], free]
+      if (view === 'section') return [['', t('Click where the view goes, on the side the section is seen from')], ['Esc', t('cancels')]]
+      if (view) return [['', t('Click where the view goes')], ['Esc', t('cancels')]]
+      if (opening) return [['', t('Click a wall to place it')], ['R', t('rotates')], ...flip(t('hinges it on its other side')), ['Alt', t('places it freely, off walls and grid')]]
+      // What is fixed on walls goes on a face, turned to stand out of it: R would be undone at once.
+      if (mounted) return [['', t('Click beside a wall to fix it on that face')], ['', t('far from walls, it is placed as it is')], ['Alt', t('places it freely, off walls and grid')]]
+      return [['', t('Click to place it')], ['R', t('rotates')], free]
     default:
       return []
   }

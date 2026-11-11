@@ -12,10 +12,10 @@ import type { Document, Node } from './schema'
 
 /**
  * What a point snapped to: a point of an object, the centre of a shape, the middle of a line,
- * where two lines cross, the foot of a perpendicular, the nearest place on a line, or a place
- * lined up with points around it.
+ * where two lines cross, the foot of a perpendicular, the nearest place on a line, a place
+ * lined up with points around it, or a place on a line carried on past its end.
  */
-export type SnapKind = 'point' | 'centre' | 'middle' | 'crossing' | 'perpendicular' | 'edge' | 'aligned'
+export type SnapKind = 'point' | 'centre' | 'middle' | 'crossing' | 'perpendicular' | 'edge' | 'aligned' | 'extension'
 
 export interface Snap {
   p: Vec2
@@ -34,12 +34,17 @@ export interface SnapOptions {
    * Lining up with every point of a drawing would find a line almost anywhere in a full plan.
    */
   aligners?: Vec2[]
+  /**
+   * Lines carried on past an end, each as the end and the way it goes on: in the editor, those
+   * of the lines ending at a point the pointer rested on. A point near one is taken on it.
+   */
+  extensions?: { from: Vec2; dir: Vec2 }[]
   /** The pointer as the grid would have it. A line with nothing more precise nearby is then taken at the place nearest to this, so that going along a level or upright line still goes by grid steps. */
   gridded?: Vec2
 }
 
 /** Which is kept of two places equally near the pointer: the more specific. The centre of a circle is also one of its points, and is called its centre. */
-const RANK: Record<SnapKind, number> = { centre: 0, point: 1, crossing: 2, middle: 3, perpendicular: 4, edge: 5, aligned: 6 }
+const RANK: Record<SnapKind, number> = { centre: 0, point: 1, crossing: 2, middle: 3, perpendicular: 4, edge: 5, aligned: 6, extension: 7 }
 /** A line that turns by less than this (radians, 12°) at a point is a curve passing through it, not a corner. */
 const CORNER = Math.PI / 15
 /** No more than this many stretches of line near the pointer are tried against one another for crossings. */
@@ -81,11 +86,12 @@ function isCorner(line: Vec2[], i: number): boolean {
  * gives to snap to and the corners of its lines, the places where two lines cross, the middle of
  * a straight line, and the foot of the perpendicular from `from`. With none of those in reach, the
  * place upright from one point and level with another, of `aligners` and `from`, where both are in
- * reach; then a line itself, the place on it nearest to the pointer; then a place upright or level
+ * reach; then a line of `extensions` carried on, where it meets a line or one of those levels if
+ * that is in reach; then a line itself, the place on it nearest to the pointer; then a place upright or level
  * with one of them, the grid saying where along.
  */
 export function snapTo(scene: SceneItem[], at: Vec2, reach: number, options: SnapOptions = {}): Snap | null {
-  const { exclude = [], from, gridded, aligners = [] } = options
+  const { exclude = [], from, gridded, aligners = [], extensions = [] } = options
   let best: Snap | null = null
   let nearest = Infinity
   const offer = (p: Vec2, kind: SnapKind) => {
@@ -165,6 +171,46 @@ export function snapTo(scene: SceneItem[], at: Vec2, reach: number, options: Sna
     return { p, kind: 'aligned', guides: [[x, p], [y, p]] }
   }
 
+  // On a line carried on past its end, and where that meets a line or a level or upright line
+  // through a point rested on: the place nearest to the pointer, within reach.
+  let carried: Snap | null = null
+  let meeting = false
+  let gap = Infinity
+  // A place where it meets something is preferred to one merely on it; of those alike, the nearer.
+  const take = (p: Vec2, guides: [Vec2, Vec2][], meets: boolean, d = dist(p, at)) => {
+    if (d > reach || (meeting && !meets) || (meets === meeting && d >= gap)) return
+    carried = { p, kind: 'extension', guides }
+    meeting = meets
+    gap = d
+  }
+  for (const { from: q, dir } of extensions) {
+    const ahead = (at.x - q.x) * dir.x + (at.y - q.y) * dir.y
+    const foot = { x: q.x + dir.x * ahead, y: q.y + dir.y * ahead }
+    // Over the end itself, the end is what is pointed at.
+    if (ahead <= reach || dist(foot, at) > reach) continue
+    // Along it, by grid steps when the grid is on, as along a line drawn.
+    const g = gridded && (gridded.x - q.x) * dir.x + (gridded.y - q.y) * dir.y
+    const stepped = g ? { x: q.x + dir.x * g, y: q.y + dir.y * g } : foot
+    const on = g && g > 0 && dist(stepped, at) <= 3 * reach ? stepped : foot
+    take(on, [[q, on]], false, dist(foot, at))
+    const meets = (a: Vec2, b: Vec2, guide?: Vec2) => {
+      const s = { x: b.x - a.x, y: b.y - a.y }
+      const denominator = dir.x * s.y - dir.y * s.x
+      if (Math.abs(denominator) < 1e-9) return
+      const between = { x: a.x - q.x, y: a.y - q.y }
+      const t = (between.x * s.y - between.y * s.x) / denominator
+      const u = (between.x * dir.y - between.y * dir.x) / denominator
+      // A drawn line is met within its length; a level or upright line through a point anywhere.
+      if (t <= 0 || (!guide && (u < -1e-9 || u > 1 + 1e-9))) return
+      const p = { x: q.x + dir.x * t, y: q.y + dir.y * t }
+      take(p, guide ? [[q, p], [guide, p]] : [[q, p]], true)
+    }
+    for (const { a, b } of near) meets(a, b)
+    if (x) meets(x, { x: x.x, y: x.y + 1 }, x)
+    if (y) meets(y, { x: y.x + 1, y: y.y }, y)
+  }
+  if (carried) return carried
+
   let edge: Snap | null = null
   let off = Infinity
   for (const { a, b } of near) {
@@ -232,6 +278,8 @@ export interface MoveGuides {
   lines: [Vec2, Vec2][]
   /** Equal gaps to show, each as the stretch of empty space it is. */
   gaps: [Vec2, Vec2][]
+  /** Whether the lines are dashed: a line carried on past its end is. */
+  dashed?: boolean
 }
 
 type Axis = 'x' | 'y'

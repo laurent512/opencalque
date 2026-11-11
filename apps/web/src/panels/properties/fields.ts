@@ -28,6 +28,8 @@ export interface FieldSpec {
   multiline?: boolean
   /** The number is a length in mm, edited in the user's unit. */
   length?: boolean
+  /** The number is an angle in degrees, which its box says. */
+  angle?: boolean
   /** The property may be cleared by emptying the field. */
   optional?: boolean
   /** For a color: what an unset value means, e.g. "from layer". */
@@ -206,6 +208,17 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
   ],
   divider: AB,
   // What it counts, and its columns, are set above (`TableSettings`); here, how it is written.
+  // A view: where it is drawn, and what of the plan it draws; what it shows comes from its line
+  // (chosen among the drawing's, `viewFields`) and the plan. Its name, above, names it in the
+  // Structure list; it is not written on the drawing.
+  elevation: [
+    len('x', msg('X')),
+    len('y', msg('Y')),
+    { path: 'walls', label: msg('Show walls'), type: 'boolean', fallback: true },
+    { path: 'dimensions', label: msg('Dimensions'), type: 'boolean', fallback: true },
+  ],
+  // The line a view is taken from: how far it sees. Its ends are dragged on the plan.
+  viewline: [...AB, len('depth', msg('Depth'), 6000)],
   table: [
     { path: 'title', label: msg('Title'), type: 'string', optional: true },
     len('x', msg('X')),
@@ -303,20 +316,36 @@ export function commonFields(nodes: Node[], doc: Document): FieldSpec[] {
  */
 const placedFill = (field: FieldSpec): FieldSpec => (field.type === 'fill' && field.fallback === 'none' ? { ...field, fallback: OBJECT_FILL, unset: msg('default') } : field)
 
+/** A view's fields, the first the line it is drawn from, picked among the drawing's by their names. */
+function viewFields(doc: Document): FieldSpec[] {
+  const lines = Object.values(doc.nodes).filter((n) => n.type === 'viewline')
+  const line: FieldSpec = { path: 'line', label: msg('View line'), type: 'string', options: lines.map((l, i) => ({ value: l.id, label: l.name || t('View line {n}', { n: String(i + 1) }) })) }
+  return [line, ...(FIELDS.elevation ?? [])]
+}
+
 export function fieldsOf(node: Node, doc: Document): FieldSpec[] {
-  const fields = node.type === 'room' ? roomFields(node, doc) : (FIELDS[node.type] ?? [])
+  const fields = node.type === 'room' ? roomFields(node, doc) : node.type === 'elevation' ? viewFields(doc) : (FIELDS[node.type] ?? [])
   // A placement looks as its component is drawn: it has no look of its own to set.
   if (node.type === 'instance') return fields
   if (node.type !== 'parametric') return drawnSolid(doc, node.parent) ? fields.map(placedFill) : fields
-  const params = registry.parametric.get(node.kind)?.params ?? []
+  const kind = registry.parametric.get(node.kind)
+  const params = kind?.params ?? []
+  // Fixed on a wall, it stands at a height, its kind's usual one until another is typed.
+  const height: FieldSpec[] = kind?.mount?.on === 'wall'
+    ? [
+        { path: 'z', label: msg('Height above floor'), type: 'number', length: true, optional: true, fallback: kind.mount.height ?? 0 },
+        { path: 'showHeight', label: msg('Height on plan'), type: 'boolean', fallback: false },
+      ]
+    : []
   const own = params.map((p): FieldSpec => ({
     path: `props.${p.key}`,
     label: p.label,
     type: p.type,
     length: p.unit === 'length',
+    angle: p.unit === 'angle',
     fallback: p.default,
     // A value may be said differently for one parameter: "Single" glazing is not a "Single" door.
     options: p.options?.map((value) => ({ value, label: t(`${p.label}: ${value}`) !== `${p.label}: ${value}` ? `${p.label}: ${value}` : value })),
   }))
-  return [...fields, ...own, ...STYLE]
+  return [...fields, ...height, ...own, ...STYLE]
 }

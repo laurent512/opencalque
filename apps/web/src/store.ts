@@ -22,6 +22,11 @@ export type Placing = (
   | { type: 'parametric'; kind: string; props?: Record<string, unknown> }
   | { type: 'library'; library: Document; component: string; names: Record<string, string> }
   | { type: 'table'; table: Omit<NodeOf<'table'>, 'id' | 'parent' | 'order' | 'x' | 'y'> }
+  /**
+   * A view, put down with the line it is drawn from (`lineId`, made with it): its name, and its
+   * line's. With `sided`, a section: the side of its line it is put down on is the side it is seen from.
+   */
+  | { type: 'elevation'; name: string; lineId: string; line: Omit<NodeOf<'viewline'>, 'id' | 'parent' | 'order'>; sided?: boolean }
 ) & { carried?: boolean }
 
 /**

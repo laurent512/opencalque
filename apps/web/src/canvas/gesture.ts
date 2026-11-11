@@ -7,9 +7,14 @@ export type Gesture =
   /** Button down on an object: becomes a move once the pointer travels far enough. */
   /** With `beside`, the press was on no object but inside the box around the selection: released without moving, it lets the selection go. */
   | { kind: 'press'; at: Vec2; start: Vec2; nodes: Node[]; beside?: boolean }
+  /** A section line being drawn: where it starts, its end to click. */
+  | { kind: 'section'; from: Vec2 }
+  /** An object of the plan dragged where an elevation shows it: across the view along its wall, up and down for its height. */
+  | { kind: 'elevated'; view: NodeOf<'elevation'>; node: NodeOf<'parametric'> | NodeOf<'instance'>; start: Vec2; role: 'opening' | 'fixed' | 'standing'; raises: boolean }
   /** `moving` and `others` are what is moved and what it can line up with, as they stood when the move began. */
   | { kind: 'move'; start: Vec2; nodes: Node[]; moving: Alignable | null; others: Alignable[] }
-  | { kind: 'handle'; node: Node; index: number }
+  /** With `grab`, the handle was taken that far from its point (the arrow at an end of a view, anywhere along it), which it keeps as it is dragged. */
+  | { kind: 'handle'; node: Node; index: number; grab?: Vec2 }
   /** A wall corner being dragged: every wall end at `from` follows, or with `only` just that wall's. */
   | { kind: 'corner'; from: Vec2; only?: string }
   /** A corner of a crop being dragged; `fixed` is the opposite corner, which stays where it is. */
@@ -32,6 +37,8 @@ export type Gesture =
   | { kind: 'offset'; id: string; a: Vec2; b: Vec2 }
   /** An arc whose two ends are set; the pointer now chooses a point it goes through. */
   | { kind: 'arc'; id: string; a: Vec2; b: Vec2 }
+  /** The fillet tool has taken its first line, clicked at `at` (the side of it kept); the pointer now chooses the second. */
+  | { kind: 'fillet'; first: NodeOf<'line'>; at: Vec2 }
   /** The offset tool has taken `node`; the pointer now chooses how far from it the copy goes. `copy` is the copy being shown. */
   | { kind: 'parallel'; node: Node; copy?: string }
   /** A live reading from `start`. Nothing is added to the drawing. */
@@ -72,7 +79,7 @@ export interface Keys {
   shiftKey: boolean
 }
 
-export const TWO_POINT: Tool[] = ['line', 'curve', 'arc', 'wall', 'divider', 'dimension', 'annotation', 'gridline', 'rect', 'ellipse', 'paper']
+export const TWO_POINT: Tool[] = ['line', 'curve', 'arc', 'wall', 'divider', 'dimension', 'annotation', 'gridline', 'rect', 'ellipse', 'circle', 'paper']
 /** The tools that measure what is drawn: their points snap to it, never to the grid. A dimension's line is still placed by grid steps. */
 export const MEASURING: Tool[] = ['dimension', 'measure', 'angle']
 /** Tools whose two typed sizes are a width and a height. */
@@ -85,6 +92,8 @@ export const TURNING: Node['type'][] = ['text', 'image', 'parametric', 'instance
 /** How close, in screen pixels, the pointer must come to something for a point to snap to it, and for a moved object to line up with another. */
 export const SNAP_REACH = 10
 export const ALIGN_REACH = 6
+/** How near a wall, in screen pixels, the pointer puts what is fixed on walls on its face: further than a door's, since it is put beside the wall rather than on it. */
+export const MOUNT_REACH = 40
 /**
  * A press only counts as dragging out a shape when the pointer travelled this far (px) and the
  * button was held this long (ms). Anything less is a click whose hand slipped, and must not leave

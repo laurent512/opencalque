@@ -134,6 +134,16 @@ export interface Overlay {
   edgeHover?: Vec2[][]
   /** The face of the selected wall that a press would drag, or that is being dragged, to change its thickness, as its stretches. */
   face?: Vec2[][]
+  /** The boxes in which elevations show what is selected on the plan: the same objects, seen from in front. */
+  inViews?: Bounds[]
+  /**
+   * The lines on the plan that the selected elevations and sections look at, each seen from its
+   * right, the area each sees up to its depth, and where its start and its end are written on the
+   * view (`marks`, in the drawing, on the sheet).
+   */
+  viewLines?: { a: Vec2; b: Vec2; area?: Vec2[]; marks?: { start: Vec2; end: Vec2 }[] }[]
+  /** The words the ends of a view are called by: Start and End, in the user's language. */
+  viewWords?: { start: string; end: string }
   /** Where the split tool would cut: a point, the way the thing runs there, and how far the mark reaches to either side. */
   cut?: { at: Vec2; dir: Vec2; half: number; parts?: Vec2[][]; gap?: number }
   /** The object a tool would act on, lit up as if it were selected. */
@@ -181,6 +191,24 @@ export interface Overlay {
   guide?: { at: Vec2; angle: number }
   /** What the ends of the selected walls are joined to, and the walls joined to them (`WallLinks`). */
   wallLinks?: WallLinks | null
+}
+
+/** How long, in screen pixels, the arrow at each end of a selected view's line is: what is dragged to move that end. */
+export const VIEW_ARROW = 34
+
+/**
+ * The arrow at an end of a view's line, on screen: on the side it is seen from, pointing at the
+ * line the way the view looks (to the left of its line, as it is seen from its right), its head on
+ * the end. In a room, inside it, pointing at the wall shown. `toScreen` takes a point of the drawing.
+ */
+export function viewArrow(a: Vec2, b: Vec2, end: 'a' | 'b', toScreen: (p: Vec2) => Vec2): { from: Vec2; tip: Vec2; look: Vec2; along: Vec2 } | null {
+  const [p, q] = [toScreen(a), toScreen(b)]
+  const length = Math.hypot(q.x - p.x, q.y - p.y)
+  if (length < 1) return null
+  const along = { x: (q.x - p.x) / length, y: (q.y - p.y) / length }
+  const look = { x: along.y, y: -along.x }
+  const tip = end === 'a' ? p : q
+  return { from: { x: tip.x - look.x * VIEW_ARROW, y: tip.y - look.y * VIEW_ARROW }, tip, look, along }
 }
 
 /** Ends of selected walls are shown as joined or not for at most this many walls: past that, the marks would hide the plan. */
@@ -930,6 +958,92 @@ export function drawScene(
     ctx.drawImage(ring, 0, 0)
     ctx.restore()
   }
+  if (overlay.viewLines) {
+    // As a section line is drawn on a plan: dashed, with an arrow at each end the way it looks.
+    ctx.strokeStyle = ACCENT
+    ctx.fillStyle = ACCENT
+    ctx.lineWidth = 1.5
+    for (const { a, b, area, marks } of overlay.viewLines) {
+      if (area) {
+        // What it sees: dotted, from its line out to its depth, faintly filled.
+        const corners = area.map(toScreen)
+        ctx.beginPath()
+        corners.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)))
+        ctx.closePath()
+        ctx.fillStyle = 'rgb(13 153 255 / 6%)'
+        ctx.fill()
+        ctx.setLineDash([2, 4])
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(corners[1].x, corners[1].y)
+        ctx.lineTo(corners[2].x, corners[2].y)
+        ctx.lineTo(corners[3].x, corners[3].y)
+        ctx.lineTo(corners[0].x, corners[0].y)
+        ctx.stroke()
+        ctx.setLineDash([])
+        ctx.fillStyle = ACCENT
+        ctx.lineWidth = 1.5
+      }
+      const [p, q] = [toScreen(a), toScreen(b)]
+      const length = Math.hypot(q.x - p.x, q.y - p.y)
+      if (length < 1) continue
+      const along = { x: (q.x - p.x) / length, y: (q.y - p.y) / length }
+      // Seen from its right, it looks the other way: to its left.
+      const look = { x: along.y, y: -along.x }
+      ctx.setLineDash([10, 4, 2, 4])
+      ctx.beginPath()
+      ctx.moveTo(p.x, p.y)
+      ctx.lineTo(q.x, q.y)
+      ctx.stroke()
+      ctx.setLineDash([])
+      // At each end an arrow the way it looks, which is what is dragged to move that end, and its
+      // name beyond its tip; the same names on the view, at its left and its right.
+      for (const end of ['a', 'b'] as const) {
+        const arrow = viewArrow(a, b, end, toScreen)
+        if (!arrow) continue
+        const { from, tip } = arrow
+        ctx.lineWidth = 2.5
+        ctx.beginPath()
+        ctx.moveTo(from.x, from.y)
+        ctx.lineTo(tip.x, tip.y)
+        ctx.stroke()
+        // Its head ends on the line.
+        ctx.beginPath()
+        ctx.moveTo(tip.x, tip.y)
+        ctx.lineTo(tip.x - look.x * 11 - along.x * 7, tip.y - look.y * 11 - along.y * 7)
+        ctx.lineTo(tip.x - look.x * 11 + along.x * 7, tip.y - look.y * 11 + along.y * 7)
+        ctx.closePath()
+        ctx.fill()
+        if (overlay.viewWords) {
+          ctx.font = `600 11px ${FONT}`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(end === 'a' ? overlay.viewWords.start : overlay.viewWords.end, from.x - look.x * 12, from.y - look.y * 12)
+        }
+      }
+      for (const mark of overlay.viewWords ? (marks ?? []) : []) {
+        ctx.font = `600 11px ${FONT}`
+        ctx.textBaseline = 'bottom'
+        const [left, right] = [toScreen(mark.start), toScreen(mark.end)]
+        ctx.textAlign = 'left'
+        ctx.fillText(overlay.viewWords!.start, left.x, left.y - 6)
+        ctx.textAlign = 'right'
+        ctx.fillText(overlay.viewWords!.end, right.x, right.y - 6)
+      }
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'alphabetic'
+      ctx.lineWidth = 1.5
+    }
+  }
+  if (overlay.inViews) {
+    ctx.setLineDash([])
+    ctx.strokeStyle = ACCENT
+    ctx.lineWidth = 1.5
+    for (const box of overlay.inViews) {
+      const [p, q] = [toScreen({ x: box.minX, y: box.minY }), toScreen({ x: box.maxX, y: box.maxY })]
+      ctx.strokeRect(p.x - 3, p.y - 3, q.x - p.x + 6, q.y - p.y + 6)
+    }
+  }
   if (overlay.face) {
     // Drawn over the face in the colour of the selection, with a glow that sets it apart from the
     // selection's own outline, so it is clear which side moves.
@@ -1130,7 +1244,8 @@ export function drawScene(
     ctx.strokeStyle = SNAP
     ctx.fillStyle = SNAP
     ctx.lineWidth = 1
-    ctx.setLineDash([])
+    // A line carried on past its end is dashed, as it is not drawn.
+    ctx.setLineDash(overlay.smart.dashed ? [5, 4] : [])
     for (const [from, to] of overlay.smart.lines) {
       const a = toScreen(from)
       const b = toScreen(to)
@@ -1207,6 +1322,7 @@ export function drawScene(
         ctx.lineTo(p.x, p.y + 2)
         break
       case 'aligned':
+      case 'extension':
         ctx.moveTo(p.x, p.y - 6)
         ctx.lineTo(p.x, p.y + 6)
         ctx.moveTo(p.x - 6, p.y)
