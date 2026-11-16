@@ -1,3 +1,11 @@
 # Read by the web host (Cloudflare). Vite names these files after their contents, so they never change.
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
+
+# Read by editors, validators and tools from other sites (packages/cli/src/build-site.ts writes them).
+/schema/*
+  Access-Control-Allow-Origin: *
+/llms.txt
+  Access-Control-Allow-Origin: *
+/llms-full.txt
+  Access-Control-Allow-Origin: *

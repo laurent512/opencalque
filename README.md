@@ -123,7 +123,7 @@ The full inventory and roadmap are in [docs/FEATURES.md](docs/FEATURES.md).
 
 ## A local CLI
 
-Everything the editor does to a drawing, a script can do too. The CLI runs from a checkout of this repository (see [Run from source](#run-from-source)); it is not installed with the app.
+Everything the editor does to a drawing, a script can do too. The CLI is on npm as [`opencalque`](https://www.npmjs.com/package/opencalque): with Node 22 or later, `npx opencalque <command>` runs it with nothing else to install. From a checkout of this repository (see [Run from source](#run-from-source)), `pnpm opencalque <command>` runs the same code, as below. It is not installed with the app.
 
 ```sh
 pnpm opencalque new plan.opencalque "My plan"
@@ -152,7 +152,7 @@ A batch is all-or-nothing and every result is validated, so a script or a model 
 
 ## AI agents
 
-OpenCalque serves drawings to an agent over [MCP](https://modelcontextprotocol.io), with the tools the assistant uses: edit with operations, read, measure, check what came out wrong, and look at a picture of the result.
+OpenCalque serves drawings to an agent over [MCP](https://modelcontextprotocol.io), with the tools the assistant uses: edit with operations, read, measure, check what came out wrong, and look at a picture of the result. A model with no tools can read [opencalque.com/llms.txt](https://opencalque.com/llms.txt), which leads to a guide to the format with a complete example drawing.
 
 **The drawing open in the desktop app** needs only the app. Turn on *Let agents on this computer work on the open drawing* under Preferences › AI, which also gives the command to run once, with the real path of your app. With Claude Code it looks like this:
 
@@ -162,13 +162,13 @@ claude mcp add opencalque-live -- "C:\Users\you\AppData\Local\Programs\OpenCalqu
 
 For any other MCP client, the command is the app and its one argument is `--mcp`. The app does not need to be open when you add it, only when the agent works.
 
-**Drawings on disk** need a checkout of this repository, like the CLI:
+**Drawings on disk** need only Node 22 or later, through the package on npm:
 
 ```sh
-claude mcp add opencalque -- pnpm --silent --dir /path/to/opencalque opencalque mcp
+claude mcp add opencalque -- npx -y opencalque mcp
 ```
 
-Keep `--silent`: anything else on its output would break the protocol. From a checkout, `opencalque mcp --live` also reaches the open drawing. Give the agent absolute paths. It reads `read_guide` first, and asks for the schema of each type of node it uses.
+For any other MCP client (Claude Desktop, Cursor, VS Code, Gemini CLI…), the command is `npx` and its arguments `-y opencalque mcp`. From a checkout, the same server is `pnpm --silent --dir /path/to/opencalque opencalque mcp`: keep `--silent`, as anything else on its output would break the protocol. `opencalque mcp --live` also reaches the open drawing. Give the agent absolute paths. It reads `read_guide` first, and asks for the schema of each type of node it uses.
 
 | | On a file | On the drawing open in the app |
 | --- | --- | --- |

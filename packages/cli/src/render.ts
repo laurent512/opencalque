@@ -1,15 +1,13 @@
 import { existsSync, readdirSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import { Resvg } from '@resvg/resvg-js'
 import { svgBox, type DrawnPicture } from '@opencalque/core'
+import { FONTS } from './fonts'
 
 /*
  * A drawing as a PNG with no browser, for the `png` command and for agents looking at a file. The
  * editor draws the same SVG with the browser's own renderer (`svgToCanvas`); the core stays free of
  * both.
  */
-
-const FONTS = fileURLToPath(new URL('../../../fonts/', import.meta.url))
 
 /** The fonts that ship with the app: this renderer sees only those it is given, so that a picture is the same on every computer. */
 const fontFiles = (): string[] => (existsSync(FONTS) ? readdirSync(FONTS).filter((name) => name.endsWith('.ttf')).map((name) => FONTS + name) : [])

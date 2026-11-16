@@ -46,6 +46,51 @@ jobs:
             apps/desktop/dist/latest*.yml
             apps/desktop/dist/*.blockmap
 
+  # The CLI and MCP server as the package `opencalque` on npm (packages/cli/src/build-package.ts),
+  # then listed in the MCP registry. npm trusts this workflow (trusted publishing, set on the
+  # package's page on npmjs.com), so no token is kept; the registry knows the repository's GitHub
+  # account the same way. The first version was published by hand: npm learns of a package so.
+  npm:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      MCP_PUBLISHER_VERSION: v1.8.1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm package:npm
+      - working-directory: packages/cli/npm
+        run: |
+          # A version with a hyphen (1.0.0-rc.1) is not what `npx opencalque` gets.
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then npm publish --tag next; else npm publish; fi
+      - if: ${{ !contains(github.ref_name, '-') }}
+        uses: sigstore/cosign-installer@v3
+      - if: ${{ !contains(github.ref_name, '-') }}
+        working-directory: packages/cli/npm
+        run: |
+          set -euo pipefail
+          archive="mcp-publisher_linux_amd64.tar.gz"
+          base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
+          curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
+          curl --fail --location --silent --show-error --output "$archive.sigstore.json" "$base_url/$archive.sigstore.json"
+          cosign verify-blob \
+            --bundle "$archive.sigstore.json" \
+            --certificate-identity "https://github.com/modelcontextprotocol/registry/.github/workflows/release.yml@refs/tags/${MCP_PUBLISHER_VERSION}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "$archive"
+          tar xzf "$archive" mcp-publisher
+          rm -f "$archive" "$archive.sigstore.json"
+          ./mcp-publisher login github-oidc
+          ./mcp-publisher publish
+
   publish:
     needs: build
     runs-on: ubuntu-latest

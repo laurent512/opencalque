@@ -86,8 +86,9 @@ Last updated: 2026-11-11 (after 1.8.0).
 - **It checks its own work**: each edit comes back with what it left wrong (a room that does not close, a wall drawn twice, a door outside its wall), and it can look at the drawing and measure it.
 
 ### Agents
-- An **MCP server** with the assistant's tools. The installed desktop app is one (`--mcp`), for the drawing open in it, where each edit can be undone: off until turned on in Preferences › AI, which gives the command that connects Claude Code. From a checkout, `opencalque mcp` also works on files.
-- In the CLI: `check`, `quantities`, `png` and `guide`. An edit applied there makes the same drawing as in the editor.
+- An **MCP server** with the assistant's tools. The installed desktop app is one (`--mcp`), for the drawing open in it, where each edit can be undone: off until turned on in Preferences › AI, which gives the command that connects Claude Code. On files, `npx -y opencalque mcp` (the CLI on npm) or `opencalque mcp` from a checkout.
+- In the CLI: `check`, `quantities`, `png` and `guide`. An edit applied there makes the same drawing as in the editor. The CLI is on npm (`npx opencalque`).
+- opencalque.com serves `/about/`, `/llms.txt`, `/llms-full.txt` (the format for a model, with an example drawing) and the JSON Schemas at `/schema/`, for search engines and models that do not run the editor.
 
 ### Application
 - Desktop app (Windows, macOS, Linux) and web app from the same code, with **installers** built and attached to a GitHub release for each version tag.

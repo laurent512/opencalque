@@ -7,14 +7,11 @@ import {
   checkDrawing,
   createDocument,
   describeDrawing,
-  documentJsonSchema,
   drawingGuide,
   dxfOps,
   newId,
   nodeTypes,
   nodeTypeSchema,
-  extensionJsonSchema,
-  opsJsonSchema,
   pagesOf,
   parseOps,
   problemsMadeBy,
@@ -30,9 +27,11 @@ import {
   unknownProperties,
 } from '@opencalque/core'
 import { standardRegistry } from '@opencalque/warehouse'
+import { FONTS } from './fonts'
 import { liveBackend, serve } from './mcp'
 import { fileBackend } from './mcp-files'
 import { renderPng } from './render'
+import { publishedSchemas } from './schemas'
 
 const USAGE = `opencalque <command>
 
@@ -194,7 +193,12 @@ async function main(): Promise<void> {
       // Letters the standard PDF fonts lack are printed in the fonts the app ships; Chinese
       // characters in their Japanese or Korean forms when the drawing has kana or Hangul.
       const characters = pdfFontCharacters(doc, registry)
-      const fonts = characters.length === 0 ? [] : pdfFontNames(characters).map((name) => new Uint8Array(readFileSync(new URL(`../../../fonts/${name}-Regular.ttf`, import.meta.url))))
+      // The package on npm carries only Noto Sans (fonts.ts): without the others, those letters are left out.
+      const files = characters.length === 0 ? [] : pdfFontNames(characters).map((name) => join(FONTS, `${name}-Regular.ttf`))
+      // NotoSansSC is asked for whenever Noto Sans might lack a letter; only Chinese, Japanese and Korean need it.
+      const asian = characters.some((char) => /[⺀-鿿가-힯豈-﫿＀-￯]/.test(char))
+      for (const missing of asian ? files.filter((font) => !existsSync(font)) : []) console.error(`warning: ${basename(missing)} is not installed, so the letters it holds are left out. A checkout of OpenCalque or the desktop app has it.`)
+      const fonts = files.filter((font) => existsSync(font)).map((font) => new Uint8Array(readFileSync(font)))
       const pdf = toPDF(doc, registry, undefined, { fonts })
       if (out) writeFileSync(out, pdf)
       else process.stdout.write(pdf)
@@ -208,12 +212,7 @@ async function main(): Promise<void> {
       return
     }
     case 'schema': {
-      const schemas = {
-        'document.schema.json': documentJsonSchema(),
-        'ops.schema.json': opsJsonSchema(),
-        'extension.schema.json': extensionJsonSchema(),
-      }
-      for (const [name, schema] of Object.entries(schemas)) {
+      for (const [name, schema] of Object.entries(publishedSchemas())) {
         const json = JSON.stringify(schema, null, 2) + '\n'
         if (out) {
           mkdirSync(out, { recursive: true })

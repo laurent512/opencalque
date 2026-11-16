@@ -1,5 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opencalque.com/schema/ops.schema.json",
+  "title": "OpenCalque operations (a list of edits to a drawing)",
   "type": "array",
   "items": {
     "oneOf": [

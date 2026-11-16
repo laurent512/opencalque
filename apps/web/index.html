@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="./icon.svg" />
     <title>OpenCalque</title>
+    <!-- For search engines and language models, which do not run the editor: what this is, and where it is told (/about/, made by packages/cli/src/build-site.ts). -->
+    <meta name="description" content="OpenCalque: a free, open-source 2D editor for floor plans and layouts, in the browser. Walls, doors, windows, rooms with their areas, furniture, sheets at scale, PDF and DXF export." />
+    <link rel="alternate" type="text/plain" title="OpenCalque for language models" href="https://opencalque.com/llms.txt" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="OpenCalque" />
+    <meta property="og:title" content="OpenCalque: free, open-source floor plan editor" />
+    <meta property="og:description" content="2D floor plans in the browser or on the desktop. Open source, plain JSON, with an MCP server for AI agents." />
+    <meta property="og:url" content="https://opencalque.com/" />
+    <meta property="og:image" content="https://opencalque.com/about/screenshot.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <noscript><style>#splash { display: none; }</style></noscript>
     <style>
       /* The loading screen, shown from the first paint while the app's code loads, and taken away
          by src/splash.ts once the app knows what to show first. Plain HTML and CSS: the
@@ -101,6 +112,13 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <main style="max-width: 40em; margin: 48px auto; padding: 0 16px; font: 16px/1.6 system-ui, sans-serif">
+        <h1>OpenCalque</h1>
+        <p>A free, open-source 2D architectural editor for floor plans and layouts. The editor needs JavaScript.</p>
+        <p><a href="/about/">What OpenCalque is</a> · <a href="https://github.com/laurent512/opencalque/releases/latest">Desktop app</a> · <a href="/llms.txt">For language models</a> · <a href="https://github.com/laurent512/opencalque">Source</a></p>
+      </main>
+    </noscript>
     <div id="splash" role="progressbar" aria-label="OpenCalque">
       <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
         <rect width="64" height="64" rx="14" fill="#0d99ff" />

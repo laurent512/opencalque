@@ -24,7 +24,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
       - run: pnpm test
+      # Also writes the site around the editor (about/, llms.txt, schema/): packages/cli/src/build-site.ts.
       - run: pnpm build:web
+      # The package a version tag publishes on npm (release.yml) must bundle and start.
+      - run: pnpm package:npm && node packages/cli/npm/dist/cli.js --version
       # The licences shown under About and shipped with the installers are those of what the build holds.
       - run: pnpm notices --check
       - run: pnpm exec playwright install --with-deps chromium

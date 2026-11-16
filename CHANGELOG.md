@@ -28,6 +28,8 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 - A sofa of any number of seats, an armchair, a chair and a desk with or without its office chair, resized by their sides; and a vanity unit with drawers or doors under a washbasin ("Below").
 - Extensions written as data can say how an object looks in elevations from the side and from behind (`"side"`, `"back"`), beside its front.
 - Drawings with links are of format version 4, which 1.9 and earlier refuse with their "newer version" message. A drawing with no link is still written as before and opens in them.
+- The command line and the MCP server are on npm as `opencalque`: `npx -y opencalque mcp` gives Claude Desktop, Claude Code, Cursor or any other MCP client the drawing tools on files, and `npx opencalque <command>` runs the CLI, with nothing to clone. The package carries only the Latin, Greek and Cyrillic font: a PDF of Chinese, Japanese or Korean text made from it leaves those letters out, and says so.
+- opencalque.com says what OpenCalque is to those that do not run the editor, search engines and language models among them: a page at /about/, /llms.txt and /llms-full.txt (the format and its operations explained for a model, with a complete example drawing), and the JSON Schemas at /schema/, which now say where they live (`$id`) and what they describe (`title`).
 
 ### Fixed
 - The washing machine in the object library is drawn from above, as every other symbol is: its top, the drum under it dashed, the door and the knob standing out of its front. It was drawn from the front. It is an adjustable object now (above); washing machines already in a drawing keep their old look.

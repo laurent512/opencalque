@@ -1,5 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opencalque.com/schema/document.schema.json",
+  "title": "OpenCalque drawing (.opencalque)",
   "type": "object",
   "properties": {
     "format": {

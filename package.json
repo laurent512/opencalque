@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "pnpm --filter @opencalque/desktop dev",
     "dev:web": "pnpm --filter @opencalque/web dev",
-    "build:web": "pnpm --filter @opencalque/web build",
+    "build:web": "pnpm --filter @opencalque/web build && pnpm site",
+    "site": "tsx packages/cli/src/build-site.ts",
     "build": "pnpm --filter @opencalque/desktop build",
     "start": "pnpm --filter @opencalque/desktop start",
     "test": "vitest run",
@@ -21,6 +22,7 @@
     "warehouse:gallery": "tsx packages/cli/src/warehouse-gallery.ts",
     "example": "tsx packages/cli/src/build-example.ts",
     "notices": "pnpm --filter @opencalque/web notices",
+    "package:npm": "tsx packages/cli/src/build-package.ts",
     "dist": "pnpm build && pnpm --filter @opencalque/desktop dist"
   },
   "devDependencies": {

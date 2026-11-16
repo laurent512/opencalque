@@ -1,0 +1,475 @@
+<!doctype html>
+<!--
+  What OpenCalque is, for people and for the search engines and language models that do not run the
+  editor's script. Plain HTML: packages/cli/src/build-site.ts copies it into the web build, at
+  /about/, with {{version}} filled in. Say only what the app does.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenCalque: free, open-source floor plan editor</title>
+    <meta name="description" content="Draw 2D floor plans and layouts in your browser or on your computer, for free: walls that join themselves, doors and windows, rooms with their areas, furniture, sheets at scale, PDF and DXF export. Open source, with a JSON format and an MCP server for AI agents." />
+    <link rel="canonical" href="https://opencalque.com/about/" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="alternate" type="text/plain" title="OpenCalque for language models" href="/llms.txt" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="OpenCalque: free, open-source floor plan editor" />
+    <meta property="og:description" content="2D floor plans in the browser or on the desktop. Open source, plain JSON, with an MCP server for AI agents." />
+    <meta property="og:url" content="https://opencalque.com/about/" />
+    <meta property="og:image" content="https://opencalque.com/about/screenshot.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "SoftwareApplication",
+            "name": "OpenCalque",
+            "description": "Free, open-source 2D architectural editor for floor plans and layouts, with a plain JSON format, a command line and an MCP server for AI agents.",
+            "url": "https://opencalque.com/about/",
+            "applicationCategory": "DesignApplication",
+            "operatingSystem": "Windows, macOS, Linux, Web browser",
+            "softwareVersion": "{{version}}",
+            "license": "https://opensource.org/licenses/MIT",
+            "isAccessibleForFree": true,
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "downloadUrl": "https://github.com/laurent512/opencalque/releases/latest",
+            "installUrl": "https://opencalque.com/",
+            "codeRepository": "https://github.com/laurent512/opencalque",
+            "screenshot": "https://opencalque.com/about/screenshot.png"
+          },
+          {
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "Is OpenCalque free?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes. It is open source under the MIT licence, with no account, no subscription and no telemetry." }
+              },
+              {
+                "@type": "Question",
+                "name": "Can an AI assistant draw a floor plan with OpenCalque?",
+                "acceptedAnswer": { "@type": "Answer", "text": "Yes. Any assistant that supports MCP can draw, check, measure and look at plans with npx -y opencalque mcp. One without tools can write a drawing as JSON, following https://opencalque.com/llms-full.txt, for the person to open in the editor. The editor also has an assistant of its own, through Claude, a local model with Ollama, or any OpenAI-compatible service." }
+              },
+              {
+                "@type": "Question",
+                "name": "What files does OpenCalque read and write?",
+                "acceptedAnswer": { "@type": "Answer", "text": "It saves .opencalque files, which are JSON. It imports DXF, PDF and pictures to trace, and exports PDF at true scale, SVG, DXF, PNG and quantities as CSV. It does not read DWG or IFC." }
+              },
+              {
+                "@type": "Question",
+                "name": "Does OpenCalque make 3D models?",
+                "acceptedAnswer": { "@type": "Answer", "text": "No. It draws in 2D: plans, and elevations and sections drawn from the plan." }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --surface: #f5f6f8;
+        --text: #16181d;
+        --muted: #5b6270;
+        --line: #e3e6eb;
+        --accent: #0d99ff;
+        --accent-text: #0a6fc2;
+        --on-accent: #ffffff;
+        --code: #eef1f5;
+        color-scheme: light;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          --bg: #15171b;
+          --surface: #1d2025;
+          --text: #eceef2;
+          --muted: #a2a9b6;
+          --line: #2c3038;
+          --accent: #0d99ff;
+          --accent-text: #5cb8ff;
+          --on-accent: #ffffff;
+          --code: #23272e;
+          color-scheme: dark;
+        }
+      }
+      :root[data-theme='dark'] {
+        --bg: #15171b;
+        --surface: #1d2025;
+        --text: #eceef2;
+        --muted: #a2a9b6;
+        --line: #2c3038;
+        --accent: #0d99ff;
+        --accent-text: #5cb8ff;
+        --on-accent: #ffffff;
+        --code: #23272e;
+        color-scheme: dark;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.6 system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+      }
+      a {
+        color: var(--accent-text);
+      }
+      .wrap {
+        max-width: 1040px;
+        margin: 0 auto;
+        padding: 0 16px;
+      }
+      header.top {
+        border-bottom: 1px solid var(--line);
+      }
+      header.top .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        height: 60px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 650;
+        color: var(--text);
+        text-decoration: none;
+      }
+      .brand img {
+        width: 26px;
+        height: 26px;
+      }
+      nav {
+        display: flex;
+        gap: 18px;
+        font-size: 15px;
+      }
+      nav a {
+        color: var(--muted);
+        text-decoration: none;
+      }
+      nav a:hover {
+        color: var(--text);
+      }
+      .hero {
+        padding: 56px 0 32px;
+      }
+      h1 {
+        font-size: clamp(30px, 5vw, 46px);
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+        margin: 0 0 16px;
+        max-width: 18em;
+      }
+      .lead {
+        font-size: 19px;
+        color: var(--muted);
+        max-width: 38em;
+        margin: 0 0 28px;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+      .button {
+        display: inline-block;
+        padding: 11px 20px;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        border: 1px solid var(--line);
+        color: var(--text);
+        background: var(--surface);
+      }
+      .button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: var(--on-accent);
+      }
+      figure {
+        margin: 40px 0 0;
+      }
+      figure img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+      }
+      figcaption {
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 10px;
+      }
+      section {
+        padding: 48px 0;
+        border-top: 1px solid var(--line);
+      }
+      h2 {
+        font-size: 26px;
+        letter-spacing: -0.01em;
+        margin: 0 0 8px;
+      }
+      section > .wrap > p.intro {
+        color: var(--muted);
+        max-width: 42em;
+        margin: 0 0 28px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 18px 20px;
+      }
+      .card h3 {
+        font-size: 16px;
+        margin: 0 0 6px;
+      }
+      .card p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      pre,
+      code {
+        font-family: ui-monospace, 'Cascadia Code', Consolas, Menlo, monospace;
+        font-size: 14px;
+      }
+      code {
+        background: var(--code);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      pre {
+        background: var(--code);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 14px 16px;
+        overflow-x: auto;
+        margin: 0 0 16px;
+        line-height: 1.5;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+      }
+      .two {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 32px;
+        align-items: start;
+      }
+      .two h3 {
+        font-size: 17px;
+        margin: 0 0 8px;
+      }
+      ul.plain {
+        padding-left: 20px;
+        margin: 0;
+      }
+      ul.plain li {
+        margin-bottom: 6px;
+      }
+      dl {
+        margin: 0;
+        max-width: 46em;
+      }
+      dt {
+        font-weight: 650;
+        margin-top: 20px;
+      }
+      dd {
+        margin: 4px 0 0;
+        color: var(--muted);
+      }
+      footer {
+        border-top: 1px solid var(--line);
+        padding: 28px 0 40px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+      footer .wrap {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      @media (max-width: 560px) {
+        nav .wide {
+          display: none;
+        }
+        .hero {
+          padding-top: 36px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap">
+        <a class="brand" href="/about/"><img src="/icon.svg" alt="" />OpenCalque</a>
+        <nav>
+          <a href="#agents" class="wide">AI agents</a>
+          <a href="#format" class="wide">Format</a>
+          <a href="https://github.com/laurent512/opencalque">GitHub</a>
+          <a href="/">Open the editor</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <div class="wrap hero">
+        <h1>Free, open-source floor plans, in your browser or on your computer</h1>
+        <p class="lead">
+          OpenCalque is a 2D architectural editor with a Figma-like interface. Draw walls that join themselves, drop in doors and windows that cut them, name rooms and get their area, furnish them, then frame it all on a sheet at scale and print it. Every drawing is a plain JSON file, which scripts and AI agents can write too.
+        </p>
+        <div class="actions">
+          <a class="button primary" href="/">Open the editor</a>
+          <a class="button" href="https://github.com/laurent512/opencalque/releases/latest">Download for Windows, macOS, Linux</a>
+        </div>
+        <figure>
+          <img src="screenshot.png" width="1440" height="903" alt="A furnished apartment plan open in OpenCalque: rooms with floor patterns and areas, doors, windows, furniture, dimensions and notes" />
+          <figcaption>An apartment drawn in OpenCalque. The file was generated by a script, through the same operations the editor uses.</figcaption>
+        </figure>
+      </div>
+
+      <section>
+        <div class="wrap">
+          <h2>What you can do</h2>
+          <p class="intro">Made for buildings rather than general CAD: the objects know what they are. MIT licensed, with no account, no subscription and no telemetry.</p>
+          <div class="grid">
+            <div class="card">
+              <h3>Walls that behave</h3>
+              <p>Walls join at any angle and stay joined when one moves. Corners mitred, rounded, cut off or running through. Walls of one or several materials, hatched.</p>
+            </div>
+            <div class="card">
+              <h3>Doors, windows, stairs</h3>
+              <p>Openings snap into walls and cut them, and follow when the wall moves. Four kinds of stairs, each with its own parameters.</p>
+            </div>
+            <div class="card">
+              <h3>Rooms and quantities</h3>
+              <p>Rooms are found from the walls, with their name and area. Tables of quantities stay up to date on the drawing and export as CSV.</p>
+            </div>
+            <div class="card">
+              <h3>Furniture and symbols</h3>
+              <p>A searchable library of furniture, kitchen, bathroom and electrical symbols, and parametric objects you can resize.</p>
+            </div>
+            <div class="card">
+              <h3>Sheets at scale</h3>
+              <p>Papers from A5 to A0 at a drawing scale, with a title block. Vector PDF at true scale, one page per paper; SVG, PNG and DXF too.</p>
+            </div>
+            <div class="card">
+              <h3>Elevations and sections</h3>
+              <p>Views drawn from the plan and always up to date: wall faces with their doors, windows, sockets and furniture at their heights.</p>
+            </div>
+            <div class="card">
+              <h3>Trace and import</h3>
+              <p>Drop a PDF or a picture of a plan, set its scale from one known distance, and draw over it. Import DXF from other CAD programs.</p>
+            </div>
+            <div class="card">
+              <h3>Your language, your units</h3>
+              <p>English, French, Spanish, German, Chinese, Japanese, Korean and Turkish. Millimetres to metres, or feet and inches with fractions.</p>
+            </div>
+          </div>
+          <figure>
+            <img src="screenshot-sheet.png" width="1440" height="903" alt="The same plan on an A3 sheet at 1:50, with border, title block, dimensions and notes" loading="lazy" />
+            <figcaption>The same plan framed on an A3 sheet at 1:50, ready to export as a PDF.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section id="agents">
+        <div class="wrap">
+          <h2>For AI agents</h2>
+          <p class="intro">
+            Claude Desktop, Claude Code, Cursor, VS Code, Gemini CLI and any other client that runs MCP servers can draw plans with OpenCalque, then check, measure and look at what they drew. The tools are the ones the editor's own assistant uses.
+          </p>
+          <div class="two">
+            <div>
+              <h3>Add the MCP server</h3>
+              <pre><code>npx -y opencalque mcp</code></pre>
+              <p>With Claude Code:</p>
+              <pre><code>claude mcp add opencalque -- npx -y opencalque mcp</code></pre>
+              <p>In any other client's configuration:</p>
+              <pre><code>{ "mcpServers": { "opencalque": {
+    "command": "npx", "args": ["-y", "opencalque", "mcp"] } } }</code></pre>
+            </div>
+            <div>
+              <h3>What the agent gets</h3>
+              <ul class="plain">
+                <li><code>open_drawing</code> opens or creates a <code>.opencalque</code> file.</li>
+                <li><code>read_guide</code> explains the format and the operations.</li>
+                <li><code>apply_operations</code> edits the drawing with small JSON operations.</li>
+                <li><code>check_drawing</code> finds rooms that do not close, walls drawn twice, doors outside a wall.</li>
+                <li><code>measure_drawing</code> and <code>view_drawing</code> give the areas and a picture of the result.</li>
+              </ul>
+              <p>The desktop app can also let an agent on your computer work on the drawing open in it, each edit a step you can undo. A model with no tools at all can follow <a href="/llms-full.txt">llms-full.txt</a> and write a drawing for you to open.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="format">
+        <div class="wrap">
+          <h2>An open format</h2>
+          <p class="intro">A drawing is JSON, in millimetres, with a published schema. It stays readable: every drawing saved since version 1.0 opens in every later version.</p>
+          <div class="two">
+            <div>
+              <h3>Schemas</h3>
+              <ul class="plain">
+                <li><a href="/schema/document.schema.json">document.schema.json</a>: a <code>.opencalque</code> file</li>
+                <li><a href="/schema/ops.schema.json">ops.schema.json</a>: a list of edits</li>
+                <li><a href="/schema/extension.schema.json">extension.schema.json</a>: new parametric objects, written as data</li>
+                <li><a href="/llms.txt">llms.txt</a> and <a href="/llms-full.txt">llms-full.txt</a>: the format explained for language models</li>
+              </ul>
+            </div>
+            <div>
+              <h3>From the command line</h3>
+              <pre><code>npx opencalque new plan.opencalque
+npx opencalque apply plan.opencalque ops.json
+npx opencalque check plan.opencalque
+npx opencalque pdf plan.opencalque --out plan.pdf</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <div class="wrap">
+          <h2>Questions</h2>
+          <dl>
+            <dt>Is OpenCalque free?</dt>
+            <dd>Yes. It is open source under the MIT licence, with no account, no subscription and no telemetry.</dd>
+            <dt>Do I need to install anything?</dt>
+            <dd>No: the editor runs at <a href="/">opencalque.com</a>. The desktop app for Windows, macOS and Linux is on the <a href="https://github.com/laurent512/opencalque/releases/latest">releases page</a>; it updates itself on Windows and Linux.</dd>
+            <dt>Can an AI assistant draw a floor plan with it?</dt>
+            <dd>Yes, through the MCP server above, or from a description in the editor's own assistant, which works with Claude, a local model through Ollama, or any OpenAI-compatible service.</dd>
+            <dt>What files does it read and write?</dt>
+            <dd>It saves <code>.opencalque</code> files, which are JSON. It imports DXF, and PDF and pictures to trace over. It exports PDF at true scale, SVG, DXF, PNG, and quantities as CSV. It does not read DWG or IFC.</dd>
+            <dt>Does it make 3D models?</dt>
+            <dd>No. It draws in 2D: plans, and elevations and sections drawn from the plan.</dd>
+          </dl>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <span>OpenCalque {{version}} · MIT licence</span>
+        <span><a href="https://github.com/laurent512/opencalque">Source</a> · <a href="https://github.com/laurent512/opencalque/blob/main/CHANGELOG.md">Changelog</a> · <a href="https://github.com/laurent512/opencalque/issues">Issues</a></span>
+      </div>
+    </footer>
+  </body>
+</html>
