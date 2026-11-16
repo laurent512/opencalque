@@ -86,13 +86,13 @@ const stepFrom = (from: Vec2, dir: Vec2, t: number): Vec2 => ({ x: from.x + roun
 
 /**
  * Where a point lands after snapping: on what is drawn nearby (a point, the middle of a line, a
- * crossing, the foot of a perpendicular from `from`, a place upright from one point and level with
+ * crossing, the foot of a perpendicular from `from` (or from each of several), a place upright from one point and level with
  * another, of those the pointer rested on and `from`, a line ending at one of those carried on past
  * it, or `carried`, the line itself, or upright or level with one of them), else on the grid.
  * Shift holds it to 45° steps from `from`, where it still lines up with what is drawn
  * (`heldLine`); Alt turns snapping off.
  */
-export function snap(c: Canvas, world: Vec2, e: Keys, exclude: string[], from?: Vec2, carried: Carried[] = []): Target {
+export function snap(c: Canvas, world: Vec2, e: Keys, exclude: string[], from?: Vec2 | Vec2[], carried: Carried[] = []): Target {
   const { zoom } = get().view
   const { snapToGrid, snapToObjects } = usePrefs.getState()
   if (e.altKey) return { p: world, marker: null }
@@ -101,10 +101,12 @@ export function snap(c: Canvas, world: Vec2, e: Keys, exclude: string[], from?: 
   const measuring = MEASURING.includes(get().tool)
   const onGrid = snapToGrid && !measuring
   const step = gridStep(zoom)
-  if (e.shiftKey && from) {
-    const d = sub(world, from)
+  // Shift holds the way from one point; of several, the first.
+  const start = Array.isArray(from) ? from[0] : from
+  if (e.shiftKey && start) {
+    const d = sub(world, start)
     const angle = Math.round(Math.atan2(d.y, d.x) / (Math.PI / 4)) * (Math.PI / 4)
-    return measuring ? heldMeasure(c, world, from, angle, exclude) : heldLine(c, world, from, angle, exclude)
+    return measuring ? heldMeasure(c, world, start, angle, exclude) : heldLine(c, world, start, angle, exclude)
   }
   const gridded = { x: Math.round(world.x / step) * step, y: Math.round(world.y / step) * step }
   const hit = snapToObjects ? snapTo(c.snappable, world, SNAP_REACH / zoom, { exclude, from, gridded: onGrid ? gridded : undefined, aligners: trackedPoints(c), extensions: [...carried, ...carriedLines(c)] }) : null

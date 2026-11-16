@@ -28,6 +28,13 @@ describe('snapping a point', () => {
     expect(snapTo(scene, { x: 1230, y: 20 }, 100)).toEqual({ p: { x: 1230, y: 0 }, kind: 'edge' })
   })
 
+  it('takes the foot of a perpendicular from each of several starts, as a point of a polyline has on either side', () => {
+    const scene = sceneOf([line('level', 0, 0, 4000, 0)])
+    const starts = [{ x: 1200, y: 900 }, { x: 2600, y: -700 }]
+    expect(snapTo(scene, { x: 1230, y: 20 }, 100, { from: starts })).toEqual({ p: { x: 1200, y: 0 }, kind: 'perpendicular' })
+    expect(snapTo(scene, { x: 2570, y: -20 }, 100, { from: starts })).toEqual({ p: { x: 2600, y: 0 }, kind: 'perpendicular' })
+  })
+
   it('falls back on the nearest place on a line, by grid steps along it when the grid is on', () => {
     const scene = sceneOf([line('level', 0, 0, 4000, 0)])
     expect(snapTo(scene, { x: 1234, y: 40 }, 100, { gridded: { x: 1200, y: 0 } })).toEqual({ p: { x: 1200, y: 0 }, kind: 'edge' })

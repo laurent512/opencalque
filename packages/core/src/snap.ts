@@ -27,8 +27,12 @@ export interface Snap {
 export interface SnapOptions {
   /** Items that are not snapped to: usually the one being drawn or dragged. */
   exclude?: string[]
-  /** Where the line being drawn starts. With it, the foot of a perpendicular from there onto a line is offered. */
-  from?: Vec2
+  /**
+   * Where the line being drawn starts. With it, the foot of a perpendicular from there onto a line
+   * is offered. Several for a point between two lines, such as a point of a polyline dragged: each
+   * of its neighbours.
+   */
+  from?: Vec2 | Vec2[]
   /**
    * Points to line up with, besides `from`: in the editor, those the pointer rested on lately.
    * Lining up with every point of a drawing would find a line almost anywhere in a full plan.
@@ -84,14 +88,15 @@ function isCorner(line: Vec2[], i: number): boolean {
  *
  * Offered, nearest first and the more specific first when equally near: the points each object
  * gives to snap to and the corners of its lines, the places where two lines cross, the middle of
- * a straight line, and the foot of the perpendicular from `from`. With none of those in reach, the
+ * a straight line, and the foot of the perpendicular from `from` (from each, when several). With none of those in reach, the
  * place upright from one point and level with another, of `aligners` and `from`, where both are in
  * reach; then a line of `extensions` carried on, where it meets a line or one of those levels if
  * that is in reach; then a line itself, the place on it nearest to the pointer; then a place upright or level
  * with one of them, the grid saying where along.
  */
 export function snapTo(scene: SceneItem[], at: Vec2, reach: number, options: SnapOptions = {}): Snap | null {
-  const { exclude = [], from, gridded, aligners = [], extensions = [] } = options
+  const { exclude = [], gridded, aligners = [], extensions = [] } = options
+  const starts = options.from === undefined ? [] : Array.isArray(options.from) ? options.from : [options.from]
   let best: Snap | null = null
   let nearest = Infinity
   const offer = (p: Vec2, kind: SnapKind) => {
@@ -125,7 +130,7 @@ export function snapTo(scene: SceneItem[], at: Vec2, reach: number, options: Sna
     // The middle of a straight line means something; the middle of one small stretch of a curve
     // does not, and nor does one so close to both ends that they would be snapped to instead.
     if (corners[0] && corners[1] && dist(a, b) > 4 * reach) offer({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, 'middle')
-    if (from) {
+    for (const from of starts) {
       const d = { x: b.x - a.x, y: b.y - a.y }
       const length2 = d.x * d.x + d.y * d.y
       const t = length2 === 0 ? -1 : ((from.x - a.x) * d.x + (from.y - a.y) * d.y) / length2
@@ -164,7 +169,7 @@ export function snapTo(scene: SceneItem[], at: Vec2, reach: number, options: Sna
     if (dy <= reach && dist(q, at) > reach && (!level || dy < Math.abs(level.y - at.y) - 1e-9)) level = q
   }
   for (const q of aligners) line(q)
-  if (from) line(from)
+  for (const q of starts) line(q)
   const [x, y] = [upright as Vec2 | null, level as Vec2 | null]
   if (x && y) {
     const p = { x: x.x, y: y.y }

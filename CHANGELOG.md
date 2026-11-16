@@ -4,6 +4,11 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### Fixed
+- A point of a polyline dragged snaps to the foot of a perpendicular from the points on either side of it, as the end of a line does, and onto the way its sides already go, shown dashed; Shift holds it to those, or level, upright or at 45° with the points beside it. It used to find only the lines themselves, and Shift did nothing.
+
 ## 1.9.0 — 2026-11-11
 
 ### New

@@ -446,6 +446,27 @@ test('drags a wall corner, both walls following, and the end of a line by its ha
   expect(nodes.find((n) => n.type === 'line')).toMatchObject({ a: { x: 0, y: 3000 }, b: { x: 2000, y: 4000 } })
 })
 
+test('drags a point of a polyline onto the foot of the perpendicular from the point beside it', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('l')
+  await click(page, at(0, 0))
+  await click(page, at(4000, 2000))
+  await page.keyboard.press('Escape')
+  for (const [x, y] of [[0, 2900], [1000, 2900], [3000, 2900]]) await click(page, at(x, y))
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('v')
+  await click(page, at(2000, 2900))
+  // The foot of the perpendicular from (1000, 2900) onto the slanting line is (1960, 980), off the grid,
+  // which would otherwise have put the point at (2000, 1000).
+  await drag(page, at(3000, 2900), at(1960, 980))
+  const poly = (await saved(page)).find((n) => n.type === 'polyline')
+  expect(poly?.points).toEqual([
+    { x: 0, y: 2900 },
+    { x: 1000, y: 2900 },
+    { x: 1960, y: 980 },
+  ])
+})
+
 test('moves an object by dragging it, by whole steps of the grid', async ({ page }) => {
   const at = await blank(page)
   await page.keyboard.press('r')

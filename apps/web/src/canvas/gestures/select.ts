@@ -61,6 +61,15 @@ import { faceAcross, faceOf, paperLabel, resizeCursor, round, sizes, thicknessLa
  * preview from the drawing as it was when the press came (`base`), committed on release.
  */
 
+/** The points of a polyline on either side of its point `i`, round past its ends when it is closed. */
+function neighbours(points: Vec2[], i: number, closed: boolean): Vec2[] {
+  const n = points.length
+  return [i - 1, i + 1].flatMap((j) => {
+    const k = closed ? (j + n) % n : j
+    return k >= 0 && k < n && k !== i ? [points[k]] : []
+  })
+}
+
 export const selectDown: Press = (c, e, at, world) => {
   const s = get()
   const { frame, ownBox } = c
@@ -229,14 +238,22 @@ export const handleMove: Move<'handle'> = (c, g, e, _at, world, out) => {
     out.previewed = preview([{ op: 'update_node', id: g.node.id, patch }])
     return
   }
-  // Shift holds the end of a wall or a line to the line it already lies on, or to a level, upright
-  // or 45° line through its other end, whichever the pointer is nearer: that line is shown running across the view.
+  // What stays put beside the point dragged: the other end of a wall or a line, the points on
+  // either side of a point of a polyline (not of a curve, whose stretches are not straight).
   const ends = 'a' in g.node && 'b' in g.node && g.index < 2 ? { moved: g.index === 0 ? g.node.a : g.node.b, fixed: g.index === 0 ? g.node.b : g.node.a } : null
-  const own = ends && dist(ends.moved, ends.fixed) > 1e-6 ? [{ at: ends.fixed, angle: Math.atan2(ends.moved.y - ends.fixed.y, ends.moved.x - ends.fixed.x) }] : []
-  const held = e.shiftKey && ends ? heldNearest(c, world, [...own, ...squareFrom(ends.fixed)], [g.node.id]) : null
-  // The end of a line or a wall also snaps onto the way it already goes, shown dashed, to make it longer or shorter only.
-  const carriedOn = own.length > 0 && ['line', 'wall', 'divider', 'gridline'].includes(g.node.type) ? [{ from: ends!.fixed, dir: norm(sub(ends!.moved, ends!.fixed)) }] : []
-  // The end that stays put is where a perpendicular onto another line would be dropped from.
+  const node = g.node
+  const beside = ends
+    ? { moved: ends.moved, fixed: [ends.fixed] }
+    : node.type === 'polyline' && !node.smooth && node.points[g.index]
+      ? { moved: node.points[g.index], fixed: neighbours(node.points, g.index, !!node.closed) }
+      : null
+  // Shift holds the point to the line it already lies on, or to a level, upright or 45° line
+  // through a point beside it, whichever the pointer is nearer: that line is shown running across the view.
+  const own = (beside?.fixed ?? []).filter((q) => dist(beside!.moved, q) > 1e-6).map((q) => ({ at: q, angle: Math.atan2(beside!.moved.y - q.y, beside!.moved.x - q.x) }))
+  const held = e.shiftKey && beside && beside.fixed.length > 0 ? heldNearest(c, world, [...own, ...beside.fixed.flatMap(squareFrom)], [g.node.id]) : null
+  // The point also snaps onto the way it already goes from there, shown dashed, to make a line longer or shorter only.
+  const carriedOn = ['line', 'wall', 'divider', 'gridline', 'polyline'].includes(g.node.type) ? own.map(({ at }) => ({ from: at, dir: norm(sub(beside!.moved, at)) })) : []
+  // The points beside it are where a perpendicular onto another line would be dropped from.
   // Held level or upright by an arrow key, the point stays on that line through where it was,
   // and may be brought level with something pointed at elsewhere.
   const was = s.axisLock ? kindOf(g.node).handles?.(g.node, registry)[g.index] : undefined
@@ -249,7 +266,7 @@ export const handleMove: Move<'handle'> = (c, g, e, _at, world, out) => {
       ? lineEnd(c, world, e, [g.node.id], was)
       : held
         ? held.target
-        : snap(c, world, { altKey: e.altKey, shiftKey: false }, [g.node.id], ends?.fixed, carriedOn)
+        : snap(c, world, { altKey: e.altKey, shiftKey: false }, [g.node.id], beside?.fixed, carriedOn)
   if (was && s.axisLock) out.guide = { at: was, angle: s.axisLock === 'x' ? 0 : Math.PI / 2 }
   else if (held) out.guide = held.line
   out.link = target.link
