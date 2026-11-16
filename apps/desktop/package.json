@@ -1,7 +1,7 @@
 {
   "name": "@opencalque/desktop",
   "productName": "OpenCalque",
-  "version": "1.9.1",
+  "version": "1.10.0",
   "private": true,
   "license": "MIT",
   "main": "./out/main/index.js",

@@ -69,6 +69,8 @@ jobs:
       - run: pnpm package:npm
       - working-directory: packages/cli/npm
         run: |
+          # A version already on npm (published by hand, or a run done again) is left as it is.
+          if npm view "opencalque@${GITHUB_REF_NAME#v}" version > /dev/null 2>&1; then echo "opencalque ${GITHUB_REF_NAME#v} is already on npm"; exit 0; fi
           # A version with a hyphen (1.0.0-rc.1) is not what `npx opencalque` gets.
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then npm publish --tag next; else npm publish; fi
       - if: ${{ !contains(github.ref_name, '-') }}

@@ -1,6 +1,6 @@
 {
   "name": "@opencalque/ext-architecture",
-  "version": "1.9.1",
+  "version": "1.10.0",
   "license": "MIT",
   "type": "module",
   "exports": {
