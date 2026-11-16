@@ -79,6 +79,14 @@ jobs:
         working-directory: packages/cli/npm
         run: |
           set -euo pipefail
+          # npm takes a few minutes to serve a new version, and the registry checks it there.
+          # A version npm only staged waits for a maintainer to approve it on npmjs.com.
+          version="${GITHUB_REF_NAME#v}"
+          for attempt in $(seq 1 40); do
+            if npm view "opencalque@$version" version > /dev/null 2>&1; then break; fi
+            if [ "$attempt" = 40 ]; then echo "::error::opencalque $version is not on npm after 20 minutes. If it was staged, approve it on npmjs.com, then re-run this job."; exit 1; fi
+            sleep 30
+          done
           archive="mcp-publisher_linux_amd64.tar.gz"
           base_url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}"
           curl --fail --location --silent --show-error --output "$archive" "$base_url/$archive"
