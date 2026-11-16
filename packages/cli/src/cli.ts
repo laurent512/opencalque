@@ -63,6 +63,12 @@ const USAGE = `opencalque <command>
 
 const VERSION: string = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version
 
+// What reads the output stopped reading (`opencalque schema | head`): there is no one left to tell, so stop as Unix tools do.
+process.stdout.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code !== 'EPIPE') throw error
+  process.exit(0)
+})
+
 // The built-in extension and those that ship with the app, so that what the editor draws is drawn here too.
 const registry = standardRegistry()
 const args = process.argv.slice(2)

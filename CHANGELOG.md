@@ -4,6 +4,11 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 1.10.1 — 2026-11-16
+
+### Fixed
+- The command line stops quietly when what reads its output stops reading, as `opencalque schema | head` does, rather than printing an error.
+
 ## 1.10.0 — 2026-11-16
 
 ### New
