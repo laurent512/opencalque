@@ -8,6 +8,7 @@ import { extendDown, filletDown, filletMove } from './fit'
 import { elevationDown, eyedropperDown, placeDown, sectionMove, splitDown, toolHover, trimDown } from './place'
 import { cornerMove, cropMove, dragUp, elevatedMove, endMove, faceMove, handleMove, hover, marqueeMove, marqueeUp, moveMove, pressMove, pressUp, resizeMove, rotateMove, scaleMove, selectDown } from './select'
 import { displaceMove, moveToolDown } from './move'
+import { connectDown, connectMove } from './connect'
 import { rotateDown, turnMove } from './turn'
 
 /*
@@ -24,6 +25,7 @@ export const PRESSES: Partial<Record<Tool, Press>> = {
   place: placeDown,
   room: placeDown,
   elevation: elevationDown,
+  connect: connectDown,
   split: splitDown,
   trim: trimDown,
   extend: extendDown,
@@ -49,6 +51,7 @@ export const MOVES: { [K in Gesture['kind']]: Move<K> } = {
   press: pressMove,
   elevated: elevatedMove,
   section: sectionMove,
+  connect: connectMove,
   move: moveMove,
   handle: handleMove,
   corner: cornerMove,

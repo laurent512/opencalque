@@ -87,6 +87,8 @@ export interface Shown {
   labels?: SizeLabel[]
   /** The temporary dimension whose length the pointer is on, by its place in the list shown. */
   clearanceHover?: number
+  /** The view line, or the view of one, the pointer is on: what it sees is shown faintly. */
+  viewHover?: string
   angle?: AngleMark
   axis?: Overlay['axis']
   guide?: Overlay['guide']
@@ -96,6 +98,7 @@ export interface Shown {
   cut?: Overlay['cut']
   trim?: Overlay['trim']
   lit?: Overlay['lit']
+  loose?: Overlay['loose']
   angleReading?: Overlay['angleReading']
   face?: Overlay['face']
   turning?: Overlay['box']
@@ -123,7 +126,7 @@ export function local(c: Canvas, e: { clientX: number; clientY: number }): Vec2 
 /** Tells the rest of the interface how far the shape in progress has got. Called after anything that may have changed it. */
 export function syncStep(c: Canvas): void {
   const g = c.gesture
-  const step = g.kind === 'draw' ? 1 + g.segments : g.kind === 'poly' ? g.points.length : g.kind === 'offset' || g.kind === 'arc' ? 2 : g.kind === 'measure' || g.kind === 'parallel' || g.kind === 'fillet' ? 1 : g.kind === 'angle' ? (g.a ? 2 : 1) : g.kind === 'turn' ? (g.from ? 2 : 1) : g.kind === 'displace' || g.kind === 'section' ? 1 : 0
+  const step = g.kind === 'draw' ? 1 + g.segments : g.kind === 'poly' ? g.points.length : g.kind === 'offset' || g.kind === 'arc' ? 2 : g.kind === 'measure' || g.kind === 'parallel' || g.kind === 'fillet' ? 1 : g.kind === 'angle' ? (g.a ? 2 : 1) : g.kind === 'turn' ? (g.from ? 2 : 1) : g.kind === 'displace' || g.kind === 'section' || g.kind === 'connect' ? 1 : 0
   if (get().drawStep !== step) useStore.setState({ drawStep: step })
 }
 

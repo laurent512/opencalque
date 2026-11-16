@@ -6,7 +6,7 @@ z.config({ jitless: true })
 export const FORMAT = 'opencalque'
 /** What `format` was before the project was renamed. Such drawings are still read. */
 export const FORMER_FORMAT = 'opencad'
-export const FORMAT_VERSION = 3
+export const FORMAT_VERSION = 4
 
 const Id = z.string().min(1)
 
@@ -136,6 +136,12 @@ const markerSize = z.number().positive().optional().describe('Length of the end 
 export const LEADER_SHAPES = ['curve', 'straight', 'elbow'] as const
 /** Which ends of a grid line carry its bubble. */
 export const GRIDLINE_BUBBLES = ['start', 'end', 'both', 'none'] as const
+/**
+ * What a link says of the two objects it joins: 'control', that the first controls the second (a
+ * switch and the light it turns on, however the order reaches it: a wire, a radio, a bus); 'run',
+ * that a cable or a pipe goes from one to the other.
+ */
+export const LINK_ROLES = ['control', 'run'] as const
 
 /** The look of a dimension: everything about it but where it is and what it says in place of its length. A dimension style may define any of it. */
 const dimensionLook = {
@@ -272,13 +278,13 @@ export const NodeSchema = z
         schedule: z
           .string()
           .describe(
-            "What it counts, which is worked out again each time it is drawn: 'objects' (each component and each kind of parametric object, with how many are placed), 'floors' (the floor area of each material), 'rooms' (each room and its area), 'walls' (the walls by material and thickness: how many, length, face and volume) or 'openings' (doors and windows by kind and size). An unknown one draws an empty table.",
+            "What it counts, which is worked out again each time it is drawn: 'objects' (each component and each kind of parametric object, with how many are placed), 'floors' (the floor area of each material), 'rooms' (each room and its area), 'walls' (the walls by material and thickness: how many, length, face and volume), 'openings' (doors and windows by kind and size) or 'controls' (each switch, dimmer, push button, detector or thermostat with what its control links say it controls). An unknown one draws an empty table.",
           ),
         title: z.string().optional().describe('Written above the table.'),
         columns: z
           .array(z.string())
           .optional()
-          .describe("The fields shown, in order. Left out, the schedule's usual ones. Fields: objects: symbol (each drawn as it is on the plan), name, count; floors: material, rooms, area; rooms: name, material, area; walls: material, thickness, count, length, area, volume; openings: kind, width, height, count."),
+          .describe("The fields shown, in order. Left out, the schedule's usual ones. Fields: objects: symbol (each drawn as it is on the plan), name, count; floors: material, rooms, area; rooms: name, material, area; walls: material, thickness, count, length, area, volume; openings: kind, width, height, count; controls: symbol, name, controls."),
         labels: z
           .record(z.string(), z.string())
           .optional()
@@ -295,7 +301,7 @@ export const NodeSchema = z
           .array(z.string())
           .optional()
           .describe(
-            "The rows shown, by their keys; the others are left out of the table and its total, and what comes on the plan later is not shown. Keys: objects 'component:<id>', or for a parametric object 'parametric:' then its kind and every one of its parameters, defaults filled in, as JSON with its keys in order ('parametric:arch.radiator {\"length\":800,...}': a model with other parameters is another row); floors 'material:<id>' ('material:' for the floors of no material); rooms 'room:<id>'; walls 'material:<id>' and the thickness in mm, as 'material:brick 200' ('material: 200' for the default material); openings the kind, then width and height in metres, as 'arch.door 0.9 2.1', whatever the table's units. Left out, every row.",
+            "The rows shown, by their keys; the others are left out of the table and its total, and what comes on the plan later is not shown. Keys: objects 'component:<id>', or for a parametric object 'parametric:' then its kind and every one of its parameters, defaults filled in, as JSON with its keys in order ('parametric:arch.radiator {\"length\":800,...}': a model with other parameters is another row); floors 'material:<id>' ('material:' for the floors of no material); rooms 'room:<id>'; walls 'material:<id>' and the thickness in mm, as 'material:brick 200' ('material: 200' for the default material); openings the kind, then width and height in metres, as 'arch.door 0.9 2.1', whatever the table's units; controls 'control:<id>' of the switch. Left out, every row.",
           ),
         decimal: z.enum(['.', ',']).optional().describe("The decimal separator of its numbers, in place of the drawing's \"settings\". Left out (as it should be), the drawing's."),
         system: z.enum(['metric', 'imperial']).optional().describe("'imperial' gives lengths in feet, areas in square feet, volumes in cubic feet and thicknesses in inches, in place of the drawing's \"settings\". Left out (as it should be), the drawing's."),
@@ -325,6 +331,20 @@ export const NodeSchema = z
       })
       .describe(
         'An elevation or a section: the view of what its viewline sees, drawn from the plan each time it is drawn, on any page, with (x, y) the point of the floor under the start of its line (a); heights go up from there. Moving it moves only where it is drawn; what it shows is set by its line.',
+      ),
+    z
+      .object({
+        ...base,
+        type: z.literal('link'),
+        from: Id.describe('The id of the object it starts from: for a control link, what controls (a switch, a dimmer, a push button).'),
+        to: Id.describe('The id of the object it goes to: for a control link, what is controlled (a light, a socket).'),
+        fromPort: z.string().optional().describe('Which connection of "from" it starts from, by its key among the ports its kind declares: "out2" for the second button of a double switch. Left out, the first port of its kind that fits.'),
+        toPort: z.string().optional().describe('Which connection of "to" it goes to, by its key. Left out, the first port of its kind that fits.'),
+        role: z.enum(LINK_ROLES).optional().describe("'control' (the default): \"from\" controls \"to\", whatever carries the order (a wire, a radio, a bus): drawn as a dashed curve, as on an electrical plan. 'run': a cable or a pipe goes from one to the other, drawn as a plain line; nothing is worked out from it yet."),
+        bend: z.number().optional().describe('How much a control link bows, as a fraction of its length: 0 is straight, positive bows to the left of the way from "from" to "to" as seen on screen, negative to the right. Left out, 0.25 towards the middle of the page, so that a link between two things on a wall bows into the room.'),
+      })
+      .describe(
+        'Joins two objects of the same page: a switch and a light it controls, a dimmer and its spotlights, a push button and a switched socket. It has no position of its own: it is drawn between the two objects, from the edge of one to the edge of the other, and follows them when they move. Removing either object removes the link. Version 4.',
       ),
     z
       .object({ ...base, type: z.literal('divider'), a: Vec2Schema, b: Vec2Schema })

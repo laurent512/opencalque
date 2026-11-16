@@ -17,6 +17,7 @@ import {
   orderBefore,
   ordersAt,
   placeInOps,
+  removeOps,
   reorderOps,
   sceneBounds,
   transformOps,
@@ -75,7 +76,8 @@ export function finishTextEdit(): void {
 }
 
 export function deleteSelection(): void {
-  apply(get().selection.map((id): Op => ({ op: 'remove_node', id })))
+  const { doc, selection } = get()
+  apply(removeOps(doc, selection))
 }
 
 export function duplicateSelection(): void {
@@ -350,7 +352,7 @@ export function deleteEntry(entry: string): void {
     title: t('Delete them'),
     message: tn(objects.length, 'The one “{name}” in the drawing will be deleted.', 'The {n} “{name}” in the drawing will be deleted.', { name }),
     action: t('Delete'),
-    run: () => apply(objects.map((node): Op => ({ op: 'remove_node', id: node.id }))),
+    run: () => apply(removeOps(get().doc, objects.map((node) => node.id))),
   })
 }
 
@@ -405,7 +407,7 @@ export function deleteUnusedComponents(): void {
     title: t('Delete unused components'),
     message: tn(unused.length, '{n} component is placed nowhere in the drawing.', '{n} components are placed nowhere in the drawing.'),
     action: t('Delete'),
-    run: () => apply(unused.map((id): Op => ({ op: 'remove_node', id }))),
+    run: () => apply(removeOps(get().doc, unused)),
   })
 }
 

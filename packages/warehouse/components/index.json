@@ -4,115 +4,44 @@
     "name": "Furniture",
     "description": "Beds, seating, tables and storage for furnishing a plan.",
     "file": "furniture.opencalque",
-    "components": 9,
+    "components": 1,
     "categories": {
-      "furniture_1": "bedroom",
-      "furniture_2": "bedroom",
-      "furniture_3": "living",
-      "furniture_4": "living",
-      "furniture_5": "dining",
-      "furniture_6": "dining",
-      "furniture_7": "office",
-      "furniture_8": "bedroom",
       "furniture_9": "living"
     },
     "translations": {
       "fr": {
         "Furniture": "Mobilier",
         "Beds, seating, tables and storage for furnishing a plan.": "Lits, sièges, tables et rangements pour meubler un plan.",
-        "Double bed": "Lit double",
-        "Single bed": "Lit simple",
-        "Sofa, two seats": "Canapé deux places",
-        "Armchair": "Fauteuil",
-        "Chair": "Chaise",
-        "Dining table, six chairs": "Table à manger, six chaises",
-        "1800 × 900 table": "table 1800 × 900",
-        "Desk with chair": "Bureau avec chaise",
-        "Wardrobe": "Armoire",
         "Coffee table, round": "Table basse ronde"
       },
       "es": {
         "Furniture": "Mobiliario",
         "Beds, seating, tables and storage for furnishing a plan.": "Camas, asientos, mesas y almacenaje para amueblar un plano.",
-        "Double bed": "Cama doble",
-        "Single bed": "Cama individual",
-        "Sofa, two seats": "Sofá de dos plazas",
-        "Armchair": "Sillón",
-        "Chair": "Silla",
-        "Dining table, six chairs": "Mesa de comedor, seis sillas",
-        "1800 × 900 table": "mesa 1800 × 900",
-        "Desk with chair": "Escritorio con silla",
-        "Wardrobe": "Armario",
         "Coffee table, round": "Mesa de centro redonda"
       },
       "de": {
         "Furniture": "Möbel",
         "Beds, seating, tables and storage for furnishing a plan.": "Betten, Sitzmöbel, Tische und Stauraum zum Möblieren eines Plans.",
-        "Double bed": "Doppelbett",
-        "Single bed": "Einzelbett",
-        "Sofa, two seats": "Sofa, Zweisitzer",
-        "Armchair": "Sessel",
-        "Chair": "Stuhl",
-        "Dining table, six chairs": "Esstisch, sechs Stühle",
-        "1800 × 900 table": "Tisch 1800 × 900",
-        "Desk with chair": "Schreibtisch mit Stuhl",
-        "Wardrobe": "Kleiderschrank",
         "Coffee table, round": "Couchtisch, rund"
       },
       "zh": {
         "Furniture": "家具",
         "Beds, seating, tables and storage for furnishing a plan.": "床、座椅、桌子和储物家具，用于平面布置。",
-        "Double bed": "双人床",
-        "Single bed": "单人床",
-        "Sofa, two seats": "双人沙发",
-        "Armchair": "扶手椅",
-        "Chair": "椅子",
-        "Dining table, six chairs": "餐桌，六把椅子",
-        "1800 × 900 table": "1800 × 900 桌",
-        "Desk with chair": "书桌和椅子",
-        "Wardrobe": "衣柜",
         "Coffee table, round": "圆形茶几"
       },
       "ja": {
         "Furniture": "家具",
         "Beds, seating, tables and storage for furnishing a plan.": "ベッド、いす、テーブル、収納で図面に家具を配置します。",
-        "Double bed": "ダブルベッド",
-        "Single bed": "シングルベッド",
-        "Sofa, two seats": "2 人掛けソファ",
-        "Armchair": "アームチェア",
-        "Chair": "いす",
-        "Dining table, six chairs": "ダイニングテーブル（いす 6 脚）",
-        "1800 × 900 table": "1800 × 900 テーブル",
-        "Desk with chair": "デスクといす",
-        "Wardrobe": "ワードローブ",
         "Coffee table, round": "丸いローテーブル"
       },
       "ko": {
         "Furniture": "가구",
         "Beds, seating, tables and storage for furnishing a plan.": "평면도에 가구를 배치하기 위한 침대, 의자, 테이블, 수납가구.",
-        "Double bed": "더블 침대",
-        "Single bed": "싱글 침대",
-        "Sofa, two seats": "2인용 소파",
-        "Armchair": "안락의자",
-        "Chair": "의자",
-        "Dining table, six chairs": "식탁, 의자 6개",
-        "1800 × 900 table": "1800 × 900 테이블",
-        "Desk with chair": "책상과 의자",
-        "Wardrobe": "옷장",
         "Coffee table, round": "원형 커피 테이블"
       },
       "tr": {
         "Furniture": "Mobilya",
         "Beds, seating, tables and storage for furnishing a plan.": "Bir planı döşemek için yataklar, oturma elemanları, masalar ve dolaplar.",
-        "Double bed": "Çift kişilik yatak",
-        "Single bed": "Tek kişilik yatak",
-        "Sofa, two seats": "İki kişilik kanepe",
-        "Armchair": "Koltuk",
-        "Chair": "Sandalye",
-        "Dining table, six chairs": "Yemek masası, altı sandalye",
-        "1800 × 900 table": "1800 × 900 masa",
-        "Desk with chair": "Sandalyeli çalışma masası",
-        "Wardrobe": "Gardırop",
         "Coffee table, round": "Sehpa, yuvarlak"
       }
     }
@@ -180,49 +109,35 @@
     "name": "Kitchen",
     "description": "Units and appliances on a 600 mm module.",
     "file": "kitchen.opencalque",
-    "components": 2,
+    "components": 0,
     "translations": {
       "fr": {
         "Kitchen": "Cuisine",
-        "Units and appliances on a 600 mm module.": "Meubles et appareils sur un module de 600 mm.",
-        "Base unit": "Meuble bas",
-        "Washing machine": "Lave-linge"
+        "Units and appliances on a 600 mm module.": "Meubles et appareils sur un module de 600 mm."
       },
       "es": {
         "Kitchen": "Cocina",
-        "Units and appliances on a 600 mm module.": "Muebles y electrodomésticos en módulo de 600 mm.",
-        "Base unit": "Mueble bajo",
-        "Washing machine": "Lavadora"
+        "Units and appliances on a 600 mm module.": "Muebles y electrodomésticos en módulo de 600 mm."
       },
       "de": {
         "Kitchen": "Küche",
-        "Units and appliances on a 600 mm module.": "Schränke und Geräte im 600-mm-Raster.",
-        "Base unit": "Unterschrank",
-        "Washing machine": "Waschmaschine"
+        "Units and appliances on a 600 mm module.": "Schränke und Geräte im 600-mm-Raster."
       },
       "zh": {
         "Kitchen": "厨房",
-        "Units and appliances on a 600 mm module.": "按 600 mm 模数排布的橱柜和电器。",
-        "Base unit": "地柜",
-        "Washing machine": "洗衣机"
+        "Units and appliances on a 600 mm module.": "按 600 mm 模数排布的橱柜和电器。"
       },
       "ja": {
         "Kitchen": "キッチン",
-        "Units and appliances on a 600 mm module.": "600 mm モジュールのキャビネットと家電。",
-        "Base unit": "ベースキャビネット",
-        "Washing machine": "洗濯機"
+        "Units and appliances on a 600 mm module.": "600 mm モジュールのキャビネットと家電。"
       },
       "ko": {
         "Kitchen": "주방",
-        "Units and appliances on a 600 mm module.": "600 mm 모듈의 수납장과 가전.",
-        "Base unit": "하부장",
-        "Washing machine": "세탁기"
+        "Units and appliances on a 600 mm module.": "600 mm 모듈의 수납장과 가전."
       },
       "tr": {
         "Kitchen": "Mutfak",
-        "Units and appliances on a 600 mm module.": "600 mm modülde dolaplar ve cihazlar.",
-        "Base unit": "Alt dolap",
-        "Washing machine": "Çamaşır makinesi"
+        "Units and appliances on a 600 mm module.": "600 mm modülde dolaplar ve cihazlar."
       }
     }
   }

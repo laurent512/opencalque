@@ -7,6 +7,8 @@ export type Gesture =
   /** Button down on an object: becomes a move once the pointer travels far enough. */
   /** With `beside`, the press was on no object but inside the box around the selection: released without moving, it lets the selection go. */
   | { kind: 'press'; at: Vec2; start: Vec2; nodes: Node[]; beside?: boolean }
+  /** The connect tool has taken a switch (or a light): the next clicks link it to what it controls (or what controls it). */
+  | { kind: 'connect'; from: string }
   /** A section line being drawn: where it starts, its end to click. */
   | { kind: 'section'; from: Vec2 }
   /** An object of the plan dragged where an elevation shows it: across the view along its wall, up and down for its height. */

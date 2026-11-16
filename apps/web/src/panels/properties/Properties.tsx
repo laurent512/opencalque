@@ -1,4 +1,4 @@
-import { type Bounds, type NodeOf, applyOps, boundsOf, dist, mountedOn, mountOf, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, componentUses, rootOf, type Node, type Op, roomAt, regionPerimeter, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
+import { type Bounds, type NodeOf, applyOps, controlSide, linksAt, boundsOf, dist, mountedOn, mountOf, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, componentUses, rootOf, type Node, type Op, roomAt, regionPerimeter, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
 import { swapSelectedComponent } from '../../actions'
 import { EntryChoice } from '../../EntryChoice'
 import { entryOf, isModel } from '../../entries'
@@ -11,7 +11,7 @@ import { LayerChoice } from '../../LayerChoice'
 import { editComponent } from '../../navigation'
 import { usePrefs } from '../../prefs'
 import { registry } from '../../extensions'
-import { apply, useStore } from '../../store'
+import { apply, select, useStore } from '../../store'
 import { toast } from '../../windows'
 import { Field, FieldPair, FoldingSections, labelOf, ProportionLock, Section, TypeIcon, YesNo } from '../../ui'
 import { formatArea, formatLength, parseLength, unit, unitSuffix } from '../../units'
@@ -35,6 +35,39 @@ function RoomFacts({ node }: { node: Extract<Node, { type: 'room' }> }) {
       <p className="hint">{t('Floor area: {area}, perimeter: {perimeter}, measured inside the walls.', { area: formatArea(region.area), perimeter: formatLength(regionPerimeter(region)) })}</p>
       <p className="hint">{t('The room follows its walls. Drag its name to move it.')}</p>
     </>
+  )
+}
+
+/**
+ * What a switch controls, or what controls a light, each a button that selects it; and how to
+ * change that, with the connect tool.
+ */
+function Controls({ node }: { node: Node }) {
+  const doc = useStore((s) => s.doc)
+  const gives = controlSide(node, registry) === 'out'
+  const links = linksAt(doc, [node.id]).filter((link) => (link.role ?? 'control') === 'control' && (gives ? link.from === node.id : link.to === node.id))
+  const others = links.flatMap((link) => {
+    const other = doc.nodes[gives ? link.to : link.from]
+    return other ? [other] : []
+  })
+  return (
+    <div className="field controls-field">
+      <span>{gives ? t('Controls') : t('Controlled by')}</span>
+      <div>
+        {others.length === 0 ? (
+          <p className="hint">{gives ? t('Nothing yet.') : t('Nothing yet: no switch turns it on.')}</p>
+        ) : (
+          others.map((other) => (
+            <button key={other.id} className="text-button" onClick={() => select([other.id])}>
+              {labelOf(doc, other)}
+            </button>
+          ))
+        )}
+        <button className="text-button" onClick={() => executeById('tool.connect')}>
+          {gives ? t('Connect lights…') : t('Connect a switch…')}
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -167,6 +200,7 @@ function Selection({ nodes }: { nodes: Node[] }) {
           </>
         )}
         {single && mountOf(node, registry)?.on === 'wall' && !mountedOn(doc, node, registry) && <p className="hint">{t('It is on no wall, so it does not follow one nor show in its elevations. Drag it onto a wall to fix it there.')}</p>}
+        {single && controlSide(node, registry) && <Controls node={node} />}
         {nodes.every((n) => n.type === 'instance' || n.type === 'parametric') && <InstanceComponent instances={nodes as (NodeOf<'instance'> | NodeOf<'parametric'>)[]} />}
         {single && node.type === 'instance' && <ComponentHeight instance={node} />}
         {single && node.type === 'instance' && (

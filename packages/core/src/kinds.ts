@@ -15,6 +15,7 @@ import { DEFAULT_PAPER_SCALE, paperFormat, paperSheet } from './papers'
 import { regionPerimeter, roomAt } from './rooms'
 import { drawElevationsWith, elevationPrimitives, moveViewCorner, moveViewEdge, moveViewEnd, seenArea } from './elevation'
 import { tablePrimitives } from './tables'
+import { bendThrough, linkMiddle, linkPrimitives } from './networks'
 import { bulgeThrough, heightAboveFloor, hostWall, materialSeams, mountOf, wallArc, wallMiddle, wallParallel, wallPoints, wallPolygons, wallSeams, wallOutlineRuns, wallSides, wallSpot } from './walls'
 
 export const DEFAULT_INK = '#1f1f1f'
@@ -79,10 +80,13 @@ export interface NodeKind<N> {
   primitives(node: N, ctx: KindContext): Primitive[]
   /** Patch that translates the node by `d`. */
   move(node: N, d: Vec2): Record<string, unknown>
-  /** Points the user can drag to reshape the node. A parametric object's depend on its kind, found in `registry`. */
-  handles?(node: N, registry?: Registry): Vec2[]
+  /**
+   * Points the user can drag to reshape the node. A parametric object's depend on its kind, found in
+   * `registry`; a link's on where its ends are, found in `doc`.
+   */
+  handles?(node: N, registry?: Registry, doc?: Document): Vec2[]
   /** Patch that puts handle `index` at `p`. */
-  moveHandle?(node: N, index: number, p: Vec2, registry?: Registry): Record<string, unknown>
+  moveHandle?(node: N, index: number, p: Vec2, registry?: Registry, doc?: Document): Record<string, unknown>
   /** Points other geometry snaps to. Defaults to the vertices of the node's paths. */
   snapPoints?(node: N): Vec2[]
   /**
@@ -746,6 +750,27 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     move: moveXY,
     // A view stays upright, to be read: it goes to where its corner is taken.
     transform: (node, t) => ({ ...t.point(node) }),
+  },
+  link: {
+    // Drawn between what its two ends draw, which it follows: it has no place of its own to move.
+    primitives: (node, ctx) => linkPrimitives(ctx.doc, node, (end) => kindOf(end).primitives(end, ctx)),
+    move: () => ({}),
+    // The middle of its curve, dragged across to bow it more, less, or the other way.
+    handles: (node, registry, doc) => {
+      if (!doc || !registry) return []
+      const middle = linkMiddle(doc, node, (end) => kindOf(end).primitives(end, { doc, registry, depth: 0 }))
+      return middle ? [middle] : []
+    },
+    moveHandle: (node, _, p, registry, doc) => {
+      if (!doc || !registry) return {}
+      const bend = bendThrough(doc, node, p, (end) => kindOf(end).primitives(end, { doc, registry, depth: 0 }))
+      return bend === null ? {} : { bend }
+    },
+    // It joins things; it is not one to snap to.
+    snapPoints: () => [],
+    snapLines: () => [],
+    // Which side it bows to is a matter of handedness, which a mirror reverses; left to itself, it bows into the plan wherever that is.
+    transform: (node, t) => (t.mirror && node.bend !== undefined ? { bend: -node.bend } : {}),
   },
   divider: {
     primitives: (node) => [{ kind: 'path', points: [node.a, node.b], stroke: DIVIDER_INK, dash: [8, 6], own: true }],

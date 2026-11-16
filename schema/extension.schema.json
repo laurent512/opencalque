@@ -251,6 +251,55 @@
             ],
             "additionalProperties": false
           },
+          "ports": {
+            "description": "Its connections, which links join to those of other objects: a switch controls lights through its \"out\" port, a light is controlled through its \"in\" port.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z_]\\w*$",
+                  "description": "Its name, the same each time: what a link stores to say which connection it joins (\"out\", \"out2\")."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "What it is called where one is chosen, as \"Second button\"."
+                },
+                "carries": {
+                  "type": "string",
+                  "description": "What goes through it: \"control\" (a switch's order to a light). Only ports that carry the same are linked."
+                },
+                "way": {
+                  "type": "string",
+                  "enum": [
+                    "out",
+                    "in"
+                  ],
+                  "description": "\"out\" gives (a switch), \"in\" takes (a light). A link goes from one that gives to one that takes."
+                },
+                "required": {
+                  "description": "The object counts as unconnected while nothing is linked here: a light no switch controls. Left out, it does not: a socket that may be switched.",
+                  "type": "boolean"
+                },
+                "when": {
+                  "description": "It is there only when the expression is true: the second button of a switch made double.",
+                  "type": [
+                    "number",
+                    "string",
+                    "boolean"
+                  ]
+                }
+              },
+              "required": [
+                "key",
+                "label",
+                "carries",
+                "way"
+              ],
+              "additionalProperties": false
+            }
+          },
           "draw": {
             "minItems": 1,
             "type": "array",
@@ -673,6 +722,846 @@
           },
           "front": {
             "description": "How it looks in an elevation, seen from in front: shapes in the same terms as \"draw\", X along its own X, Y down from its insertion point at the floor, or from its centre at its height for an object fixed on a wall. Left out, an elevation draws it as a box.",
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "description": "Draw this shape only when the expression is true.",
+                      "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                      ]
+                    },
+                    "repeat": {
+                      "description": "Draw the shape `count` times; the index (0, 1, 2…) is available under the name given by `as` (default \"i\").",
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "as": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z_]\\w*$"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "fill": {
+                      "type": "string"
+                    },
+                    "stroke": {
+                      "type": "string"
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "dash": {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "path": {
+                      "minItems": 2,
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                            "type": [
+                              "number",
+                              "string",
+                              "boolean"
+                            ]
+                          },
+                          {
+                            "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                            "type": [
+                              "number",
+                              "string",
+                              "boolean"
+                            ]
+                          }
+                        ],
+                        "items": false,
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    },
+                    "closed": {
+                      "type": "boolean"
+                    },
+                    "radius": {
+                      "description": "Rounds its corners: each becomes an arc of this radius, made smaller where the sides are too short to hold it. The ends of an open path stay as they are.",
+                      "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "path"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Straight segments through the points."
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "description": "Draw this shape only when the expression is true.",
+                      "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                      ]
+                    },
+                    "repeat": {
+                      "description": "Draw the shape `count` times; the index (0, 1, 2…) is available under the name given by `as` (default \"i\").",
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "as": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z_]\\w*$"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "fill": {
+                      "type": "string"
+                    },
+                    "stroke": {
+                      "type": "string"
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "dash": {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "ellipse": {
+                      "type": "object",
+                      "properties": {
+                        "cx": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "cy": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "rx": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "ry": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "cx",
+                        "cy",
+                        "rx",
+                        "ry"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ellipse"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "description": "Draw this shape only when the expression is true.",
+                      "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                      ]
+                    },
+                    "repeat": {
+                      "description": "Draw the shape `count` times; the index (0, 1, 2…) is available under the name given by `as` (default \"i\").",
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "as": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z_]\\w*$"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "fill": {
+                      "type": "string"
+                    },
+                    "stroke": {
+                      "type": "string"
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "dash": {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "arc": {
+                      "type": "object",
+                      "properties": {
+                        "cx": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "cy": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "r": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "from": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "to": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "cx",
+                        "cy",
+                        "r",
+                        "from",
+                        "to"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "closed": {
+                      "description": "Joins its ends with a straight line, so that it can be filled: a half disc.",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "arc"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Part of a circle; angles in degrees, 0 pointing right and 90 down."
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "description": "Draw this shape only when the expression is true.",
+                      "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                      ]
+                    },
+                    "repeat": {
+                      "description": "Draw the shape `count` times; the index (0, 1, 2…) is available under the name given by `as` (default \"i\").",
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "as": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z_]\\w*$"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "fill": {
+                      "type": "string"
+                    },
+                    "stroke": {
+                      "type": "string"
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "dash": {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "text": {
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "y": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "value": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "align": {
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "center"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y",
+                        "value",
+                        "size"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "text"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "side": {
+            "description": "How it looks in an elevation seen from its side (from either end; the elevation mirrors it): X along its own Y, from its back (0) to its front, Y as for \"front\". Drawn when the elevation sees it more from the side than from in front. Left out, a box.",
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "description": "Draw this shape only when the expression is true.",
+                      "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                      ]
+                    },
+                    "repeat": {
+                      "description": "Draw the shape `count` times; the index (0, 1, 2…) is available under the name given by `as` (default \"i\").",
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "as": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z_]\\w*$"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "fill": {
+                      "type": "string"
+                    },
+                    "stroke": {
+                      "type": "string"
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "dash": {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "path": {
+                      "minItems": 2,
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                            "type": [
+                              "number",
+                              "string",
+                              "boolean"
+                            ]
+                          },
+                          {
+                            "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                            "type": [
+                              "number",
+                              "string",
+                              "boolean"
+                            ]
+                          }
+                        ],
+                        "items": false,
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    },
+                    "closed": {
+                      "type": "boolean"
+                    },
+                    "radius": {
+                      "description": "Rounds its corners: each becomes an arc of this radius, made smaller where the sides are too short to hold it. The ends of an open path stay as they are.",
+                      "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "path"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Straight segments through the points."
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "description": "Draw this shape only when the expression is true.",
+                      "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                      ]
+                    },
+                    "repeat": {
+                      "description": "Draw the shape `count` times; the index (0, 1, 2…) is available under the name given by `as` (default \"i\").",
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "as": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z_]\\w*$"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "fill": {
+                      "type": "string"
+                    },
+                    "stroke": {
+                      "type": "string"
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "dash": {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "ellipse": {
+                      "type": "object",
+                      "properties": {
+                        "cx": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "cy": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "rx": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "ry": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "cx",
+                        "cy",
+                        "rx",
+                        "ry"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "ellipse"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "description": "Draw this shape only when the expression is true.",
+                      "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                      ]
+                    },
+                    "repeat": {
+                      "description": "Draw the shape `count` times; the index (0, 1, 2…) is available under the name given by `as` (default \"i\").",
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "as": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z_]\\w*$"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "fill": {
+                      "type": "string"
+                    },
+                    "stroke": {
+                      "type": "string"
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "dash": {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "arc": {
+                      "type": "object",
+                      "properties": {
+                        "cx": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "cy": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "r": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "from": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "to": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "cx",
+                        "cy",
+                        "r",
+                        "from",
+                        "to"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "closed": {
+                      "description": "Joins its ends with a straight line, so that it can be filled: a half disc.",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "arc"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Part of a circle; angles in degrees, 0 pointing right and 90 down."
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "when": {
+                      "description": "Draw this shape only when the expression is true.",
+                      "type": [
+                        "number",
+                        "string",
+                        "boolean"
+                      ]
+                    },
+                    "repeat": {
+                      "description": "Draw the shape `count` times; the index (0, 1, 2…) is available under the name given by `as` (default \"i\").",
+                      "type": "object",
+                      "properties": {
+                        "count": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "as": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z_]\\w*$"
+                        }
+                      },
+                      "required": [
+                        "count"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "fill": {
+                      "type": "string"
+                    },
+                    "stroke": {
+                      "type": "string"
+                    },
+                    "strokeWidth": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    },
+                    "dash": {
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      }
+                    },
+                    "text": {
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "y": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "value": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "description": "A number, or an expression over the parameters such as \"width / 2\".",
+                          "type": [
+                            "number",
+                            "string",
+                            "boolean"
+                          ]
+                        },
+                        "align": {
+                          "type": "string",
+                          "enum": [
+                            "left",
+                            "center"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y",
+                        "value",
+                        "size"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "text"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "back": {
+            "description": "How it looks in an elevation seen from behind, in the same terms as \"front\": for what stands free, as a table. Left out, a box.",
             "type": "array",
             "items": {
               "anyOf": [

@@ -850,6 +850,16 @@ test('shows on the plan what a view line sees, and sets its depth by the handle 
   await expect(field(page, 'Depth')).toHaveValue('500')
 })
 
+test('keeps an elevation on its face when its depth is typed: its line moves', async ({ page }) => {
+  await planWithElevation(page)
+  await objectRows(page).filter({ hasText: 'Wall line' }).click()
+  const depth = field(page, 'Depth')
+  await depth.fill('600')
+  await depth.press('Enter')
+  // Its far side stays on the face at y = 100: the line comes from 1100 to 700.
+  expect((await saved(page)).find((n) => n.type === 'viewline')).toMatchObject({ a: { x: 0, y: 700 }, b: { x: 4000, y: 700 }, depth: 600 })
+})
+
 test('drags an edge of what a view line sees across, as a wall’s face, taken anywhere along it', async ({ page }) => {
   const at = await planWithElevation(page)
   await objectRows(page).filter({ hasText: 'Wall line' }).click()
@@ -1011,4 +1021,49 @@ test('resizes what an elevation sees by a corner of it, a rectangle still', asyn
   const turned = (await saved(page)).find((n) => n.type === 'viewline')!
   expect(turned).toMatchObject({ a: { x: 1000, y: 1100 }, depth: 700 })
   expect(turned.b.y).toBeLessThan(1000)
+})
+
+test('links a switch to the lights and the socket it controls by clicking them, and unlinks one clicked again', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  const object = (id: string, kind: string, x: number, y: number, order: string) => ({ id, type: 'parametric', parent: 'page_1', layer: 'layer_1', order, kind, props: {}, x, y })
+  const plan = drawing({
+    s: object('s', 'elec.switch', 0, 0, 'a1'),
+    l: object('l', 'elec.light', 3000, 0, 'a2'),
+    m: object('m', 'elec.light', 3000, 2000, 'a3'),
+    p: object('p', 'elec.socket', 0, 2000, 'a4'),
+  })
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
+  const at = await drawingOnScreen(page)
+  const click = (x: number, y: number) => page.mouse.click(...at(x, y))
+  await page.keyboard.press('Shift+C')
+  await expect(page.locator('.hint-bar')).toContainText('Click a switch, a dimmer or a push button')
+  await click(0, 0)
+  await expect(page.locator('.hint-bar')).toContainText('Click a light or a socket it controls')
+  // Pointing at the light shows what a click would do.
+  await page.mouse.move(...at(3000, 0))
+  await expect(page.locator('.status')).toContainText('Click to make Switch control Ceiling light')
+  await click(3000, 0)
+  await expect(page.locator('.status')).toContainText('Switch now controls Ceiling light')
+  await click(0, 2000)
+  const links = (nodes: Saved[]) => nodes.filter((n) => n.type === 'link').map((n) => [n.from, n.to])
+  expect(links(await saved(page))).toEqual([
+    ['s', 'l'],
+    ['s', 'p'],
+  ])
+  // A light it controls already, clicked again, is unlinked.
+  await click(3000, 0)
+  expect(links(await saved(page))).toEqual([['s', 'p']])
+  // The switch says what it controls, and a click there selects it.
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await click(0, 0)
+  const controls = page.locator('.controls-field')
+  await expect(controls).toContainText('Controls')
+  await controls.getByRole('button', { name: 'Socket' }).click()
+  await expect(page.locator('[data-panel="objects"] .row.selected')).toHaveText(/Socket/)
+  // Removing the socket removes the link to it.
+  await page.keyboard.press('Delete')
+  expect(links(await saved(page))).toEqual([])
 })

@@ -1,5 +1,5 @@
 import { generateNKeysBetween } from 'fractional-indexing'
-import { checkIntegrity, componentUses, holdsChildren, isContainer, isOrderKey, newId, orderAfter, rootOf } from './document'
+import { checkIntegrity, componentUses, holdsChildren, isContainer, isOrderKey, linkable, newId, orderAfter, rootOf } from './document'
 import type { Document, Layer, Node } from './schema'
 
 const byOrder = <T extends { id: string; order: string }>(a: T, b: T) => (a.order < b.order ? -1 : a.order > b.order ? 1 : a.id < b.id ? -1 : 1)
@@ -146,6 +146,10 @@ export function repairDocument(input: Document): { doc: Document; repairs: strin
     if (node.type === 'elevation' && nodes[node.line]?.type !== 'viewline') {
       delete nodes[node.id]
       repairs.push(`View "${node.id}" was removed: its line ("${node.line}") is not in the drawing.`)
+    }
+    if (node.type === 'link' && (node.from === node.to || !linkable(nodes[node.from]) || !linkable(nodes[node.to]))) {
+      delete nodes[node.id]
+      repairs.push(`Link "${node.id}" was removed: it did not join two objects of the drawing ("${node.from}" and "${node.to}").`)
     }
     if (node.type === 'instance' && nodes[node.component]?.type !== 'component') {
       delete nodes[node.id]

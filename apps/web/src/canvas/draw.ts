@@ -36,6 +36,8 @@ import type { View } from '../view'
 import { formatAngle, formatLength, formatNumber } from '../units'
 
 const ACCENT = '#0d99ff'
+/** What the connect tool marks as left unconnected: amber, apart from the selection's blue. */
+const LOOSE = '#e8590c'
 const CROSSING = '#16a34a'
 /** The colour of what the pointer snaps to and of the guides shown while something is moved. */
 const SNAP = '#e5008a'
@@ -138,16 +140,21 @@ export interface Overlay {
   inViews?: Bounds[]
   /**
    * The lines on the plan that the selected elevations and sections look at, each seen from its
-   * right, the area each sees up to its depth, and where its start and its end are written on the
-   * view (`marks`, in the drawing, on the sheet).
+   * right, the area each sees up to its depth (its back, written with `depth`), and where its left
+   * and its right are written on the view (`marks`, in the drawing, on the sheet). One only pointed
+   * at (`faint`) shows its area alone, lightly: what it would show, without selecting it.
    */
-  viewLines?: { a: Vec2; b: Vec2; area?: Vec2[]; marks?: { start: Vec2; end: Vec2 }[] }[]
-  /** The words the ends of a view are called by: Start and End, in the user's language. */
-  viewWords?: { start: string; end: string }
+  viewLines?: { a: Vec2; b: Vec2; area?: Vec2[]; back?: string; faint?: boolean; marks?: { start: Vec2; end: Vec2 }[] }[]
+  /** The words the sides of a view are called by, in the user's language: its ends (Left and Right, as on the view) and its line (Front). */
+  viewWords?: { start: string; end: string; front: string }
+  /** The view line (or the view of one) the pointer is on, whose area is shown faintly. */
+  viewHover?: string
   /** Where the split tool would cut: a point, the way the thing runs there, and how far the mark reaches to either side. */
   cut?: { at: Vec2; dir: Vec2; half: number; parts?: Vec2[][]; gap?: number }
   /** The object a tool would act on, lit up as if it were selected. */
   lit?: string
+  /** What the connect tool marks as left unconnected: the boxes of the lights that nothing controls. */
+  loose?: Bounds[]
   /** What the trim tool would take away: the stretch of a wall or a line, along its line, and how wide to show it in pixels (a wall's thickness). */
   trim?: { piece: Vec2[]; width: number }
   /** Temporary dimensions of the one object selected: each line, and its length in a box on screen (`clearanceLabel`). */
@@ -959,37 +966,63 @@ export function drawScene(
     ctx.restore()
   }
   if (overlay.viewLines) {
-    // As a section line is drawn on a plan: dashed, with an arrow at each end the way it looks.
-    ctx.strokeStyle = ACCENT
-    ctx.fillStyle = ACCENT
-    ctx.lineWidth = 1.5
-    for (const { a, b, area, marks } of overlay.viewLines) {
-      if (area) {
-        // What it sees: dotted, from its line out to its depth, faintly filled.
-        const corners = area.map(toScreen)
-        ctx.beginPath()
-        corners.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)))
-        ctx.closePath()
-        ctx.fillStyle = 'rgb(13 153 255 / 6%)'
-        ctx.fill()
-        ctx.setLineDash([2, 4])
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.moveTo(corners[1].x, corners[1].y)
-        ctx.lineTo(corners[2].x, corners[2].y)
-        ctx.lineTo(corners[3].x, corners[3].y)
-        ctx.lineTo(corners[0].x, corners[0].y)
-        ctx.stroke()
-        ctx.setLineDash([])
-        ctx.fillStyle = ACCENT
-        ctx.lineWidth = 1.5
-      }
+    // A word over the plan, upright whatever the line's angle, with a white halo to stay readable.
+    const word = (text: string, at: Vec2, align: CanvasTextAlign = 'center', baseline: CanvasTextBaseline = 'middle') => {
+      ctx.font = `600 11px ${FONT}`
+      ctx.textAlign = align
+      ctx.textBaseline = baseline
+      ctx.lineWidth = 3
+      ctx.lineJoin = 'round'
+      ctx.strokeStyle = 'rgb(255 255 255 / 85%)'
+      ctx.strokeText(text, at.x, at.y)
+      ctx.fillStyle = ACCENT
+      ctx.fillText(text, at.x, at.y)
+      ctx.strokeStyle = ACCENT
+    }
+    for (const { a, b, area, back, faint, marks } of overlay.viewLines) {
       const [p, q] = [toScreen(a), toScreen(b)]
       const length = Math.hypot(q.x - p.x, q.y - p.y)
       if (length < 1) continue
       const along = { x: (q.x - p.x) / length, y: (q.y - p.y) / length }
       // Seen from its right, it looks the other way: to its left.
       const look = { x: along.y, y: -along.x }
+      ctx.strokeStyle = ACCENT
+      ctx.fillStyle = ACCENT
+      if (area) {
+        // What it sees, as a beam from its line (its front) to its far side (its back): strongest
+        // along the line, fading out at the back, which is drawn solid; its sides thin. Pointed at
+        // only, the same, lighter, and nothing written.
+        const corners = area.map(toScreen)
+        const front = { x: (corners[0].x + corners[1].x) / 2, y: (corners[0].y + corners[1].y) / 2 }
+        const far = { x: (corners[2].x + corners[3].x) / 2, y: (corners[2].y + corners[3].y) / 2 }
+        const beam = ctx.createLinearGradient(front.x, front.y, far.x, far.y)
+        beam.addColorStop(0, faint ? 'rgb(13 153 255 / 10%)' : 'rgb(13 153 255 / 20%)')
+        beam.addColorStop(1, 'rgb(13 153 255 / 0%)')
+        ctx.beginPath()
+        corners.forEach((c, i) => (i === 0 ? ctx.moveTo(c.x, c.y) : ctx.lineTo(c.x, c.y)))
+        ctx.closePath()
+        ctx.fillStyle = beam
+        ctx.fill()
+        ctx.globalAlpha = faint ? 0.45 : 1
+        ctx.setLineDash([])
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(corners[1].x, corners[1].y)
+        ctx.lineTo(corners[2].x, corners[2].y)
+        ctx.moveTo(corners[3].x, corners[3].y)
+        ctx.lineTo(corners[0].x, corners[0].y)
+        ctx.stroke()
+        ctx.lineWidth = 2.5
+        ctx.beginPath()
+        ctx.moveTo(corners[2].x, corners[2].y)
+        ctx.lineTo(corners[3].x, corners[3].y)
+        ctx.stroke()
+        ctx.globalAlpha = 1
+        ctx.fillStyle = ACCENT
+        if (!faint && back && Math.hypot(far.x - front.x, far.y - front.y) > 1) word(back, { x: far.x + look.x * 12, y: far.y + look.y * 12 })
+      }
+      if (faint) continue
+      ctx.lineWidth = 1.5
       ctx.setLineDash([10, 4, 2, 4])
       ctx.beginPath()
       ctx.moveTo(p.x, p.y)
@@ -997,7 +1030,8 @@ export function drawScene(
       ctx.stroke()
       ctx.setLineDash([])
       // At each end an arrow the way it looks, which is what is dragged to move that end, and its
-      // name beyond its tip; the same names on the view, at its left and its right.
+      // name beyond its tip; the same names on the view, at its left and its right. Under the middle
+      // of the line, on the side it is seen from, the word for where the viewer stands.
       for (const end of ['a', 'b'] as const) {
         const arrow = viewArrow(a, b, end, toScreen)
         if (!arrow) continue
@@ -1014,26 +1048,28 @@ export function drawScene(
         ctx.lineTo(tip.x - look.x * 11 + along.x * 7, tip.y - look.y * 11 + along.y * 7)
         ctx.closePath()
         ctx.fill()
-        if (overlay.viewWords) {
-          ctx.font = `600 11px ${FONT}`
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'middle'
-          ctx.fillText(end === 'a' ? overlay.viewWords.start : overlay.viewWords.end, from.x - look.x * 12, from.y - look.y * 12)
-        }
+        if (overlay.viewWords) word(end === 'a' ? overlay.viewWords.start : overlay.viewWords.end, { x: from.x - look.x * 12, y: from.y - look.y * 12 })
       }
+      if (overlay.viewWords && length > 120) word(overlay.viewWords.front, { x: (p.x + q.x) / 2 - look.x * 16, y: (p.y + q.y) / 2 - look.y * 16 })
       for (const mark of overlay.viewWords ? (marks ?? []) : []) {
-        ctx.font = `600 11px ${FONT}`
-        ctx.textBaseline = 'bottom'
         const [left, right] = [toScreen(mark.start), toScreen(mark.end)]
-        ctx.textAlign = 'left'
-        ctx.fillText(overlay.viewWords!.start, left.x, left.y - 6)
-        ctx.textAlign = 'right'
-        ctx.fillText(overlay.viewWords!.end, right.x, right.y - 6)
+        word(overlay.viewWords!.start, { x: left.x, y: left.y - 6 }, 'left', 'bottom')
+        word(overlay.viewWords!.end, { x: right.x, y: right.y - 6 }, 'right', 'bottom')
       }
       ctx.textAlign = 'left'
       ctx.textBaseline = 'alphabetic'
       ctx.lineWidth = 1.5
     }
+  }
+  if (overlay.loose) {
+    ctx.setLineDash([4, 3])
+    ctx.strokeStyle = LOOSE
+    ctx.lineWidth = 1.5
+    for (const box of overlay.loose) {
+      const [p, q] = [toScreen({ x: box.minX, y: box.minY }), toScreen({ x: box.maxX, y: box.maxY })]
+      ctx.strokeRect(p.x - 4, p.y - 4, q.x - p.x + 8, q.y - p.y + 8)
+    }
+    ctx.setLineDash([])
   }
   if (overlay.inViews) {
     ctx.setLineDash([])

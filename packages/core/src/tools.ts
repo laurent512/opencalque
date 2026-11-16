@@ -1,6 +1,7 @@
 import { checkDrawing, problemsMadeBy, type DrawingProblem } from './check'
 import { childrenOf, componentsOf, layersOf, leavesOf, pagesOf, rootOf, withoutAssets } from './document'
 import { opsJsonSchema } from './jsonschema'
+import { controlsOn } from './networks/electrical'
 import { parseOps, type Op } from './ops'
 import { quantities, type Quantities } from './quantities'
 import type { Registry } from './registry'
@@ -134,6 +135,12 @@ export const DRAWING_TOOLS: ToolSpec[] = [
     description: 'Lists what is wrong with a page, whoever did it: rooms that have no floor, with the wall ends that may be why, rooms that share one, walls drawn over each other, doors and windows outside a wall, past its end or over one another. Each problem says what to do about it.',
     schema: schema({ page: { type: 'string', description: 'Id of a page or component. Leave it out for the whole drawing.' } }),
   },
+  {
+    name: 'read_controls',
+    description:
+      'Says what controls what on a page, from its control links: each switch, dimmer or push button with the lights and sockets it controls, and through which of its ports; the objects that need control and have none (lights no switch turns on), under "uncontrolled"; and those that control nothing, under "idle". It describes the plan, it does not check an installation against any rule.',
+    schema: schema({ page: pageInput }),
+  },
 ]
 
 /** A short account of a drawing, much smaller than the drawing: layers, pages and components with how many objects of each type they hold. */
@@ -262,6 +269,11 @@ export async function runDrawingTool(name: string, given: unknown, host: Drawing
       if (input.page === undefined) return { content: JSON.stringify(listed(checkDrawing(doc, registry))) }
       const root = rootAsked()
       return root ? { content: JSON.stringify(listed(checkDrawing(doc, registry, [root]))) } : noPage()
+    }
+
+    case 'read_controls': {
+      const root = rootAsked()
+      return root ? { content: JSON.stringify({ page: root, ...controlsOn(doc, registry, root) }) } : noPage()
     }
 
     default:

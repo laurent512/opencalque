@@ -2,7 +2,7 @@ import { generateKeyBetween } from 'fractional-indexing'
 import * as z from 'zod'
 import { withoutColorRef } from './colors'
 import { withDimensionStyle } from './dimensions'
-import { componentUses, holdsChildren, isContainer, isOrderKey, layersOf, newId, orderAfter, rootOf } from './document'
+import { componentUses, holdsChildren, isContainer, isOrderKey, layersOf, linkable, newId, orderAfter, rootOf } from './document'
 import {
   AssetSchema,
   DEFAULT_MATERIAL,
@@ -16,6 +16,7 @@ import {
   type ContainerNode,
   type Document,
   type Node,
+  type NodeOf,
   SharedColorSchema,
   type SharedColor,
 } from './schema'
@@ -79,7 +80,7 @@ export const OpSchema = z.discriminatedUnion('op', [
     .describe('Changes properties of a node. Set "parent" or "order" to move it. "id" and "type" cannot change.'),
   z
     .object({ op: z.literal('remove_node'), id: z.string() })
-    .describe('Removes a node and everything inside it. Removing a component also removes its instances, and removing a viewline the elevations drawn from it.'),
+    .describe('Removes a node and everything inside it. Removing a component also removes its instances, removing a viewline the elevations drawn from it, and removing an object the links that join it to others.'),
   z.object({ op: z.literal('add_layer'), layer: z.looseObject({ name: z.string() }) }),
   z.object({ op: z.literal('update_layer'), id: z.string(), patch }),
   z
@@ -176,30 +177,42 @@ function raise(batch: Batch, parent: string | null, order: string): void {
   if (batch.top && (top === undefined || order > top)) batch.top.set(parent, order)
 }
 
+/** What removing a node takes along besides itself: what is inside it, its links, and a component's placements or a view line's views. */
+function removal(d: Document): { along: (id: string) => string[]; pages: number } {
+  const children = new Map<string, string[]>()
+  const instances = new Map<string, string[]>()
+  // The links at each node, which go with it: a link with one end is not drawn and means nothing.
+  const links = new Map<string, string[]>()
+  const add = (map: Map<string, string[]>, key: string, id: string) => {
+    const list = map.get(key)
+    if (list) list.push(id)
+    else map.set(key, [id])
+  }
+  let pages = 0
+  for (const node of Object.values(d.nodes)) {
+    if (node.type === 'link') for (const end of [node.from, node.to]) add(links, end, node.id)
+    if (node.parent !== null) add(children, node.parent, node.id)
+    // A view is removed with its line, as a placement is with its component.
+    const used = node.type === 'instance' ? node.component : node.type === 'elevation' ? node.line : null
+    if (used !== null) add(instances, used, node.id)
+    if (node.type === 'page') pages++
+  }
+  const along = (id: string) => {
+    const type = d.nodes[id]?.type
+    const users = type === 'component' || type === 'viewline' ? (instances.get(id) ?? []) : []
+    return [...(children.get(id) ?? []), ...(links.get(id) ?? []), ...users]
+  }
+  return { along, pages }
+}
+
 /**
  * Removes nodes as `remove_node` operations one after the other would: each with everything
- * inside it however deeply, a component with its instances, and a view line with its views. Naming a node that an earlier one
+ * inside it however deeply, a component with its instances, a view line with its views, and an object with its links. Naming a node that an earlier one
  * of them took along is an error, as it would be one at a time.
  */
 function removeNodes(d: Document, ids: string[]): void {
-  const children = new Map<string, string[]>()
-  const instances = new Map<string, string[]>()
-  let pages = 0
-  for (const node of Object.values(d.nodes)) {
-    if (node.parent !== null) {
-      const list = children.get(node.parent)
-      if (list) list.push(node.id)
-      else children.set(node.parent, [node.id])
-    }
-    // A view is removed with its line, as a placement is with its component.
-    const used = node.type === 'instance' ? node.component : node.type === 'elevation' ? node.line : null
-    if (used !== null) {
-      const list = instances.get(used)
-      if (list) list.push(node.id)
-      else instances.set(used, [node.id])
-    }
-    if (node.type === 'page') pages++
-  }
+  const { along, pages: count } = removal(d)
+  let pages = count
   const doomed = new Set<string>()
   for (const id of ids) {
     const node = d.nodes[id]
@@ -209,12 +222,35 @@ function removeNodes(d: Document, ids: string[]): void {
       const next = queue.pop()!
       if (doomed.has(next)) continue
       doomed.add(next)
-      queue.push(...(children.get(next) ?? []))
-      const type = d.nodes[next]?.type
-      if (type === 'component' || type === 'viewline') queue.push(...(instances.get(next) ?? []))
+      queue.push(...along(next))
     }
   }
   for (const id of doomed) delete d.nodes[id]
+}
+
+/**
+ * The `remove_node` operations that delete the given nodes, leaving out those another of them takes
+ * along (a view with its view line, an object inside a group, a link with what it joins), which
+ * named again would be an error. Unknown ids are left out too.
+ */
+export function removeOps(doc: Document, ids: Iterable<string>): Op[] {
+  const wanted = [...new Set(ids)].filter((id) => doc.nodes[id])
+  const { along } = removal(doc)
+  const taken = new Set<string>()
+  const seen = new Set<string>()
+  for (const id of wanted) {
+    if (taken.has(id)) continue
+    seen.add(id)
+    for (const queue = along(id); queue.length > 0; ) {
+      const next = queue.pop()!
+      if (next === id) continue
+      taken.add(next)
+      if (seen.has(next)) continue
+      seen.add(next)
+      queue.push(...along(next))
+    }
+  }
+  return wanted.filter((id) => !taken.has(id)).map((id): Op => ({ op: 'remove_node', id }))
 }
 
 /** What a script that still uses wall types is told: format 2 took them out. */
@@ -272,11 +308,22 @@ function checkNode(d: Document, node: Node): void {
   if (node.type === 'room' && node.material !== undefined && !d.materials?.[node.material]) throw new OpError(`Unknown material "${node.material}"`)
   if (node.type === 'wall' && node.material !== undefined && !d.materials?.[node.material]) throw new OpError(`Wall ${node.id}: unknown material "${node.material}"`)
   if (node.type === 'elevation' && d.nodes[node.line]?.type !== 'viewline') throw new OpError(`Node ${node.id}: unknown view line "${node.line}"; a view is drawn from a viewline of the drawing`)
+  if (node.type === 'link') checkLink(d, node, root.id)
   if (node.type === 'instance') {
     if (d.nodes[node.component]?.type !== 'component') throw new OpError(`Unknown component "${node.component}"`)
     if (root.type === 'component' && componentUses(d, node.component, root.id)) {
       throw new OpError('A component cannot contain an instance of itself')
     }
+  }
+}
+
+/** A link joins two different objects that are there, on the page or in the component it is on. */
+function checkLink(d: Document, link: NodeOf<'link'>, root: string): void {
+  if (link.from === link.to) throw new OpError(`Link ${link.id}: "from" and "to" are the same object; a link joins two`)
+  for (const end of [link.from, link.to]) {
+    const node = d.nodes[end]
+    if (!linkable(node)) throw new OpError(`Link ${link.id}: "${end}" is not an object of the drawing that can be linked (a page, a component, a group or a link cannot)`)
+    if (rootOf(d, node.parent)?.id !== root) throw new OpError(`Link ${link.id}: "${end}" is on another page or component; a link joins objects of the one it is on`)
   }
 }
 

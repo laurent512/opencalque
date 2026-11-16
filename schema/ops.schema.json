@@ -74,7 +74,7 @@
           "id"
         ],
         "additionalProperties": false,
-        "description": "Removes a node and everything inside it. Removing a component also removes its instances, and removing a viewline the elevations drawn from it."
+        "description": "Removes a node and everything inside it. Removing a component also removes its instances, removing a viewline the elevations drawn from it, and removing an object the links that join it to others."
       },
       {
         "type": "object",

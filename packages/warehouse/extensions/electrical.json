@@ -3,11 +3,20 @@
   "formatVersion": 1,
   "id": "opencalque.electrical",
   "name": "Electrical symbols",
-  "version": "1.5.0",
+  "version": "1.7.0",
   "author": "OpenCalque",
   "description": "Sockets, switches and light points for electrical layouts.",
   "translations": {
     "fr": {
+      "Motion detector": "Détecteur de mouvement",
+      "Roller shutter switch": "Interrupteur de volet roulant",
+      "Roller shutter": "Volet roulant",
+      "Thermostat": "Thermostat",
+      "Wireless switch": "Interrupteur sans fil",
+      "Battery switch or remote that controls lights and sockets by radio, as smart home systems do.": "Interrupteur à pile ou télécommande qui commande luminaires et prises par radio, comme en domotique.",
+      "Control": "Commande",
+      "First button": "Premier bouton",
+      "Second button": "Second bouton",
       "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "Placée près d’un mur, elle se met sur sa face. Plusieurs se mettent côte à côte, ou superposées.",
       "Arrangement": "Disposition",
       "Side by side": "Côte à côte",
@@ -40,6 +49,15 @@
       "Length": "Longueur"
     },
     "es": {
+      "Motion detector": "Detector de movimiento",
+      "Roller shutter switch": "Interruptor de persiana",
+      "Roller shutter": "Persiana enrollable",
+      "Thermostat": "Termostato",
+      "Wireless switch": "Interruptor inalámbrico",
+      "Battery switch or remote that controls lights and sockets by radio, as smart home systems do.": "Interruptor a pilas o mando que controla luces y enchufes por radio, como hace la domótica.",
+      "Control": "Mando",
+      "First button": "Primer botón",
+      "Second button": "Segundo botón",
       "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "Colocado junto a un muro, va en su cara. Varios van uno al lado del otro, o uno encima de otro.",
       "Arrangement": "Disposición",
       "Side by side": "Uno al lado del otro",
@@ -72,6 +90,15 @@
       "Length": "Longitud"
     },
     "de": {
+      "Motion detector": "Bewegungsmelder",
+      "Roller shutter switch": "Rollladenschalter",
+      "Roller shutter": "Rollladen",
+      "Thermostat": "Thermostat",
+      "Wireless switch": "Funkschalter",
+      "Battery switch or remote that controls lights and sockets by radio, as smart home systems do.": "Batterieschalter oder Fernbedienung, die Leuchten und Steckdosen per Funk schaltet, wie es Smart-Home-Systeme tun.",
+      "Control": "Steuerung",
+      "First button": "Erste Taste",
+      "Second button": "Zweite Taste",
       "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "Neben einer Wand platziert, kommt sie an deren Seite. Mehrere stehen nebeneinander oder übereinander.",
       "Arrangement": "Anordnung",
       "Side by side": "Nebeneinander",
@@ -104,6 +131,15 @@
       "Length": "Länge"
     },
     "zh": {
+      "Motion detector": "移动探测器",
+      "Roller shutter switch": "卷帘开关",
+      "Roller shutter": "卷帘",
+      "Thermostat": "温控器",
+      "Wireless switch": "无线开关",
+      "Battery switch or remote that controls lights and sockets by radio, as smart home systems do.": "以无线电控制灯具和插座的电池开关或遥控器，如智能家居系统。",
+      "Control": "控制",
+      "First button": "第一个按键",
+      "Second button": "第二个按键",
       "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "放在墙边时，会贴在墙面上。多个插座可并排或上下叠放。",
       "Arrangement": "排列",
       "Side by side": "并排",
@@ -136,6 +172,15 @@
       "Length": "长度"
     },
     "ja": {
+      "Motion detector": "人感センサー",
+      "Roller shutter switch": "シャッタースイッチ",
+      "Roller shutter": "電動シャッター",
+      "Thermostat": "サーモスタット",
+      "Wireless switch": "ワイヤレススイッチ",
+      "Battery switch or remote that controls lights and sockets by radio, as smart home systems do.": "スマートホームのように、照明やコンセントを無線で制御する電池式スイッチやリモコン。",
+      "Control": "制御",
+      "First button": "1 つ目のボタン",
+      "Second button": "2 つ目のボタン",
       "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "壁の近くに置くと、その壁面に付きます。複数のときは横並びか縦並びにします。",
       "Arrangement": "配置",
       "Side by side": "横並び",
@@ -168,6 +213,15 @@
       "Length": "長さ"
     },
     "ko": {
+      "Motion detector": "동작 감지기",
+      "Roller shutter switch": "롤러 셔터 스위치",
+      "Roller shutter": "롤러 셔터",
+      "Thermostat": "온도 조절기",
+      "Wireless switch": "무선 스위치",
+      "Battery switch or remote that controls lights and sockets by radio, as smart home systems do.": "스마트 홈처럼 조명과 콘센트를 무선으로 제어하는 배터리 스위치나 리모컨.",
+      "Control": "제어",
+      "First button": "첫 번째 버튼",
+      "Second button": "두 번째 버튼",
       "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "벽 옆에 놓으면 그 벽면에 붙습니다. 여러 개는 나란히 또는 위아래로 놓습니다.",
       "Arrangement": "배치",
       "Side by side": "나란히",
@@ -200,6 +254,15 @@
       "Length": "길이"
     },
     "tr": {
+      "Motion detector": "Hareket dedektörü",
+      "Roller shutter switch": "Panjur anahtarı",
+      "Roller shutter": "Panjur",
+      "Thermostat": "Termostat",
+      "Wireless switch": "Kablosuz anahtar",
+      "Battery switch or remote that controls lights and sockets by radio, as smart home systems do.": "Akıllı ev sistemlerindeki gibi aydınlatma ve prizleri telsizle kumanda eden pilli anahtar ya da uzaktan kumanda.",
+      "Control": "Kumanda",
+      "First button": "Birinci tuş",
+      "Second button": "İkinci tuş",
       "Placed beside a wall, it goes on its face. Several are side by side, or stacked one above the other.": "Bir duvarın yanına konunca yüzüne yerleşir. Birden fazlası yan yana ya da üst üste durur.",
       "Arrangement": "Düzen",
       "Side by side": "Yan yana",
@@ -243,6 +306,9 @@
         { "key": "count", "label": "Count", "type": "number", "default": 1 },
         { "key": "layout", "label": "Arrangement", "type": "string", "default": "Side by side", "options": ["Side by side", "Stacked"] }
       ],
+      "ports": [
+        { "key": "in", "label": "Control", "carries": "control", "way": "in" }
+      ],
       "draw": [
         { "when": "layout != 'Stacked'", "repeat": { "count": "max(1, count)" }, "arc": { "cx": "i * 240", "cy": 0, "r": 100, "from": 0, "to": 180 } },
         { "when": "layout != 'Stacked'", "repeat": { "count": "max(1, count)" }, "path": [["i * 240 - 100", 0], ["i * 240 + 100", 0]] },
@@ -267,6 +333,10 @@
         { "key": "twoWay", "label": "Two-way", "type": "boolean", "default": false },
         { "key": "double", "label": "Two circuits", "type": "boolean", "default": false }
       ],
+      "ports": [
+        { "key": "out", "label": "First button", "carries": "control", "way": "out" },
+        { "key": "out2", "label": "Second button", "carries": "control", "way": "out", "when": "double" }
+      ],
       "draw": [
         { "ellipse": { "cx": 0, "cy": 0, "rx": 60, "ry": 60 } },
         { "path": [[42, -42], [180, -180], [230, -130]] },
@@ -285,6 +355,9 @@
       "category": "electrical",
       "label": "Ceiling light",
       "params": [{ "key": "size", "label": "Size", "type": "number", "default": 240, "unit": "length" }],
+      "ports": [
+        { "key": "in", "label": "Control", "carries": "control", "way": "in", "required": true }
+      ],
       "draw": [
         { "ellipse": { "cx": 0, "cy": 0, "rx": "size / 2", "ry": "size / 2" } },
         { "path": [["-size * 0.354", "-size * 0.354"], ["size * 0.354", "size * 0.354"]] },
@@ -297,6 +370,9 @@
       "mount": { "on": "wall", "height": 1800 },
       "label": "Wall light",
       "params": [{ "key": "size", "label": "Size", "type": "number", "default": 240, "unit": "length" }],
+      "ports": [
+        { "key": "in", "label": "Control", "carries": "control", "way": "in", "required": true }
+      ],
       "draw": [
         { "arc": { "cx": 0, "cy": 0, "r": "size / 2", "from": 0, "to": 180 } },
         { "path": [["-size / 2", 0], ["size / 2", 0]] },
@@ -312,6 +388,9 @@
       "category": "electrical",
       "label": "Pendant light",
       "params": [{ "key": "size", "label": "Size", "type": "number", "default": 300, "unit": "length" }],
+      "ports": [
+        { "key": "in", "label": "Control", "carries": "control", "way": "in", "required": true }
+      ],
       "draw": [
         { "ellipse": { "cx": 0, "cy": 0, "rx": "size / 2", "ry": "size / 2" } },
         { "ellipse": { "cx": 0, "cy": 0, "rx": "size * 0.3", "ry": "size * 0.3" } },
@@ -324,6 +403,9 @@
       "category": "electrical",
       "label": "Recessed spotlight",
       "params": [{ "key": "size", "label": "Size", "type": "number", "default": 120, "unit": "length" }],
+      "ports": [
+        { "key": "in", "label": "Control", "carries": "control", "way": "in", "required": true }
+      ],
       "draw": [
         { "ellipse": { "cx": 0, "cy": 0, "rx": "size / 2", "ry": "size / 2" } },
         { "fill": "stroke", "ellipse": { "cx": 0, "cy": 0, "rx": "size * 0.21", "ry": "size * 0.21" } }
@@ -335,6 +417,9 @@
       "label": "Light strip",
       "params": [{ "key": "length", "label": "Length", "type": "number", "default": 1200, "unit": "length" }],
       "size": { "x": "length" },
+      "ports": [
+        { "key": "in", "label": "Control", "carries": "control", "way": "in", "required": true }
+      ],
       "draw": [
         { "path": [[0, -50], ["length", -50], ["length", 50], [0, 50]], "closed": true },
         { "path": [[0, 0], ["length", 0]] }
@@ -397,6 +482,9 @@
       "label": "Push button",
       "mount": { "on": "wall", "height": 1100 },
       "params": [],
+      "ports": [
+        { "key": "out", "label": "Control", "carries": "control", "way": "out" }
+      ],
       "draw": [
         { "ellipse": { "cx": 0, "cy": 100, "rx": 100, "ry": 100 } },
         { "ellipse": { "cx": 0, "cy": 100, "rx": 45, "ry": 45 } }
@@ -413,6 +501,9 @@
       "description": "Switch with a dimmer",
       "mount": { "on": "wall", "back": 60, "out": "up", "height": 1100 },
       "params": [],
+      "ports": [
+        { "key": "out", "label": "Control", "carries": "control", "way": "out" }
+      ],
       "draw": [
         { "ellipse": { "cx": 0, "cy": 0, "rx": 60, "ry": 60 } },
         { "path": [[42, -42], [180, -180], [230, -130]] },
@@ -466,6 +557,9 @@
       "category": "electrical",
       "label": "Extractor fan",
       "params": [],
+      "ports": [
+        { "key": "in", "label": "Control", "carries": "control", "way": "in" }
+      ],
       "draw": [
         { "ellipse": { "cx": 0, "cy": 0, "rx": 200, "ry": 200 } },
         { "path": [[-140, -100], [140, 100], [140, -100], [-140, 100]], "closed": true }
@@ -478,6 +572,9 @@
       "mount": { "on": "wall", "height": 450 },
       "params": [{ "key": "length", "label": "Length", "type": "number", "default": 1000, "unit": "length" }],
       "size": { "x": "length" },
+      "ports": [
+        { "key": "in", "label": "Control", "carries": "control", "way": "in" }
+      ],
       "draw": [
         { "path": [[0, 0], ["length", 0], ["length", 120], [0, 120]], "closed": true },
         { "repeat": { "count": "floor(length / 100) - 1" }, "path": [["(i + 1) * 100", 0], ["(i + 1) * 100", 120]] }
@@ -485,6 +582,104 @@
       "front": [
         { "path": [[0, -300], ["length", -300], ["length", 300], [0, 300]], "closed": true, "radius": 10 },
         { "repeat": { "count": "floor(length / 100) - 1" }, "path": [["(i + 1) * 100", -270], ["(i + 1) * 100", 270]] }
+      ]
+    },
+    {
+      "kind": "elec.motion",
+      "category": "electrical",
+      "label": "Motion detector",
+      "params": [],
+      "ports": [
+        { "key": "out", "label": "Control", "carries": "control", "way": "out" }
+      ],
+      "draw": [
+        { "ellipse": { "cx": 0, "cy": 0, "rx": 70, "ry": 70 } },
+        { "fill": "stroke", "ellipse": { "cx": 0, "cy": 0, "rx": 22, "ry": 22 } },
+        { "arc": { "cx": 0, "cy": 0, "r": 120, "from": -50, "to": 50 } },
+        { "arc": { "cx": 0, "cy": 0, "r": 170, "from": -40, "to": 40 } },
+        { "arc": { "cx": 0, "cy": 0, "r": 120, "from": 130, "to": 230 } },
+        { "arc": { "cx": 0, "cy": 0, "r": 170, "from": 140, "to": 220 } }
+      ]
+    },
+    {
+      "kind": "elec.shutterswitch",
+      "category": "electrical",
+      "label": "Roller shutter switch",
+      "mount": { "on": "wall", "height": 1100 },
+      "params": [],
+      "ports": [
+        { "key": "out", "label": "Control", "carries": "control", "way": "out" }
+      ],
+      "draw": [
+        { "ellipse": { "cx": 0, "cy": 100, "rx": 100, "ry": 100 } },
+        { "fill": "stroke", "path": [[0, 30], [38, 85], [-38, 85]], "closed": true },
+        { "fill": "stroke", "path": [[0, 170], [38, 115], [-38, 115]], "closed": true }
+      ],
+      "front": [
+        { "path": [[-40, -40], [40, -40], [40, 40], [-40, 40]], "closed": true, "radius": 8 },
+        { "fill": "stroke", "path": [[0, -28], [14, -8], [-14, -8]], "closed": true },
+        { "fill": "stroke", "path": [[0, 28], [14, 8], [-14, 8]], "closed": true }
+      ]
+    },
+    {
+      "kind": "elec.shutter",
+      "category": "electrical",
+      "label": "Roller shutter",
+      "mount": { "on": "wall", "height": 2300 },
+      "params": [
+        { "key": "length", "label": "Length", "type": "number", "default": 1000, "unit": "length" }
+      ],
+      "size": { "x": "length" },
+      "ports": [
+        { "key": "in", "label": "Control", "carries": "control", "way": "in", "required": true }
+      ],
+      "draw": [
+        { "dash": [6, 4], "path": [[0, 0], ["length", 0], ["length", 180], [0, 180]], "closed": true },
+        { "text": { "x": "length / 2", "y": 140, "value": "M", "size": 120, "align": "center" } }
+      ],
+      "front": [
+        { "path": [[0, -100], ["length", -100], ["length", 100], [0, 100]], "closed": true, "radius": 6 },
+        { "repeat": { "count": 3 }, "path": [[20, "-50 + i * 50"], ["length - 20", "-50 + i * 50"]] }
+      ]
+    },
+    {
+      "kind": "elec.thermostat",
+      "category": "electrical",
+      "label": "Thermostat",
+      "mount": { "on": "wall", "height": 1500 },
+      "params": [],
+      "ports": [
+        { "key": "out", "label": "Control", "carries": "control", "way": "out" }
+      ],
+      "draw": [
+        { "path": [[-100, 0], [100, 0], [100, 200], [-100, 200]], "closed": true, "radius": 20 },
+        { "text": { "x": 0, "y": 150, "value": "T", "size": 130, "align": "center" } }
+      ],
+      "front": [
+        { "path": [[-45, -45], [45, -45], [45, 45], [-45, 45]], "closed": true, "radius": 10 },
+        { "ellipse": { "cx": 0, "cy": 0, "rx": 26, "ry": 26 } }
+      ]
+    },
+    {
+      "kind": "elec.remote",
+      "category": "electrical",
+      "label": "Wireless switch",
+      "description": "Battery switch or remote that controls lights and sockets by radio, as smart home systems do.",
+      "mount": { "on": "wall", "height": 1100 },
+      "params": [],
+      "ports": [
+        { "key": "out", "label": "Control", "carries": "control", "way": "out" }
+      ],
+      "draw": [
+        { "ellipse": { "cx": 0, "cy": 100, "rx": 100, "ry": 100 } },
+        { "fill": "stroke", "ellipse": { "cx": 0, "cy": 100, "rx": 20, "ry": 20 } },
+        { "arc": { "cx": 0, "cy": 100, "r": 135, "from": 50, "to": 130 } },
+        { "arc": { "cx": 0, "cy": 100, "r": 175, "from": 60, "to": 120 } }
+      ],
+      "front": [
+        { "path": [[-40, -40], [40, -40], [40, 40], [-40, 40]], "closed": true, "radius": 8 },
+        { "path": [[-20, -24], [20, -24], [20, 24], [-20, 24]], "closed": true, "radius": 4 },
+        { "fill": "stroke", "ellipse": { "cx": 0, "cy": 32, "rx": 3, "ry": 3 } }
       ]
     }
   ]

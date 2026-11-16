@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import electrical from '../../warehouse/extensions/electrical.json'
-import { declarativeExtension, Registry, type Primitive } from '../src'
+import { applyOps, canControl, controlsOn, createDocument, declarativeExtension, Registry, type Op, type Primitive } from '../src'
 
 /* The electrical symbols that ship with the app (packages/warehouse/extensions/electrical.json), drawn in plan and from in front. */
 const registry = new Registry().use(declarativeExtension(electrical))
@@ -60,13 +60,42 @@ describe('sockets', () => {
 
 describe('the electrical symbols', () => {
   it('all draw with their usual parameters, and those fixed on walls draw a front for elevations', () => {
-    expect(registry.parametric.size).toBe(17)
+    expect(registry.parametric.size).toBe(22)
     for (const kind of registry.parametric.values()) {
       const usual = registry.resolveProps(kind, {})
       expect(kind.build(usual, {}).length, kind.kind).toBeGreaterThan(0)
       if (kind.mount) expect(kind.front?.(usual).length, kind.kind).toBeGreaterThan(0)
       expect(kind.category).toBe('electrical')
     }
+  })
+
+  it('are named in every language the extension speaks, with what they say of themselves', () => {
+    for (const [language, texts] of Object.entries(electrical.translations as Record<string, Record<string, string>>)) {
+      for (const kind of registry.parametric.values()) {
+        expect(texts[kind.label], `${language} ${kind.label}`).toBeTruthy()
+        if (kind.description) expect(texts[kind.description], `${language} ${kind.description}`).toBeTruthy()
+      }
+    }
+  })
+
+  it('control what they are for: a roller shutter by its switch, a radiator by a thermostat, lights by a motion detector, a socket by a wireless switch', () => {
+    const at = (id: string, kind: string, x: number): Op => ({ op: 'add_node', node: { type: 'parametric', id, parent: 'page_1', kind, props: {}, x, y: 0 } })
+    const doc = applyOps(createDocument(), [
+      at('ss', 'elec.shutterswitch', 0),
+      at('sh', 'elec.shutter', 1000),
+      at('th', 'elec.thermostat', 3000),
+      at('ra', 'elec.radiator', 4000),
+      at('mo', 'elec.motion', 6000),
+      at('li', 'elec.light', 7000),
+      at('re', 'elec.remote', 8000),
+      at('so', 'elec.socket', 9000),
+    ])
+    for (const [from, to] of [['ss', 'sh'], ['th', 'ra'], ['mo', 'li'], ['re', 'so']]) expect(canControl(doc, registry, from, to), `${from} ${to}`).toBe(true)
+    expect(canControl(doc, registry, 'sh', 'ss')).toBe(false)
+    // A roller shutter no switch works is left unconnected; a radiator with no thermostat is not.
+    const loose = controlsOn(doc, registry, 'page_1').uncontrolled.map((device) => device.id)
+    expect(loose).toContain('sh')
+    expect(loose).not.toContain('ra')
   })
 
   it('a switch of two circuits has two strokes on its lever and two rockers seen from in front', () => {

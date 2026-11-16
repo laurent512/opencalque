@@ -2,35 +2,18 @@ import { InstanceBar } from './InstanceBar'
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { rootOf, type Document } from '@opencalque/core'
 import {
-  ArrowRightToLine,
-  BrickWall,
   ChevronRight,
   ChevronUp,
-  Circle,
-  CircleDot,
   DoorOpen,
   Grid2x2,
-  Hand,
   LibraryBig,
   Maximize,
-  MessageSquare,
   Minus,
-  MousePointer2,
-  Pipette,
   Redo2,
-  Ruler,
-  Slice,
-  RotateCw,
-  Move,
   FlipHorizontal2,
   FlipVertical2,
-  Triangle,
   RulerDimensionLine,
-  SeparatorVertical,
-  Square,
-  SquareDashed,
   StickyNote,
-  Type,
   Undo2,
   type LucideIcon,
   AlignCenterHorizontal,
@@ -46,27 +29,23 @@ import {
   ArrowUpToLine,
   BringToFront,
   AlignVerticalSpaceAround,
-  Scissors,
-  SquareRoundCorner,
-  Spline,
   Crosshair,
   Grid3x3,
   Magnet,
   Plus,
   SlidersHorizontal,
-  ScanEye,
 } from 'lucide-react'
 import { canFlipSide, MAX_ZOOM, MIN_ZOOM, zoomBy, zoomTo, zoomToFit } from './actions'
 import { CanvasView } from './canvas/CanvasView'
 import { executeById, formatKey, useShortcutLabel } from './commands'
-import { Arc, GridLine, Offset } from './icons'
 import { msg, t } from './i18n'
 import { QuickBar } from './QuickBar'
 import type { ScopeStep } from './scopePath'
 import { registry, useExtensions } from './extensions'
 import { leaveTo, returnTo, trailAhead } from './navigation'
 import { redo, setTool, undo, useStore } from './store'
-import { CUT_TOOLS, hintsFor, MEASURE_TOOLS, ROOM_TOOLS, SHAPE_TOOLS, TEXT_TOOLS, TRANSFORM_TOOLS, type Hint, type Tool } from './tools'
+import { hintsFor, type Hint, type Tool } from './tools'
+import { ICONS, isTool, SEPARATOR, shownTool, tidyToolbar, type ButtonTool } from './toolbar'
 import { TextEditor } from './TextEditor'
 import { ClearanceEditor } from './ClearanceEditor'
 import { IconButton, labelOf, TypeIcon } from './ui'
@@ -74,35 +53,6 @@ import { useWindows } from './windows'
 import { setPrefs, usePrefs, type Prefs } from './prefs'
 import { screenScale } from './view'
 
-const ICONS: Partial<Record<Tool, [title: string, icon: LucideIcon]>> = {
-  select: [msg('Select'), MousePointer2],
-  hand: [msg('Pan'), Hand],
-  line: [msg('Line'), Minus],
-  curve: [msg('Curved line: flows through the points you click'), Spline],
-  arc: [msg('Arc: click its two ends, then a point it goes through'), Arc],
-  rect: [msg('Rectangle'), Square],
-  ellipse: [msg('Ellipse'), Circle],
-  circle: [msg('Circle: click its centre, then a point it goes through'), CircleDot],
-  wall: [msg('Wall'), BrickWall],
-  dimension: [msg('Dimension: annotate a distance on the drawing'), RulerDimensionLine],
-  measure: [msg('Measure: read a distance without drawing anything'), Ruler],
-  split: [msg('Split: cut a wall, a line or a polyline in two where you click'), Slice],
-  trim: [msg('Trim: take away the stretch of a wall or a line you click, up to what crosses it'), Scissors],
-  extend: [msg('Extend: carry a line or a wall on, from the end you click, to the next thing in its way'), ArrowRightToLine],
-  fillet: [msg('Fillet: make two lines meet at a corner, or round it with a radius'), SquareRoundCorner],
-  offset: [msg('Offset: a parallel copy of a wall, a line or a shape, at a distance'), Offset],
-  rotate: [msg('Rotate: turn the selection about a point you click'), RotateCw],
-  move: [msg('Move: take the selection by a point and put that point down on another'), Move],
-  angle: [msg('Angle: read the angle between two directions'), Triangle],
-  eyedropper: [msg('Eyedropper: copy the look of an object'), Pipette],
-  text: [msg('Text'), Type],
-  annotation: [msg('Annotation: a note with an arrow to what it is about'), MessageSquare],
-  gridline: [msg('Grid line: an axis of the building, with its letter or number in a bubble'), GridLine],
-  paper: [msg('Paper: a sheet that frames what goes on one page'), StickyNote],
-  room: [msg('Room: name the space inside closed walls'), SquareDashed],
-  divider: [msg('Room divider: separates two rooms where there is no wall'), SeparatorVertical],
-  elevation: [msg('Elevation or section: the face of a wall seen from in front, or a cut along a line, drawn from the plan'), ScanEye],
-}
 
 /**
  * Stacking, aligning and spacing the selection: one button in the toolbar, its choices in a list,
@@ -139,9 +89,9 @@ function CommandButton(props: { command: string; title: string; onClick: () => v
   )
 }
 
-function ToolButton({ id }: { id: Tool }) {
+function ToolButton({ id }: { id: ButtonTool }) {
   const active = useStore((s) => s.tool === id)
-  const [title, Icon] = ICONS[id]!
+  const [title, Icon] = ICONS[id]
   return (
     <CommandButton command={`tool.${id}`} title={t(title)} active={active} onClick={() => setTool(id)}>
       <Icon size={18} />
@@ -164,7 +114,7 @@ function PlaceButton({ kind, icon: Icon }: { kind: string; icon: LucideIcon }) {
 
 function ShapeChoice({ id, current, onPick }: { id: Tool; current: boolean; onPick: () => void }) {
   const shortcut = useShortcutLabel(`tool.${id}`)
-  const [title, Icon] = ICONS[id]!
+  const [title, Icon] = ICONS[id as ButtonTool]
   return (
     // The tool in use is in the accent colour, as its button is: no tick in front, which would take room.
     <button role="menuitem" className={current ? 'current' : undefined} aria-current={current || undefined} onClick={onPick}>
@@ -222,7 +172,7 @@ function ToolGroup({ tools, current: shape, more, actions = [] }: { tools: Tool[
 
   return (
     <div className="tool-group" ref={group}>
-      <ToolButton id={shape} />
+      <ToolButton id={shape as ButtonTool} />
       <button className={`tool-more${open ? ' open' : ''}`} title={more} aria-label={more} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
         <ChevronUp size={12} />
       </button>
@@ -251,6 +201,34 @@ function ToolGroup({ tools, current: shape, more, actions = [] }: { tools: Tool[
               }}
             />
           ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Undo, and beside it an arrow that offers Redo: used far less, it takes no button of its own. */
+function UndoGroup({ canUndo, canRedo }: { canUndo: boolean; canRedo: boolean }) {
+  const { open, setOpen, ref: group } = useMenu<HTMLDivElement>()
+  const more = t('Redo')
+  return (
+    <div className="tool-group" ref={group}>
+      <CommandButton command="edit.undo" title={t('Undo')} onClick={undo} disabled={!canUndo}>
+        <Undo2 size={18} />
+      </CommandButton>
+      <button className={`tool-more${open ? ' open' : ''}`} title={more} aria-label={more} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <ChevronUp size={12} />
+      </button>
+      {open && (
+        <div className="menu-list tool-menu" role="menu">
+          <ActionChoice
+            action={{ command: 'edit.redo', title: msg('Redo'), icon: Redo2 }}
+            disabled={!canRedo}
+            onPick={() => {
+              setOpen(false)
+              redo()
+            }}
+          />
         </div>
       )}
     </div>
@@ -362,42 +340,49 @@ function Hints() {
   )
 }
 
+/** The floating toolbar, as the `toolbar` preference lays it out (toolbar.ts); a right-click on it sets it up. */
 function Toolbar() {
   const canUndo = useStore((s) => s.past.length > 0)
   const canRedo = useStore((s) => s.future.length > 0)
-  const shapeTool = useStore((s) => s.shapeTool)
-  const roomTool = useStore((s) => s.roomTool)
-  const textTool = useStore((s) => s.textTool)
-  const measureTool = useStore((s) => s.measureTool)
-  const cutTool = useStore((s) => s.cutTool)
-  const transformTool = useStore((s) => s.transformTool)
+  const active = useStore((s) => s.tool)
+  const recent = useStore((s) => s.recentTools)
+  const entries = tidyToolbar(usePrefs((p) => p.toolbar))
+  const button = (ids: string[]) => {
+    const key = ids.join(' ')
+    if (ids.length > 1 || isTool(ids[0])) {
+      const tools = ids as ButtonTool[]
+      if (tools.length === 1) return <ToolButton key={key} id={tools[0]} />
+      const shown = shownTool(tools, active, recent)
+      const more = tools.map((tool) => t(ICONS[tool][0]).split(/\s*:/)[0]).join(', ')
+      // Mirroring is not a tool: the selection is flipped on itself, at once, from the list of the tools that move it.
+      return <ToolGroup key={key} tools={tools} current={shown} more={more} actions={tools.some((tool) => tool === 'rotate' || tool === 'move') ? FLIPS : []} />
+    }
+    switch (ids[0]) {
+      case 'door':
+        return <PlaceButton key={key} kind="arch.door" icon={DoorOpen} />
+      case 'window':
+        return <PlaceButton key={key} kind="arch.window" icon={Grid2x2} />
+      case 'library':
+        return (
+          <CommandButton key={key} command="warehouse.components" title={t('Object library: stairs, furniture and every other object')} onClick={() => executeById('warehouse.components')}>
+            <LibraryBig size={18} />
+          </CommandButton>
+        )
+      case 'arrange':
+        return <ArrangeMenu key={key} />
+      default:
+        return <UndoGroup key={key} canUndo={canUndo} canRedo={canRedo} />
+    }
+  }
   return (
-    <div className="toolbar">
-      <ToolButton id="select" />
-      <ToolButton id="hand" />
-      <hr />
-      <ToolGroup tools={SHAPE_TOOLS} current={shapeTool} more={t('More shapes')} />
-      <ToolButton id="wall" />
-      <ToolGroup tools={ROOM_TOOLS} current={roomTool} more={t('Room divider, elevation or section')} />
-      <PlaceButton kind="arch.door" icon={DoorOpen} />
-      <PlaceButton kind="arch.window" icon={Grid2x2} />
-      <CommandButton command="warehouse.components" title={t('Object library: stairs, furniture and every other object')} onClick={() => executeById('warehouse.components')}>
-        <LibraryBig size={18} />
-      </CommandButton>
-      <hr />
-      <ToolGroup tools={CUT_TOOLS} current={cutTool} more={t('Trim, extend, fillet, offset')} />
-      {/* Mirroring is not a tool: the selection is flipped on itself, at once, from the same list. */}
-      <ToolGroup tools={TRANSFORM_TOOLS} current={transformTool} more={t('Move, mirror')} actions={FLIPS} />
-      <ArrangeMenu />
-      <ToolGroup tools={MEASURE_TOOLS} current={measureTool} more={t('Measure an angle')} />
-      <ToolGroup tools={TEXT_TOOLS} current={textTool} more={t('Annotation, dimension, grid line')} />
-      <hr />
-      <CommandButton command="edit.undo" title={t('Undo')} onClick={undo} disabled={!canUndo}>
-        <Undo2 size={18} />
-      </CommandButton>
-      <CommandButton command="edit.redo" title={t('Redo')} onClick={redo} disabled={!canRedo}>
-        <Redo2 size={18} />
-      </CommandButton>
+    <div
+      className="toolbar"
+      onContextMenu={(e) => {
+        e.preventDefault()
+        executeById('prefs.toolbar')
+      }}
+    >
+      {entries.map((entry, i) => (entry === SEPARATOR ? <hr key={`separator ${i}`} /> : button(entry)))}
     </div>
   )
 }

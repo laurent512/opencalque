@@ -3,6 +3,8 @@ import type { SecretStore } from './platform'
 import type { DeclarativeExtension } from '@opencalque/core'
 import { msg } from './i18n'
 import type { Surroundings } from './surroundings'
+import type { ScrollPref } from './canvas/wheel'
+import { TOOLBAR_DEFAULT, type SavedToolbar, type ToolbarLayout } from './toolbar'
 
 /**
  * Settings that belong to the person using the app, not to a drawing. They are kept in the
@@ -44,6 +46,16 @@ export interface Prefs {
   foldedSections: string[]
   /** In the Properties panel, a width or height typed changes the other in proportion. */
   keepProportions: boolean
+  /**
+   * What scrolling over the drawing does, besides a pinch or Ctrl with the wheel, which zoom:
+   * 'auto' moves the view with a trackpad and zooms with a mouse wheel; 'zoom' and 'pan' do that
+   * whatever sends it (`canvas/wheel.ts`).
+   */
+  scroll: ScrollPref
+  /** What the floating toolbar holds, from left to right (`toolbar.ts`): buttons, a tool or a list of tools each, and separators. */
+  toolbar: ToolbarLayout
+  /** Toolbars saved under a name in Preferences › Toolbar, to switch between. */
+  savedToolbars: SavedToolbar[]
   extensions: {
     /** Declarative extensions the user installed, by id. They are data, so they are stored whole. */
     installed: Record<string, DeclarativeExtension>
@@ -103,6 +115,9 @@ const DEFAULTS: Prefs = {
   componentsView: 'list',
   foldedSections: [],
   keepProportions: false,
+  scroll: 'auto',
+  toolbar: TOOLBAR_DEFAULT,
+  savedToolbars: [],
   extensions: { installed: {}, disabled: [] },
   catalogUrl: '',
   ai: {

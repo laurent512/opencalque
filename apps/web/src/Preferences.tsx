@@ -1,17 +1,17 @@
 import { searchable } from './search'
-import { useEffect, useMemo, useState } from 'react'
-import { Bot, Keyboard, PencilRuler, Puzzle, Settings2, type LucideIcon } from 'lucide-react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { Bot, ChevronUp, GripVertical, Keyboard, PanelBottom, PencilRuler, Plus, Puzzle, Settings2, X, type LucideIcon } from 'lucide-react'
 import { allCommands, eventKey, executeById, formatKey, isCustomised, keysOf, RESERVED_KEYS, resetShortcut, setShortcut, useCommands, type Command } from './commands'
 import { resetLayout } from './dock'
 import { LANGUAGES, msg, t } from './i18n'
 import { platform } from './platform'
 import { CLAUDE_MODELS, setAiPrefs, setPrefs, usePrefs } from './prefs'
-import { BUILT_IN_EXTENSION } from './extensions'
 import { REPOSITORY } from './release'
 import { useStore } from './store'
 import { toast, useWindows } from './windows'
 import { FRACTIONS, UNITS } from './units'
 import { ExtensionWarehouse } from './WarehouseDialog'
+import { addEntry, ALL_ITEMS, canJoin, dropOn, itemOf, itemsIn, removeEntry, sameToolbar, saveToolbar, SEPARATOR, tidyToolbar, TOOLBAR_DEFAULT, type DragSource, type DropTarget, type SavedToolbar, type ToolbarLayout } from './toolbar'
 
 const close = () => useWindows.setState({ preferencesOpen: false })
 
@@ -350,6 +350,18 @@ function DrawingSettings() {
           }
         />
       </Section>
+      <Section title={t('Navigation')}>
+        <Setting
+          label={t('Scrolling over the drawing')}
+          hint={t('A pinch on a trackpad, or Ctrl (⌘ on a Mac) with the wheel, always zooms. Shift with the wheel moves the view sideways. Space, or the middle button, held while dragging, moves it too.')}
+        >
+          <select value={prefs.scroll} onChange={(e) => setPrefs({ scroll: e.target.value as typeof prefs.scroll })}>
+            <option value="auto">{t('Automatic: a trackpad moves the view, a mouse wheel zooms')}</option>
+            <option value="pan">{t('Moves the view')}</option>
+            <option value="zoom">{t('Zooms')}</option>
+          </select>
+        </Setting>
+      </Section>
       <Section title={t('Groups and components')}>
         <Setting label={t('Editing inside a group')}>
           <select value={prefs.editGroups} onChange={(e) => setPrefs({ editGroups: e.target.value as typeof prefs.editGroups })}>
@@ -367,6 +379,241 @@ function DrawingSettings() {
           </select>
         </Setting>
       </Section>
+    </>
+  )
+}
+
+/** Names a toolbar item in a list: its tooltip up to the colon, the explanation after it being for the tooltip. */
+const itemName = (id: string) => (id === SEPARATOR ? t('Separator') : t(itemOf(id)!.title).split(/\s*:/)[0])
+
+/** The picture of a toolbar item; a separator as the line it is. */
+function ItemIcon({ id }: { id: string }) {
+  if (id === SEPARATOR) return <span className="toolbar-separator" />
+  const Icon = itemOf(id)!.icon
+  return <Icon size={15} />
+}
+
+/** The toolbar as it will look: its buttons, a list shown by its first tool and an arrow, and its separators. */
+function ToolbarPreview({ layout }: { layout: ToolbarLayout }) {
+  return (
+    <div className="toolbar-preview" aria-hidden>
+      {tidyToolbar(layout).map((entry, i) =>
+        entry === SEPARATOR ? (
+          <hr key={i} />
+        ) : (
+          <span key={i} className="toolbar-preview-button" title={entry.map(itemName).join(', ')}>
+            <ItemIcon id={entry[0]} />
+            {entry.length > 1 && <ChevronUp size={10} />}
+          </span>
+        ),
+      )}
+    </div>
+  )
+}
+
+/** A small button of a row: here, only taking it out; everything else is done by dragging. */
+function RowAction(props: { title: string; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button className="icon-button" title={props.title} aria-label={props.title} onClick={props.onClick}>
+      {props.children}
+    </button>
+  )
+}
+
+/** Which saved toolbar the one in use is: its place among them, 'default' for the one that comes, or 'changed' for none. */
+function toolbarInUse(layout: ToolbarLayout, saved: SavedToolbar[]): string {
+  const at = saved.findIndex((one) => sameToolbar(one.toolbar, layout))
+  return at >= 0 ? String(at) : sameToolbar(layout, TOOLBAR_DEFAULT) ? 'default' : 'changed'
+}
+
+/**
+ * The floating toolbar, set up by dragging, as it reads from left to right: its buttons and its
+ * separators, a list of tools open under its button. A row is dragged between two others to move it,
+ * onto a button to join its list, out of a list to a button of its own, or onto what is not in the
+ * toolbar to take it out; what is not in it, a separator among them, is dragged in. The toolbar in
+ * use can be saved under a name, and those saved switched between, at the top.
+ */
+function ToolbarSettings() {
+  const layout = tidyToolbar(usePrefs((p) => p.toolbar), true)
+  const saved = usePrefs((p) => p.savedToolbars)
+  const [dragging, setDragging] = useState<DragSource | null>(null)
+  // Read by the handlers, which may run before the drag's start is drawn: what is dragged, now.
+  const carried = useRef<DragSource | null>(null)
+  const [over, setOver] = useState<DropTarget | null>(null)
+  const [name, setName] = useState('')
+  const save = (toolbar: ToolbarLayout) => setPrefs({ toolbar })
+  const held = itemsIn(layout)
+  const missing = [SEPARATOR, ...ALL_ITEMS.filter((id) => !held.has(id))]
+  const inUse = toolbarInUse(layout, saved)
+
+  const start = (source: DragSource) => (e: React.DragEvent) => {
+    e.stopPropagation()
+    e.dataTransfer.effectAllowed = 'move'
+    // Something must be carried for the drag to start everywhere; what is carried is in `dragging`.
+    e.dataTransfer.setData('text/plain', '')
+    carried.current = source
+    setDragging(source)
+  }
+  const end = () => {
+    carried.current = null
+    setDragging(null)
+    setOver(null)
+  }
+  /** Lets go of what is dragged at `target`, or wherever `aim` says from where the pointer is over the row. */
+  const target = (aim: (e: React.DragEvent) => DropTarget | null) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (!carried.current) return
+      const at = aim(e)
+      if (!at) return
+      e.preventDefault()
+      e.stopPropagation()
+      if (JSON.stringify(at) !== JSON.stringify(over)) setOver(at)
+    },
+    onDrop: (e: React.DragEvent) => {
+      const source = carried.current
+      const at = source && aim(e)
+      if (!at) return
+      e.preventDefault()
+      e.stopPropagation()
+      save(dropOn(layout, source!, at))
+      end()
+    },
+  })
+  /** Over a row of the toolbar: its upper half puts before it, its lower half after it, and its middle, on a button of tools, joins its list. */
+  const onRow = (at: number) => (e: React.DragEvent): DropTarget => {
+    const box = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const y = (e.clientY - box.top) / box.height
+    if (carried.current && canJoin(layout, carried.current, at) && y > 0.25 && y < 0.75) return { kind: 'join', at }
+    return { kind: 'before', at: y < 0.5 ? at : at + 1 }
+  }
+  /** Over a tool of a list: before it or after it, in the list. */
+  const onListRow = (at: number, index: number) => (e: React.DragEvent): DropTarget => {
+    const box = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    return { kind: 'list', at, index: e.clientY - box.top < box.height / 2 ? index : index + 1 }
+  }
+  const lineBefore = (at: number) => over?.kind === 'before' && over.at === at
+  const joining = (at: number) => over?.kind === 'join' && over.at === at
+  const lineInList = (at: number, index: number) => over?.kind === 'list' && over.at === at && over.index === index
+
+  return (
+    <>
+      <Section title={t('Toolbars')}>
+        <Setting label={t('Toolbar in use')} hint={t('Switching applies it at once. Changes are made to the toolbar in use; save it again to keep them under its name.')}>
+          <select
+            value={inUse}
+            onChange={(e) => {
+              if (e.target.value === 'default') save(TOOLBAR_DEFAULT)
+              else if (e.target.value !== 'changed') save(saved[Number(e.target.value)].toolbar)
+            }}
+          >
+            <option value="default">{t('As it comes')}</option>
+            {saved.map((one, i) => (
+              <option key={one.name} value={String(i)}>
+                {one.name}
+              </option>
+            ))}
+            {inUse === 'changed' && <option value="changed">{t('Changed, not saved')}</option>}
+          </select>
+        </Setting>
+        <form
+          className="pref-item toolbar-save"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (!name.trim()) return
+            setPrefs({ savedToolbars: saveToolbar(saved, name, layout) })
+            setName('')
+          }}
+        >
+          <input aria-label={t('Name of the toolbar')} placeholder={t('Name of the toolbar')} value={name} onChange={(e) => setName(e.target.value)} />
+          <button className="pill" type="submit" disabled={!name.trim()}>
+            {t('Save')}
+          </button>
+          {/^\d+$/.test(inUse) && (
+            <button type="button" className="text-button" onClick={() => setPrefs({ savedToolbars: saved.filter((_, i) => i !== Number(inUse)) })}>
+              {t('Delete “{name}”', { name: saved[Number(inUse)].name })}
+            </button>
+          )}
+        </form>
+      </Section>
+      <Section title={t('Toolbar')}>
+        <div className="pref-item">
+          <ToolbarPreview layout={layout} />
+          <p className="hint">{t('Drag a row between two others to move it, onto a button to put it in its list, out of a list to give it a button of its own, or onto “Not in the toolbar” to take it out. A button with a list shows the tool used last; the small arrow beside it opens the list. A right-click on the toolbar opens this page.')}</p>
+        </div>
+        <ol className="toolbar-items" onDragLeave={(e) => !e.currentTarget.contains(e.relatedTarget as Node) && setOver(null)}>
+          {layout.map((entry, at) => {
+            const list = entry !== SEPARATOR && entry.length > 1
+            const ids = entry === SEPARATOR ? [SEPARATOR] : entry
+            return (
+              <li key={`${ids.join(' ')} ${at}`} className={`toolbar-item${dragging?.kind === 'entry' && dragging.at === at ? ' dragged' : ''}`}>
+                <div
+                  className={`toolbar-item-row${lineBefore(at) ? ' drop-before' : ''}${joining(at) ? ' drop-join' : ''}${entry === SEPARATOR ? ' separator-row' : ''}`}
+                  draggable
+                  onDragStart={start({ kind: 'entry', at })}
+                  onDragEnd={end}
+                  {...target(onRow(at))}
+                >
+                  <GripVertical size={13} className="faint" />
+                  <ItemIcon id={ids[0]} />
+                  <span className="toolbar-item-name">{list ? t('List of {n} tools', { n: String(ids.length) }) : itemName(ids[0])}</span>
+                  <RowAction title={t('Take out of the toolbar')} onClick={() => save(removeEntry(layout, at))}>
+                    <X size={13} />
+                  </RowAction>
+                </div>
+                {list && (
+                  <ol className="toolbar-list">
+                    {ids.map((id, index) => (
+                      <li
+                        key={id}
+                        className={`toolbar-item-row${lineInList(at, index) ? ' drop-before' : ''}${dragging?.kind === 'tool' && dragging.at === at && dragging.index === index ? ' dragged' : ''}`}
+                        draggable
+                        onDragStart={start({ kind: 'tool', at, index })}
+                        onDragEnd={end}
+                        {...target(onListRow(at, index))}
+                      >
+                        <GripVertical size={13} className="faint" />
+                        <ItemIcon id={id} />
+                        <span className="toolbar-item-name">{itemName(id)}</span>
+                        <RowAction title={t('Take out of the toolbar')} onClick={() => save(removeEntry(layout, at, index))}>
+                          <X size={13} />
+                        </RowAction>
+                      </li>
+                    ))}
+                    {/* After its last tool, the end of the list. */}
+                    <li className={`toolbar-list-end${lineInList(at, ids.length) ? ' drop-before' : ''}`} {...target(() => ({ kind: 'list', at, index: ids.length }))} />
+                  </ol>
+                )}
+              </li>
+            )
+          })}
+          <li className={`toolbar-end${lineBefore(layout.length) ? ' drop-before' : ''}`} {...target(() => ({ kind: 'before', at: layout.length }))}>
+            {t('Drop here to put it at the end')}
+          </li>
+        </ol>
+        <div className="toolbar-actions">
+          <button className="text-button" onClick={() => save(TOOLBAR_DEFAULT)}>
+            {t('Back to the toolbar as it comes')}
+          </button>
+        </div>
+      </Section>
+      <section className="pref-section">
+        <h3 className="pref-heading">{t('Not in the toolbar')}</h3>
+        <ol
+          className={`pref-card toolbar-items toolbar-palette${over?.kind === 'remove' ? ' drop-remove' : ''}`}
+          {...target(() => (carried.current && carried.current.kind !== 'new' ? { kind: 'remove' } : null))}
+        >
+          {missing.map((id) => (
+            <li key={id} className={`toolbar-item-row${id === SEPARATOR ? ' separator-row' : ''}`} draggable onDragStart={start({ kind: 'new', id })} onDragEnd={end}>
+              <GripVertical size={13} className="faint" />
+              <ItemIcon id={id} />
+              <span className="toolbar-item-name">{itemName(id)}</span>
+              <RowAction title={`${t('Add to the toolbar')}: ${itemName(id)}`} onClick={() => save(addEntry(layout, id))}>
+                <Plus size={13} />
+              </RowAction>
+            </li>
+          ))}
+        </ol>
+      </section>
     </>
   )
 }
@@ -449,6 +696,7 @@ const PAGES: [id: string, title: string, icon: LucideIcon, page: () => React.Rea
   ['general', msg('General'), Settings2, GeneralSettings],
   ['drawing', msg('Drawing'), PencilRuler, DrawingSettings],
   ['ai', msg('AI'), Bot, AiSettings],
+  ['toolbar', msg('Toolbar'), PanelBottom, ToolbarSettings],
   ['shortcuts', msg('Keyboard shortcuts'), Keyboard, ShortcutSettings],
   ['extensions', msg('Extensions'), Puzzle, ExtensionWarehouse],
 ]

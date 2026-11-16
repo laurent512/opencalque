@@ -134,6 +134,11 @@ export function orderAfter(orders: Iterable<string>): string {
   return generateKeyBetween(last, null)
 }
 
+/** Whether a node can be one end of a link: something drawn on a page, not a page, a component, a group or another link. */
+export function linkable(node: Node | undefined): node is Node {
+  return !!node && node.type !== 'page' && node.type !== 'component' && node.type !== 'group' && node.type !== 'link'
+}
+
 /** An order key that sorts before every key in `orders`. */
 export function orderBefore(orders: Iterable<string>): string {
   let first: string | null = null
@@ -190,6 +195,7 @@ export function checkIntegrity(doc: Document): string[] {
     if (node.type === 'instance' && node.style !== undefined) problems.push(`Node ${key}: an instance has a style`)
     if (node.type === 'image' && !doc.assets?.[node.asset]) problems.push(`Node ${key}: unknown asset "${node.asset}"`)
     if (node.type === 'elevation' && doc.nodes[node.line]?.type !== 'viewline') problems.push(`Node ${key}: unknown view line "${node.line}"`)
+    if (node.type === 'link' && (node.from === node.to || !linkable(doc.nodes[node.from]) || !linkable(doc.nodes[node.to]))) problems.push(`Node ${key}: a link that does not join two objects ("${node.from}", "${node.to}")`)
     if (node.type === 'instance') {
       const component = doc.nodes[node.component]
       if (component?.type !== 'component') problems.push(`Node ${key}: unknown component "${node.component}"`)
@@ -212,8 +218,10 @@ export function serializeDocument(doc: Document): string {
   const used = new Set(Object.values(doc.nodes).flatMap((n) => (n.type === 'image' ? [n.asset] : [])))
   const assets = Object.fromEntries(Object.entries(doc.assets ?? {}).filter(([id]) => used.has(id)))
   const { assets: _, ...rest } = doc
-  // A drawing with no elevation nor view line holds nothing version 2 did not know, and says it is of version 2,
-  // so that the versions of the app before elevations (1.8 and earlier) still open it.
-  const version = Object.values(doc.nodes).some((n) => n.type === 'elevation' || n.type === 'viewline') ? doc.version : Math.min(doc.version, 2)
+  // A drawing says the oldest version that knows all it holds, so that older versions of the app
+  // still open it: version 2 with no elevation, view line or link (1.8 and earlier), 3 with no link (1.9).
+  const nodes = Object.values(doc.nodes)
+  const needed = nodes.some((n) => n.type === 'link') ? 4 : nodes.some((n) => n.type === 'elevation' || n.type === 'viewline') ? 3 : 2
+  const version = Math.min(doc.version, needed)
   return JSON.stringify(used.size > 0 ? { ...rest, version, assets } : { ...rest, version }, null, 2) + '\n'
 }

@@ -78,21 +78,21 @@ function furnish(name: string) {
 }
 const furniture = furnish('furniture')
 const bathroom = furnish('bathroom')
-const kitchen = furnish('kitchen')
 
 doc = applyOps(doc, [
-  furniture('Sofa, two seats', 500, 500),
+  add({ type: 'parametric', layer: 'furniture', kind: 'arch.sofa', x: 500, y: 500, props: { width: 1600, depth: 850, seats: 2 } }),
   furniture('Coffee table, round', 850, 1650),
-  furniture('Armchair', 2700, 1550, 90),
-  furniture('Dining table, six chairs', 3500, 600),
-  furniture('Double bed', 7800, 250),
+  add({ type: 'parametric', layer: 'furniture', kind: 'arch.armchair', x: 2700, y: 1550, rotation: 90, props: { width: 850, depth: 850 } }),
+  // The adjustable table and bed, which ship with the app: the table by its top's corner, its chairs around it.
+  add({ type: 'parametric', layer: 'furniture', kind: 'furn.table', x: 3500, y: 1130, props: { length: 1800, width: 900, seats: 6 } }),
+  add({ type: 'parametric', layer: 'furniture', kind: 'furn.bed', x: 7800, y: 250, props: { width: 1600, length: 2000 } }),
   // A symbol's back is its top edge: these stand against the wall below them, so they are turned
   // round, placed by the corner that was their top left.
-  furniture('Wardrobe', 9850, 3700, 180),
+  add({ type: 'parametric', layer: 'furniture', kind: 'arch.wardrobe', x: 9850, y: 3700, rotation: 180, props: { width: 1800, depth: 600, doors: 4 } }),
   add({ type: 'parametric', layer: 'furniture', kind: 'arch.fridge', x: 850, y: 6850, rotation: 180, props: { width: 600, depth: 650, doors: 1 } }),
   add({ type: 'parametric', layer: 'furniture', kind: 'arch.sink', x: 2150, y: 6850, rotation: 180, props: { width: 1200, depth: 600, bowls: 1, drainer: 'Right' } }),
   add({ type: 'parametric', layer: 'furniture', kind: 'arch.hob', x: 2850, y: 6850, rotation: 180, props: { width: 600, depth: 600 } }),
-  kitchen('Base unit', 3550, 6850, 180),
+  add({ type: 'parametric', layer: 'furniture', kind: 'arch.baseunit', x: 3550, y: 6850, rotation: 180, props: { width: 600, depth: 600 } }),
   add({ type: 'parametric', layer: 'furniture', kind: 'arch.washbasin', x: 7850, y: 3900, rotation: 0, props: { width: 600, depth: 450, bowls: 1 } }),
   bathroom('Toilet', 8950, 3950),
   bathroom('Shower tray', 8950, 5950),

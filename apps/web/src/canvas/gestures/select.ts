@@ -256,7 +256,7 @@ export const handleMove: Move<'handle'> = (c, g, e, _at, world, out) => {
   // The points beside it are where a perpendicular onto another line would be dropped from.
   // Held level or upright by an arrow key, the point stays on that line through where it was,
   // and may be brought level with something pointed at elsewhere.
-  const was = s.axisLock ? kindOf(g.node).handles?.(g.node, registry)[g.index] : undefined
+  const was = s.axisLock ? kindOf(g.node).handles?.(g.node, registry, s.base ?? s.doc)[g.index] : undefined
   // Taken by an arrow away from its point, it goes by the grid (Alt: exactly where the pointer says).
   const step = e.altKey ? 0 : gridStep(s.view.zoom)
   const grabbed = g.grab && sub(world, g.grab)
@@ -274,7 +274,7 @@ export const handleMove: Move<'handle'> = (c, g, e, _at, world, out) => {
   // The other walls that end at a wall's corner come along with it, unless Alt is held.
   const joined = e.altKey ? [] : wallEndFollowOps(s.base ?? s.doc, g.node, g.index, target.p)
   // A corner of what a view line sees turns it about the corner across; with Shift, it keeps its way and sets its depth.
-  const patch = g.node.type === 'viewline' && g.index >= 3 && g.index <= 6 ? moveViewCorner(g.node, (g.index - 3) as 0 | 1 | 2 | 3, target.p, e.shiftKey ? 'stretch' : 'turn') : kindOf(g.node).moveHandle!(g.node, g.index, target.p, registry)
+  const patch = g.node.type === 'viewline' && g.index >= 3 && g.index <= 6 ? moveViewCorner(g.node, (g.index - 3) as 0 | 1 | 2 | 3, target.p, e.shiftKey ? 'stretch' : 'turn') : kindOf(g.node).moveHandle!(g.node, g.index, target.p, registry, s.base ?? s.doc)
   // Its views keep what they still show where it was on the sheet.
   const views = g.node.type === 'viewline' ? keepViewsOps(s.base ?? s.doc, g.node, patch) : []
   out.previewed = preview([{ op: 'update_node', id: g.node.id, patch }, ...views, ...joined])
@@ -494,6 +494,12 @@ export const hover: Move<'idle'> = (c, _g, _e, at, world, out) => {
   if (shown !== c.gripCursor) c.setGripCursor(shown)
   const over = ending ? 'end hover' : faced ? 'hover' : null
   if (s.wallFace !== over) useStore.setState({ wallFace: over })
+  // On a view line or a view, what it sees is shown faintly, to know what it covers without selecting it.
+  if (s.tool === 'select' && shown === null) {
+    const hit = hitTest(c.scene, world, 5 / s.view.zoom)
+    const type = hit && s.doc.nodes[hit.id]?.type
+    if (type === 'viewline' || type === 'elevation') out.viewHover = hit!.id
+  }
 }
 
 export const pressUp: Release<'press'> = (c, g) => {

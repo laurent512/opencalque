@@ -10,13 +10,17 @@ import { bundledExtensions, bundledLibraries } from './catalog'
  * empty place is never filled again.
  */
 const PLACES: Record<string, (string | null)[]> = {
-  furniture: ['Double bed', 'Single bed', 'Sofa, two seats', 'Armchair', 'Chair', 'Dining table, six chairs', 'Desk with chair', 'Wardrobe', 'Coffee table, round'],
+  // 1 and 6: the double bed and the dining table with six chairs, the adjustable Bed and Table with chairs since 1.10.
+  // 2 and 8: the single bed and the wardrobe, the adjustable Bed and Wardrobe, which elevations draw, since 1.10.
+  // 3, 4, 5 and 7: the sofa, the armchair, the chair and the desk with its chair, adjustable objects since 1.10.
+  furniture: [null, null, null, null, null, null, null, null, 'Coffee table, round'],
   // 2: the washbasin, a parametric object since 1.0.0-rc.3; 3: the bathtub, one since 1.0.0-rc.4.
   // 5: a double washbasin while it was being made, then the wall-hung toilet in 1.0.0-rc.3, which
   // drawings of that time hold there.
   bathroom: ['Toilet', null, null, 'Shower tray', null, 'Toilet, wall-hung'],
-  // 2, 3 and 4: the sink unit, the hob and the fridge, parametric objects since 1.0.0-rc.4.
-  kitchen: ['Base unit', null, null, null, 'Washing machine'],
+  // 2, 3 and 4: the sink unit, the hob and the fridge, parametric objects since 1.0.0-rc.4; 1 and 5:
+  // the base unit and the washing machine, parametric objects which elevations draw, since 1.10.
+  kitchen: [null, null, null, null, null],
 }
 
 /**

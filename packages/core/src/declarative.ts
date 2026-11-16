@@ -221,11 +221,32 @@ export const DeclarativeExtensionSchema = z
             .object({ width: z.string(), height: z.string() })
             .optional()
             .describe('The keys of the length parameters that are its width (along X) and height (along Y), the object filling the box from its insertion point to (width, height). It is then resized on the canvas by a frame, as a rectangle is: each side sets its parameter, in whole millimetres, and the knob above turns it.'),
+          ports: z
+            .array(
+              z.object({
+                key: z.string().regex(/^[A-Za-z_]\w*$/).describe('Its name, the same each time: what a link stores to say which connection it joins ("out", "out2").'),
+                label: z.string().describe('What it is called where one is chosen, as "Second button".'),
+                carries: z.string().describe('What goes through it: "control" (a switch\'s order to a light). Only ports that carry the same are linked.'),
+                way: z.enum(['out', 'in']).describe('"out" gives (a switch), "in" takes (a light). A link goes from one that gives to one that takes.'),
+                required: z.boolean().optional().describe('The object counts as unconnected while nothing is linked here: a light no switch controls. Left out, it does not: a socket that may be switched.'),
+                when: Expr.optional().describe('It is there only when the expression is true: the second button of a switch made double.'),
+              }),
+            )
+            .optional()
+            .describe('Its connections, which links join to those of other objects: a switch controls lights through its "out" port, a light is controlled through its "in" port.'),
           draw: z.array(ShapeSchema).min(1),
           front: z
             .array(ShapeSchema)
             .optional()
             .describe('How it looks in an elevation, seen from in front: shapes in the same terms as "draw", X along its own X, Y down from its insertion point at the floor, or from its centre at its height for an object fixed on a wall. Left out, an elevation draws it as a box.'),
+          side: z
+            .array(ShapeSchema)
+            .optional()
+            .describe('How it looks in an elevation seen from its side (from either end; the elevation mirrors it): X along its own Y, from its back (0) to its front, Y as for "front". Drawn when the elevation sees it more from the side than from in front. Left out, a box.'),
+          back: z
+            .array(ShapeSchema)
+            .optional()
+            .describe('How it looks in an elevation seen from behind, in the same terms as "front": for what stands free, as a table. Left out, a box.'),
         }),
       )
       .min(1),
@@ -311,9 +332,12 @@ export function declarativeExtension(json: unknown): Extension {
   const kinds: ParametricKind[] = source.objects.map((object) => {
     const shapes = compileShapes(object.draw)
     const front = object.front && compileShapes(object.front)
+    const side = object.side && compileShapes(object.side)
+    const back = object.back && compileShapes(object.back)
     const tall = object.height === undefined ? null : compileExpression(object.height)
     const from = object.opening && compileExpression(object.opening.from)
     const to = object.opening && compileExpression(object.opening.to)
+    const ports = object.ports?.map(({ when, ...port }) => ({ port, when: when === undefined ? null : compileExpression(when) }))
     return {
       kind: object.kind,
       label: object.label,
@@ -328,6 +352,9 @@ export function declarativeExtension(json: unknown): Extension {
       box: object.box && boxOf(object.box.width, object.box.height),
       build: (props, env) => drawShapes(shapes, { ...props, wall: env.wallThickness ?? 0 }),
       front: front ? (props) => drawShapes(front, { ...props, wall: 0 }) : undefined,
+      side: side ? (props) => drawShapes(side, { ...props, wall: 0 }) : undefined,
+      back: back ? (props) => drawShapes(back, { ...props, wall: 0 }) : undefined,
+      ports: ports ? (props) => ports.filter(({ when }) => !when || when({ ...props, wall: 0 })).map(({ port }) => port) : undefined,
     }
   })
 
@@ -337,8 +364,11 @@ export function declarativeExtension(json: unknown): Extension {
     try {
       kind.build(defaults, {})
       kind.front?.(defaults)
+      kind.side?.(defaults)
+      kind.back?.(defaults)
       kind.height?.(defaults)
       kind.opening?.(defaults)
+      kind.ports?.(defaults)
     } catch (error) {
       throw new Error(`Not a valid extension: object "${kind.kind}": ${(error as Error).message}`)
     }

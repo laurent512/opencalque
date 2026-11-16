@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "id": "opencalque.furniture",
   "name": "Adjustable furniture",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "author": "OpenCalque",
   "description": "Tables, beds and shelving whose size and number of seats or bays you set.",
   "translations": {
@@ -170,6 +170,31 @@
             ["(i + 0.5) * length / max(1, floor(seats / 2)) - 180.7", "width + 459"]
           ]
         }
+      ],
+      "front": [
+        { "closed": true, "path": [[0, -720], ["length", -720], ["length", -750], [0, -750]] },
+        { "closed": true, "path": [[40, 0], [100, 0], [100, -720], [40, -720]] },
+        { "closed": true, "path": [["length - 100", 0], ["length - 40", 0], ["length - 40", -720], ["length - 100", -720]] },
+        { "repeat": { "count": "max(1, floor(seats / 2))" }, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) - 200", -750], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 200", -900], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 200", -900], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 200", -750]] }
+      ],
+      "side": [
+        { "closed": true, "path": [[0, -720], ["width", -720], ["width", -750], [0, -750]] },
+        { "closed": true, "path": [[40, 0], [100, 0], [100, -720], [40, -720]] },
+        { "closed": true, "path": [["width - 100", 0], ["width - 40", 0], ["width - 40", -720], ["width - 100", -720]] },
+        { "closed": true, "path": [[-454, -430], [-50, -430], [-50, -470], [-454, -470]] },
+        { "path": [[-434, 0], [-434, -430]] },
+        { "path": [[-70, 0], [-70, -430]] },
+        { "closed": true, "path": [[-454, -470], [-424, -470], [-424, -900], [-454, -900]] },
+        { "closed": true, "path": [["width + 50", -430], ["width + 454", -430], ["width + 454", -470], ["width + 50", -470]] },
+        { "path": [["width + 50 + 20", 0], ["width + 50 + 20", -430]] },
+        { "path": [["width + 454 - 20", 0], ["width + 454 - 20", -430]] },
+        { "closed": true, "path": [["width + 424", -470], ["width + 454", -470], ["width + 454", -900], ["width + 424", -900]] }
+      ],
+      "back": [
+        { "closed": true, "path": [[0, -720], ["length", -720], ["length", -750], [0, -750]] },
+        { "closed": true, "path": [[40, 0], [100, 0], [100, -720], [40, -720]] },
+        { "closed": true, "path": [["length - 100", 0], ["length - 40", 0], ["length - 40", -720], ["length - 100", -720]] },
+        { "repeat": { "count": "max(1, floor(seats / 2))" }, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) - 200", -750], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 200", -900], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 200", -900], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 200", -750]] }
       ]
     },
     {
@@ -205,6 +230,21 @@
             ["width - min(500, width * 0.3)", "620 + min(500, width * 0.3)"]
           ]
         }
+      ],
+      "front": [
+        { "closed": true, "path": [[0, 0], [60, 0], [60, -100], [0, -100]] },
+        { "closed": true, "path": [["width - 60", 0], ["width", 0], ["width", -100], ["width - 60", -100]] },
+        { "closed": true, "path": [[0, -100], ["width", -100], ["width", -300], [0, -300]] },
+        { "radius": 40, "closed": true, "path": [[10, -300], ["width - 10", -300], ["width - 10", -500], [10, -500]] },
+        { "path": [[0, -500], [0, -1000], ["width", -1000], ["width", -500]] }
+      ],
+      "side": [
+        { "closed": true, "path": [[0, 0], [50, 0], [50, -1000], [0, -1000]] },
+        { "closed": true, "path": [[50, -100], ["length", -100], ["length", -300], [50, -300]] },
+        { "closed": true, "path": [[50, 0], [110, 0], [110, -100], [50, -100]] },
+        { "closed": true, "path": [["length - 60", 0], ["length", 0], ["length", -100], ["length - 60", -100]] },
+        { "radius": 40, "closed": true, "path": [[60, -300], ["length - 10", -300], ["length - 10", -500], [60, -500]] },
+        { "radius": 40, "closed": true, "path": [[100, -500], [480, -500], [480, -590], [100, -590]] }
       ]
     },
     {
@@ -223,6 +263,15 @@
         { "closed": true, "path": [[0, 0], ["length", 0], ["length", "depth"], [0, "depth"]] },
         { "repeat": { "count": "max(0, bays - 1)" }, "path": [["(i + 1) * length / max(1, bays)", 0], ["(i + 1) * length / max(1, bays)", "depth"]] },
         { "dash": [5, 4], "path": [[0, 0], ["length", "depth"]] }
+      ],
+      "front": [
+        { "closed": true, "path": [[0, 0], ["length", 0], ["length", -2000], [0, -2000]] },
+        { "repeat": { "count": "max(0, bays - 1)" }, "path": [["(i + 1) * length / max(1, bays)", 0], ["(i + 1) * length / max(1, bays)", -2000]] },
+        { "repeat": { "count": 5 }, "path": [[0, "-(i + 1) * 2000 / 6"], ["length", "-(i + 1) * 2000 / 6"]] }
+      ],
+      "side": [
+        { "closed": true, "path": [[0, 0], ["depth", 0], ["depth", -2000], [0, -2000]] },
+        { "repeat": { "count": 5 }, "path": [[0, "-(i + 1) * 2000 / 6"], ["depth", "-(i + 1) * 2000 / 6"]] }
       ]
     }
   ]

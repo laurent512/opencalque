@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdit, applyOps, createDocument, elevationItemAt, elevationMovePatch, elevationPrimitives, NewerFormatError, parseDocument, Registry, serializeDocument, shownInElevations, splitWallOps, transformOps, wallFaceAt, type Document, type NodeOf, type Op, type Primitive } from '../src'
+import { applyEdit, applyOps, createDocument, depthPatch, elevationItemAt, elevationMovePatch, elevationPrimitives, FORMAT_VERSION, NewerFormatError, parseDocument, Registry, serializeDocument, shownInElevations, splitWallOps, transformOps, wallFaceAt, type Document, type NodeOf, type Op, type Primitive } from '../src'
 import { viewNodes, viewOps, type ViewSpec } from './view-nodes'
 
 /*
@@ -75,7 +75,7 @@ describe('elevations', () => {
     expect(wallFaceAt(plan(), 'page_1', { x: 3000, y: 2000 }, 500)).toBeNull()
   })
 
-  it('draw the face, its door and window, what is fixed on it at its height, the wall it runs into cut, and the floor', () => {
+  it('draw the face, its door and window, what is fixed on it at its height, and the floor, nothing past the ends of the line', () => {
     const prims = view(plan())
     // Heights go up the sheet from the floor at y = 10 000: the face 2500 high (no height given),
     // the door's front 2 m, the window as the box of its opening, the socket a square at 450.
@@ -84,22 +84,39 @@ describe('elevations', () => {
       [1000, 8000, 1900, 10000],
       [4500, 8800, 5500, 10000],
       [2960, 9510, 3040, 9590],
-      // The wall across its start, which the face runs into: cut through, its whole thickness.
-      [-100, 7500, 100, 10000],
     ])
     // Its name is not written on the drawing.
     expect(prims.some((p) => p.kind === 'text')).toBe(false)
-    // The floor runs under the wall cut through too.
-    expect(prims).toContainEqual(expect.objectContaining({ kind: 'path', points: [{ x: -100, y: 10000 }, { x: 6000, y: 10000 }] }))
+    // The floor runs from end to end of the line, not under the wall across its start, which the line stops against.
+    expect(prims).toContainEqual(expect.objectContaining({ kind: 'path', points: [{ x: 100, y: 10000 }, { x: 6000, y: 10000 }] }))
+  })
+
+  it('cut a wall the line goes into as far as it goes, and none it stops short of', () => {
+    // From 100 mm inside the wall across the start (its middle, x = 0) to 1 m short of the wall's end.
+    const doc = looking(plan(), [0, 1100], [5000, 1100])
+    const prims = view(doc)
+    expect(boxes(prims)).toContainEqual([100, 7500, 200, 10000])
+    const drawn = boxes(prims.filter((p) => !p.clip))
+    expect(Math.min(...drawn.map((b) => b[0]))).toBe(100)
+    expect(Math.max(...drawn.map((b) => b[2]))).toBe(5100)
+    // The window, 4.5 m to 5.5 m along the wall, is drawn clipped at the end of the line, and taken only there.
+    const window = prims.find((p) => p.kind === 'path' && p.clip && boxes([p])[0][0] === 4600)!
+    expect(window.clip).toEqual([[{ x: 100, y: 1e6 + 10000 }, { x: 5100, y: 1e6 + 10000 }, { x: 5100, y: 10000 - 1e6 }, { x: 100, y: 10000 - 1e6 }]])
+    expect(elevationItemAt(doc.nodes.ev as NodeOf<'elevation'>, doc, registry, { x: 5300, y: 9000 })).toBeNull()
+    expect(elevationItemAt(doc.nodes.ev as NodeOf<'elevation'>, doc, registry, { x: 4800, y: 9000 })?.node.id).toBe('window')
+    // Stopping 1 mm short of it draws nothing of it.
+    expect(view(looking(plan(), [101, 1100], [5000, 1100])).some((p) => p.kind === 'path' && p.fill === '#e8ecf1')).toBe(false)
   })
 
   it('stand as high as the wall or its page says', () => {
     const doc = applyOps(plan(), [
       { op: 'update_node', id: 'page_1', patch: { wallHeight: 2700 } },
       { op: 'update_node', id: 'side', patch: { height: 3000 } },
+      // The line taken into the wall across its start, to its middle, so that the view cuts it.
+      { op: 'update_node', id: 'e', patch: { a: { x: 0, y: 1100 } } },
     ])
-    expect(boxes(view(doc))).toContainEqual([100, 7300, 6000, 10000])
-    expect(boxes(view(doc))).toContainEqual([-100, 7000, 100, 10000])
+    expect(boxes(view(doc))).toContainEqual([200, 7300, 6100, 10000])
+    expect(boxes(view(doc))).toContainEqual([100, 7000, 200, 10000])
   })
 
   it('show nothing of the other face, and nothing of a wall away from the line', () => {
@@ -107,8 +124,8 @@ describe('elevations', () => {
     // Seen from above the wall: the door and window go through it, the socket is on the other face.
     expect(boxes(view(doc))).toHaveLength(3)
     const away = applyOps(plan(), [{ op: 'update_node', id: 'e', patch: { a: { x: 0, y: 3500 }, b: { x: 6000, y: 3500 } } }])
-    // The wall across, which it runs through, from 100 mm before its start to 100 mm after.
-    expect(boxes(view(away))).toEqual([[0, 7500, 200, 10000]])
+    // The wall across, which it starts in the middle of: from its start to 100 mm after.
+    expect(boxes(view(away))).toEqual([[100, 7500, 200, 10000]])
   })
 
   it('follow their wall moved, made thicker, longer or shorter, and stay whole across a wall cut in two', () => {
@@ -130,7 +147,8 @@ describe('elevations', () => {
     expect(JSON.parse(serializeDocument(plan())).version).toBe(3)
     const without = applyOps(plan(), [{ op: 'remove_node', id: 'e' }])
     expect(JSON.parse(serializeDocument(without)).version).toBe(2)
-    expect(parseDocument(JSON.parse(serializeDocument(without))).version).toBe(3)
+    // Read, it is of the version this one writes.
+    expect(parseDocument(JSON.parse(serializeDocument(without))).version).toBe(FORMAT_VERSION)
     expect(parseDocument(JSON.parse(serializeDocument(plan()))).nodes.e).toEqual(plan().nodes.e)
   })
 })
@@ -220,10 +238,21 @@ describe('elevations of every kind of wall', () => {
     const doc = applyOps(plan(), [
       { op: 'add_material', material: { id: 'brick', name: 'Brick', fill: '#efc7b4', pattern: { kind: 'Lines', spacing: 60 } } },
       { op: 'update_node', id: 'side', patch: { material: 'brick' } },
+      { op: 'update_node', id: 'e', patch: { a: { x: 0, y: 1100 } } },
     ])
     const prims = view(doc)
     expect(prims).toContainEqual(expect.objectContaining({ kind: 'path', fill: '#e8ecf1', closed: true }))
     expect(prims.some((p) => p.kind === 'path' && (p.texture || p.fill === '#efc7b4'))).toBe(false)
+  })
+
+  it('keep their face where it is when given another depth, their line moving; a section keeps its line', () => {
+    const doc = plan()
+    const line = doc.nodes.e as NodeOf<'viewline'>
+    expect(depthPatch(doc, line, 500)).toEqual({ depth: 500, a: { x: 100, y: 600 }, b: { x: 6000, y: 600 } })
+    // Back to the default depth, 6 m in front of the face.
+    expect(depthPatch(doc, line, undefined)).toEqual({ depth: null, a: { x: 100, y: 6100 }, b: { x: 6000, y: 6100 } })
+    const section = looking(doc, [0, 3500], [6000, 3500])
+    expect(depthPatch(section, section.nodes.e as NodeOf<'viewline'>, 500)).toEqual({ depth: 500 })
   })
 
   it('show nothing of a curved wall, and nothing at all for a line of no length', () => {
@@ -280,8 +309,8 @@ describe('elevations follow every edit of their wall', () => {
 describe('drawings with elevations from other versions', () => {
   it('are refused by a version that reads only up to version 2, which a drawing without one still is', () => {
     const json = JSON.parse(serializeDocument(plan()))
-    expect(() => parseDocument({ ...json, version: 4 })).toThrow(NewerFormatError)
-    // A drawing of version 2 with no elevation opens, and is of version 3 once read.
+    expect(() => parseDocument({ ...json, version: FORMAT_VERSION + 1 })).toThrow(NewerFormatError)
+    // A drawing of version 2 with no elevation opens, and is of the latest version once read.
     const old = JSON.parse(serializeDocument(applyOps(plan(), [{ op: 'remove_node', id: 'e' }])))
     expect(old.version).toBe(2)
     expect(parseDocument(old).nodes.door).toBeDefined()
@@ -295,7 +324,7 @@ describe('elevations look at the face as it is drawn', () => {
     expect(elevationMovePatch(elevation(doc), doc, registry, socket(doc), -5000, 0)).toMatchObject({ x: 100, y: 100 })
   })
 
-  it('show the walls at both corners of a room, and none past them', () => {
+  it('show the walls at the corners of a room only where the line goes into them, and none past them', () => {
     // A room 4 m by 3 m of walls 200 thick drawn by their middles, and a wall 1 m past its right side.
     const doc = applyOps(createDocument('Plan'), [
       ...[
@@ -309,8 +338,11 @@ describe('elevations look at the face as it is drawn', () => {
     const face = wallFaceAt(doc, 'page_1', { x: 2000, y: 400 }, 500)!
     expect(face).toMatchObject({ a: { x: 100, y: 100 }, b: { x: 3900, y: 100 } })
     const viewed = applyOps(doc, viewOps({ id: 'e', a: face.a, b: face.b, x: 100, y: 10000 }))
-    // The face from corner to corner, and the walls at both corners cut through; the far wall is not in it.
-    expect(boxes(view(viewed))).toEqual([
+    // The face from corner to corner, and nothing of the walls at the corners, which the line stops against; the far wall is not in it.
+    expect(boxes(view(viewed))).toEqual([[100, 7500, 3900, 10000]])
+    // Taken through both corner walls, it cuts them through, and still nothing of the far wall 1 m past them.
+    const through = applyOps(doc, viewOps({ id: 'e', a: { x: -100, y: 100 }, b: { x: 4100, y: 100 }, x: -100, y: 10000 }))
+    expect(boxes(view(through))).toEqual([
       [100, 7500, 3900, 10000],
       [3900, 7500, 4100, 10000],
       [-100, 7500, 100, 10000],

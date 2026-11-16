@@ -1,5 +1,35 @@
 import { roundCorners, type ParametricKind, type Primitive } from '@opencalque/core'
-import { atLeast, clamp, count, line, MAX_BOWLS, outline, pt, THIN, WIDTH } from './shared'
+import { frontsOf, rect } from './fronts'
+import { atLeast, circle, clamp, count, line, MAX_BOWLS, outline, pt, THIN, WIDTH } from './shared'
+
+/** How high a washbasin's counter stands, how thick it is, and how low a vanity unit under it reaches, in mm. */
+const COUNTER_TOP = 850
+const COUNTER = 30
+const VANITY_FOOT = 300
+
+/** A washbasin's counter and what hangs under it seen from in front: its bowls under the counter, dashed, a tap over each, a vanity unit or none. */
+function washbasinFront(w: number, bowls: number, below: string): Primitive[] {
+  const n = Math.min(MAX_BOWLS, count(bowls))
+  const share = w / n
+  const prims: Primitive[] = [rect(0, -COUNTER_TOP + COUNTER, w, -COUNTER_TOP)]
+  if (below === 'Drawers' || below === 'Doors') {
+    prims.push(rect(0, -VANITY_FOOT, w, -COUNTER_TOP + COUNTER, THIN), ...frontsOf(below, 0, w, -VANITY_FOOT, -COUNTER_TOP + COUNTER, w > 900 ? 2 : 1, 2))
+  }
+  for (let i = 0; i < n; i++) {
+    const cx = (i + 0.5) * share
+    const rx = clamp(share / 2 - 40, 20, 210)
+    // The bowl under the counter, hidden behind what is in front of it.
+    if (below !== 'Drawers' && below !== 'Doors') prims.push({ kind: 'path', points: [pt(cx - rx, -COUNTER_TOP + COUNTER), pt(cx - rx * 0.8, -COUNTER_TOP + 150), pt(cx + rx * 0.8, -COUNTER_TOP + 150), pt(cx + rx, -COUNTER_TOP + COUNTER)], dash: [8, 6], strokeWidth: 0.5 })
+    prims.push(rect(cx - 20, -COUNTER_TOP, cx + 20, -COUNTER_TOP - 30), line([pt(cx, -COUNTER_TOP - 30), pt(cx, -COUNTER_TOP - 180)], { strokeWidth: 1.5 }), line([pt(cx, -COUNTER_TOP - 80), pt(cx + 50, -COUNTER_TOP - 100)], { strokeWidth: 1.5 }))
+  }
+  return prims
+}
+/** The same from its side, its back against the wall: the tap at the back, its spout over the bowl. */
+function washbasinSide(d: number, below: string): Primitive[] {
+  const prims: Primitive[] = [rect(0, -COUNTER_TOP + COUNTER, d, -COUNTER_TOP), line([pt(60, -COUNTER_TOP), pt(60, -COUNTER_TOP - 180), pt(160, -COUNTER_TOP - 180), pt(160, -COUNTER_TOP - 140)], { strokeWidth: 1.5 })]
+  if (below === 'Drawers' || below === 'Doors') prims.push(rect(0, -VANITY_FOOT, Math.max(40, d - 20), -COUNTER_TOP + COUNTER, THIN))
+  return prims
+}
 
 /** The least a washbasin's counter is made, either way, by pulling its sides, in mm. */
 const MIN_COUNTER = 300
@@ -19,7 +49,10 @@ export const washbasin = (kind: string, label: string, width: number, depth: num
     { ...WIDTH, default: width },
     { key: 'depth', label: 'Depth', type: 'number', default: depth, unit: 'length' },
     { key: 'bowls', label: 'Bowls', type: 'number', default: bowls },
+    { key: 'below', label: 'Below', type: 'string', default: 'None', options: ['None', 'Drawers', 'Doors'] },
   ],
+  front: ({ width, bowls, below }) => washbasinFront(atLeast(1, width), bowls, below),
+  side: ({ depth, below }) => washbasinSide(atLeast(1, depth), below),
   box: {
     bounds: ({ width, depth }) => ({ left: 0, top: 0, right: atLeast(1, width), bottom: atLeast(1, depth) }),
     resize: (_, size) => ({
@@ -55,6 +88,8 @@ export const washbasin = (kind: string, label: string, width: number, depth: num
   },
 })
 
+/** How high a bathtub's rim stands, in mm. */
+const TUB = 580
 /** The least a bathtub is made, either way, by pulling its sides, in mm. */
 const MIN_TUB = 500
 
@@ -79,6 +114,17 @@ export const bathtub: ParametricKind = {
       ...(size.width === undefined ? {} : { length: Math.round(atLeast(MIN_TUB, size.width)) }),
       ...(size.height === undefined ? {} : { width: Math.round(atLeast(MIN_TUB, size.height)) }),
     }),
+  },
+  // Seen from in front, its panel and the rim along its top, its mixer on the wall at the drain end;
+  // from its side, the same across its width.
+  front: ({ length, rim }) => {
+    const l = atLeast(1, length)
+    const x = Math.min(clamp(rim, 1, l / 2) + 140, l / 2)
+    return [rect(0, 0, l, -TUB), line([pt(0, -TUB + 40), pt(l, -TUB + 40)], THIN), rect(x - 60, -TUB - 150, x + 60, -TUB - 190), line([pt(x, -TUB - 150), pt(x, -TUB - 100)], { strokeWidth: 1.5 })]
+  },
+  side: ({ width }) => {
+    const w = atLeast(1, width)
+    return [rect(0, 0, w, -TUB), line([pt(0, -TUB + 40), pt(w, -TUB + 40)], THIN)]
   },
   build({ length, width, rim }) {
     const l = atLeast(1, length)

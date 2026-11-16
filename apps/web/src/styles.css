@@ -1070,6 +1070,8 @@ body.scrubbing .quick-field input[title] {
   background: var(--bg);
   box-shadow: 0 2px 14px rgb(0 0 0 / 15%), 0 0 0 1px var(--ring);
   transform: translateX(-50%);
+  /* Its transform makes it a layer of its own: above the view bar, which a narrow window puts over its right end, so the lists its buttons open are not under it. */
+  z-index: 3;
 }
 
 .toolbar .icon-button {
@@ -4392,4 +4394,147 @@ select.faint-choice,
   border-color: var(--danger);
   background: var(--danger);
   color: #ffffff;
+}
+
+/* Preferences › Toolbar: the toolbar as it will look, then its rows from left to right, a list of tools open under its button, set up by dragging. */
+.toolbar-preview {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  margin: 4px 0 8px;
+  padding: 5px;
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 1px 6px rgb(0 0 0 / 12%), 0 0 0 1px var(--ring);
+}
+
+.toolbar-preview hr {
+  align-self: stretch;
+  margin: 3px 3px;
+  border: 0;
+  border-left: 1px solid var(--border);
+}
+
+.toolbar-preview-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-width: 24px;
+  height: 24px;
+  color: var(--muted);
+}
+
+.toolbar-items {
+  margin: 0;
+  padding: 4px 6px;
+  list-style: none;
+}
+
+.toolbar-item.dragged > .toolbar-item-row,
+.toolbar-item-row.dragged {
+  opacity: 0.4;
+}
+
+.toolbar-item-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+
+.toolbar-item-row[draggable='true'] {
+  cursor: grab;
+}
+
+.toolbar-item-row:hover {
+  background: var(--hover);
+}
+
+.toolbar-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toolbar-item-row .icon-button {
+  width: 24px;
+  height: 24px;
+}
+
+/* A separator, in the lists, as it looks in the toolbar: a short upright line; its row is quieter than a button's. */
+.toolbar-separator {
+  width: 15px;
+  height: 15px;
+  background: linear-gradient(var(--muted), var(--muted)) center / 1px 100% no-repeat;
+}
+
+.separator-row .toolbar-item-name {
+  color: var(--muted);
+}
+
+/* The tools of a list, under its button, set in and joined to it by a line. */
+.toolbar-list {
+  margin: 0 0 2px 26px;
+  padding: 0 0 0 8px;
+  border-left: 1px solid var(--border);
+  list-style: none;
+}
+
+/* Where what is dragged would go: a line before the row, or the button lit up whose list it would join. */
+.toolbar-item-row.drop-before::before,
+.toolbar-list-end.drop-before::before,
+.toolbar-end.drop-before::before {
+  position: absolute;
+  top: -1px;
+  right: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  content: '';
+}
+
+.toolbar-item-row.drop-join {
+  background: var(--accent-soft, rgb(13 153 255 / 14%));
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.toolbar-list-end {
+  position: relative;
+  height: 6px;
+}
+
+.toolbar-end {
+  position: relative;
+  padding: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.toolbar-palette.drop-remove {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.toolbar-save {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-save input {
+  flex: 1;
+  min-width: 0;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 16px;
+  padding: 4px 14px 10px;
 }

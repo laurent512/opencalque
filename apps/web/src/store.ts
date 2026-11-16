@@ -3,7 +3,6 @@ import { applyEdit, createDocument, holdsChildren, layerIn, layersOf, pagesOf, t
 import { registry } from './extensions'
 import type { StoredFile } from './platform'
 import type { Tool } from './tools'
-import { CUT_TOOLS, MEASURE_TOOLS, ROOM_TOOLS, SHAPE_TOOLS, TEXT_TOOLS, TRANSFORM_TOOLS } from './tools'
 import type { View } from './view'
 import { closeWindows, toast } from './windows'
 
@@ -131,17 +130,11 @@ interface ToolSettings {
   wallMaterial: string | null
   /** The drawing scale (the N of 1:N) given to the papers the paper tool makes, which sets how large the standard formats are. */
   paperScale: number
-  /** The shape tool used last, shown on the toolbar's shape button. */
-  shapeTool: Tool
-  /** Likewise for the room button. */
-  roomTool: Tool
-  /** And for the text button. */
-  textTool: Tool
-  measureTool: Tool
-  /** And for the button of the tools that cut, split and trim. */
-  cutTool: Tool
-  /** And for the button of rotating and moving. */
-  transformTool: Tool
+  /**
+   * The tools used, the last first, each once: a button of the toolbar that lists several shows
+   * the one of them used last (`toolbar.ts`). It starts with those its lists showed before any was used.
+   */
+  recentTools: Tool[]
   /** Stroke colour given to the shapes drawn next, or null for the layer's colour. */
   drawColor: string | null
   /** The fill of the closed shapes drawn next, its colour and its pattern; null for none. */
@@ -213,12 +206,7 @@ const SETTINGS: ToolSettings = {
   wallJustify: 'center',
   wallMaterial: null,
   paperScale: 100,
-  shapeTool: 'rect',
-  roomTool: 'room',
-  textTool: 'text',
-  measureTool: 'measure',
-  cutTool: 'split',
-  transformTool: 'rotate',
+  recentTools: ['rect', 'room', 'text', 'measure', 'split', 'rotate'],
   drawColor: null,
   drawFill: null,
   drawPattern: null,
@@ -350,13 +338,8 @@ export function loadDocument(doc: Document, file: StoredFile | null): void {
 }
 
 export function setTool(tool: Tool, placing: Placing | null = null): void {
-  const shapeTool = SHAPE_TOOLS.includes(tool) ? tool : get().shapeTool
-  const roomTool = ROOM_TOOLS.includes(tool) ? tool : get().roomTool
-  const textTool = TEXT_TOOLS.includes(tool) ? tool : get().textTool
-  const measureTool = MEASURE_TOOLS.includes(tool) ? tool : get().measureTool
-  const cutTool = CUT_TOOLS.includes(tool) ? tool : get().cutTool
-  const transformTool = TRANSFORM_TOOLS.includes(tool) ? tool : get().transformTool
-  set({ tool, placing, shapeTool, roomTool, textTool, measureTool, cutTool, transformTool, corner: null, placingRotation: 0, calibration: null, measuring: null, drawLocks: {}, axisLock: null, drawLive: null, drawStep: 0, status: '' })
+  const recentTools = [tool, ...get().recentTools.filter((one) => one !== tool)]
+  set({ tool, placing, recentTools, corner: null, placingRotation: 0, calibration: null, measuring: null, drawLocks: {}, axisLock: null, drawLive: null, drawStep: 0, status: '' })
 }
 
 export function select(ids: string[]): void {

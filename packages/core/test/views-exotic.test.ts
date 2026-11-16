@@ -108,14 +108,15 @@ describe('a view across a room with no square corner', () => {
     expect(hidden(all, all.find(standing)!)).toBe(false)
   })
 
-  it('cuts the walls at the corners of a square room, beside the face, and none without its walls', () => {
-    const square = (walls?: boolean) =>
-      add(createDocument('Square'), wall('n', [0, 0], [5000, 0]), wall('e', [5000, 0], [5000, 4000]), wall('s', [5000, 4000], [0, 4000]), wall('w', [0, 4000], [0, 0]), ...viewNodes({ id: 'v', a: { x: 100, y: 1100 }, b: { x: 4900, y: 1100 }, depth: 1000, x: 100, y: 10000, ...(walls === undefined ? {} : { walls }) }))
-    const corners = ways(boxes(drawn(square())))
+  it('cuts the walls at the corners of a square room that its line goes through, beside the face, none it stops against, and none without its walls', () => {
+    const square = (walls?: boolean, from = 100, to = 4900) =>
+      add(createDocument('Square'), wall('n', [0, 0], [5000, 0]), wall('e', [5000, 0], [5000, 4000]), wall('s', [5000, 4000], [0, 4000]), wall('w', [0, 4000], [0, 0]), ...viewNodes({ id: 'v', a: { x: from, y: 1100 }, b: { x: to, y: 1100 }, depth: 1000, x: from, y: 10000, ...(walls === undefined ? {} : { walls }) }))
+    const corners = ways(boxes(drawn(square(undefined, -100, 5100))))
       .map((b) => [Math.round(b.minX), Math.round(b.maxX)])
       .sort((p, q) => p[0] - q[0])
     expect(corners).toEqual([[-100, 100], [4900, 5100]])
-    expect(ways(boxes(drawn(square(false))))).toEqual([])
+    expect(ways(boxes(drawn(square())))).toEqual([])
+    expect(ways(boxes(drawn(square(false, -100, 5100))))).toEqual([])
   })
 
   it('looks at the wall it is nearly along, at a slant, as a face, white, with what is fixed on it; the walls at the sides grey', () => {

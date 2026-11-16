@@ -223,17 +223,25 @@ export function transplantOps(
   }
   copyInto(from, to, 0)
   // A view is of the copy of its line, when its line was copied too, and comes after it, once it is there.
+  // A link joins the copies of its two ends, after them; one whose ends were not both copied is left out.
   const views: Op[] = []
+  const links: Op[] = []
   const rest: Op[] = []
   for (const op of ops) {
-    if (op.op !== 'add_node' || op.node.type !== 'elevation') rest.push(op)
-    else {
+    if (op.op === 'add_node' && op.node.type === 'elevation') {
       const line = ids.get(op.node.line) ?? options.lines?.get(op.node.line)
       if (line) op.node.line = line
       views.push(op)
-    }
+    } else if (op.op === 'add_node' && op.node.type === 'link') {
+      const [from, to] = [ids.get(op.node.from), ids.get(op.node.to)]
+      if (!from || !to) {
+        if (top.includes(op.node.id!)) top.splice(top.indexOf(op.node.id!), 1)
+        continue
+      }
+      links.push({ ...op, node: { ...op.node, from, to } })
+    } else rest.push(op)
   }
-  return { ops: [...rest, ...views], top, ids }
+  return { ops: [...rest, ...views, ...links], top, ids }
 }
 
 /**

@@ -3,6 +3,7 @@ import { unionBounds, type Bounds } from './geometry'
 import { primitiveBounds, transformPrimitive, type Primitive } from './primitives'
 import { objectLabel, quantities, quantitiesIn, type Quantities } from './quantities'
 import type { Registry } from './registry'
+import { controlsOn } from './networks/electrical'
 import type { Document, NodeOf } from './schema'
 
 /*
@@ -14,7 +15,7 @@ import type { Document, NodeOf } from './schema'
  */
 
 /** What a table can count. */
-export const SCHEDULES = ['objects', 'floors', 'rooms', 'walls', 'openings'] as const
+export const SCHEDULES = ['objects', 'floors', 'rooms', 'walls', 'openings', 'controls'] as const
 export type Schedule = (typeof SCHEDULES)[number]
 
 /**
@@ -29,7 +30,8 @@ export function tableItems(node: NodeOf<'table'>, doc: Document, registry: Regis
   const translations = node.language ? registry.translations[node.language] : undefined
   const none = node.labels?.none ?? tableWord('none', system)
   const metric = measured(doc, source, registry)
-  const rows = rowsOf(node.schedule, metric, quantitiesIn(metric, system), (label) => translations?.[label] ?? label, none)
+  const name = (label: string) => translations?.[label] ?? label
+  const rows = node.schedule === 'controls' ? controlRows(doc, registry, source, name, none) : rowsOf(node.schedule, metric, quantitiesIn(metric, system), name, none)
   const label = (row: Row) =>
     node.schedule === 'walls' ? `${row.material} ${row.thickness}` : node.schedule === 'openings' ? `${row.kind} ${row.width} × ${row.height ?? '—'}` : String(row.name ?? row.material ?? row.kind ?? row.key)
   // A room placed several times is one row to choose; two rooms of one name are told apart by their area.
@@ -55,6 +57,7 @@ export const SCHEDULE_FIELDS: Record<Schedule, Record<string, { unit: Unit; tota
   rooms: { name: { unit: 'text' }, material: { unit: 'text' }, area: { unit: 'area', total: true }, perimeter: { unit: 'length', total: true } },
   walls: { material: { unit: 'text' }, thickness: { unit: 'thickness' }, count: { unit: 'count', total: true }, length: { unit: 'length', total: true }, area: { unit: 'area', total: true }, volume: { unit: 'volume', total: true } },
   openings: { kind: { unit: 'text' }, width: { unit: 'length' }, height: { unit: 'length' }, count: { unit: 'count', total: true } },
+  controls: { symbol: { unit: 'symbol' }, name: { unit: 'text' }, controls: { unit: 'text' } },
 }
 
 /** The fields a table of each schedule shows when it does not say. */
@@ -64,6 +67,7 @@ export const SCHEDULE_COLUMNS: Record<Schedule, string[]> = {
   rooms: ['name', 'area'],
   walls: ['material', 'thickness', 'length', 'area'],
   openings: ['kind', 'width', 'height', 'count'],
+  controls: ['symbol', 'name', 'controls'],
 }
 
 export const TABLE_TEXT_SIZE = 200
@@ -99,6 +103,7 @@ export const TABLE_WORDS: Record<string, string> = {
   width: 'Width ({unit})',
   height: 'Height ({unit})',
   'walls.area': 'Face area ({unit})',
+  controls: 'Controls',
   total: 'Total',
   none: '—',
 }
@@ -152,6 +157,9 @@ type Row = Record<string, string | number | null> & { key: string }
  */
 function rowsOf(schedule: Schedule, metric: Quantities, q: Quantities, name: (label: string) => string, none: string): Row[] {
   switch (schedule) {
+    // What controls what is read from the links, not from the quantities (`controlRows`).
+    case 'controls':
+      return []
     case 'objects':
       return q.objects.map((o) => ({ key: `${o.kind}:${o.id}`, symbol: '', name: o.kind === 'parametric' ? objectLabel(o, name) : o.name || none, count: o.count }))
     case 'floors':
@@ -179,6 +187,43 @@ function rowsOf(schedule: Schedule, metric: Quantities, q: Quantities, name: (la
       return [...groups.values()]
     }
   }
+}
+
+/**
+ * The rows of a table of what controls what: each switch, dimmer, push button, detector or
+ * thermostat of the page, with what it controls, as its links say (`controlsOn`). Each is called by
+ * its own name, or else by its kind's, numbered in the drawing's order when several share it; what
+ * it controls is said the same way, those of one name counted ("Ceiling light ×2, Socket").
+ */
+function controlRows(doc: Document, registry: Registry, page: string, name: (label: string) => string, none: string): Row[] {
+  const { controllers } = controlsOn(doc, registry, page)
+  const called = (device: { id: string; kind: string; name?: string }) => device.name ?? name(registry.parametric.get(device.kind)?.label ?? device.kind)
+  const shared = new Map<string, number>()
+  for (const device of controllers) shared.set(called(device), (shared.get(called(device)) ?? 0) + 1)
+  const seen = new Map<string, number>()
+  return controllers.map((device) => {
+    const own = called(device)
+    const n = (seen.get(own) ?? 0) + 1
+    seen.set(own, n)
+    const counts = new Map<string, number>()
+    for (const controlled of device.controls) counts.set(called(controlled), (counts.get(called(controlled)) ?? 0) + 1)
+    const controls = [...counts].map(([label, count]) => (count > 1 ? `${label} ×${count}` : label)).join(', ')
+    return { key: `control:${device.id}`, symbol: '', name: (shared.get(own) ?? 0) > 1 ? `${own} ${n}` : own, controls: controls || none }
+  })
+}
+
+/** What the symbol column of a table draws in each of its rows: a component, or a kind of object with its parameters. */
+function symbolsOf(schedule: Schedule, rows: Row[], doc: Document, q: Quantities): TableSymbol[] {
+  if (schedule === 'controls') {
+    return rows.flatMap((row): TableSymbol[] => {
+      const node = doc.nodes[row.key.slice('control:'.length)]
+      return node?.type === 'parametric' ? [{ kind: 'parametric', id: node.kind, props: node.props }] : []
+    })
+  }
+  return rows.flatMap((row): TableSymbol[] => {
+    const o = q.objects.find((one) => `${one.kind}:${one.id}` === row.key)
+    return o ? [o.kind === 'parametric' ? { kind: 'parametric', id: o.of!, props: o.props } : { kind: 'component', id: o.id }] : []
+  })
 }
 
 /** The number a cell writes, with as many decimals as its kind of measure takes. */
@@ -234,7 +279,7 @@ export function tableContent(node: NodeOf<'table'>, doc: Document, registry: Reg
   const q = metric ? quantitiesIn(metric, system) : null
   const translations = node.language ? registry.translations[node.language] : undefined
   const name = (label: string) => translations?.[label] ?? label
-  const listed = metric && q ? rowsOf(node.schedule, metric, q, name, words('none')) : []
+  const listed = !metric || !q ? [] : node.schedule === 'controls' ? controlRows(doc, registry, source!, name, words('none')) : rowsOf(node.schedule, metric, q, name, words('none'))
   const rows = (node.only ? listed.filter((row) => node.only!.includes(row.key)) : listed).slice(0, MAX_ROWS)
   const decimal = node.decimal ?? settingsOf(doc).decimal
   const cells = rows.map((row) => columns.map((field) => written(row[field] ?? null, fields[field].unit, system, decimal)))
@@ -251,17 +296,14 @@ export function tableContent(node: NodeOf<'table'>, doc: Document, registry: Reg
       }),
     )
   }
-  const symbol = node.schedule === 'objects' && q ? columns.indexOf('symbol') : -1
+  const symbol = (node.schedule === 'objects' || node.schedule === 'controls') && q ? columns.indexOf('symbol') : -1
   return {
     title,
     headings: columns.map(words),
     rows: cells,
     numeric: columns.map((field) => fields[field].unit !== 'text' && fields[field].unit !== 'symbol'),
     total,
-    ...(symbol >= 0 ? { symbols: { column: symbol, objects: rows.flatMap((row): TableSymbol[] => {
-      const o = q!.objects.find((one) => `${one.kind}:${one.id}` === row.key)
-      return o ? [o.kind === 'parametric' ? { kind: 'parametric', id: o.of!, props: o.props } : { kind: 'component', id: o.id }] : []
-    }) } } : {}),
+    ...(symbol >= 0 ? { symbols: { column: symbol, objects: symbolsOf(node.schedule, rows, doc, q!) } } : {}),
   }
 }
 

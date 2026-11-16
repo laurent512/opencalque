@@ -1,4 +1,4 @@
-import { type Document, lengthOf, newId, type Node, type NodeOf, resolveColor, DEFAULT_INK, type Op, type Pattern, wallEndsOf, wallLength, turnToOps } from '@opencalque/core'
+import { depthPatch, type Document, lengthOf, newId, type Node, type NodeOf, resolveColor, DEFAULT_INK, type Op, type Pattern, wallEndsOf, wallLength, turnToOps } from '@opencalque/core'
 import { useState } from 'react'
 import { Pipette, Link2, Undo2, SquareSplitHorizontal } from 'lucide-react'
 import { msg, t } from '../../i18n'
@@ -64,6 +64,8 @@ export function FieldRow({ node, nodes, field, update }: { node: Node; nodes: No
     if (field.path === 'rotation' && typeof next === 'number' && now.nodes[node.id]) {
       return apply(turnToOps(now, nodes.map((n) => now.nodes[n.id]).filter(Boolean), next, registry))
     }
+    // An elevation given another depth keeps its face where it is: its line moves (`depthPatch`).
+    if (field.path === 'depth') return update((n) => (n.type === 'viewline' ? depthPatch(now, n, typeof next === 'number' ? next : undefined) : patchFor(n, field.path, next)))
     update((n) => patchFor(n, field.path, next))
   }
   if (field.type === 'number' || (field.type === 'string' && !field.options)) {

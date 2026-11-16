@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { applyOps, checkIntegrity, childrenOf, createDocument, FORMAT_VERSION, isOrderKey, NewerFormatError, parseDocument, readDocument, serializeDocument, unknownProperties, type Document, type NodeInput, type Op } from '../src'
+import { viewOps } from './view-nodes'
+import { applyOps, checkIntegrity, childrenOf, createDocument, FORMAT_VERSION, isOrderKey, NewerFormatError, parseDocument, readDocument, removeOps, serializeDocument, unknownProperties, type Document, type NodeInput, type Op } from '../src'
 
 /** A drawing as its file holds it, to be spoilt the way a hand, a script or another program might. */
 const file = (doc: Document = createDocument('Plan')): any => JSON.parse(serializeDocument(doc))
@@ -158,6 +159,21 @@ describe('operations', () => {
     expect(() => applyOps(doc, [{ op: 'remove_node', id: 'page_1' }, { op: 'remove_node', id: 'p2' }])).toThrow(/last page/)
     const left = applyOps(doc, [{ op: 'remove_node', id: 'g' }, { op: 'remove_node', id: 'c' }])
     expect(Object.keys(left.nodes).sort()).toEqual(['p2', 'page_1'])
+  })
+
+  it('leaves out of a deletion what another node deleted with it takes along, in any order', () => {
+    const doc = applyOps(createDocument(), [
+      ...viewOps({ id: 'vl', a: { x: 0, y: 0 }, b: { x: 1000, y: 0 }, x: 0, y: 2000 }),
+      { op: 'add_node', node: { id: 'g', type: 'group', parent: 'page_1' } as any },
+      { op: 'add_node', node: { id: 'in', type: 'line', parent: 'g', a: { x: 0, y: 0 }, b: { x: 1, y: 0 } } as any },
+      { op: 'add_node', node: { id: 'out', type: 'line', parent: 'page_1', a: { x: 0, y: 0 }, b: { x: 1, y: 0 } } as any },
+    ])
+    expect(removeOps(doc, ['vlv', 'vl', 'in', 'g', 'gone'])).toEqual([
+      { op: 'remove_node', id: 'vl' },
+      { op: 'remove_node', id: 'g' },
+    ])
+    const left = applyOps(doc, removeOps(doc, ['vl', 'vlv', 'out']))
+    expect(Object.keys(left.nodes).sort()).toEqual(['g', 'in', 'page_1'])
   })
 
   it('handles twenty thousand objects added and removed in one go in a fraction of a second', () => {

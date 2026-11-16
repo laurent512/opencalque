@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { canvas, choose, drawing, drawingOnScreen, drawWall, failOnErrors, librarySection, objectRows, openEditor, recordSaves, startWith } from './support'
 
 /**
@@ -755,13 +755,32 @@ test('lists the furniture by room in the object library, the adjustable pieces w
   await page.getByTitle('Object library: stairs, furniture and every other object').click()
   const sections = await page.locator('.warehouse-sections .warehouse-section-name').allTextContents()
   expect(sections.filter((name) => ['Living room', 'Dining room', 'Bedroom', 'Office', 'Furniture'].includes(name))).toEqual(['Living room', 'Dining room', 'Bedroom', 'Office'])
-  await librarySection(page, 'Bedroom').click()
-  await expect(page.locator('.warehouse-card strong')).toHaveText(['Bed', 'Double bed', 'Single bed', 'Wardrobe'])
+  // The library's double bed and dining table are gone: the adjustable bed and table draw them.
   await librarySection(page, 'Dining room').click()
-  await expect(page.locator('.warehouse-card strong')).toHaveText(['Table with chairs', 'Chair', 'Dining table, six chairs'])
-  // What is shown can be copied into the drawing at once.
-  await page.getByRole('button', { name: 'Add all of these' }).click()
-  await expect(page.locator('.toast')).toContainText('2 components added')
+  await expect(page.locator('.warehouse-card strong')).toHaveText(['Chair', 'Table with chairs'])
+  // The library's single bed and wardrobe too: the adjustable bed and wardrobe draw them, and the
+  // bedroom's furniture is all adjustable now, drawn by its fronts in elevations.
+  await librarySection(page, 'Bedroom').click()
+  await expect(page.locator('.warehouse-card strong')).toHaveText(['Bedside table', 'Chest of drawers', 'Wardrobe', 'Bed'])
+  // The components shown can be copied into the drawing at once: the bathroom's toilets and shower tray, the whole library.
+  await librarySection(page, 'Bathroom').click()
+  await page.getByRole('button', { name: 'Add the whole library' }).click()
+  await expect(page.locator('.toast')).toContainText('3 components added')
+})
+
+test('has the furniture and the electrical symbols from the start, which are not extensions', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  await page.getByTitle('Object library: stairs, furniture and every other object').click()
+  await librarySection(page, 'Bedroom').click()
+  await expect(page.locator('.warehouse-card strong')).toHaveText(['Bedside table', 'Chest of drawers', 'Wardrobe', 'Bed'])
+  await page.keyboard.press('Escape')
+  // Preferences › Extensions lists only what was added: nothing here.
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('Extensions…')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.prefs-extensions')).toContainText('No extension added')
+  await expect(page.locator('.prefs-extensions .warehouse-row')).toHaveCount(0)
 })
 
 test('drags a component from the library onto the drawing, where it is let go', async ({ page }) => {
@@ -869,28 +888,28 @@ test('takes a component of its own from the object library each time, placed as 
   await startWith(page)
   await openEditor(page)
   const box = (await canvas(page).boundingBox())!
-  const armchair = page.locator('.warehouse-card', { has: page.locator('strong', { hasText: /^Armchair$/ }) }).first()
+  const table = page.locator('.warehouse-card', { has: page.locator('strong', { hasText: /^Coffee table, round$/ }) }).first()
   // Taken once and put down twice: one component, placed twice.
   await page.getByTitle('Object library: stairs, furniture and every other object').click()
-  await armchair.click()
+  await table.click()
   await page.mouse.click(box.x + 300, box.y + 300)
   await page.mouse.click(box.x + 500, box.y + 300)
   await page.keyboard.press('Escape')
   await page.locator('.dv-tab', { hasText: 'Components' }).click()
   const panel = page.locator('[data-panel="components"]')
-  await expect(panel.locator('.row .editable')).toHaveText(['Armchair'])
+  await expect(panel.locator('.row .editable')).toHaveText(['Coffee table, round'])
   await expect(panel.locator('.row .uses')).toHaveText(['2'])
   // Taken again: another component, of its own.
   await page.getByTitle('Object library: stairs, furniture and every other object').click()
-  await armchair.click()
+  await table.click()
   await page.mouse.click(box.x + 700, box.y + 300)
   await page.keyboard.press('Escape')
-  await expect(panel.locator('.row .editable')).toHaveText(['Armchair', 'Armchair 2'])
+  await expect(panel.locator('.row .editable')).toHaveText(['Coffee table, round', 'Coffee table, round 2'])
   await expect(panel.locator('.row .uses')).toHaveText(['2', '1'])
   // The panel finds them by name.
   const search = panel.getByPlaceholder('Search the components…')
-  await search.fill('chair 2')
-  await expect(panel.locator('.row .editable')).toHaveText(['Armchair 2'])
+  await search.fill('round 2')
+  await expect(panel.locator('.row .editable')).toHaveText(['Coffee table, round 2'])
   await search.fill('sofa')
   await expect(panel.locator('.row')).toHaveCount(0)
   await expect(panel.getByText('Nothing matches.')).toBeVisible()
@@ -2043,7 +2062,7 @@ test('zooms and switches the grid, snapping and temporary dimensions from the vi
   expect(prefs).toMatchObject({ showGrid: false, showClearances: false })
 
   // The paper is drawn from the shapes' list, as a rectangle is.
-  await page.getByRole('button', { name: 'More shapes' }).click()
+  await page.getByRole('button', { name: /^Line, Curved line, Arc/ }).click()
   await page.getByRole('menuitem', { name: /^Paper/ }).click()
   await expect(page.locator('.toolbar .icon-button.active')).toHaveAttribute('title', /^Paper/)
 })
@@ -2274,4 +2293,150 @@ test('renames the drawing in place: the text does not move when it is double-cli
   await expect.poll(async () => (await field.boundingBox())!.width).toBeGreaterThan(box.width + 50)
   await field.press('Enter')
   await expect(name).toHaveText('A much longer name for this drawing')
+})
+
+test('moves the view with two fingers on a trackpad, and zooms with a mouse wheel or a pinch', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  const box = (await canvas(page).boundingBox())!
+  // The point of the drawing under (x, y) on the canvas, as the status bar says it.
+  const under = async (x: number, y: number) => {
+    await page.mouse.move(box.x + x, box.y + y)
+    const text = (await page.locator('.status span').textContent())!.replaceAll(String.fromCharCode(0x2212), '-').replace(/[^\d.,-]/g, '')
+    const [wx, wy] = text.split(',').map(Number)
+    return { x: wx, y: wy }
+  }
+  const mmPerPixel = async () => ((await under(400, 300)).x - (await under(300, 300)).x) / 100
+  const scale = await mmPerPixel()
+  const before = await under(300, 300)
+  // Small steps, and sideways ones: two fingers on a trackpad, which move the view 4 pixels across and 30 down.
+  await page.mouse.wheel(4, 30)
+  const after = await under(300, 300)
+  expect(after.y - before.y).toBeCloseTo(30 * scale, 0)
+  expect(after.x - before.x).toBeCloseTo(4 * scale, 0)
+  expect(await mmPerPixel()).toBeCloseTo(scale, 5)
+  // A notch of a mouse wheel, once the swipe is over, zooms in.
+  await page.waitForTimeout(400)
+  await page.mouse.move(box.x + 300, box.y + 300)
+  await page.mouse.wheel(0, -100)
+  const nearer = await mmPerPixel()
+  expect(nearer).toBeLessThan(scale * 0.9)
+  // So does a pinch, which comes with Ctrl.
+  await page.waitForTimeout(400)
+  await page.mouse.move(box.x + 300, box.y + 300)
+  await page.keyboard.down('Control')
+  await page.mouse.wheel(0, -20)
+  await page.keyboard.up('Control')
+  expect(await mmPerPixel()).toBeLessThan(nearer * 0.9)
+})
+
+test('undoes from the toolbar, and redoes from the arrow beside Undo', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', drawing({ w: { id: 'w', type: 'wall', parent: 'page_1', layer: 'layer_1', order: 'a1', a: { x: 0, y: 0 }, b: { x: 4000, y: 0 }, thickness: 200 } }))
+  await objectRows(page).filter({ hasText: 'Wall' }).click()
+  await page.keyboard.press('Delete')
+  await expect(objectRows(page).filter({ hasText: 'Wall' })).toHaveCount(0)
+  // No Redo button of its own: it is in the list beside Undo.
+  await expect(page.locator('.toolbar').getByRole('button', { name: /^Redo/ })).toHaveCount(1)
+  await page.locator('.toolbar').getByRole('button', { name: /^Undo/ }).click()
+  await expect(objectRows(page).filter({ hasText: 'Wall' })).toHaveCount(1)
+  await page.locator('.toolbar').getByRole('button', { name: 'Redo', exact: true }).click()
+  await page.getByRole('menuitem', { name: /Redo/ }).click()
+  await expect(objectRows(page).filter({ hasText: 'Wall' })).toHaveCount(0)
+})
+
+test('offers to connect a switch from its right-click menu, not from the toolbar', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', drawing({ s: { id: 's', type: 'parametric', parent: 'page_1', layer: 'layer_1', order: 'a1', kind: 'elec.switch', props: {}, x: 0, y: 0 } }))
+  await expect(page.locator('.toolbar').getByRole('button', { name: /Connect/ })).toHaveCount(0)
+  await objectRows(page).filter({ hasText: 'Switch' }).click({ button: 'right' })
+  await page.getByRole('menuitem', { name: /Connect switches to lights/ }).click()
+  await expect(page.locator('.hint-bar')).toContainText('Click a light or a socket it controls')
+})
+
+/**
+ * Drags one element onto another as the browser does, with the drag events themselves, letting go at
+ * `at` (a share of the target's width and height, its middle by default). Playwright's `dragTo`
+ * scrolls to the target after finding where the source is, and so presses where something else has
+ * come to be in a window that scrolls, as Preferences does.
+ */
+async function drag(source: Locator, target: Locator, at = { x: 0.5, y: 0.5 }) {
+  const handle = await target.elementHandle()
+  await source.evaluate(
+    (from, { to, at }) => {
+      const data = new DataTransfer()
+      const point = () => {
+        const box = (to as HTMLElement).getBoundingClientRect()
+        return { clientX: box.left + box.width * at.x, clientY: box.top + box.height * at.y }
+      }
+      const fire = (element: Element, type: string, where = {}) => element.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: data, ...where }))
+      fire(from, 'dragstart')
+      const over = document.elementFromPoint(point().clientX, point().clientY) ?? (to as Element)
+      const into = (to as Element).contains(over) ? over : (to as Element)
+      fire(into, 'dragenter', point())
+      fire(into, 'dragover', point())
+      fire(into, 'drop', point())
+      fire(from, 'dragend')
+    },
+    { to: handle, at },
+  )
+}
+
+test('sets up the floating toolbar by dragging in Preferences, opened by a right-click on it, and switches between toolbars saved', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  const toolbar = page.locator('.toolbar')
+  const button = (name: string) => toolbar.getByRole('button', { name: new RegExp(`^${name}`) })
+  await expect(button('Wall')).toHaveCount(1)
+  await toolbar.click({ button: 'right', position: { x: 10, y: 10 } })
+  const row = (name: string) => page.locator('.toolbar-item-row', { has: page.locator('.toolbar-item-name', { hasText: new RegExp(`^${name}$`) }) }).first()
+  const top = { x: 0.3, y: 0.1 }
+  // The shapes are a list, shown open under its button.
+  await expect(row('List of 7 tools')).toBeVisible()
+  // Dragged onto what is not in the toolbar, the wall tool leaves it.
+  await drag(row('Wall'), page.locator('.toolbar-palette'))
+  await expect(button('Wall')).toHaveCount(0)
+  // Dragged out of the list of shapes, before the door: a button of its own.
+  await drag(row('Line'), row('Door'), top)
+  await expect(button('Line')).toHaveCount(1)
+  await expect(row('List of 6 tools')).toBeVisible()
+  // Dragged onto the middle of the select tool, pan joins it in a list.
+  await drag(row('Pan'), row('Select'))
+  await expect(row('List of 2 tools')).toBeVisible()
+  await expect(button('Pan')).toHaveCount(0)
+  // Connect, from what is not in the toolbar, to its end, and a separator before it.
+  await drag(row('Connect'), page.locator('.toolbar-end'))
+  await expect(toolbar.locator('.icon-button').last()).toHaveAttribute('title', /^Connect/)
+  const separators = await toolbar.locator('hr').count()
+  await drag(page.locator('.toolbar-palette .toolbar-item-row').first(), page.locator('.toolbar-items .toolbar-item-row', { hasText: /^Connect$/ }).first(), top)
+  await expect(toolbar.locator('hr')).toHaveCount(separators + 1)
+  // Saved as "Mine", it is the toolbar in use; the one that comes is a choice away, and back again.
+  await page.getByRole('textbox', { name: 'Name of the toolbar' }).fill('Mine')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  const inUse = page.locator('.pref-field', { hasText: 'Toolbar in use' }).locator('select')
+  await expect(inUse.locator('option:checked')).toHaveText('Mine')
+  await inUse.selectOption({ label: 'As it comes' })
+  await expect(button('Wall')).toHaveCount(1)
+  await expect(button('Connect')).toHaveCount(0)
+  await inUse.selectOption({ label: 'Mine' })
+  await expect(button('Wall')).toHaveCount(0)
+  await expect(button('Connect')).toHaveCount(1)
+  // Kept for the next start.
+  await page.reload()
+  await openEditor(page)
+  await expect(page.locator('.toolbar').getByRole('button', { name: /^Connect/ })).toHaveCount(1)
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('Customise the toolbar')
+  await page.keyboard.press('Enter')
+  await expect(inUse.locator('option:checked')).toHaveText('Mine')
+})
+
+test('offers the table of what controls what among the tables of the object library', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  await page.getByTitle('Object library: stairs, furniture and every other object').click()
+  await page.getByPlaceholder(/Search/).fill('controls')
+  await expect(page.locator('.warehouse-card strong', { hasText: /^What controls what$/ })).toHaveCount(1)
 })

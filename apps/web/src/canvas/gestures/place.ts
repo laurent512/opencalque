@@ -11,6 +11,7 @@ import { MOUNT_REACH, TWO_POINT, type Keys } from '../gesture'
 import { get, type Canvas, type Move, type Press } from '../runtime'
 import { offsetHover } from './offset'
 import { extendHover, filletHover } from './fit'
+import { connectHover } from './connect'
 
 /*
  * The tools that act where they are clicked, with nothing to drag: the eyedropper, putting down
@@ -201,6 +202,8 @@ export const toolHover: Move<'idle'> = (c, _g, e, _at, world, out) => {
     out.previewed = preview([...(library?.ops ?? []), ...line, { op: 'add_node', node }])
   } else if (TWO_POINT.includes(s.tool) || s.tool === 'measure' || s.tool === 'angle' || ((s.tool === 'rotate' || s.tool === 'move') && s.selection.length > 0)) {
     out.marker = snap(c, world, e, []).marker
+  } else if (s.tool === 'connect') {
+    connectHover(c, e, _at, world, out)
   } else if (s.tool === 'offset') {
     offsetHover(c, world, out)
   } else if (s.tool === 'extend') {

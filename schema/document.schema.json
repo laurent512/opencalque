@@ -8,7 +8,7 @@
     },
     "version": {
       "type": "number",
-      "const": 3
+      "const": 4
     },
     "id": {
       "type": "string",
@@ -2081,14 +2081,14 @@
               },
               "schedule": {
                 "type": "string",
-                "description": "What it counts, which is worked out again each time it is drawn: 'objects' (each component and each kind of parametric object, with how many are placed), 'floors' (the floor area of each material), 'rooms' (each room and its area), 'walls' (the walls by material and thickness: how many, length, face and volume) or 'openings' (doors and windows by kind and size). An unknown one draws an empty table."
+                "description": "What it counts, which is worked out again each time it is drawn: 'objects' (each component and each kind of parametric object, with how many are placed), 'floors' (the floor area of each material), 'rooms' (each room and its area), 'walls' (the walls by material and thickness: how many, length, face and volume), 'openings' (doors and windows by kind and size) or 'controls' (each switch, dimmer, push button, detector or thermostat with what its control links say it controls). An unknown one draws an empty table."
               },
               "title": {
                 "description": "Written above the table.",
                 "type": "string"
               },
               "columns": {
-                "description": "The fields shown, in order. Left out, the schedule's usual ones. Fields: objects: symbol (each drawn as it is on the plan), name, count; floors: material, rooms, area; rooms: name, material, area; walls: material, thickness, count, length, area, volume; openings: kind, width, height, count.",
+                "description": "The fields shown, in order. Left out, the schedule's usual ones. Fields: objects: symbol (each drawn as it is on the plan), name, count; floors: material, rooms, area; rooms: name, material, area; walls: material, thickness, count, length, area, volume; openings: kind, width, height, count; controls: symbol, name, controls.",
                 "type": "array",
                 "items": {
                   "type": "string"
@@ -2124,7 +2124,7 @@
                 "exclusiveMinimum": 0
               },
               "only": {
-                "description": "The rows shown, by their keys; the others are left out of the table and its total, and what comes on the plan later is not shown. Keys: objects 'component:<id>', or for a parametric object 'parametric:' then its kind and every one of its parameters, defaults filled in, as JSON with its keys in order ('parametric:arch.radiator {\"length\":800,...}': a model with other parameters is another row); floors 'material:<id>' ('material:' for the floors of no material); rooms 'room:<id>'; walls 'material:<id>' and the thickness in mm, as 'material:brick 200' ('material: 200' for the default material); openings the kind, then width and height in metres, as 'arch.door 0.9 2.1', whatever the table's units. Left out, every row.",
+                "description": "The rows shown, by their keys; the others are left out of the table and its total, and what comes on the plan later is not shown. Keys: objects 'component:<id>', or for a parametric object 'parametric:' then its kind and every one of its parameters, defaults filled in, as JSON with its keys in order ('parametric:arch.radiator {\"length\":800,...}': a model with other parameters is another row); floors 'material:<id>' ('material:' for the floors of no material); rooms 'room:<id>'; walls 'material:<id>' and the thickness in mm, as 'material:brick 200' ('material: 200' for the default material); openings the kind, then width and height in metres, as 'arch.door 0.9 2.1', whatever the table's units; controls 'control:<id>' of the switch. Left out, every row.",
                 "type": "array",
                 "items": {
                   "type": "string"
@@ -2593,6 +2593,222 @@
             ],
             "additionalProperties": false,
             "description": "An elevation or a section: the view of what its viewline sees, drawn from the plan each time it is drawn, on any page, with (x, y) the point of the floor under the start of its line (a); heights go up from there. Moving it moves only where it is drawn; what it shows is set by its line."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top). A key of the fractional-indexing package, such as \"a0\", \"a1\" or \"a0V\"; leave it out when adding a node to put it on top."
+              },
+              "layer": {
+                "description": "Id of the layer the node is on. A node inside a component has none: what a component holds is drawn on the layer of each of its instances.",
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color. An instance has none: it looks as its component is drawn.",
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'. Any colour property may instead be a shared colour, \"var(--<id>)\", or \"var(--layer)\": the colour of the node's layer.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none', a shared colour \"var(--<id>)\", or \"var(--layer)\" to fill with the colour of the node's layer.",
+                    "type": "string"
+                  },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a material."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      },
+                      "strokeWidth": {
+                        "description": "The weight of its strokes, in screen pixels as in a style. 0.6 when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "opacity": {
+                        "description": "How opaque its strokes are, from 0 (not at all) to 1 (the default), on top of the opacity of their colour.",
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "link"
+              },
+              "from": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The id of the object it starts from: for a control link, what controls (a switch, a dimmer, a push button)."
+              },
+              "to": {
+                "type": "string",
+                "minLength": 1,
+                "description": "The id of the object it goes to: for a control link, what is controlled (a light, a socket)."
+              },
+              "fromPort": {
+                "description": "Which connection of \"from\" it starts from, by its key among the ports its kind declares: \"out2\" for the second button of a double switch. Left out, the first port of its kind that fits.",
+                "type": "string"
+              },
+              "toPort": {
+                "description": "Which connection of \"to\" it goes to, by its key. Left out, the first port of its kind that fits.",
+                "type": "string"
+              },
+              "role": {
+                "description": "'control' (the default): \"from\" controls \"to\", whatever carries the order (a wire, a radio, a bus): drawn as a dashed curve, as on an electrical plan. 'run': a cable or a pipe goes from one to the other, drawn as a plain line; nothing is worked out from it yet.",
+                "type": "string",
+                "enum": [
+                  "control",
+                  "run"
+                ]
+              },
+              "bend": {
+                "description": "How much a control link bows, as a fraction of its length: 0 is straight, positive bows to the left of the way from \"from\" to \"to\" as seen on screen, negative to the right. Left out, 0.25 towards the middle of the page, so that a link between two things on a wall bows into the room.",
+                "type": "number"
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type",
+              "from",
+              "to"
+            ],
+            "additionalProperties": false,
+            "description": "Joins two objects of the same page: a switch and a light it controls, a dimmer and its spotlights, a push button and a switched socket. It has no position of its own: it is drawn between the two objects, from the edge of one to the edge of the other, and follows them when they move. Removing either object removes the link. Version 4."
           },
           {
             "type": "object",

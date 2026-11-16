@@ -1,5 +1,5 @@
 import { nodeJsonSchema } from './jsonschema'
-import type { Registry } from './registry'
+import type { ParametricKind, Registry } from './registry'
 
 /*
  * How drawings are stored and edited, written for a model. It is the part of what the assistant is
@@ -12,6 +12,18 @@ const CHECKING = `# Checking your work
 The result of apply_operations lists under "problems" what the edit got wrong that the drawing can tell: a room whose walls do not close and the wall end that may be why, walls drawn over each other, a door or window outside its wall. Put right those you caused. check_drawing lists every such problem of a page, those that were there before you included.
 
 A room's area is not stored: it comes from the walls each time. Use measure_drawing for floor areas, wall lengths and counts rather than working them out, and to confirm what you report.`
+
+/** The ports a kind has with its defaults, as the guide lists them; none when it has none. */
+function portsOfKind(kind: ParametricKind) {
+  if (!kind.ports) return undefined
+  try {
+    const defaults = Object.fromEntries(kind.params.map((p) => [p.key, p.default]))
+    const ports = kind.ports(defaults).map(({ key, carries, way, required }) => ({ key, carries, way, ...(required ? { required } : {}) }))
+    return ports.length > 0 ? ports : undefined
+  } catch {
+    return undefined
+  }
+}
 
 const LOOKING = `Use view_drawing to look at what you drew after anything more than a small edit: rooms that close can still be the wrong shape, and furniture can stand in a doorway.`
 
@@ -42,6 +54,7 @@ export function drawingGuide(registry: Registry, { pictures = true, schema = tru
     cutsWalls: Boolean(k.opening),
     fixedOnWall: k.mount?.on === 'wall' ? { back: k.mount.back ?? 0, out: k.mount.out ?? 'down', height: k.mount.height } : undefined,
     againstWall: k.mount?.on === 'floor' ? { back: k.mount.back ?? 0, out: k.mount.out ?? 'down' } : undefined,
+    ports: portsOfKind(k),
   }))
   return `# How a drawing is stored
 
@@ -85,6 +98,8 @@ A shared colour (the document's "colors", managed with add_color, update_color a
 
 A "room" names the space enclosed by the walls around its point (x, y): add one with a "name" at a point inside closed walls, and its floor and area are worked out from the walls each time it is drawn. A "divider" (a to b) splits an open space into two rooms where there is no wall; its ends must lie on walls.
 
+A "link" joins two objects of the same page by their ids, "from" and "to", through the "ports" their kinds list: a control link (the default "role") says that "from" controls "to", a switch and the light it turns on, a dimmer and its spotlights, a push button and a switched socket, whatever carries the order (a wire, a radio, a bus). It goes from a port that gives control ("way": "out") to one that takes it ("in"); "fromPort" names which, as the second button of a double switch ("out2"), and is left out for the first. A switch that controls three lights has three links; a light controlled from two places (two-way switches) has a link from each. A link has no position: it is drawn as a dashed curve between the two objects and follows them, and removing either removes it. Put it on the page, on the layer of the objects. read_controls says what controls what on a page, and which lights nothing controls.
+
 An elevation or a section is two nodes: a "viewline" on the plan (a to b, and depth), which says what is seen, and an "elevation" that refers to it by "line" and says where its view is drawn (x, y, on any page). For an elevation of a wall's face, put the viewline 1000 in front of the face, with depth 1000, running so that the face is on its left (seen from its right); add the viewline before its view. Removing a viewline removes its views.
 
 A "paper" is a sheet laid over the drawing that frames what goes on one printed page. Its width and height are in drawing millimetres: the sheet's real size times its "scale" (an A3 lying at 1:100 is 42000 × 29700). It has no children; whatever lies inside its rectangle is on it. Give it "titleBlock": {} (optionally with "project", "author", "date", "number") for a border and a title block; the person exports papers to PDF at their true scale from the File menu.
@@ -97,7 +112,7 @@ Call apply_operations with a list of operations:
 
 - add_node: {"op":"add_node","node":{...}}. Omit "id" and "order" unless you need to refer to the node later in the same list, in which case choose a short unique id. Pages and components take no parent.
 - update_node: {"op":"update_node","id":"...","patch":{...}}. The patch replaces the properties it names; a null value removes a property. Nested objects such as "a", "props" and "style" are replaced whole, so include every field of the one you change. Setting "parent" or "order" moves the node.
-- remove_node: {"op":"remove_node","id":"..."}. It takes along everything inside the node; removing a component also removes its instances.
+- remove_node: {"op":"remove_node","id":"..."}. It takes along everything inside the node; removing a component also removes its instances, and removing an object the links that join it to others.
 - add_layer, update_layer, remove_layer; add_color, update_color, remove_color; add_dimension_style, update_dimension_style, remove_dimension_style, as described above.
 - set_document: renames the drawing, and with "info" sets its project, client, address and author, which every sheet's title block shows.
 - add_asset embeds a picture's file for an image node; it is for the app's own imports, and you will not need it.

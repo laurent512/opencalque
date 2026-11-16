@@ -16,6 +16,7 @@ export const SCHEDULE_NAMES: Record<Schedule, string> = {
   rooms: msg('Rooms'),
   walls: msg('Walls by material'),
   openings: msg('Doors and windows'),
+  controls: msg('What controls what'),
 }
 
 /** What each kind of table counts, said under its name in the object library. */
@@ -25,6 +26,7 @@ export const SCHEDULE_ABOUT: Record<Schedule, string> = {
   rooms: msg('Each room and its floor area'),
   walls: msg('Length, faces and volume of the walls of each material and thickness'),
   openings: msg('Doors and windows by kind and size'),
+  controls: msg('Each switch, with the lights and sockets it controls'),
 }
 
 /** The words of a table, as the core says them in English, to be translated. Kept apart so that each one is found by the translation test. */
@@ -43,6 +45,7 @@ const WORDS: Record<keyof typeof TABLE_WORDS, string> = {
   width: msg('Width ({unit})'),
   height: msg('Height ({unit})'),
   'walls.area': msg('Face area ({unit})'),
+  controls: msg('Controls'),
   total: msg('Total'),
   none: '—',
 }

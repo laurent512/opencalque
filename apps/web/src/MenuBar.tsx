@@ -20,11 +20,13 @@ const MENUS: [string, (string | null)[]][] = [
   // What is done to the selection as an object, as against editing in general: arranging, transforming, modifying.
   [
     msg('Object'),
-    ['edit.group', 'edit.ungroup', null, 'edit.bringToFront', 'edit.bringForward', 'edit.sendBackward', 'edit.sendToBack', null, 'edit.rotateRight', 'edit.rotateLeft', 'edit.flipHorizontal', 'edit.flipVertical', null, 'shape.close', 'shape.open', 'shape.curve', 'shape.straighten', null, 'wall.split', 'wall.extend', 'wall.trim', 'wall.dimension', null, 'modifier.crop', 'modifier.array', null, 'component.create', 'component.vectorize', 'component.finish'],
+    ['edit.group', 'edit.ungroup', null, 'edit.bringToFront', 'edit.bringForward', 'edit.sendBackward', 'edit.sendToBack', null, 'edit.rotateRight', 'edit.rotateLeft', 'edit.flipHorizontal', 'edit.flipVertical', null, 'shape.close', 'shape.open', 'shape.curve', 'shape.straighten', null, 'wall.split', 'wall.extend', 'wall.trim', 'wall.dimension', null, 'tool.connect', null, 'modifier.crop', 'modifier.array', null, 'component.create', 'component.vectorize', 'component.finish'],
   ],
   [msg('View'), ['view.zoomToFit', 'view.zoomIn', 'view.zoomOut', null, 'view.toggleGrid', 'view.toggleClearances', 'view.toggleSnapGrid', 'view.toggleSnapObjects', null, '@Panels', null, 'view.toggleTheme', 'view.resetLayout']],
   // There is no Insert or Tools menu: the toolbar holds the tools and the object library, and pages
-  // and layers are added from their panels. Every command stays in the command list (Ctrl+K).
+  // and layers are added from their panels. Every command stays in the command list (Ctrl+K). The
+  // Connect tool, used now and then, is in the Object menu and the right-click menu of a switch or
+  // a light rather than in the toolbar.
   [msg('Preferences'), ['prefs.open', null, 'palette.open', null, 'help.welcome', 'app.checkUpdate']],
 ]
 

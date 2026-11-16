@@ -1,5 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { allCommands, execute, formatKey, keysOf, useCommands, type Command } from './commands'
+import { controlSide } from '@opencalque/core'
+import { registry } from './extensions'
 import { t } from './i18n'
 import { useStore } from './store'
 
@@ -40,6 +42,8 @@ export function ContextMenu() {
   const onPicture = useStore((s) => s.selection.length === 1 && s.doc.nodes[s.selection[0]]?.type === 'image')
   // A polyline or a polygon can be closed or opened, curved or straightened.
   const onPolyline = useStore((s) => s.selection.some((id) => s.doc.nodes[id]?.type === 'polyline'))
+  // A switch can be linked to the lights it controls, and a light to its switches: the Connect tool starts from it.
+  const onDevice = useStore((s) => s.selection.length === 1 && controlSide(s.doc.nodes[s.selection[0]], registry) !== null)
   const overrides = useCommands((s) => s.overrides)
   const menu = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState({ left: 0, top: 0 })
@@ -75,7 +79,7 @@ export function ContextMenu() {
   // and are greyed, this menu leaves out what does not apply (Ungroup on a wall, Make into a component
   // on a component), and the separators left doubled or at an end.
   const items: (Command | null)[] = []
-  for (const id of [...(hasSelection ? ON_SELECTION : ON_NOTHING), ...(onPicture ? [null, 'tool.calibrate'] : []), ...(onPolyline ? [null, 'shape.close', 'shape.open', 'shape.curve', 'shape.straighten'] : [])]) {
+  for (const id of [...(hasSelection ? ON_SELECTION : ON_NOTHING), ...(onPicture ? [null, 'tool.calibrate'] : []), ...(onPolyline ? [null, 'shape.close', 'shape.open', 'shape.curve', 'shape.straighten'] : []), ...(onDevice ? [null, 'tool.connect'] : [])]) {
     const command = id === null ? null : commands.find((c) => c.id === id)
     if (command === undefined || (command && command.when && !command.when())) continue
     if (command === null && (items.length === 0 || items[items.length - 1] === null)) continue

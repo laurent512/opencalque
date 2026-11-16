@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { BrickWall, ChevronDown, MoveHorizontal, ScanEye, Circle, Hexagon, Component, File, Group, Image, Lock, LockOpen, MessageSquare, Minus, RulerDimensionLine, Shapes, SeparatorVertical, Spline, Square, SquareDashed, StickyNote, Table, Type, type LucideIcon } from 'lucide-react'
+import { BrickWall, Cable, ChevronDown, MoveHorizontal, ScanEye, Circle, Hexagon, Component, File, Group, Image, Lock, LockOpen, MessageSquare, Minus, RulerDimensionLine, Shapes, SeparatorVertical, Spline, Square, SquareDashed, StickyNote, Table, Type, type LucideIcon } from 'lucide-react'
 import type { Document, Node } from '@opencalque/core'
 import { GridLine } from './icons'
 import { msg, t } from './i18n'
@@ -23,6 +23,7 @@ const TYPE_LABELS: Record<Node['type'], string> = {
   divider: msg('Room divider'),
   elevation: msg('Elevation'),
   viewline: msg('View line'),
+  link: msg('Link'),
   table: msg('Table of quantities'),
   ellipse: msg('Ellipse'),
   text: msg('Text'),
@@ -47,6 +48,7 @@ const TYPE_ICONS: Record<Node['type'], LucideIcon> = {
   divider: SeparatorVertical,
   elevation: ScanEye,
   viewline: MoveHorizontal,
+  link: Cable,
   table: Table,
   ellipse: Circle,
   text: Type,
@@ -76,6 +78,11 @@ export function labelOf(doc: Document, node: Node): string {
   if (node.type === 'gridline' && node.label.trim()) return t('Grid line {label}', { label: node.label })
   if (node.type === 'instance') return labelOf(doc, doc.nodes[node.component] ?? node)
   if (node.type === 'parametric') return t(registry.parametric.get(node.kind)?.label ?? node.kind)
+  // A link by what it joins: "Switch → Ceiling light".
+  if (node.type === 'link') {
+    const [from, to] = [doc.nodes[node.from], doc.nodes[node.to]]
+    if (from && to && from.type !== 'link' && to.type !== 'link') return `${labelOf(doc, from)} → ${labelOf(doc, to)}`
+  }
   // A closed polyline is a polygon: what it is called says which.
   if (node.type === 'polyline' && node.closed) return t('Polygon')
   return t(TYPE_LABELS[node.type])

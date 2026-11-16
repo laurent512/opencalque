@@ -1,9 +1,10 @@
 import type { Extension, Op, ParametricKind } from '@opencalque/core'
 import { bathtub, washbasin } from './bathroom'
 import { compass } from './compass'
-import { cornerSofa } from './furniture'
-import { radiator } from './heating'
-import { fridge, hob, sink, wallCabinet } from './kitchen'
+import { chair, cornerSofa, desk, sofa } from './furniture'
+import { radiator, RADIATOR_TOP } from './heating'
+import { bedsideTable, chestOfDrawers, wardrobe } from './bedroom'
+import { baseUnit, dishwasher, fridge, hob, hood, sink, splashback, tallUnit, wallCabinet, washingMachine, worktop } from './kitchen'
 import { door, windowKind } from './openings'
 import { pt } from './shared'
 import { lStair, spiralStair, straightStair, uStair } from './stairs'
@@ -11,8 +12,10 @@ import { translations } from './translations'
 
 /**
  * Bundled extension, and the reference for writing one: it depends only on @opencalque/core and
- * contributes doors, windows, stairs, washbasins, a bathtub, a hob, a sink and fridges for the
- * kitchen, a corner sofa, a radiator, and one command.
+ * contributes doors, windows, stairs, washbasins, a bathtub, the kitchen (units, worktop, hob,
+ * sink, appliances, hood, splashback), bedroom furniture, a corner sofa, a radiator, and one
+ * command. Furniture and appliances draw themselves in elevations, from in front and from the side
+ * (`front`, `side`, in fronts.ts).
  *
  * Every object is drawn in local coordinates with the insertion point at the origin. Doors and
  * windows run along +X (the wall centerline) and are told the thickness of the wall they sit in.
@@ -33,13 +36,18 @@ export const architecture: Extension = {
     // On a worktop.
     api.registerParametric(tall(hob, 900))
     api.registerParametric(tall(sink, 900))
-    api.registerParametric(tall(fridge('arch.fridge', 'Fridge', 600, 650, 1), 1850))
-    api.registerParametric(tall(fridge('arch.fridge.american', 'American fridge', 910, 730, 2), 1780))
+    api.registerParametric(tall(fridge('arch.fridge', 'Fridge', 600, 650, 1, 1850), 1850))
+    api.registerParametric(tall(fridge('arch.fridge.american', 'American fridge', 910, 730, 2, 1780), 1780))
+    // Standing against the wall, as tall as their height says.
+    for (const kind of [baseUnit, worktop, tallUnit, dishwasher, washingMachine, bedsideTable, chestOfDrawers, wardrobe]) api.registerParametric(kind)
     // Hung on the wall at its height, not standing on the floor.
     api.registerParametric(wallCabinet)
+    api.registerParametric(hood)
+    api.registerParametric(splashback)
     // Against two walls, which a snap to one cannot put it against.
     api.registerParametric(tall(cornerSofa, 850, false))
-    api.registerParametric(tall(radiator, 600))
+    for (const kind of [sofa('arch.sofa', 'Sofa', 1600, 2), sofa('arch.armchair', 'Armchair', 850, 1), chair, desk]) api.registerParametric(kind)
+    api.registerParametric(tall(radiator, RADIATOR_TOP))
     api.registerParametric(compass)
 
     api.registerCommand({

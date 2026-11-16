@@ -160,7 +160,7 @@ describe('assistant', () => {
     const prompt = systemPrompt(registry)
     for (const kind of registry.parametric.keys()) expect(prompt).toContain(kind)
     expect(prompt).toContain('"wall"')
-    expect(TOOLS.map((t) => t.name)).toEqual(['apply_operations', 'read_document', 'describe_drawing', 'view_image', 'view_drawing', 'measure_drawing', 'check_drawing'])
+    expect(TOOLS.map((t) => t.name)).toEqual(['apply_operations', 'read_document', 'describe_drawing', 'view_image', 'view_drawing', 'measure_drawing', 'check_drawing', 'read_controls'])
     expect(JSON.stringify(TOOLS[0].schema)).toContain('add_node')
   })
 

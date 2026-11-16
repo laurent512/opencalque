@@ -49,13 +49,14 @@ export async function remoteCatalog(url: string): Promise<{ libraries: Library[]
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`)
   const catalog = (await response.json()) as { libraries?: { name: string; description?: string; file: string; translations?: Library['translations']; categories?: unknown }[]; extensions?: { file: string }[] }
   const json = async (file: string) => (await fetch(new URL(file, url))).json()
+  const strings = (value: unknown) => (value && typeof value === 'object' ? Object.fromEntries(Object.entries(value).filter(([, text]) => typeof text === 'string')) : undefined)
 
   const libraries = (catalog.libraries ?? []).map((entry): Library => ({
     id: new URL(entry.file, url).href,
     name: String(entry.name),
     description: String(entry.description ?? ''),
     translations: entry.translations,
-    categories: entry.categories && typeof entry.categories === 'object' ? Object.fromEntries(Object.entries(entry.categories).filter(([, room]) => typeof room === 'string')) : undefined,
+    categories: strings(entry.categories),
     load: async () => parseDocument(await json(entry.file)),
   }))
   const extensions: DeclarativeExtension[] = []

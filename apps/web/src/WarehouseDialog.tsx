@@ -9,11 +9,11 @@ import { carry, svgUrl } from './carry'
 import { language, msg, t, tn } from './i18n'
 import { platform } from './platform'
 import { setPrefs, usePrefs } from './prefs'
-import { ALWAYS_ON, BUILT_IN_EXTENSION, loadExtensions, registry, useExtensions } from './extensions'
+import { loadExtensions, registry, SHIPPED, useExtensions } from './extensions'
 import { applyOrThrow, setTool, useStore } from './store'
 import { toast, useWindows } from './windows'
 import { IconButton } from './ui'
-import { bundledExtensions, bundledLibraries, remoteCatalog, type Library } from './catalog'
+import { bundledLibraries, remoteCatalog, type Library } from './catalog'
 import { formatLength, formatNumber, unitSuffix } from './units'
 
 const close = () => useWindows.setState({ warehouse: null })
@@ -50,6 +50,13 @@ function sample(): Document {
   // A door and windows, when the extension that draws them is in use.
   if (registry.parametric.has('arch.door')) ops.push({ op: 'add_node', node: { type: 'parametric', parent: 'page_1', layer: 'layer_1', kind: 'arch.door', props: {}, x: 3500, y: 1500, rotation: 90 } })
   if (registry.parametric.has('arch.window')) for (const x of [1000, 4300]) ops.push({ op: 'add_node', node: { type: 'parametric', parent: 'page_1', layer: 'layer_1', kind: 'arch.window', props: {}, x, y: 0 } })
+  // A switch and a dimmer with the lights they control, for the table of what controls what.
+  if (registry.parametric.has('elec.switch') && registry.parametric.has('elec.light')) {
+    const device = (id: string, kind: string, x: number, y: number): Op => ({ op: 'add_node', node: { type: 'parametric', id, parent: 'page_1', layer: 'layer_1', kind, props: {}, x, y } })
+    const link = (from: string, to: string): Op => ({ op: 'add_node', node: { type: 'link', parent: 'page_1', layer: 'layer_1', from, to } })
+    ops.push(device('switch', 'elec.switch', 300, 3850), device('dimmer', 'elec.dimmer', 3800, 3850), device('light1', 'elec.light', 1000, 2700), device('light2', 'elec.light', 2500, 2700), device('spot', 'elec.spot', 4700, 3000))
+    ops.push(link('switch', 'light1'), link('switch', 'light2'), link('dimmer', 'spot'))
+  }
   return (sampleHouse = applyOps(createDocument(), ops))
 }
 
@@ -399,14 +406,18 @@ function Components({ libraries }: { libraries: Library[] }) {
   )
 }
 
+/**
+ * The extensions added to the app, from a web catalog or a file, to install and remove. What ships
+ * with the app is not among them: it is part of the app (`SHIPPED`).
+ */
 function Extensions({ catalog }: { catalog: DeclarativeExtension[] }) {
-  const { installed, disabled } = usePrefs((p) => p.extensions)
+  const { installed } = usePrefs((p) => p.extensions)
   useExtensions((s) => s.version)
   // Installed extensions stay listed even when no catalog offers them any more.
-  const all = [...catalog, ...Object.values(installed).filter((e) => !catalog.some((c) => c.id === e.id))]
+  const all = [...catalog, ...Object.values(installed).filter((e) => !catalog.some((c) => c.id === e.id))].filter((e) => !SHIPPED.includes(e.id))
 
-  const change = (next: { installed?: typeof installed; disabled?: string[] }) => {
-    setPrefs({ extensions: { installed, disabled, ...next } })
+  const change = (next: { installed: typeof installed }) => {
+    setPrefs({ extensions: { installed: next.installed, disabled: [] } })
     loadExtensions()
   }
   const install = (extension: DeclarativeExtension) =>
@@ -428,32 +439,18 @@ function Extensions({ catalog }: { catalog: DeclarativeExtension[] }) {
       declarativeExtension(extension)
       await install(extension)
     })
-  const builtInOn = !disabled.includes(BUILT_IN_EXTENSION)
-
   return (
     <>
       <div className="warehouse-list">
-        <div className="warehouse-row">
-          <div>
-            <strong>{t('Architecture')}</strong> <span className="faint">{t('built in')}</span>
-            <p className="hint">{t('Doors, windows, stairs, washbasins, a bathtub, a hob, a sink, fridges and a corner sofa.')}</p>
-          </div>
-          <button className="pill" onClick={() => change({ disabled: builtInOn ? [...disabled, BUILT_IN_EXTENSION] : disabled.filter((id) => id !== BUILT_IN_EXTENSION) })}>
-            {builtInOn ? t('Turn off') : t('Turn on')}
-          </button>
-        </div>
+        {all.length === 0 && <p className="hint">{t('No extension added. Everything that comes with OpenCalque (doors, windows, stairs, kitchens and bathrooms, furniture, electrical symbols, annotations) is in the object library already.')}</p>}
         {all.map((extension) => (
           <div key={extension.id} className="warehouse-row">
             <div>
-              <strong>{own(extension, extension.name)}</strong> <span className="faint">{ALWAYS_ON.includes(extension.id) ? t('built in') : extension.version}</span>
+              <strong>{own(extension, extension.name)}</strong> <span className="faint">{extension.version}</span>
               {extension.description && <p className="hint">{own(extension, extension.description)}</p>}
               <p className="hint">{extension.objects.map((o) => own(extension, o.label)).join(' · ')}</p>
             </div>
-            {ALWAYS_ON.includes(extension.id) ? (
-              <button className="pill" onClick={() => change({ disabled: disabled.includes(extension.id) ? disabled.filter((id) => id !== extension.id) : [...disabled, extension.id] })}>
-                {disabled.includes(extension.id) ? t('Turn on') : t('Turn off')}
-              </button>
-            ) : installed[extension.id] ? (
+            {installed[extension.id] ? (
               <button className="pill" onClick={() => remove(extension.id)}>
                 {t('Remove')}
               </button>
@@ -480,7 +477,7 @@ function useCatalog(active: boolean) {
   const catalogUrl = usePrefs((p) => p.catalogUrl)
   const [remote, setRemote] = useState<{ libraries: Library[]; extensions: DeclarativeExtension[] }>({ libraries: [], extensions: [] })
   const libraries = useMemo(() => [...bundledLibraries(), ...remote.libraries], [remote])
-  const extensions = useMemo(() => [...bundledExtensions(), ...remote.extensions], [remote])
+  const extensions = remote.extensions
 
   useEffect(() => {
     if (!active || !catalogUrl) return setRemote({ libraries: [], extensions: [] })

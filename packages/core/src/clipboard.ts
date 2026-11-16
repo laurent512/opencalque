@@ -4,6 +4,7 @@ import { childrenOf, createDocument, layersOf, leavesOf, pagesOf } from './docum
 import { lineOf, viewsOf } from './elevation'
 import type { Bounds, Transform, Vec2 } from './geometry'
 import { moveOps } from './kinds'
+import { linksAt } from './networks'
 import { applyOps, OpError, type Op } from './ops'
 import type { Registry } from './registry'
 import { buildScene, sceneBounds } from './scene'
@@ -30,7 +31,13 @@ export function copyNodes(doc: Document, nodeIds: string[]): Document {
   const nodes = childrenOf(doc, first.parent).filter((n) => picked.has(n.id))
 
   // Everything the copies draw, to find which components and layers they rely on.
-  const drawn = nodes.flatMap((n): Node[] => (n.type === 'group' ? leavesOf(doc, n.id) : [n]))
+  const held = nodes.flatMap((n): Node[] => (n.type === 'group' ? leavesOf(doc, n.id) : [n]))
+  // The links between two objects copied come along, picked or not: a switch and its lights copied together stay linked.
+  const ends = new Set(held.map((n) => n.id))
+  const joining = linksAt(doc, ends).filter((link) => ends.has(link.from) && ends.has(link.to) && !ends.has(link.id) && link.parent === first.parent)
+  for (const link of joining) picked.add(link.id)
+  nodes.push(...joining)
+  const drawn = [...held, ...joining]
   const copied = new Set(drawn.map((n) => n.id))
   const along = drawn.flatMap((n) => (n.type === 'viewline' ? viewsOf(doc, n.id).filter((view) => !copied.has(view.id)) : []))
   const referred = [...new Map([...drawn, ...along].flatMap((n): [string, NodeOf<'viewline'>][] => {

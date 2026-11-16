@@ -4,7 +4,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { applyOps, createDocument, pointInPolygon, roundCorners, serializeDocument, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
+import { applyOps, createDocument, roundCorners, serializeDocument, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
 
 type Shape = Record<string, unknown> & { type: string }
 type Pt = [number, number]
@@ -62,26 +62,6 @@ const roundRect = (x: number, y: number, width: number, height: number, radius: 
     ],
     radius,
   )
-/** The points of part of a circle, unrounded, from angle `from` to `to` in degrees, clockwise from the right. */
-const along = ([cx, cy]: Pt, r: number, from: number, to: number, steps = 16): Pt[] =>
-  Array.from({ length: steps + 1 }, (_, i) => {
-    const a = ((from + ((to - from) * i) / steps) * Math.PI) / 180
-    return [cx + r * Math.cos(a), cy + r * Math.sin(a)]
-  })
-/** A curved bar along part of a circle, with round ends, as the backrest of a chair is: `r` is the circle through its middle. */
-function band(cx: number, cy: number, r: number, thickness: number, from: number, to: number): Shape {
-  const h = thickness / 2
-  const end = (a: number): Pt => [cx + r * Math.cos((a * Math.PI) / 180), cy + r * Math.sin((a * Math.PI) / 180)]
-  return poly(
-    [
-      ...along([cx, cy], r + h, from, to, 24),
-      ...along(end(to), h, to, to + 180, 8).slice(1, -1),
-      ...along([cx, cy], r - h, to, from, 24),
-      ...along(end(from), h, from + 180, from + 360, 8).slice(1, -1),
-    ],
-    true,
-  )
-}
 /**
  * A bowl seen from above, its back toward the wall at the top: nearly square at the back (the
  * higher `square`, the squarer) and round at the front, `back` and `front` deep from (cx, cy).
@@ -102,214 +82,6 @@ function across(outline: Pt[], y: number): [number, number] {
     return (y1 - y) * (y2 - y) <= 0 && y1 !== y2 ? [x1 + ((y - y1) * (x2 - x1)) / (y2 - y1)] : []
   })
   return [Math.min(...xs), Math.max(...xs)]
-}
-/** The points a shape is drawn through, for the transforms below. */
-function pointsOf(shape: Shape): Vec2[] {
-  if (shape.type === 'polyline') return shape.points as Vec2[]
-  if (shape.type === 'line') return [shape.a as Vec2, shape.b as Vec2]
-  if (shape.type === 'rect') {
-    const { x, y, width, height } = shape as unknown as { x: number; y: number; width: number; height: number }
-    return [
-      { x, y },
-      { x: x + width, y: y + height },
-    ]
-  }
-  if (shape.type === 'ellipse') {
-    const { cx, cy, rx, ry } = shape as unknown as { cx: number; cy: number; rx: number; ry: number }
-    return [
-      { x: cx - rx, y: cy - ry },
-      { x: cx + rx, y: cy + ry },
-    ]
-  }
-  return []
-}
-/**
- * Shapes moved by (dx, dy) after a turn of `turn` degrees about the origin: a whole symbol set in
- * place in a larger one, such as the chairs round a table. A rectangle turned becomes a polyline.
- */
-function placed(shapes: Shape[], dx: number, dy: number, turn: 0 | 90 | 180 | 270 = 0): Shape[] {
-  const [c, s] = [Math.round(Math.cos((turn * Math.PI) / 180)), Math.round(Math.sin((turn * Math.PI) / 180))]
-  const map = ({ x, y }: Vec2): Vec2 => ({ x: tenth(x * c - y * s + dx), y: tenth(x * s + y * c + dy) })
-  return shapes.map((shape): Shape => {
-    if (shape.type === 'polyline') return { ...shape, points: (shape.points as Vec2[]).map(map) }
-    if (shape.type === 'line') return { ...shape, a: map(shape.a as Vec2), b: map(shape.b as Vec2) }
-    if (shape.type === 'ellipse') {
-      const centre = map({ x: shape.cx as number, y: shape.cy as number })
-      return { ...shape, cx: centre.x, cy: centre.y, ...(turn % 180 ? { rx: shape.ry, ry: shape.rx } : {}) }
-    }
-    if (shape.type === 'rect') {
-      const { x, y, width, height } = shape as unknown as { x: number; y: number; width: number; height: number }
-      if (turn === 0) return { ...shape, ...map({ x, y }) }
-      const corners: Vec2[] = [
-        { x, y },
-        { x: x + width, y },
-        { x: x + width, y: y + height },
-        { x, y: y + height },
-      ]
-      const { width: _, height: __, x: ___, y: ____, ...rest } = shape
-      return { ...rest, type: 'polyline', points: corners.map(map), closed: true }
-    }
-    return { ...shape, ...map({ x: shape.x as number, y: shape.y as number }) }
-  })
-}
-/** Shapes moved so that what they cover starts at the origin, as every symbol of a library does. */
-function fromOrigin(shapes: Shape[]): Shape[] {
-  const points = shapes.flatMap(pointsOf)
-  return placed(shapes, -Math.min(...points.map((p) => p.x)), -Math.min(...points.map((p) => p.y)))
-}
-/** The size of what shapes cover, rounded to the millimetre. */
-function sizeOf(shapes: Shape[]): { width: number; height: number } {
-  const points = shapes.flatMap(pointsOf)
-  const span = (values: number[]) => Math.round(Math.max(...values) - Math.min(...values))
-  return { width: span(points.map((p) => p.x)), height: span(points.map((p) => p.y)) }
-}
-/**
- * The stretches of a path that lie outside every closed shape in `cover`, as open paths: the base
- * of a chair seen where the seat above it does not hide it.
- */
-function uncovered(path: Pt[], cover: Shape[]): Shape[] {
-  const outlines = cover.flatMap((shape) => (shape.type === 'polyline' && shape.closed ? [shape.points as Vec2[]] : []))
-  const hidden = ([x, y]: Pt) => outlines.some((outline) => pointInPolygon({ x, y }, outline))
-  // The path walked in steps of a millimetre or two, each point kept or not.
-  const walked = path.slice(1).flatMap((b, i) => {
-    const a = path[i]
-    const steps = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 2))
-    return Array.from({ length: steps + (i === path.length - 2 ? 1 : 0) }, (_, k): Pt => [a[0] + ((b[0] - a[0]) * k) / steps, a[1] + ((b[1] - a[1]) * k) / steps])
-  })
-  const out: Shape[] = []
-  let run: Pt[] = []
-  const flush = () => {
-    // Only the points where the path turns are kept, and the two ends.
-    const kept = run.filter((p, i) => i === 0 || i === run.length - 1 || path.some(([x, y]) => Math.hypot(x - p[0], y - p[1]) < 1e-6))
-    if (run.length > 1) out.push(thin(poly(kept)))
-    run = []
-  }
-  for (const p of walked) {
-    if (hidden(p)) flush()
-    else run.push(p)
-  }
-  flush()
-  return out
-}
-
-/** A dining chair, 450 × 480, its back at the top: a seat rounder at the front, and a curved backrest behind it. */
-const chair = (): Shape[] => [band(225, 662, 640, 44, 253, 287), roundRect(0, 76, 450, 404, [30, 30, 75, 75])]
-
-/**
- * An office chair, its back at the top: a curved backrest, a seat rounder at the front, two
- * armrests, and the five legs of its base on their casters, seen where the seat does not hide them.
- */
-function officeChair(): Shape[] {
-  const body = [band(330, 900, 820, 70, 253, 287), roundRect(92, 150, 476, 440, [60, 60, 110, 110]), roundRect(46, 215, 42, 290, 21), roundRect(572, 215, 42, 290, 21)]
-  const [cx, cy, reach] = [330, 370, 330]
-  // One leg straight back, under the backrest: the others then show at the front corners and beside the armrests.
-  const base = [270, 342, 54, 126, 198].flatMap((angle) => {
-    const [dx, dy] = [Math.cos((angle * Math.PI) / 180), Math.sin((angle * Math.PI) / 180)]
-    const ring = along([cx + reach * dx, cy + reach * dy], 28, 0, 360, 24)
-    const caster = poly(ring, true)
-    // The two sides of a leg, narrowing toward its caster.
-    const sides = [1, -1].flatMap((side) =>
-      uncovered(
-        [
-          [cx - side * 18 * dy, cy + side * 18 * dx],
-          [cx + reach * dx - side * 12 * dy, cy + reach * dy + side * 12 * dx],
-        ],
-        [...body, caster],
-      ),
-    )
-    return [...uncovered(ring, body), ...sides]
-  })
-  return fromOrigin([...base, ...body])
-}
-const OFFICE_CHAIR = sizeOf(officeChair())
-
-/** A sofa of `seats` seats, its back at the top: a frame round its back and arms, a back cushion and a seat cushion for each seat. */
-function sofa(width: number, seats: number, depth = 850): Shape[] {
-  const [arm, back] = [170, 170]
-  const seat = (width - 2 * arm) / seats
-  const frame = rounded(
-    [
-      [0, 0],
-      [width, 0],
-      [width, depth],
-      [width - arm, depth],
-      [width - arm, back],
-      [arm, back],
-      [arm, depth],
-      [0, depth],
-    ],
-    [60, 60, 50, 50, 10, 10, 50, 50],
-  )
-  return [
-    frame,
-    ...Array.from({ length: seats }, (_, k) => [
-      roundRect(arm + k * seat + 6, back + 6, seat - 12, 160, 40),
-      roundRect(arm + k * seat + 6, back + 178, seat - 12, depth - back - 186, 45),
-    ]).flat(),
-  ]
-}
-
-/** A bed, its head at the top: a headboard, a pillow or two, and the duvet with one corner turned back. */
-function bed(width: number, length = 2000): Shape[] {
-  const pillows = width >= 1400 ? 2 : 1
-  const pillow = (width - 160 - (pillows - 1) * 60) / pillows
-  const fold = Math.min(500, width * 0.3)
-  const edge = 620
-  return [
-    roundRect(0, 0, width, length, 25),
-    line(0, 50, width, 50),
-    ...Array.from({ length: pillows }, (_, i) => roundRect(80 + i * (pillow + 60), 100, pillow, 380, 90)),
-    line(0, edge, width - fold, edge),
-    poly(
-      [
-        [width - fold, edge],
-        [width, edge + fold],
-        [width - fold, edge + fold],
-      ],
-      true,
-    ),
-  ]
-}
-
-/** A wardrobe, its back at the top: doors along the front, and in each half a rail with clothes on hangers. */
-function wardrobe(width = 1800, depth = 600): Shape[] {
-  const front = depth - 25
-  const doors = Math.max(1, Math.round(width / 450))
-  const rail = front / 2
-  // Hangers lean a little this way and that, as they do on a rail.
-  const lean = [12, -8, 4, -14, 9, -5, 13, -10, 6]
-  const half = (x0: number, x1: number): Shape[] => {
-    const count = Math.floor((x1 - x0 - 140) / 95) + 1
-    const offset = (x1 - x0 - (count - 1) * 95) / 2
-    return [
-      thin(line(x0 + 40, rail, x1 - 40, rail)),
-      ...Array.from({ length: count }, (_, i) => {
-        const x = x0 + offset + i * 95
-        return thin(line(x - lean[i % lean.length], rail - 220, x + lean[i % lean.length], rail + 220))
-      }),
-    ]
-  }
-  return [
-    rect(0, 0, width, depth),
-    line(0, front, width, front),
-    ...Array.from({ length: doors - 1 }, (_, i) => line(((i + 1) * width) / doors, front, ((i + 1) * width) / doors, depth)),
-    line(width / 2, 0, width / 2, front),
-    ...half(0, width / 2),
-    ...half(width / 2, width),
-  ]
-}
-
-/** A desk with a screen, a keyboard and a mouse on it, and its office chair pulled up to it. */
-function desk(width = 1400, depth = 700): Shape[] {
-  const mid = width / 2
-  return [
-    rect(0, 0, width, depth),
-    thin(roundRect(mid - 70, 100, 140, 80, 20)),
-    thin(roundRect(mid - 280, 180, 560, 32, 12)),
-    thin(roundRect(mid - 220, 380, 440, 150, 16)),
-    thin(oval(mid + 310, 455, 30, 48)),
-    ...placed(officeChair(), mid + OFFICE_CHAIR.width / 2, depth + 20 + OFFICE_CHAIR.height, 180),
-  ]
 }
 
 /** A toilet standing on the floor: its cistern against the wall with a dual flush button, the bowl, and the opening of its seat. */
@@ -347,6 +119,7 @@ function showerTray(size = 900): Shape[] {
   return [roundRect(0, 0, size, size, 10), thin(roundRect(40, 40, size - 80, size - 80, 30)), ...slopes, oval(c, c, 50), thin(oval(c, c, 28))]
 }
 
+
 interface Library {
   id: string
   name: string
@@ -362,20 +135,10 @@ interface Library {
 
 /** How tall each component stands on the floor, in mm, by its name: what elevations draw it as. */
 const HEIGHTS: Record<string, number> = {
-  'Double bed': 500,
-  'Single bed': 500,
-  'Sofa, two seats': 850,
-  Armchair: 850,
-  Chair: 850,
-  'Dining table, six chairs': 750,
-  'Desk with chair': 750,
-  Wardrobe: 2100,
   'Coffee table, round': 400,
   Toilet: 800,
   'Shower tray': 100,
   'Toilet, wall-hung': 400,
-  'Base unit': 900,
-  'Washing machine': 850,
 }
 
 const LIBRARIES: Library[] = [
@@ -384,14 +147,20 @@ const LIBRARIES: Library[] = [
     name: 'Furniture',
     description: 'Beds, seating, tables and storage for furnishing a plan.',
     components: [
-      ['Double bed', '1600 × 2000', bed(1600), 'bedroom'],
-      ['Single bed', '900 × 2000', bed(900), 'bedroom'],
-      ['Sofa, two seats', '1600 × 850', sofa(1600, 2), 'living'],
-      ['Armchair', '850 × 850', sofa(850, 1), 'living'],
-      ['Chair', '450 × 480', chair(), 'dining'],
-      ['Dining table, six chairs', '1800 × 900 table', [rect(0, 530, 1800, 900), ...[150, 675, 1200].flatMap((x) => [...placed(chair(), x, 0), ...placed(chair(), x + 450, 1960, 180)])], 'dining'],
-      ['Desk with chair', '1400 × 700', desk(), 'office'],
-      ['Wardrobe', '1800 × 600', wardrobe(), 'bedroom'],
+      // The double bed and the dining table are the adjustable Bed and Table with chairs now, which
+      // ship with the app (furniture.json), at the same sizes: their places stay empty.
+      null,
+      // The single bed is the adjustable Bed made 90 cm wide, and the wardrobe the adjustable one of
+      // the built-in extension, which elevations draw by their fronts: their places stay empty.
+      null,
+      // The sofa, the armchair, the chair and the desk with its chair are adjustable objects of the
+      // built-in extension too, which elevations draw from in front and from the side.
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
       ['Coffee table, round', 'Ø 900', [oval(450, 450, 450), thin(oval(450, 450, 410))], 'living'],
     ],
   },
@@ -419,15 +188,16 @@ const LIBRARIES: Library[] = [
     name: 'Kitchen',
     description: 'Units and appliances on a 600 mm module.',
     components: [
-      ['Base unit', '600 × 600', [rect(0, 0, 600, 600)]],
+      // The base unit and the washing machine are parametric objects now too (in the built-in
+      // extension), which elevations draw by their fronts: the library holds nothing more.
+      null,
       // The sink unit, the hob and the fridge are parametric objects now (in the built-in extension),
       // made wider by their sides: a sink with or without its draining board, a hob of 80 or 90 cm,
       // an American fridge beside the plain one.
       null,
       null,
       null,
-      // Its controls along the back, its door in front of the drum.
-      ['Washing machine', '600 × 600', [roundRect(0, 0, 600, 600, 20), line(0, 110, 600, 110), thin(roundRect(60, 35, 200, 45, 8)), thin(oval(480, 55, 28)), oval(300, 355, 200), thin(oval(300, 355, 150))]],
+      null,
     ],
   },
 ]
@@ -437,15 +207,6 @@ const LIBRARIES: Library[] = [
 const TRANSLATIONS: Record<string, [fr: string, es: string, de: string, zh: string, ja: string, ko: string, tr: string]> = {
   Furniture: ['Mobilier', 'Mobiliario', 'Möbel', '家具', '家具', '가구', 'Mobilya'],
   'Beds, seating, tables and storage for furnishing a plan.': ['Lits, sièges, tables et rangements pour meubler un plan.', 'Camas, asientos, mesas y almacenaje para amueblar un plano.', 'Betten, Sitzmöbel, Tische und Stauraum zum Möblieren eines Plans.', '床、座椅、桌子和储物家具，用于平面布置。', 'ベッド、いす、テーブル、収納で図面に家具を配置します。', '평면도에 가구를 배치하기 위한 침대, 의자, 테이블, 수납가구.', 'Bir planı döşemek için yataklar, oturma elemanları, masalar ve dolaplar.'],
-  'Double bed': ['Lit double', 'Cama doble', 'Doppelbett', '双人床', 'ダブルベッド', '더블 침대', 'Çift kişilik yatak'],
-  'Single bed': ['Lit simple', 'Cama individual', 'Einzelbett', '单人床', 'シングルベッド', '싱글 침대', 'Tek kişilik yatak'],
-  'Sofa, two seats': ['Canapé deux places', 'Sofá de dos plazas', 'Sofa, Zweisitzer', '双人沙发', '2 人掛けソファ', '2인용 소파', 'İki kişilik kanepe'],
-  Armchair: ['Fauteuil', 'Sillón', 'Sessel', '扶手椅', 'アームチェア', '안락의자', 'Koltuk'],
-  Chair: ['Chaise', 'Silla', 'Stuhl', '椅子', 'いす', '의자', 'Sandalye'],
-  'Dining table, six chairs': ['Table à manger, six chaises', 'Mesa de comedor, seis sillas', 'Esstisch, sechs Stühle', '餐桌，六把椅子', 'ダイニングテーブル（いす 6 脚）', '식탁, 의자 6개', 'Yemek masası, altı sandalye'],
-  '1800 × 900 table': ['table 1800 × 900', 'mesa 1800 × 900', 'Tisch 1800 × 900', '1800 × 900 桌', '1800 × 900 テーブル', '1800 × 900 테이블', '1800 × 900 masa'],
-  'Desk with chair': ['Bureau avec chaise', 'Escritorio con silla', 'Schreibtisch mit Stuhl', '书桌和椅子', 'デスクといす', '책상과 의자', 'Sandalyeli çalışma masası'],
-  Wardrobe: ['Armoire', 'Armario', 'Kleiderschrank', '衣柜', 'ワードローブ', '옷장', 'Gardırop'],
   'Coffee table, round': ['Table basse ronde', 'Mesa de centro redonda', 'Couchtisch, rund', '圆形茶几', '丸いローテーブル', '원형 커피 테이블', 'Sehpa, yuvarlak'],
   Bathroom: ['Salle de bain', 'Baño', 'Bad', '卫生间', '浴室・トイレ', '욕실', 'Banyo'],
   'Sanitary fittings.': ['Appareils sanitaires.', 'Aparatos sanitarios.', 'Sanitärobjekte.', '卫生洁具。', '衛生器具。', '위생 기구.', 'Vitrifiye ve armatürler.'],
@@ -454,8 +215,6 @@ const TRANSLATIONS: Record<string, [fr: string, es: string, de: string, zh: stri
   'Toilet, wall-hung': ['WC suspendu', 'Inodoro suspendido', 'Wand-WC', '壁挂式坐便器', '壁掛け便器', '벽걸이 양변기', 'Asma klozet'],
   Kitchen: ['Cuisine', 'Cocina', 'Küche', '厨房', 'キッチン', '주방', 'Mutfak'],
   'Units and appliances on a 600 mm module.': ['Meubles et appareils sur un module de 600 mm.', 'Muebles y electrodomésticos en módulo de 600 mm.', 'Schränke und Geräte im 600-mm-Raster.', '按 600 mm 模数排布的橱柜和电器。', '600 mm モジュールのキャビネットと家電。', '600 mm 모듈의 수납장과 가전.', '600 mm modülde dolaplar ve cihazlar.'],
-  'Base unit': ['Meuble bas', 'Mueble bajo', 'Unterschrank', '地柜', 'ベースキャビネット', '하부장', 'Alt dolap'],
-  'Washing machine': ['Lave-linge', 'Lavadora', 'Waschmaschine', '洗衣机', '洗濯機', '세탁기', 'Çamaşır makinesi'],
 }
 
 /** The translations of the texts one library shows, by language code and then by the English text. */

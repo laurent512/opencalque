@@ -105,9 +105,9 @@ describe('what stands in front of the face', () => {
       north,
     )
 
-  it('is drawn as boxes of its width and height: the bed, and a component that says how tall it is', () => {
+  it('is drawn as its kind draws it seen from in front (the bed: its frame from 100 to 300 high), else as a box of its width and height (a component that says how tall it is)', () => {
     const doc = furnished([{ type: 'instance', id: 'c', component: 'chest', x: 3500, y: 150 }], 900)
-    expect(boxes(drawn(doc))).toEqual(expect.arrayContaining([[1000, 9500, 2600, 10000], [3500, 9100, 4300, 10000]]))
+    expect(boxes(drawn(doc))).toEqual(expect.arrayContaining([[1000, 9700, 2600, 9900], [3500, 9100, 4300, 10000]]))
     expect(elevationItemAt(doc.nodes.vv as NodeOf<'elevation'>, doc, registry, { x: 3900, y: 9500 })).toMatchObject({ role: 'standing', node: { id: 'c' } })
   })
 
@@ -313,12 +313,9 @@ describe('walls in the way of a view', () => {
     expect(grey(drawn(add(doc, { type: 'elevation', id: 'v', ...viewOfFace(face), x: 0, y: 10000, walls: false })))).toEqual([])
   })
 
-  it('are only the walls at the corners in a room of square corners, beside the face, and none over a face seen from on it', () => {
-    // The north face from 100 to 4900; the walls at its corners cut beside it.
-    const corners = boxes(grey(drawn(add(room(), north))))
-      .map((b) => [b[0], b[2]])
-      .sort((p, q) => p[0] - q[0])
-    expect(corners).toEqual([[-100, 100], [4900, 5100]])
+  it('are none in a room of square corners seen from corner to corner, and none over a face seen from on it', () => {
+    // The north face from 100 to 4900: the walls at its corners are past the ends of the line, and not drawn.
+    expect(grey(drawn(add(room(), north)))).toEqual([])
     const doc = slanted()
     const face = wallFaceAt(doc, 'page_1', { x: 3000, y: 400 }, 500)!
     const onIt = add(doc, { type: 'elevation', id: 'v', ...viewOfFace(face, 0), x: face.a.x, y: 10000 })

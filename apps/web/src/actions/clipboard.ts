@@ -1,4 +1,4 @@
-import { buildScene, clipPlacement, copyNodes, isClipboard, paperContents, parseDocument, pasteNodes, pasteOffset, relocateClip, rootOf, withPlacement, type Document, type Node, type Op, type Transform } from '@opencalque/core'
+import { buildScene, clipPlacement, copyNodes, isClipboard, paperContents, parseDocument, pasteNodes, pasteOffset, relocateClip, removeOps, rootOf, withPlacement, type Document, type Node, type Op, type Transform } from '@opencalque/core'
 import { registry } from '../extensions'
 import { placePicture } from '../floorplan'
 import { t } from '../i18n'
@@ -60,7 +60,7 @@ export const cutSelection = () =>
     const ids = withPaperContents(get().selection)
     if (ids.length === 0) return
     const writing = copySelection()
-    apply(ids.map((id): Op => ({ op: 'remove_node', id })))
+    apply(removeOps(get().doc, ids))
     await writing
   })
 

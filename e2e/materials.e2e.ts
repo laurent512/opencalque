@@ -83,7 +83,7 @@ test('gives a floor a material, and places a table of quantities that counts the
 
   await page.getByTitle('Object library: stairs, furniture and every other object').click()
   await librarySection(page, 'Tables of quantities').click()
-  await expect(page.locator('.warehouse-card strong')).toHaveText(['Objects placed', 'Floor areas by material', 'Rooms', 'Walls by material', 'Doors and windows'])
+  await expect(page.locator('.warehouse-card strong')).toHaveText(['Objects placed', 'Floor areas by material', 'Rooms', 'Walls by material', 'Doors and windows', 'What controls what'])
   await page.locator('.warehouse-card', { has: page.locator('strong', { hasText: 'Floor areas by material' }) }).click()
   const box = (await canvas(page).boundingBox())!
   await page.mouse.move(box.x + 650, box.y + 150, { steps: 4 })

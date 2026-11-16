@@ -1,4 +1,4 @@
-import { DEFAULT_MATERIAL, type Document, drawnSolid, type Node, OBJECT_FILL, TEXT_FIELDS, type Pattern } from '@opencalque/core'
+import { CONTROL, DEFAULT_MATERIAL, type Document, drawnSolid, type Node, OBJECT_FILL, portsOf, TEXT_FIELDS, type Pattern } from '@opencalque/core'
 import { msg, t } from '../../i18n'
 import { registry } from '../../extensions'
 
@@ -323,8 +323,22 @@ function viewFields(doc: Document): FieldSpec[] {
   return [line, ...(FIELDS.elevation ?? [])]
 }
 
+/**
+ * A link's fields: which button of a double switch it starts from (a choice only where there are
+ * several), how much it bows, and its line.
+ */
+function linkFields(node: Extract<Node, { type: 'link' }>, doc: Document): FieldSpec[] {
+  const buttons = portsOf(doc.nodes[node.from], registry).filter((port) => port.way === 'out' && port.carries === CONTROL)
+  const button: FieldSpec[] =
+    (node.role ?? 'control') === 'control' && buttons.length > 1
+      ? [{ path: 'fromPort', label: msg('Button'), type: 'string', fallback: buttons[0].key, options: buttons.map((port) => ({ value: port.key, label: port.label })) }]
+      : []
+  // Empty, it bows into the plan by itself (`linkBend`).
+  return [...button, { ...num('bend', msg('Curve')), optional: true }, ...stroke(STROKE)]
+}
+
 export function fieldsOf(node: Node, doc: Document): FieldSpec[] {
-  const fields = node.type === 'room' ? roomFields(node, doc) : node.type === 'elevation' ? viewFields(doc) : (FIELDS[node.type] ?? [])
+  const fields = node.type === 'room' ? roomFields(node, doc) : node.type === 'elevation' ? viewFields(doc) : node.type === 'link' ? linkFields(node, doc) : (FIELDS[node.type] ?? [])
   // A placement looks as its component is drawn: it has no look of its own to set.
   if (node.type === 'instance') return fields
   if (node.type !== 'parametric') return drawnSolid(doc, node.parent) ? fields.map(placedFill) : fields

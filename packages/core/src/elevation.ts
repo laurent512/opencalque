@@ -47,8 +47,8 @@ export const DEFAULT_WALL_HEIGHT = 2500
 const FACE_TURN = 0.5
 /** How far, in mm, the line may be off a face, and still be on it. */
 const ON_FACE = 1
-/** How far past the ends of its line a view looks for the walls its ends run into. */
-const CUT_REACH = 2000
+/** How far above and below the floor the clip at the ends of a view reaches, in mm: past anything drawn. */
+const VIEW_HEIGHT = 1e6
 /** The square what is fixed on a wall is drawn as when its kind gives no front, in mm. */
 const PLATE = 80
 /** What stands in front of the face, lighter than the face and what is on it. */
@@ -111,6 +111,21 @@ export function farSide(node: Sight): [Vec2, Vec2] {
     { x: node.a.x + n.x * reach, y: node.a.y + n.y * reach },
     { x: node.b.x + n.x * reach, y: node.b.y + n.y * reach },
   ]
+}
+
+/**
+ * The patch that gives a view line another depth (undefined: the default). An elevation, whose far
+ * side is on the face of a wall (`elevationWall`), keeps its far side there: its line moves, nearer
+ * the face or further from it. A section keeps its line, where it cuts, and sees nearer or further.
+ */
+export function depthPatch(doc: Document, line: ViewLine, depth: number | undefined): Record<string, unknown> {
+  const next = depth === undefined ? undefined : Math.max(0, depth)
+  const stored = { depth: next ?? null }
+  if (dist(line.a, line.b) < 1e-6 || !elevationWall(doc, line)) return stored
+  const shift = (next ?? DEFAULT_DEPTH) - depthOf(line)
+  const n = viewer(line.a, line.b)
+  const moved = (p: Vec2) => ({ x: tidy(p.x + n.x * shift), y: tidy(p.y + n.y * shift) })
+  return { ...stored, a: moved(line.a), b: moved(line.b) }
 }
 
 /** How short a view may be made by its ends, in mm. */
@@ -578,6 +593,16 @@ function convexHull(points: Vec2[]): Vec2[] {
   return [...half(sorted), ...half([...sorted].reverse())]
 }
 
+/** Seen from in front, the side or behind: as the way an object faces (`facing`) turns from the way to the viewer (`viewer`), by less than 45°, more than 135°, or in between. */
+export function seenFrom(facing: Vec2, viewer: Vec2): 'front' | 'side' | 'back' {
+  const length = Math.hypot(facing.x, facing.y)
+  const c = length < 1e-9 ? 1 : dot(facing, viewer) / length
+  return c >= Math.SQRT1_2 - 1e-9 ? 'front' : c <= -Math.SQRT1_2 + 1e-9 ? 'back' : 'side'
+}
+
+/** What stands on the floor is drawn lighter than the walls: its kind's lines given no weight of their own. */
+const standingWeight = (p: Primitive): Primitive => ((p.kind === 'path' || p.kind === 'ellipse') && p.strokeWidth === undefined ? { ...p, strokeWidth: STANDING_WEIGHT } : p)
+
 /** What an elevation draws, and where in it each object of the plan is. */
 function layout(view: Elevation, doc: Document, registry: Registry, measure: Measure = () => []): { prims: Primitive[]; items: ElevationItem[] } {
   const line = lineOf(doc, view)
@@ -597,6 +622,26 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
     const mirrored = dot(sub(applyTransform({ x: 1, y: 0 }, object), origin), d) < 0
     const s = along(origin)
     return shapes.map((p) => transformPrimitive(p, { x: node.x + s, y: node.y - h, flipX: mirrored }))
+  }
+  /**
+   * What a kind draws of an object as the view sees it, put at `h` above the floor: its front, its
+   * side or its back, as the way it faces (its own +Y, -Y for one that stands out of its wall the
+   * other way) turns from the viewer by less than 45°, by more than 135°, or in between (`seenFrom`).
+   * Null when its kind draws nothing for that, for the caller to draw something else.
+   */
+  const seenAs = (object: NodeOf<'parametric'>, props: Record<string, any>, h: number): Primitive[] | null => {
+    const kind = registry.parametric.get(object.kind)
+    if (!kind) return null
+    const origin = applyTransform({ x: 0, y: 0 }, object)
+    const ownX = sub(applyTransform({ x: 1, y: 0 }, object), origin)
+    const ownY = sub(applyTransform({ x: 0, y: 1 }, object), origin)
+    const facing = mountOf(object, registry)?.out === 'up' ? { x: -ownY.x, y: -ownY.y } : ownY
+    const from = seenFrom(facing, front)
+    const shapes = from === 'front' ? kind.front?.(props) : from === 'side' ? kind.side?.(props) : kind.back?.(props)
+    if (!shapes) return null
+    // A side is drawn along the way it faces, from its own Y = 0; a front or a back along its own X.
+    const mirrored = dot(from === 'side' ? facing : ownX, d) < 0
+    return shapes.map((p) => transformPrimitive(p, { x: node.x + along(origin), y: node.y - h, flipX: mirrored }))
   }
 
   const items: ElevationItem[] = []
@@ -697,21 +742,16 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
   // In a room of square corners, the walls at the corners are outside what it sees.
   // A wall cut through is drawn so where it is cut; only what of it runs on beyond that is in the
   // way (a wall at an angle), not the stretch behind its cut (a window cut through stays open).
-  // Cut along the line, and past its ends as far as the walls its ends run into (the walls at the
-  // corners of a room, for an elevation), only those touching its ends.
-  const reach = CUT_REACH
-  const start = { x: node.a.x - d.x * reach, y: node.a.y - d.y * reach }
-  const cutAt = new Map<string, { taken: [number, number]; crossing: [number, number] }>()
+  // Cut along the line only, between its ends: nothing is drawn past them, so a wall an end stops
+  // against is not drawn, and one it goes into is drawn as far as it goes (the owner's choice).
+  const cutAt = new Map<string, { taken: [number, number] }>()
   for (const wall of node.walls === false ? [] : walls) {
     if (along0.has(wall.id) || wall.bulge) continue
     const course = courseOf(wall)
     const sides = wallSides(wall)
     const outline = [course.offset(0, -sides.left), course.offset(course.length, -sides.left), course.offset(course.length, sides.right), course.offset(0, sides.right)]
-    const crossing = clipLine(start, d, length + 2 * reach, outline)
-    if (!crossing) continue
-    const taken: [number, number] = [crossing[0] - reach, crossing[1] - reach]
-    if (taken[1] < -ON_FACE || taken[0] > length + ON_FACE) continue
-    cutAt.set(wall.id, { taken, crossing })
+    const taken = clipLine(node.a, d, length, outline)
+    if (taken) cutAt.set(wall.id, { taken })
   }
   const area = seenArea(node)
   const inWay: WayPiece[] = []
@@ -728,17 +768,14 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
   }
   // Where each is cut, the full height it stands, on the line; but where the cut goes through a
   // door or a window, only above and below it, a layer of its own for each.
-  let [left, right] = [0, length]
   for (const wall of walls) {
     const found = cutAt.get(wall.id)
     if (!found) continue
-    const { taken, crossing } = found
+    const { taken } = found
     const course = courseOf(wall)
-    left = Math.min(left, taken[0])
-    right = Math.max(right, taken[1])
     const height = heightOf(doc, wall)
     // Where along the wall it is cut, and what opening is there.
-    const middle = { x: start.x + d.x * ((crossing[0] + crossing[1]) / 2), y: start.y + d.y * ((crossing[0] + crossing[1]) / 2) }
+    const middle = { x: node.a.x + d.x * ((taken[0] + taken[1]) / 2), y: node.a.y + d.y * ((taken[0] + taken[1]) / 2) }
     const t = course.project(middle).along
     const through = wallOpenings(doc, wall, registry).find(({ from, to }) => t > from && t < to)
     const kind = through && registry.parametric.get(through.node.kind)
@@ -764,9 +801,13 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
     if (leaf.type !== 'instance' && leaf.type !== 'parametric') continue
     if (leaf.type === 'parametric' && (mountOf(leaf, registry)?.on === 'wall' || openingSpan(leaf, registry))) continue
     let tall: number | undefined
+    let looks: Primitive[] | null = null
     if (leaf.type === 'parametric') {
       const kind = registry.parametric.get(leaf.kind)
-      tall = kind?.height?.(registry.resolveProps(kind, leaf.props))
+      const props = kind ? registry.resolveProps(kind, leaf.props) : {}
+      tall = kind?.height?.(props)
+      // Drawn as its kind draws it from where it is seen, lighter than the walls; else as its box.
+      looks = kind ? seenAs(leaf, props, 0) : null
     } else {
       const component = doc.nodes[leaf.component]
       tall = component?.type === 'component' && component.height ? component.height * (leaf.scale ?? 1) : undefined
@@ -781,7 +822,8 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
     const from = Math.max(0, Math.min(...ss))
     const to = Math.min(length, Math.max(...ss))
     if (to - from < 1) continue
-    layers.push({ from, to, depth: depthOn(seenOf(points)), prims: shown(leaf, 'standing', [{ kind: 'path', points: box(from, to, 0, tall), closed: true, strokeWidth: STANDING_WEIGHT, own: true }]) })
+    const drawn = looks ? looks.map(standingWeight) : [{ kind: 'path', points: box(from, to, 0, tall), closed: true, strokeWidth: STANDING_WEIGHT, own: true } as Primitive]
+    layers.push({ from, to, depth: depthOn(seenOf(points)), prims: shown(leaf, 'standing', drawn) })
   }
 
   // What is made to be fixed on a wall but stands in view on no face the view draws (a wall cabinet
@@ -798,13 +840,26 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
     const ss = points.map(along)
     if (Math.max(...ss) < 0 || Math.min(...ss) > length) continue
     const kind = registry.parametric.get(leaf.kind)
-    const own = kind?.front?.(registry.resolveProps(kind, leaf.props))
+    const props = kind ? registry.resolveProps(kind, leaf.props) : {}
+    const own = kind?.front?.(props)
     const half = PLATE / 2
-    const prims = shown(leaf, 'fixed', placed(leaf, own ?? [{ kind: 'path', points: [{ x: -half, y: -half }, { x: half, y: -half }, { x: half, y: half }, { x: -half, y: half }], closed: true }], heightAboveFloor(leaf, registry) ?? 0))
+    const h = heightAboveFloor(leaf, registry) ?? 0
+    // As it is seen: a wall cabinet on a wall at the side of the view by its side. A kind that draws
+    // nothing from there is drawn by its front still, as before there were sides.
+    const prims = shown(leaf, 'fixed', seenAs(leaf, props, h) ?? placed(leaf, own ?? [{ kind: 'path', points: [{ x: -half, y: -half }, { x: half, y: -half }, { x: half, y: half }, { x: -half, y: half }], closed: true }], h))
     layers.push({ from: Math.max(0, Math.min(...ss)), to: Math.min(length, Math.max(...ss)), depth: depthOn(seenOf(points)), prims })
   }
 
-  const floor: Primitive = { kind: 'path', points: [at(left, 0), at(right, 0)], strokeWidth: FLOOR_WEIGHT }
+  // Nothing is drawn past the ends of the line (the owner's choice): what crosses one, a window or
+  // a cabinet partly in view, is clipped there, and can be taken only where it is drawn.
+  const [x0, x1] = [node.x, node.x + length]
+  const ends = box(0, length, -VIEW_HEIGHT, VIEW_HEIGHT)
+  const clipped = (p: Primitive): Primitive => {
+    const b = primitiveBounds(p)
+    return b && (b.minX < x0 - ON_FACE || b.maxX > x1 + ON_FACE) ? { ...p, clip: [...(p.clip ?? []), ends] } : p
+  }
+  for (const item of items) item.box = { ...item.box, minX: Math.max(item.box.minX, x0), maxX: Math.min(item.box.maxX, x1) }
+  const floor: Primitive = { kind: 'path', points: [at(0, 0), at(length, 0)], strokeWidth: FLOOR_WEIGHT }
   // Where each thing fixed on the face is: a chain along the floor from the start of the view, and
   // its height above the floor beside it. What a person setting them out on site measures.
   const dimensions: Primitive[] = []
@@ -830,7 +885,7 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
   }
   // Its name is not written: as for anything else, it names it in the Structure list. A title under
   // it is a text of its own, written where and as the person wants.
-  return { prims: [...ordered.flatMap((layer) => layer.prims), floor, ...dimensions], items }
+  return { prims: [...ordered.flatMap((layer) => layer.prims.map(clipped)), floor, ...dimensions], items }
 }
 
 /** The object of the plan an elevation shows at `p` (within `margin` of its box), what is fixed on the face before the doors and windows. */

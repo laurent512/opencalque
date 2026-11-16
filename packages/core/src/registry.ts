@@ -34,6 +34,23 @@ export interface Mount {
   measured?: 'centre' | 'bottom'
 }
 
+/**
+ * A connection of an object, which links join (`link` nodes, `networks/`): a switch gives control
+ * ('out'), a light takes it ('in'). What goes through it is an open word, `carries`: 'control' for
+ * now; a cable, cold or hot water, a drain later, without a change of format.
+ */
+export interface Port {
+  key: string
+  label: string
+  carries: string
+  way: 'out' | 'in'
+  /**
+   * Whether the object is left unconnected while nothing is linked here: a light that no switch
+   * controls. A socket's control is not: most sockets are on all the time.
+   */
+  required?: boolean
+}
+
 /** What a parametric object can know about its surroundings when it is drawn. */
 export interface BuildEnv {
   /** Thickness of the wall the object sits in, when it is an opening placed on one. */
@@ -100,11 +117,29 @@ export interface ParametricKind {
    */
   front?(props: Record<string, any>): Primitive[]
   /**
+   * How it looks in an elevation seen from its side (from either end of its own X, the elevation
+   * mirroring it as it must): X along its own Y, from its back (0, against the wall) to its front,
+   * Y as for `front`. An elevation that sees it more from the side than from in front (past 45°)
+   * draws this; left out, the box its plan and its `height` make.
+   */
+  side?(props: Record<string, any>): Primitive[]
+  /**
+   * How it looks in an elevation seen from behind, in the same terms as `front` (X along its own X,
+   * which an elevation from behind mirrors). For what stands free: a table, a chair, an island.
+   * Left out, the box its plan and its `height` make.
+   */
+  back?(props: Record<string, any>): Primitive[]
+  /**
    * How tall it stands on the floor, in mm: furniture, appliances. An elevation draws what stands
    * in front of the face it looks at as a box of its width and this height (or by its `front`).
    * Left out, it is not drawn there.
    */
   height?(props: Record<string, any>): number
+  /**
+   * Its connections, which links join to those of other objects: a switch's control, given out, one
+   * more for a double switch; a light's, taken in. Left out, it has none and nothing links to it.
+   */
+  ports?(props: Record<string, any>): Port[]
 }
 
 /** What a command can see and do. Documents are immutable: changes go through `apply`. */
