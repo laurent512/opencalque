@@ -170,7 +170,8 @@ Not ranked within an area.
 - Curved walls drawn directly with the wall tool, extended and trimmed, and dimensioned along their curve.
 - ~~Schedules of doors, windows and rooms placed on a sheet~~ (done, with floors, walls and materials); a table of each wall or each door one by one, with a mark drawn beside each on the plan.
 - Walls of materials: a command that lays a lining against a face of the selected wall; walls laid against one another moved together.
-- Floors and ceilings in elevations and sections; faces at an angle in sections.
+- Floors and ceilings in elevations and sections, a floor lowered or raised in part of a room included, and columns seen in them (asked for in #17 and #18); faces at an angle in sections.
+- What a view sees drawn fainter the further it is from its line, so that depths read apart, as an option of the view (asked for in #18).
 - Electrical and other networks (water, drainage, heating): what each device is, circuits, links between devices (a switch and the lights it controls, a cable or a pipe), and a view that shows them and what is left unconnected (ARCHITECTURE §10).
 - More stairs: winders, landings of any shape, handrails, break line.
 
