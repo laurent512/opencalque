@@ -1,5 +1,6 @@
 import { searchable } from './search'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { PAPER_SERIES, type PaperSeries } from '@opencalque/core'
 import { Bot, ChevronUp, GripVertical, Keyboard, PanelBottom, PencilRuler, Plus, Puzzle, Settings2, X, type LucideIcon } from 'lucide-react'
 import { allCommands, eventKey, executeById, formatKey, isCustomised, keysOf, RESERVED_KEYS, resetShortcut, setShortcut, useCommands, type Command } from './commands'
 import { resetLayout } from './dock'
@@ -302,6 +303,15 @@ function GeneralSettings() {
             </select>
           </Setting>
         )}
+        <Setting label={t('Sheet sizes')} hint={t('The standard sheets a paper is drawn to: ISO (A4, A3…), or the ARCH and ANSI sizes used in the United States. Any of them can be given to a paper in its properties.')}>
+          <select value={prefs.paperSeries} onChange={(e) => setPrefs({ paperSeries: e.target.value as PaperSeries })}>
+            {PAPER_SERIES.map((series) => (
+              <option key={series} value={series}>
+                {series}
+              </option>
+            ))}
+          </select>
+        </Setting>
         <Setting label={t('Decimal mark')} hint={t('Numbers in the panels are shown with it, and new drawings write theirs with it; a drawing’s own is in File › Drawing settings. Either mark can be typed.')}>
           <select value={prefs.decimal} onChange={(e) => setPrefs({ decimal: e.target.value as typeof prefs.decimal })}>
             <option value="auto">{t('As the language writes it')}</option>

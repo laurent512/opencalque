@@ -7,6 +7,7 @@ import { formatLength, formatNumber, unit } from '../units'
 import type { Overlay, SizeLabel, AngleMark } from './draw'
 import { BOXES, FORMAT_REACH } from './gesture'
 import { layerHere } from '../store'
+import { usePrefs } from '../prefs'
 import { get } from './runtime'
 
 /* What the drawing tools make, and the sizes and labels shown while they make it. */
@@ -38,6 +39,7 @@ export function constrain(tool: Tool, start: Vec2, p: Vec2, free = false): Vec2 
  * The standard formats a paper could take while it is pulled from `start` towards `p`: upright
  * when the pointer is further down than across, lying otherwise, and on whichever side of the
  * first corner the pointer is. The one whose far corner the pointer is close to is `active`.
+ * Only the series of the preferences is offered: ISO, ARCH and ANSI together would crowd the view.
  */
 export function paperFormats(start: Vec2, p: Vec2): NonNullable<Overlay['ghosts']> {
   const { paperScale, view } = get()
@@ -45,7 +47,8 @@ export function paperFormats(start: Vec2, p: Vec2): NonNullable<Overlay['ghosts'
   const landscape = Math.abs(d.x) >= Math.abs(d.y)
   let nearest = FORMAT_REACH / view.zoom
   let active = ''
-  const formats = PAPER_FORMATS.map((format) => {
+  const series = usePrefs.getState().paperSeries
+  const formats = PAPER_FORMATS.filter((format) => format.series === series).map((format) => {
     const size = paperSize(format.name, landscape, paperScale)!
     const b = { x: start.x + (d.x < 0 ? -size.width : size.width), y: start.y + (d.y < 0 ? -size.height : size.height) }
     if (dist(b, p) < nearest) {

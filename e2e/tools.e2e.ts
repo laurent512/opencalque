@@ -176,6 +176,33 @@ test('lays a paper at a standard format by pulling towards its corner', async ({
   expect((await saved(page)).find((n) => n.type === 'paper')).toMatchObject({ x: 0, y: 0, width: 42000, height: 29700, scale: 100 })
 })
 
+test('lays a US sheet once the ARCH sizes are chosen, and gives a paper an ANSI one in its properties', async ({ page }) => {
+  await blank(page)
+  const box = (await canvas(page).boundingBox())!
+  await page.keyboard.press('f')
+  // Only the ARCH sheets are offered once chosen; an ARCH B lying is 18 × 12 inches, 45720 × 30480 at 1:100.
+  await page.getByRole('combobox', { name: 'Sheet sizes' }).selectOption('ARCH')
+  await page.mouse.click(box.x + 320, box.y + 220)
+  const zoom = (0.5 * box.width) / 42000
+  const corner = { x: box.x + 320 + 45720 * zoom, y: box.y + 220 + 30480 * zoom }
+  await page.mouse.move(corner.x, corner.y, { steps: 5 })
+  await page.mouse.click(corner.x, corner.y)
+  const paper = (await saved(page)).find((n) => n.type === 'paper')!
+  expect([paper.width, paper.height, paper.scale].map(Math.round)).toEqual([45720, 30480, 100])
+  expect(JSON.parse((await page.evaluate(() => localStorage.getItem('opencalque.prefs')))!)).toMatchObject({ paperSeries: 'ARCH' })
+
+  // In its properties, the formats are listed by series, and an ANSI D keeps the sheet lying, about its middle.
+  await page.keyboard.press('Escape')
+  await objectRows(page).filter({ hasText: paper.name }).click()
+  const format = page.locator('.field', { has: page.locator('span:text-is("Format")') }).locator('select')
+  expect(await format.locator('optgroup').evaluateAll((groups) => groups.map((group) => group.getAttribute('label')))).toEqual(['ISO', 'ARCH', 'ANSI'])
+  expect(await format.locator('optgroup[label="ARCH"] option').allTextContents()).toEqual(['ARCH A', 'ARCH B', 'ARCH C', 'ARCH D', 'ARCH E1', 'ARCH E'])
+  await expect(format).toHaveValue('ARCH B')
+  await format.selectOption('ANSI D')
+  const resized = (await saved(page)).find((n) => n.type === 'paper')!
+  expect([resized.width, resized.height].map(Math.round)).toEqual([86360, 55880])
+})
+
 test('names the rooms that closed walls make, and splits one with a divider', async ({ page }) => {
   const at = await blank(page)
   await page.keyboard.press('w')

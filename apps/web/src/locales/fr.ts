@@ -351,6 +351,8 @@ export const fr: Record<string, string> = {
   "Direction": "Orientation",
   "Upright": "Portrait",
   "Lying": "Paysage",
+  "Sheet sizes": "Formats de papier",
+  "The standard sheets a paper is drawn to: ISO (A4, A3…), or the ARCH and ANSI sizes used in the United States. Any of them can be given to a paper in its properties.": "Les formats standard auxquels un papier est dessiné : ISO (A4, A3…), ou les formats ARCH et ANSI utilisés aux États-Unis. Chacun peut être donné à un papier dans ses propriétés.",
   "Scale 1:": "Échelle 1:",
   "A paper moves on its own, over the drawing: put it where it frames what to print. Pulling a corner changes its scale, or its size with Alt. Copying or duplicating it takes along what lies on it.": "Un papier se déplace seul, par-dessus le dessin : placez-le là où il cadre ce qu’il faut imprimer. Tirer un coin change son échelle, ou sa taille avec Alt. Le copier ou le dupliquer emporte ce qui se trouve dessus.",
   "Paper tool": "Outil Papier",

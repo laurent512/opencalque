@@ -351,6 +351,8 @@ export const ja: Record<string, string> = {
   "Direction": "向き",
   "Upright": "縦",
   "Lying": "横",
+  "Sheet sizes": "用紙サイズの規格",
+  "The standard sheets a paper is drawn to: ISO (A4, A3…), or the ARCH and ANSI sizes used in the United States. Any of them can be given to a paper in its properties.": "用紙を描くときの標準サイズ：ISO（A4、A3…）、または米国で使われる ARCH と ANSI のサイズ。どのサイズもプロパティで用紙に設定できます。",
   "Scale 1:": "縮尺 1:",
   "A paper moves on its own, over the drawing: put it where it frames what to print. Pulling a corner changes its scale, or its size with Alt. Copying or duplicating it takes along what lies on it.": "用紙は図面の上を単独で動きます。印刷したい範囲を囲む位置に置いてください。角を引くと縮尺が変わり、Alt を押しながら引くとサイズが変わります。コピーや複製では、上にあるものも一緒に複製されます。",
   "Paper tool": "用紙ツール",

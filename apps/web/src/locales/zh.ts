@@ -351,6 +351,8 @@ export const zh: Record<string, string> = {
   "Direction": "方向",
   "Upright": "纵向",
   "Lying": "横向",
+  "Sheet sizes": "图幅标准",
+  "The standard sheets a paper is drawn to: ISO (A4, A3…), or the ARCH and ANSI sizes used in the United States. Any of them can be given to a paper in its properties.": "绘制图纸时采用的标准尺寸：ISO（A4、A3…），或美国使用的 ARCH 和 ANSI 尺寸。任何一种都可以在图纸的属性中设置。",
   "Scale 1:": "比例 1:",
   "A paper moves on its own, over the drawing: put it where it frames what to print. Pulling a corner changes its scale, or its size with Alt. Copying or duplicating it takes along what lies on it.": "图纸单独移动，浮在绘图之上：把它放到要打印的内容上即可。拖动一个角会改变它的比例，按住 Alt 则改变尺寸。复制或创建副本时会带上其上的内容。",
   "Paper tool": "图纸工具",

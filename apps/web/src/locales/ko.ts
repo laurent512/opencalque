@@ -351,6 +351,8 @@ export const ko: Record<string, string> = {
   "Direction": "방향",
   "Upright": "세로",
   "Lying": "가로",
+  "Sheet sizes": "용지 규격",
+  "The standard sheets a paper is drawn to: ISO (A4, A3…), or the ARCH and ANSI sizes used in the United States. Any of them can be given to a paper in its properties.": "용지를 그릴 때 맞춰지는 표준 크기: ISO(A4, A3…) 또는 미국에서 쓰는 ARCH 및 ANSI 크기. 어떤 크기든 속성에서 용지에 지정할 수 있습니다.",
   "Scale 1:": "축척 1:",
   "A paper moves on its own, over the drawing: put it where it frames what to print. Pulling a corner changes its scale, or its size with Alt. Copying or duplicating it takes along what lies on it.": "용지는 도면 위에서 따로 움직입니다. 인쇄할 범위를 감싸는 곳에 놓으세요. 모서리를 끌면 축척이 바뀌고, Alt를 누른 채 끌면 크기가 바뀝니다. 복사하거나 복제하면 그 위에 있는 것도 함께 따라갑니다.",
   "Paper tool": "용지 도구",

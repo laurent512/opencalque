@@ -7,10 +7,12 @@ import {
   hitTest,
   moveOps,
   paintOrder,
+  PAPER_FORMATS,
   paperContents,
   paperFormat,
   paperScaleTo,
   paperSize,
+  roundPaperScale,
   Registry,
   wallEndFollowOps,
   wallFollowOps,
@@ -52,6 +54,33 @@ describe('paper', () => {
     expect(paperFormat({ width: 30000, height: 20000, scale: 100 })).toBeNull()
   })
 
+  it('knows the US sheets, ARCH and ANSI, to the tenth of a millimetre', () => {
+    const inches = (name: string) => {
+      const sheet = PAPER_FORMATS.find((f) => f.name === name)!
+      return [sheet.short / 25.4, sheet.long / 25.4].map((n) => Math.round(n * 1000) / 1000)
+    }
+    expect(['ARCH A', 'ARCH B', 'ARCH C', 'ARCH D', 'ARCH E1', 'ARCH E'].map(inches)).toEqual([[9, 12], [12, 18], [18, 24], [24, 36], [30, 42], [36, 48]])
+    expect(['ANSI A', 'ANSI B', 'ANSI C', 'ANSI D', 'ANSI E'].map(inches)).toEqual([[8.5, 11], [11, 17], [17, 22], [22, 34], [34, 44]])
+    // A 24 × 36 lying at 1/4" = 1'-0" (1:48) is 914.4 × 609.6 mm of paper, 48 times that in the drawing.
+    const archD = paperSize('ARCH D', true, 48)!
+    expect(archD.width).toBeCloseTo(43891.2, 6)
+    expect(archD.height).toBeCloseTo(29260.8, 6)
+    expect(paperFormat({ ...archD, scale: 48 })).toEqual({ name: 'ARCH D', landscape: true })
+    // A sheet drawn to that size by hand, to the millimetre, is still one.
+    expect(paperFormat({ width: 24 * 25.4 * 50 + 10, height: 36 * 25.4 * 50, scale: 50 })).toEqual({ name: 'ARCH D', landscape: false })
+  })
+
+  it('tells every standard sheet from every other, either way up', () => {
+    expect(new Set(PAPER_FORMATS.map((f) => f.name)).size).toBe(PAPER_FORMATS.length)
+    for (const sheet of PAPER_FORMATS)
+      for (const landscape of [false, true]) expect(paperFormat({ ...paperSize(sheet.name, landscape, 100)!, scale: 100 })).toEqual({ name: sheet.name, landscape })
+    // Each series smallest first, as the formats are offered.
+    for (const series of ['ISO', 'ARCH', 'ANSI']) {
+      const longs = PAPER_FORMATS.filter((f) => f.series === series).map((f) => f.long)
+      expect(longs).toEqual([...longs].sort((a, b) => a - b))
+    }
+  })
+
   it('changes scale, not shape, when a corner is pulled', () => {
     const sheet = { x: 0, y: 0, width: 42000, height: 29700, scale: 100 }
     // The bottom right corner pulled out, off the diagonal: the top left stays, the sheet is still an A3.
@@ -62,6 +91,25 @@ describe('paper', () => {
     expect(paperScaleTo(sheet, 0, { x: 21000, y: 14850 })).toEqual({ x: 21000, y: 14850, width: 21000, height: 14850, scale: 50 })
     // Pulled past the opposite corner, it stops at 1:1 rather than turning inside out.
     expect(paperScaleTo(sheet, 2, { x: -5000, y: -5000 }).scale).toBe(1)
+  })
+
+  it('keeps a US sheet at the scales of US plans when a corner is pulled', () => {
+    // An ARCH D lying at 1/4" = 1'-0" (1:48), pulled to about twice its size: 1/8" = 1'-0" (1:96), not 1:95.
+    const archD = { x: 0, y: 0, ...paperSize('ARCH D', true, 48)!, scale: 48 }
+    expect(paperScaleTo(archD, 2, { x: archD.width * 1.98, y: archD.height * 1.98 }).scale).toBe(96)
+    // Pulled in a little: still 1:48, where the round scales would make it 1:50.
+    expect(paperScaleTo(archD, 2, { x: archD.width * 1.03, y: archD.height * 1.03 }).scale).toBe(48)
+    // An ANSI B at the usual 1:100 of a new paper goes to the US scales too, and an engineer's scale is one.
+    const ansiB = { x: 0, y: 0, ...paperSize('ANSI B', false, 100)!, scale: 100 }
+    expect(paperScaleTo(ansiB, 2, { x: ansiB.width * 0.97, y: ansiB.height * 0.97 }).scale).toBe(96)
+    expect(paperScaleTo(ansiB, 2, { x: ansiB.width * 1.2, y: ansiB.height * 1.2 }).scale).toBe(120)
+    // An A3 at 1:48, typed, keeps to them as well; an A3 at a round scale keeps to the round ones.
+    const a3 = { x: 0, y: 0, width: 420 * 48, height: 297 * 48, scale: 48 }
+    expect(paperScaleTo(a3, 2, { x: a3.width * 2, y: a3.height * 2 }).scale).toBe(96)
+    const round = { x: 0, y: 0, width: 42000, height: 29700, scale: 100 }
+    expect(paperScaleTo(round, 2, { x: 42000 * 0.97, y: 29700 * 0.97 }).scale).toBe(95)
+    // Far past the last US scale, the round steps take over.
+    expect(roundPaperScale(10000, true)).toBe(10000)
   })
 
   it('given a scale, covers more or less of the drawing about its middle, whatever its size', () => {

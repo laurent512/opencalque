@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { SecretStore } from './platform'
-import type { DeclarativeExtension } from '@opencalque/core'
+import type { DeclarativeExtension, PaperSeries } from '@opencalque/core'
 import { msg } from './i18n'
 import type { Surroundings } from './surroundings'
 import type { ScrollPref } from './canvas/wheel'
@@ -23,6 +23,8 @@ export interface Prefs {
   fraction: number
   /** The mark between the whole and the decimals of a number: 'auto' writes it as the language does (a comma in French, a point in English). */
   decimal: 'auto' | '.' | ','
+  /** The standard sheets a paper being drawn is offered: ISO (A4, A3…), or the US ARCH or ANSI sizes. Any of them can be chosen for a paper drawn. */
+  paperSeries: PaperSeries
   /** Save a drawing to its file by itself a moment after each change. */
   autosave: boolean
   /** Offer a new drawing, a file or the example in a window when the app starts. */
@@ -102,6 +104,7 @@ const DEFAULTS: Prefs = {
   unit: usualUnit(),
   fraction: 16,
   decimal: 'auto',
+  paperSeries: 'ISO',
   autosave: true,
   showWelcome: true,
   checkUpdates: true,
