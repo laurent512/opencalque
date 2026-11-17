@@ -44,6 +44,17 @@ describe('the preferences kept', () => {
     expect(store.saved()).toEqual({ unit: 'mm' })
   })
 
+  it('offer the ISO sheets until others are chosen, and keep the series chosen', async () => {
+    // Even where the unit is guessed to be feet and inches: the sheets offered are chosen, not guessed.
+    vi.stubGlobal('navigator', { language: 'en-US' })
+    const store = storage()
+    const { setPrefs, usePrefs } = await start()
+    expect(usePrefs.getState().paperSeries).toBe('ISO')
+    setPrefs({ paperSeries: 'ARCH' })
+    expect(store.saved()).toEqual({ paperSeries: 'ARCH' })
+    expect((await start()).usePrefs.getState().paperSeries).toBe('ARCH')
+  })
+
   it('keep the extensions installed and those switched off', async () => {
     const store = storage()
     const { setPrefs } = await start()

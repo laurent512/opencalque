@@ -353,6 +353,8 @@ export const de: Record<string, string> = {
   "Direction": "Ausrichtung",
   "Upright": "Hochformat",
   "Lying": "Querformat",
+  "Sheet sizes": "Papierformate",
+  "The standard sheets a paper is drawn to: ISO (A4, A3…), or the ARCH and ANSI sizes used in the United States. Any of them can be given to a paper in its properties.": "Die Standardformate, auf die ein Papier gezeichnet wird: ISO (A4, A3…) oder die in den USA üblichen ARCH- und ANSI-Formate. Jedes davon kann einem Papier in seinen Eigenschaften gegeben werden.",
   "Scale 1:": "Maßstab 1:",
   "A paper moves on its own, over the drawing: put it where it frames what to print. Pulling a corner changes its scale, or its size with Alt. Copying or duplicating it takes along what lies on it.": "Ein Papier bewegt sich allein über der Zeichnung: Legen Sie es dorthin, wo es umrahmt, was gedruckt werden soll. Das Ziehen an einer Ecke ändert seinen Maßstab, mit Alt seine Größe. Beim Kopieren oder Duplizieren kommt mit, was darauf liegt.",
   "Paper tool": "Papierwerkzeug",

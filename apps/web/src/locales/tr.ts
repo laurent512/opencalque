@@ -353,6 +353,8 @@ export const tr: Record<string, string> = {
   "Direction": "Yön",
   "Upright": "Dikey",
   "Lying": "Yatay",
+  "Sheet sizes": "Pafta boyutları",
+  "The standard sheets a paper is drawn to: ISO (A4, A3…), or the ARCH and ANSI sizes used in the United States. Any of them can be given to a paper in its properties.": "Bir pafta çizilirken uyduğu standart boyutlar: ISO (A4, A3…) ya da ABD'de kullanılan ARCH ve ANSI boyutları. Bunların herhangi biri paftaya özelliklerinden verilebilir.",
   "Scale 1:": "Ölçek 1:",
   "A paper moves on its own, over the drawing: put it where it frames what to print. Pulling a corner changes its scale, or its size with Alt. Copying or duplicating it takes along what lies on it.": "Pafta, çizimin üzerinde kendi başına hareket eder: basılacak olanı çerçeveleyecek yere koyun. Bir köşesini çekmek ölçeğini, Alt ile boyutunu değiştirir. Kopyalamak veya çoğaltmak üzerindekileri de birlikte götürür.",
   "Paper tool": "Pafta aracı",

@@ -1,4 +1,4 @@
-import { paperRescaled, sheetContentOf, sheetContentOps, DEFAULT_PAPER_SCALE, PAPER_FORMATS, paperFormat, paperSize, type Node, type Op, titleBlockHidden, titleBlockValues, type TitleField } from '@opencalque/core'
+import { paperRescaled, sheetContentOf, sheetContentOps, DEFAULT_PAPER_SCALE, PAPER_FORMATS, PAPER_SERIES, paperFormat, paperSize, type Node, type Op, titleBlockHidden, titleBlockValues, type TitleField } from '@opencalque/core'
 import { openComponent } from '../../actions'
 import { msg, t } from '../../i18n'
 import { apply, useStore } from '../../store'
@@ -111,10 +111,14 @@ export function PaperSheet({ node, update }: { node: Extract<Node, { type: 'pape
         <span>{t('Format')}</span>
         <select value={format?.name ?? ''} onChange={(e) => resize(e.target.value, landscape, scale)}>
           {!format && <option value="">{t('Custom')}</option>}
-          {PAPER_FORMATS.map((f) => (
-            <option key={f.name} value={f.name}>
-              {f.name}
-            </option>
+          {PAPER_SERIES.map((series) => (
+            <optgroup key={series} label={series}>
+              {PAPER_FORMATS.filter((f) => f.series === series).map((f) => (
+                <option key={f.name} value={f.name}>
+                  {f.name}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
       </label>
