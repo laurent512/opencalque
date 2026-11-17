@@ -12,6 +12,7 @@ import {
   paperFormat,
   paperScaleTo,
   paperSize,
+  roundPaperScale,
   Registry,
   wallEndFollowOps,
   wallFollowOps,
@@ -90,6 +91,25 @@ describe('paper', () => {
     expect(paperScaleTo(sheet, 0, { x: 21000, y: 14850 })).toEqual({ x: 21000, y: 14850, width: 21000, height: 14850, scale: 50 })
     // Pulled past the opposite corner, it stops at 1:1 rather than turning inside out.
     expect(paperScaleTo(sheet, 2, { x: -5000, y: -5000 }).scale).toBe(1)
+  })
+
+  it('keeps a US sheet at the scales of US plans when a corner is pulled', () => {
+    // An ARCH D lying at 1/4" = 1'-0" (1:48), pulled to about twice its size: 1/8" = 1'-0" (1:96), not 1:95.
+    const archD = { x: 0, y: 0, ...paperSize('ARCH D', true, 48)!, scale: 48 }
+    expect(paperScaleTo(archD, 2, { x: archD.width * 1.98, y: archD.height * 1.98 }).scale).toBe(96)
+    // Pulled in a little: still 1:48, where the round scales would make it 1:50.
+    expect(paperScaleTo(archD, 2, { x: archD.width * 1.03, y: archD.height * 1.03 }).scale).toBe(48)
+    // An ANSI B at the usual 1:100 of a new paper goes to the US scales too, and an engineer's scale is one.
+    const ansiB = { x: 0, y: 0, ...paperSize('ANSI B', false, 100)!, scale: 100 }
+    expect(paperScaleTo(ansiB, 2, { x: ansiB.width * 0.97, y: ansiB.height * 0.97 }).scale).toBe(96)
+    expect(paperScaleTo(ansiB, 2, { x: ansiB.width * 1.2, y: ansiB.height * 1.2 }).scale).toBe(120)
+    // An A3 at 1:48, typed, keeps to them as well; an A3 at a round scale keeps to the round ones.
+    const a3 = { x: 0, y: 0, width: 420 * 48, height: 297 * 48, scale: 48 }
+    expect(paperScaleTo(a3, 2, { x: a3.width * 2, y: a3.height * 2 }).scale).toBe(96)
+    const round = { x: 0, y: 0, width: 42000, height: 29700, scale: 100 }
+    expect(paperScaleTo(round, 2, { x: 42000 * 0.97, y: 29700 * 0.97 }).scale).toBe(95)
+    // Far past the last US scale, the round steps take over.
+    expect(roundPaperScale(10000, true)).toBe(10000)
   })
 
   it('given a scale, covers more or less of the drawing about its middle, whatever its size', () => {

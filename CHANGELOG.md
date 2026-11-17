@@ -8,6 +8,7 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 
 ### New
 - The US sheet sizes: ARCH A to E, with E1 (9 × 12 to 36 × 48 inches, 24 × 36 being ARCH D), and ANSI A to E (Letter, 11 × 17 and up), upright or lying, printed to the PDF at their size in inches. A paper is given one in its properties, where the formats are listed by series, and the Paper tool offers the series chosen beside its scale, or in Preferences › Units; ISO stays what it offers until another is chosen. A paper already drawn at one of these sizes now names it in its title block, where it gave its size in millimetres.
+- Pulling the corner of a US sheet (ARCH or ANSI, or a paper at a US scale such as 1:48) keeps it at the scales of US plans: 1/4" = 1'-0" (1:48) goes to 1/8" (1:96) or 1" = 10' (1:120), where it went to 1:50 or 1:95. A paper at 1:50 or 1:100 keeps to those round scales.
 
 ### Fixed
 - In feet and inches, a length exactly half-way between two fractions of an inch always rounds up: 3 5/8" at the nearest 1/4" reads 3 3/4", where it could read 3 1/2" like 3 3/8" (about one such length in ten rounded down).

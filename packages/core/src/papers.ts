@@ -56,10 +56,33 @@ export function paperFormat(paper: { width: number; height: number; scale?: numb
   return sheet ? { name: sheet.name, landscape } : null
 }
 
-/** The scale nearest to `scale` among those a plan is drawn at: whole numbers up to 1:10, then steps of 5, of 25 and of 100. */
-export function roundPaperScale(scale: number): number {
+/**
+ * The scales of US plans: the architect's, an inch or part of one to the foot (1/4" = 1'-0" is
+ * 1:48, 1/8" is 1:96), and the engineer's, an inch to so many feet (1" = 10' is 1:120).
+ */
+export const US_SCALES = [1, 2, 4, 8, 12, 16, 24, 32, 48, 64, 96, 120, 128, 192, 240, 360, 384, 480, 600, 720, 1200, 2400] as const
+
+/**
+ * The scale nearest to `scale` among those a plan is drawn at: whole numbers up to 1:10, then
+ * steps of 5, of 25 and of 100; or, for a US sheet (`us`), the nearest of `US_SCALES`, which the
+ * steps would turn into others (1:48 into 1:50), up to where they end.
+ */
+export function roundPaperScale(scale: number, us = false): number {
+  const last = US_SCALES[US_SCALES.length - 1]
+  if (us && scale < last * 1.5) {
+    const off = (candidate: number) => Math.abs(Math.log(candidate / Math.max(scale, 1e-9)))
+    return US_SCALES.reduce((best, candidate) => (off(candidate) < off(best) ? candidate : best))
+  }
   const step = scale < 10 ? 1 : scale < 100 ? 5 : scale < 500 ? 25 : 100
   return Math.max(1, Math.round(scale / step) * step)
+}
+
+/** Whether a paper is a US one, whose scale is rounded among `US_SCALES`: an ARCH or ANSI sheet, or one at a US scale that is not also a round one (1:48, not 1:100). */
+function usSheet(paper: { width: number; height: number; scale?: number }): boolean {
+  const format = paperFormat(paper)
+  if (format && PAPER_FORMATS.find((f) => f.name === format.name)?.series !== 'ISO') return true
+  const scale = paper.scale ?? DEFAULT_PAPER_SCALE
+  return (US_SCALES as readonly number[]).includes(scale) && roundPaperScale(scale) !== scale
 }
 
 /**
@@ -78,7 +101,7 @@ export function paperScaleTo(paper: { x: number; y: number; width: number; heigh
   const d = { x: corners[index].x - fixed.x, y: corners[index].y - fixed.y }
   const was = paper.scale ?? DEFAULT_PAPER_SCALE
   const along = ((p.x - fixed.x) * d.x + (p.y - fixed.y) * d.y) / (d.x * d.x + d.y * d.y || 1)
-  const scale = roundPaperScale(was * Math.max(along, 0))
+  const scale = roundPaperScale(was * Math.max(along, 0), usSheet(paper))
   const k = scale / was
   return { x: Math.min(fixed.x, fixed.x + d.x * k), y: Math.min(fixed.y, fixed.y + d.y * k), width: paper.width * k, height: paper.height * k, scale }
 }
