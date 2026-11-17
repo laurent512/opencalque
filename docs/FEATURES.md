@@ -56,7 +56,7 @@ Last updated: 2026-11-11 (after 1.8.0).
 - **Snapping** to the points of objects, the centre of a rectangle, a circle, an arc or a closed shape, the middle of a line, the crossing of two lines, the foot of a perpendicular, the line itself (wall faces and their corners included), a line carried on past an end the pointer rested on (extension tracking, dashed), and to the grid; angle constraint, drag handles, exact values in the properties panel.
 - **Holding a direction**: while drawing or dragging, an arrow key keeps the wall, line, object or point upright or level, and pointing at a point elsewhere ends it level with that point.
 - **Splitting** a wall, a line or a polyline with the Split tool, which shows the length on either side of the cut, so a part can be deleted or changed on its own.
-- **Smart guides**: what is moved lines up with the sides and middles of other objects and keeps equal gaps with its neighbours, with lines and gap sizes shown while moving.
+- **Smart guides**: what is moved goes against the facing side of a neighbour in its row first, then lines up with the sides and middles of other objects (a side with a middle only between things of about the same size), and keeps equal gaps with its neighbours where nothing lines up, with lines and gap sizes shown while moving.
 
 ### Organising a drawing
 - Pages, which can be duplicated with their contents and reordered by dragging, and layers with colour, visibility and lock. **On every sheet**: a title, a logo or a north arrow drawn once, in millimetres of paper, shows on every paper at its own scale, in the corner it was drawn nearest to, with fields (`{sheet}`, `{scale}`, `{page}`, `{project}`…) filled in for each sheet.

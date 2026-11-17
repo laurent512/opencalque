@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, net, safeStorage, shell, type WebContents } from 'electron'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { cpSync, existsSync, readFileSync } from 'node:fs'
-import { copyFile, mkdir, readdir, readFile, realpath, rename, unlink, writeFile } from 'node:fs/promises'
+import { appendFile, copyFile, mkdir, readdir, readFile, realpath, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, resolve } from 'node:path'
 import { agentCommand, startBridge, type Bridge } from './bridge'
 import { checkForUpdate, installOnClose, installUpdate, keptOpen, listen } from './updates'
@@ -414,6 +414,14 @@ app.whenReady().then(() => {
     shell.openPath(backups)
   })
 
+  // Logs for development: what moved objects lined up with. Started over past a megabyte; never in the installed app.
+  ipcMain.on('log:write', async (_, name: unknown, text: unknown) => {
+    if (app.isPackaged || name !== 'snap' || typeof text !== 'string') return
+    const file = join(app.getPath('logs'), `${name}.log`)
+    await mkdir(dirname(file), { recursive: true })
+    const size = await stat(file).then((info) => info.size, () => 0)
+    await (size > 1_000_000 ? writeFile(file, text) : appendFile(file, text))
+  })
   ipcMain.on('doc:dirty', (_, value: boolean) => {
     dirty = value
   })

@@ -235,6 +235,8 @@ export function snapTo(scene: SceneItem[], at: Vec2, reach: number, options: Sna
 export interface Alignable {
   bounds: Bounds
   points: Vec2[]
+  /** The node it stands for, to say what was lined up with. */
+  id?: string
 }
 
 /** A thing with more points than this lines up by its box alone: matching them all would find a fit almost anywhere. */
@@ -263,7 +265,7 @@ export function alignables(scene: SceneItem[], doc: Document, registry: Registry
   const others = scene.flatMap((item): Alignable[] => {
     if (ids.has(item.id) || !counts(item)) return []
     const held = item.node.type === 'group' ? heldItems(doc, item.id, registry).filter((one) => !moved(one.node, item.id) && counts(one)) : []
-    return [item, ...(held.length > ALIGN_HELD ? [] : held)].map((one) => ({ bounds: one.bounds!, points: points([one]) }))
+    return [item, ...(held.length > ALIGN_HELD ? [] : held)].map((one) => ({ bounds: one.bounds!, points: points([one]), id: one.id }))
   })
   const mine = scene.filter((item) => ids.has(item.id))
   const bounds = sceneBounds(mine)
@@ -276,6 +278,28 @@ export interface MoveSnap {
   /** Whether the movement was changed along X, and along Y. Where it was not, the caller is free to round it to the grid. */
   x: boolean
   y: boolean
+  /** What it was lined up by along each axis, where it was. */
+  why: { x: AlignCandidate | null; y: AlignCandidate | null }
+}
+
+/** A side of a box (left and right along X, top and bottom along Y), its middle, or one of the thing's points. */
+export type MarkName = 'left' | 'right' | 'top' | 'bottom' | 'middle' | 'point'
+
+/**
+ * One way what is moved could be lined up along an axis: against a neighbour in its row
+ * (`touch`), a side, middle or point on another's (`line`), or at equal gaps from its neighbours
+ * (`space`, for which `target` and `other` say nothing).
+ */
+export interface AlignCandidate {
+  rule: 'touch' | 'line' | 'space'
+  axis: 'x' | 'y'
+  /** What to add to the movement along the axis. */
+  change: number
+  /** Which part of what is moved, and which of the other thing, it brings together. */
+  own: MarkName
+  target: MarkName
+  /** The other thing, as an index into the list it was found in; -1 for equal gaps. */
+  other: number
 }
 
 export interface MoveGuides {
@@ -301,16 +325,39 @@ interface Mark {
   v: number
   from: number
   to: number
-  box: boolean
+  /** A side of the box, its middle, or one of the thing's points. */
+  at: 'side' | 'middle' | 'point'
+  /** How long the thing is along the axis. */
+  size: number
+  name: MarkName
 }
+
+const sideNames = (axis: Axis): [MarkName, MarkName] => (axis === 'x' ? ['left', 'right'] : ['top', 'bottom'])
 
 function marks(thing: Alignable, axis: Axis, d: Vec2 = { x: 0, y: 0 }): Mark[] {
   const [lo, hi] = span(thing.bounds, axis)
   const [from, to] = span(thing.bounds, across(axis)).map((v) => v + d[across(axis)])
+  const size = hi - lo
+  const [low, high] = sideNames(axis)
   return [
-    ...[lo, (lo + hi) / 2, hi].map((v) => ({ v: v + d[axis], from, to, box: true })),
-    ...thing.points.map((p) => ({ v: p[axis] + d[axis], from: p[across(axis)] + d[across(axis)], to: p[across(axis)] + d[across(axis)], box: false })),
+    ...([[lo, 'side', low], [(lo + hi) / 2, 'middle', 'middle'], [hi, 'side', high]] as const).map(([v, at, name]) => ({ v: v + d[axis], from, to, at, size, name })),
+    ...thing.points.map((p) => ({ v: p[axis] + d[axis], from: p[across(axis)] + d[across(axis)], to: p[across(axis)] + d[across(axis)], at: 'point' as const, size, name: 'point' as const })),
   ]
+}
+
+/** How much larger than the other one of two things may be for the side of one to line up with the middle of the other. */
+const SIDE_TO_MIDDLE = 2
+
+/**
+ * Whether two marks may be lined up: points with points, sides with sides, middles with middles,
+ * and a side with a middle only between things of about the same size. The middle of a long wall
+ * is no place for the side of a unit set against it.
+ */
+function matches(mark: Mark, target: Mark): boolean {
+  if ((mark.at === 'point') !== (target.at === 'point')) return false
+  if (mark.at === 'point' || mark.at === target.at) return true
+  const [small, large] = [Math.min(mark.size, target.size), Math.max(mark.size, target.size)]
+  return large <= SIDE_TO_MIDDLE * small
 }
 
 /** The things beside what is moved along an axis: those it would pass in front of if it slid that way. */
@@ -352,32 +399,49 @@ function spacings(moving: Alignable, others: Alignable[], axis: Axis, d: Vec2, r
 }
 
 /**
- * How a movement by `d` should be adjusted so that what is moved lines up with what is around
- * it. Along each axis on its own, the sides and the middle of its box are tried against those of
- * every other thing, and its points against their points; so are the places where it would stand
- * at equal gaps from its neighbours. Whatever is within `reach` and nearest wins, lining up before spacing out.
+ * Every way what is moved by `d` could be lined up along `axis`, however far: against each
+ * neighbour in its row, side to facing side; each side, middle and point of its own on those of
+ * every other thing that `matches` allows; and the places at equal gaps from its neighbours (found
+ * within `reach`). `alignMove` picks among them; a log of moves lists the nearest of each kind.
  */
-export function alignMove(moving: Alignable, others: Alignable[], d: Vec2, reach: number): MoveSnap {
-  const fix = (axis: Axis): number | null => {
-    let best: number | null = null
-    const own = marks(moving, axis, d)
-    for (const other of others) {
-      for (const target of marks(other, axis)) {
-        for (const mark of own) {
-          const change = target.v - mark.v
-          if (mark.box === target.box && Math.abs(change) <= reach && (best === null || Math.abs(change) < Math.abs(best))) best = change
-        }
-      }
+export function alignCandidates(moving: Alignable, others: Alignable[], d: Vec2, axis: 'x' | 'y', reach: number): AlignCandidate[] {
+  const found: AlignCandidate[] = []
+  const [lo, hi] = span(moving.bounds, axis).map((v) => v + d[axis])
+  const [from, to] = span(moving.bounds, across(axis)).map((v) => v + d[across(axis)])
+  const [low, high] = sideNames(axis)
+  const own = marks(moving, axis, d)
+  others.forEach((other, i) => {
+    const [olo, ohi] = span(other.bounds, axis)
+    const [ofrom, oto] = span(other.bounds, across(axis))
+    if (ofrom < to && oto > from) {
+      found.push({ rule: 'touch', axis, change: ohi - lo, own: low, target: high, other: i }, { rule: 'touch', axis, change: olo - hi, own: high, target: low, other: i })
     }
-    const lo = span(moving.bounds, axis)[0] + d[axis]
-    for (const spacing of spacings(moving, others, axis, d, reach)) {
-      const change = spacing.lo - lo
-      if (Math.abs(change) <= reach && (best === null || Math.abs(change) < Math.abs(best) - 1e-9)) best = change
+    for (const target of marks(other, axis)) for (const mark of own) if (matches(mark, target)) found.push({ rule: 'line', axis, change: target.v - mark.v, own: mark.name, target: target.name, other: i })
+  })
+  for (const spacing of spacings(moving, others, axis, d, reach)) found.push({ rule: 'space', axis, change: spacing.lo - lo, own: low, target: low, other: -1 })
+  return found
+}
+
+/**
+ * How a movement by `d` should be adjusted so that what is moved lines up with what is around
+ * it, along each axis on its own. First, within `touchReach`, it goes against a neighbour in its
+ * row, side to facing side, as units of a kitchen are set side by side. Failing that, within
+ * `reach`, the sides and the middle of its box are tried against those of every other thing
+ * (`matches`), and its points against their points. Only where nothing lines up is it put at equal
+ * gaps from its neighbours. At each of these steps the nearest wins.
+ */
+export function alignMove(moving: Alignable, others: Alignable[], d: Vec2, reach: number, touchReach = 2 * reach): MoveSnap {
+  const fix = (axis: Axis): AlignCandidate | null => {
+    const all = alignCandidates(moving, others, d, axis, reach)
+    const nearest = (rule: AlignCandidate['rule'], within: number) => {
+      let best: AlignCandidate | null = null
+      for (const one of all) if (one.rule === rule && Math.abs(one.change) <= within && (best === null || Math.abs(one.change) < Math.abs(best.change))) best = one
+      return best
     }
-    return best
+    return nearest('touch', touchReach) ?? nearest('line', reach) ?? nearest('space', reach)
   }
   const [x, y] = [fix('x'), fix('y')]
-  return { d: { x: d.x + (x ?? 0), y: d.y + (y ?? 0) }, x: x !== null, y: y !== null }
+  return { d: { x: d.x + (x?.change ?? 0), y: d.y + (y?.change ?? 0) }, x: x !== null, y: y !== null, why: { x, y } }
 }
 
 /** As close as two values need to be to count as lined up, in mm. */
@@ -398,7 +462,7 @@ export function moveGuides(moving: Alignable, others: Alignable[], d: Vec2): Mov
     for (const other of others) {
       for (const target of marks(other, axis)) {
         for (const mark of own) {
-          if (mark.box !== target.box || Math.abs(target.v - mark.v) > LINED_UP) continue
+          if (!matches(mark, target) || Math.abs(target.v - mark.v) > LINED_UP) continue
           const key = Math.round(target.v / LINED_UP)
           const seen = found.get(key)
           found.set(key, [Math.min(seen?.[0] ?? Infinity, mark.from, target.from), Math.max(seen?.[1] ?? -Infinity, mark.to, target.to)])

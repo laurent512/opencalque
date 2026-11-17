@@ -4,6 +4,15 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 1.10.2 — 2026-11-17
+
+### Improved
+- Moving an object, it goes against the side of a neighbour in its row from twice as far as it lines up with anything else, before any other lining up, so a kitchen unit, a sink or a piece of furniture is set flush against the one beside it rather than lined up with something nearby. Its side no longer lines up with the middle of something more than twice its size, such as a long wall; and it is put at equal gaps from its neighbours only where nothing else lines up.
+
+### Fixed
+- A kitchen unit, a sink, a hob, a washbasin or anything else that stands against a wall, moved near a wall, no longer jumps half its width to put its middle under the pointer: it stays where it was taken. It goes against the wall as soon as its side comes near it, turned round to stand with its back on the wall if it faced the wrong way, wherever it was taken; before, one turned the wrong way had to be pushed through the wall. Along the wall, it goes flush against the unit beside it and into a corner against a pillar or the wall across, which it no longer goes through when pushed further, on walls a hair off level too, as traced ones often are, and follows the pointer smoothly in between, pulled by nothing else, where before it lined up with nothing.
+- With Snap to grid off, moving an object, on the plan or in an elevation, and dragging its handles follow the pointer, rather than jumping by steps of the grid (50 mm at some zooms).
+
 ## 1.10.1 — 2026-11-16
 
 ### Fixed

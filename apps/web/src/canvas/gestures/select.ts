@@ -19,15 +19,15 @@ import {
   perp,
   keepViewsOps,
   moveGuides,
+  type MoveSnap,
   moveOps,
-  mountOf,
   norm,
   openingSpan,
   paperScaleTo,
   resizeFrame,
   resizePatch,
   rotate,
-  snapMountToWall,
+  moveAgainstWall,
   snapOpeningToWall,
   snapTo,
   sub,
@@ -51,9 +51,10 @@ import { commit, preview, select, selectCorner, useStore, cancel } from '../../s
 import { gridStep } from '../../view'
 import { formatLength, formatNumber } from '../../units'
 import { heldNearest, lineEnd, snap, squareFrom, type Target } from '../aim'
-import { ALIGN_REACH, MOUNT_REACH, SNAP_REACH, type GestureOf } from '../gesture'
+import { ALIGN_REACH, MOUNT_REACH, SNAP_REACH, TOUCH_REACH, type GestureOf } from '../gesture'
 import { clearanceAt, cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, lineUp, titleAt, viewEdgeAt, viewLineHandleAt } from '../picking'
 import { get, type Canvas, type Move, type Press, type Release } from '../runtime'
+import { logMoveEnd, logMoveStart, logMoveStep } from '../snapLog'
 import { faceAcross, faceOf, paperLabel, resizeCursor, round, sizes, thicknessLabel, thicknessStep, wallNormal } from '../shapes'
 
 /*
@@ -181,12 +182,16 @@ export const selectDown: Press = (c, e, at, world) => {
 }
 
 export const pressMove: Move<'press'> = (c, g, _e, at) => {
-  if (dist(at, g.at) > 3) c.gesture = { kind: 'move', start: g.start, nodes: g.nodes, ...lineUp(c, g.nodes) }
+  if (dist(at, g.at) <= 3) return
+  const lined = lineUp(c, g.nodes)
+  c.gesture = { kind: 'move', start: g.start, nodes: g.nodes, ...lined }
+  const { view, base, doc } = get()
+  logMoveStart(base ?? doc, g.nodes, lined.moving, lined.others, view.zoom, ALIGN_REACH / view.zoom, TOUCH_REACH / view.zoom)
 }
 
 export const moveMove: Move<'move'> = (_c, g, e, _at, world, out) => {
   const s = get()
-  const step = e.altKey ? 0.001 : gridStep(s.view.zoom)
+  const step = e.altKey || !usePrefs.getState().snapToGrid ? 0.001 : gridStep(s.view.zoom)
   let d = { x: Math.round((world.x - g.start.x) / step) * step, y: Math.round((world.y - g.start.y) / step) * step }
   // A single door or window slides along walls instead of moving freely.
   const only = g.nodes.length === 1 ? g.nodes[0] : null
@@ -195,23 +200,32 @@ export const moveMove: Move<'move'> = (_c, g, e, _at, world, out) => {
     const target = { x: (span[0].x + span[1].x) / 2 + world.x - g.start.x, y: (span[0].y + span[1].y) / 2 + world.y - g.start.y }
     const onWall = snapOpeningToWall(s.base ?? s.doc, s.scope, registry, only, target, 10 / s.view.zoom, step, only.rotation ?? 0)
     if (onWall) {
+      logMoveStep(s.base ?? s.doc, g.others, sub(world, g.start), { x: (onWall.x ?? only.x) - only.x, y: (onWall.y ?? only.y) - only.y }, 'a door or window, put on the nearest wall')
       out.previewed = preview([{ op: 'update_node', id: only.id, patch: onWall }])
       return
     }
   }
-  // Something fixed on walls slides along their faces, and goes over to the face the pointer is beside.
-  if (only?.type === 'parametric' && !e.altKey && mountOf(only, registry)) {
-    const target = { x: only.x + world.x - g.start.x, y: only.y + world.y - g.start.y }
-    const onWall = snapMountToWall(s.base ?? s.doc, s.scope, registry, only, target, MOUNT_REACH / s.view.zoom, step)
-    if (onWall) {
-      out.previewed = preview([{ op: 'update_node', id: only.id, patch: onWall }])
+  // Something fixed on walls, or standing against them, goes against the wall its box comes near,
+  // whichever way it faced and wherever it was taken, and along the wall against the units and the
+  // walls beside it, nothing else (`moveAgainstWall`).
+  if (only?.type === 'parametric' && !e.altKey && g.moving) {
+    const lining = usePrefs.getState().snapToObjects
+    const before = s.base ?? s.doc
+    const against = moveAgainstWall(before, s.scope, registry, only, g.moving, lining ? g.others : [], sub(world, g.start), MOUNT_REACH / s.view.zoom, TOUCH_REACH / s.view.zoom, step)
+    if (against) {
+      const { patch, why, row } = against
+      const moved = { x: patch.x - only.x, y: patch.y - only.y }
+      const how = `against the face of the nearest wall${lining ? `, along it against what is beside it (${row.length} things in sight: units and walls)` : ', snapping to objects is off'}`
+      logMoveStep(before, row, sub(world, g.start), moved, how, { d: moved, x: false, y: false, why: { x: why?.axis === 'x' ? why : null, y: why?.axis === 'y' ? why : null } })
+      out.previewed = preview([{ op: 'update_node', id: only.id, patch }])
       return
     }
   }
   // What is moved lines up with what is around it, and keeps equal gaps with its neighbours;
   // along an axis where nothing is near enough for that, it goes by the grid.
+  let fit: MoveSnap | undefined
   if (g.moving && !e.altKey && usePrefs.getState().snapToObjects) {
-    const fit = alignMove(g.moving, g.others, sub(world, g.start), ALIGN_REACH / s.view.zoom)
+    fit = alignMove(g.moving, g.others, sub(world, g.start), ALIGN_REACH / s.view.zoom, TOUCH_REACH / s.view.zoom)
     d = { x: fit.x ? round(fit.d.x) : d.x, y: fit.y ? round(fit.d.y) : d.y }
   }
   // Held level or upright by an arrow key, it only moves that way; lining up still decides how far.
@@ -221,6 +235,8 @@ export const moveMove: Move<'move'> = (_c, g, e, _at, world, out) => {
   }
   if (g.moving && !e.altKey && usePrefs.getState().snapToObjects) out.smart = moveGuides(g.moving, g.others, d)
   const before = s.base ?? s.doc
+  const how = e.altKey ? 'Alt held: no lining up' : !usePrefs.getState().snapToObjects ? 'snapping to objects is off' : !g.moving ? 'nothing to line up by' : `lined up${step >= 1 ? `, else by grid steps of ${step} mm` : ', else free'}`
+  logMoveStep(before, g.others, sub(world, g.start), d, s.axisLock ? `${how}; held along ${s.axisLock} by an arrow key` : how, fit)
   // Walls joined to the ones being moved stretch to stay joined, and openings follow their wall. Alt moves only what was picked.
   out.previewed = preview([...g.nodes.flatMap((n) => moveOps(before, n, d)), ...(e.altKey ? [] : wallFollowOps(before, g.nodes, d, registry))])
 }
@@ -258,7 +274,7 @@ export const handleMove: Move<'handle'> = (c, g, e, _at, world, out) => {
   // and may be brought level with something pointed at elsewhere.
   const was = s.axisLock ? kindOf(g.node).handles?.(g.node, registry, s.base ?? s.doc)[g.index] : undefined
   // Taken by an arrow away from its point, it goes by the grid (Alt: exactly where the pointer says).
-  const step = e.altKey ? 0 : gridStep(s.view.zoom)
+  const step = e.altKey || !usePrefs.getState().snapToGrid ? 0 : gridStep(s.view.zoom)
   const grabbed = g.grab && sub(world, g.grab)
   const target: Target = grabbed
     ? { p: step > 0 ? { x: Math.round(grabbed.x / step) * step, y: Math.round(grabbed.y / step) * step } : grabbed, marker: null }
@@ -439,7 +455,7 @@ function elevationAt(c: Canvas, world: Vec2) {
  */
 export const elevatedMove: Move<'elevated'> = (_c, g, e, _at, world, out) => {
   const s = get()
-  const step = e.altKey ? 0.001 : gridStep(s.view.zoom)
+  const step = e.altKey || !usePrefs.getState().snapToGrid ? 0.001 : gridStep(s.view.zoom)
   let ds = Math.round((world.x - g.start.x) / step) * step
   let dh = g.raises ? Math.round((g.start.y - world.y) / step) * step : 0
   if (e.shiftKey) {
@@ -510,6 +526,7 @@ export const pressUp: Release<'press'> = (c, g) => {
 /** Ends any drag of the select tool: what it previewed becomes one step to undo. */
 export function dragUp(c: Canvas): void {
   const s = get()
+  if (c.gesture.kind === 'move') logMoveEnd(s.base ?? s.doc, c.gesture.moving, c.gesture.others)
   // The box has changed under the pointer; the next movement works out what is there now.
   c.setGripCursor(null)
   if (s.axisLock) useStore.setState({ axisLock: null })

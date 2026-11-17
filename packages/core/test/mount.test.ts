@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdit, applyOps, createDocument, declarativeExtension, heightAboveFloor, mountAt, mountedOn, Registry, snapMountToWall, splitWallOps, wallMounted, type Document, type NodeOf, type Op } from '../src'
+import { architecture } from '../../ext-architecture/src'
+import { alignables, applyEdit, applyOps, buildScene, createDocument, declarativeExtension, heightAboveFloor, mountAt, mountedOn, moveAgainstWall, Registry, snapMountToWall, splitWallOps, wallMounted, type Document, type NodeOf, type Op } from '../src'
 
 /*
  * Objects fixed on the face of a wall (walls/mount.ts): a socket, whose flat back is its own X axis
@@ -256,5 +257,72 @@ describe('objects fixed on walls, said as data', () => {
     expect(kind.params[1].unit).toBe('angle')
     expect(kind.front!({ size: 100, turn: 0 })).toEqual([{ kind: 'path', points: [{ x: -50, y: -50 }, { x: 50, y: -50 }, { x: 50, y: 50 }, { x: -50, y: 50 }], closed: true }])
     expect(() => declarativeExtension({ ...json, objects: [{ ...json.objects[0], front: [{ path: [['width', 0], [0, 0]] }] }] })).toThrow(/front.plate/)
+  })
+})
+
+/*
+ * Moving what stands against walls (`moveAgainstWall`), as kitchen units are moved: a wall along
+ * y = 0, its face below it at y = 100, and units 600 wide and deep standing against it, turned 0
+ * (their back, their own Y = 0, on that face). A pillar, a wall 400 thick across the face from
+ * x = 800 to 1200, makes a corner on its left. Reaches as at a zoom of 0.25 px/mm: 150 to go against
+ * the wall, 50 to go against what is beside it.
+ */
+describe('moving what stands against walls', () => {
+  const arch = new Registry().use(architecture)
+  const unit = (id: string, x: number, y: number, rotation = 0) => ({ type: 'parametric', id, kind: 'arch.baseunit', props: {}, x, y, rotation })
+  const PILLAR = { type: 'wall', id: 'pillar', a: { x: 1000, y: 100 }, b: { x: 1000, y: 900 }, thickness: 400 }
+  const kitchen = (...nodes: Record<string, unknown>[]) => applyOps(createDocument('Plan'), [PILLAR, WALL, ...nodes].map((node): Op => ({ op: 'add_node', node: { parent: 'page_1', ...node } as never })))
+  /** Where unit `id` goes, moved by `d` from where it is. */
+  const moved = (doc: Document, id: string, d: { x: number; y: number }) => {
+    const { moving, others } = alignables(buildScene(doc, 'page_1', arch), doc, arch, new Set([id]))
+    const found = moveAgainstWall(doc, 'page_1', arch, doc.nodes[id] as NodeOf<'parametric'>, moving!, others, d, 150, 50, 0)
+    return found && { ...found.patch, x: Math.round(found.patch.x * 10) / 10, y: Math.round(found.patch.y * 10) / 10, against: found.why && found.why.target + ' of ' + others.length }
+  }
+
+  it('goes against the wall when its box comes near, turned to it whichever way it faced', () => {
+    // Turned the wrong way, its doors to the wall, its box from y = 300 to 900: 200 off the face, out of reach.
+    const doc = kitchen(unit('u', 2600, 900, 180))
+    expect(moved(doc, 'u', { x: 0, y: 0 })).toBeNull()
+    // Its box's top 50 from the face: it turns round, its back on the face, where it was along the wall.
+    expect(moved(doc, 'u', { x: 0, y: -150 })).toMatchObject({ x: 2000, y: 100, rotation: 0 })
+  })
+
+  it('goes where its box was moved, wherever it was taken: along the wall it follows the pointer exactly', () => {
+    const doc = kitchen(unit('u', 2000, 100))
+    for (let dx = 0; dx <= 300; dx += 10) expect(moved(doc, 'u', { x: dx, y: 37 })).toMatchObject({ x: 2000 + dx, y: 100, rotation: 0, against: null })
+  })
+
+  it('stays on the face on the side of its middle, however far it is pushed into the wall', () => {
+    const doc = kitchen(unit('u', 2000, 100))
+    expect(moved(doc, 'u', { x: 0, y: -250 })).toMatchObject({ x: 2000, y: 100, rotation: 0 })
+    // Its middle past the wall's: the face on the other side, turned to stand out of it.
+    expect(moved(doc, 'u', { x: 0, y: -700 })).toMatchObject({ x: 2600, y: -100, rotation: 180 })
+  })
+
+  it('goes against the unit beside it, and against a pillar standing across the wall', () => {
+    const doc = kitchen(unit('u', 2000, 100), unit('next', 3000, 100))
+    // Its right side 20 short of the next unit's left: against it.
+    expect(moved(doc, 'u', { x: 380, y: 0 })).toMatchObject({ x: 2400, y: 100 })
+    // Its left side 20 short of the pillar's face at x = 1200: against it, in the corner.
+    expect(moved(doc, 'u', { x: -780, y: 0 })).toMatchObject({ x: 1200, y: 100, rotation: 0 })
+    // 80 short of the pillar, out of reach: where it was moved to.
+    expect(moved(doc, 'u', { x: -720, y: 0 })).toMatchObject({ x: 1280, y: 100 })
+    // Pushed 150 into the pillar, it stops against it, as a wardrobe does against the wall at the end of a room.
+    expect(moved(doc, 'u', { x: -950, y: 0 })).toMatchObject({ x: 1200, y: 100, rotation: 0 })
+  })
+
+  it('goes against what is beside it on a wall a hair off level, as traced walls are, and stays on its face', () => {
+    // The wall 0.00003° off level: 5 µm over 9 m, as one of a traced plan was; the units turned to match.
+    const slanted = { ...WALL, b: { x: 9000, y: -0.005 } }
+    const turn = (Math.atan2(-0.005, 9000) * 180) / Math.PI
+    const doc = applyOps(createDocument('Plan'), [PILLAR, slanted, unit('u', 2000, 100, turn), unit('next', 3000, 100, turn)].map((node): Op => ({ op: 'add_node', node: { parent: 'page_1', ...node } as never })))
+    expect(moved(doc, 'u', { x: 380, y: 0 })).toMatchObject({ x: 2400, y: 100 })
+    expect(moved(doc, 'u', { x: -780, y: 0 })).toMatchObject({ x: 1200, y: 100 })
+  })
+
+  it('in a corner, against both walls, keeps facing the wall it stood against', () => {
+    // Pushed into the pillar as well as against the wall: the pillar is as near, and comes first in the drawing.
+    const doc = kitchen(unit('u', 2000, 100))
+    expect(moved(doc, 'u', { x: -820, y: 0 })).toMatchObject({ y: 100, rotation: 0 })
   })
 })

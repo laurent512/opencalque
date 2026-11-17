@@ -94,6 +94,8 @@ export const TURNING: Node['type'][] = ['text', 'image', 'parametric', 'instance
 /** How close, in screen pixels, the pointer must come to something for a point to snap to it, and for a moved object to line up with another. */
 export const SNAP_REACH = 10
 export const ALIGN_REACH = 6
+/** How close, in screen pixels, a side of a moved object must come to the facing side of a neighbour in its row to go against it: before any lining up. */
+export const TOUCH_REACH = 12
 /** How near a wall, in screen pixels, the pointer puts what is fixed on walls on its face: further than a door's, since it is put beside the wall rather than on it. */
 export const MOUNT_REACH = 40
 /**

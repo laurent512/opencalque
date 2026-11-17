@@ -934,6 +934,31 @@ test('puts a hob against the wall beside the pointer, its back on the face and i
   expect((await saved(page)).find((n) => n.type === 'parametric')).toMatchObject({ kind: 'arch.hob', x: 1700, y: 100, rotation: 0 })
 })
 
+test('turns a unit dragged to the wall to stand against it, and sets it against the next one, wherever it was taken', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  // A wall along y = 0, its face below at y = 100; a unit against it from x = 2400; another 600 wide
+  // and deep turned the wrong way, its doors to the wall, its box from (1000, 300) to (1600, 900).
+  const unit = (id: string, order: string, x: number, y: number, rotation: number) => ({ id, type: 'parametric', parent: 'page_1', order, layer: 'layer_1', kind: 'arch.baseunit', props: {}, x, y, rotation })
+  const plan = drawing({
+    w: { id: 'w', type: 'wall', parent: 'page_1', order: 'a0', layer: 'layer_1', a: { x: 0, y: 0 }, b: { x: 4000, y: 0 }, thickness: 200 },
+    a: unit('a', 'a1', 2400, 100, 0),
+    u: unit('u', 'a2', 1600, 900, 180),
+  })
+  await choose(page, () => page.keyboard.press('Control+o'), 'kitchen.opencalque', plan)
+  const onScreen = await drawingOnScreen(page)
+  const at = (x: number, y: number) => ({ x: onScreen(x, y)[0], y: onScreen(x, y)[1] })
+  // Taken by its lower part, then by its upper part, and brought by as much each time: its box's top
+  // 50 short of the face, its right side 20 short of the other unit.
+  for (const taken of [800, 350]) {
+    await click(page, at(1300, 600))
+    await drag(page, at(1300, taken), at(1300 + 780, taken - 150))
+    expect((await saved(page)).find((n) => n.id === 'u')).toMatchObject({ x: 1800, y: 100, rotation: 0 })
+    await page.keyboard.press('Control+z')
+  }
+})
+
 test('makes an elevation look at part of the face by dragging its end along the wall', async ({ page }) => {
   await startWith(page)
   await recordSaves(page)

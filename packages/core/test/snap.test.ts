@@ -130,10 +130,10 @@ describe('lining up what is moved', () => {
     const moving = box(0, 0, 1000, 500)
     const others = [box(3000, 2000, 5000, 3000)]
     // Its left side comes within reach of the other's left side; nothing is near along Y.
-    expect(alignMove(moving, others, { x: 2970, y: 700 }, 50)).toEqual({ d: { x: 3000, y: 700 }, x: true, y: false })
+    expect(alignMove(moving, others, { x: 2970, y: 700 }, 50)).toMatchObject({ d: { x: 3000, y: 700 }, x: true, y: false })
     // Middles: (500, 250) moved to (4000, 2500).
-    expect(alignMove(moving, others, { x: 3520, y: 2240 }, 50)).toEqual({ d: { x: 3500, y: 2250 }, x: true, y: true })
-    expect(alignMove(moving, others, { x: 2800, y: 700 }, 50)).toEqual({ d: { x: 2800, y: 700 }, x: false, y: false })
+    expect(alignMove(moving, others, { x: 3520, y: 2240 }, 50)).toMatchObject({ d: { x: 3500, y: 2250 }, x: true, y: true })
+    expect(alignMove(moving, others, { x: 2800, y: 700 }, 50)).toMatchObject({ d: { x: 2800, y: 700 }, x: false, y: false })
   })
 
   it('lines points up with points, not with the sides of boxes', () => {
@@ -157,6 +157,40 @@ describe('lining up what is moved', () => {
     expect(alignMove(moving, pair, { x: 2030, y: 5200 }, 50).d.x).toBe(2000)
     // Not level with them, it is not in their row.
     expect(alignMove(moving, pair, { x: 2030, y: 0 }, 50).x).toBe(false)
+  })
+
+  it('goes against a neighbour in its row before lining up with anything nearer, from further away', () => {
+    // A unit 600 wide moved toward one ending at x = 1000, past a thing whose side is at 1590.
+    const moving = box(0, 0, 600, 600)
+    const others = [box(400, 0, 1000, 600), box(1590, 3000, 2000, 3400)]
+    // Its left side at 1080, 80 from the neighbour's right side: out of reach (50) of lining up, within that of touching (100).
+    expect(alignMove(moving, others, { x: 1080, y: 0 }, 50).d.x).toBe(1000)
+    // And says so, for a log of moves.
+    expect(alignMove(moving, others, { x: 1080, y: 0 }, 50).why.x).toEqual({ rule: 'touch', axis: 'x', change: -80, own: 'left', target: 'right', other: 0 })
+    // Its right side at 1600 is 10 from the far side at 1590, its left 0 from nothing: it still goes against the neighbour, 0 to it.
+    expect(alignMove(moving, others, { x: 1010, y: 0 }, 50).d.x).toBe(1000)
+    // Out of its row, 80 from it is out of reach.
+    expect(alignMove(moving, others, { x: 1080, y: 2000 }, 50).x).toBe(false)
+  })
+
+  it('lines a side up with the middle of something of about its size only, and never with the middle of a long wall', () => {
+    const moving = box(0, 0, 600, 600)
+    const wall = box(-7000, -1200, 7000, -1000)
+    // Its left side 10 from the middle of a wall 14 m long: nothing.
+    expect(alignMove(moving, [wall], { x: 10, y: 2000 }, 50).x).toBe(false)
+    // Its middle on the wall's middle, yes.
+    expect(alignMove(moving, [wall], { x: -290, y: 2000 }, 50).d.x).toBe(-300)
+    // Its left side on the middle of a thing 900 wide.
+    expect(alignMove(moving, [box(0, 3000, 900, 3600)], { x: 440, y: 0 }, 50).d.x).toBe(450)
+  })
+
+  it('spaces it out only where nothing lines up', () => {
+    // A sink 600 wide between two units 630 apart: 3 from halfway, 12 from the first, it goes against the first.
+    const moving = box(0, 0, 600, 600)
+    const row = [box(0, 0, 1000, 600), box(1630, 0, 2000, 600)]
+    expect(alignMove(moving, row, { x: 1012, y: 0 }, 50).d.x).toBe(1000)
+    // With nothing to line up with near, halfway it is.
+    expect(alignMove(moving, [box(0, 0, 1000, 600), box(2000, 0, 2400, 600)], { x: 1190, y: 0 }, 50, 0).d.x).toBe(1200)
   })
 
   it('shows a line over everything that shares a side', () => {

@@ -66,6 +66,8 @@ export interface Platform {
   /** Desktop only: closes the app, asking first about unsaved changes, installs the downloaded version and starts it. */
   installUpdate?(): void
   setDirty(dirty: boolean): void
+  /** Desktop, development builds only: appends to a log in the app's logs folder (`snap.log`, what moved objects lined up with). */
+  log?(name: 'snap', text: string): void
   /**
    * Desktop only: where the keys of the assistant's services are kept, encrypted by the system
    * (Electron's `safeStorage`: the keychain on macOS, DPAPI on Windows, the keyring on Linux), rather

@@ -1,5 +1,6 @@
 import { leavesOf, rootOf } from '../document'
-import { applyTransform, perp, sub, type Vec2 } from '../geometry'
+import { applyTransform, inverseTransform, perp, sub, type Vec2 } from '../geometry'
+import { alignMove, type AlignCandidate, type Alignable } from '../snap'
 import type { Mount, Registry } from '../registry'
 import type { Document, Node, NodeOf } from '../schema'
 import { courseOf, cross, distToBody, middleAcross, tidy, wallSides, type Wall } from './course'
@@ -145,15 +146,20 @@ export function mountAt(node: { kind: string; props: Record<string, unknown>; fl
  * the pointer's side, at the pointer along it (rounded to `step`, within the wall), turned to
  * stand out of the wall. Returns null when no wall is within `reach` of `p`, or the kind is not
  * one fixed on walls.
+ *
+ * Given `extent`, the half sizes of an upright box around `p`, the reach is from that box rather
+ * than from `p`: what is moved goes against a wall when its side nears it, whichever way it faces.
+ * Two walls as near (in a corner), it keeps to the one it stands against as it is turned.
  */
 export function snapMountToWall(
   doc: Document,
   containerId: string,
   registry: Registry,
-  node: { kind: string; props: Record<string, unknown>; flipX?: boolean },
+  node: { kind: string; props: Record<string, unknown>; flipX?: boolean; rotation?: number },
   p: Vec2,
   reach: number,
   step: number,
+  extent?: Vec2,
 ): { x: number; y: number; rotation: number } | null {
   const kind = registry.parametric.get(node.kind)
   const mount = kind?.mount
@@ -161,7 +167,17 @@ export function snapMountToWall(
   let wall: Wall | null = null
   let nearest = Infinity
   for (const w of wallsIn(doc, containerId)) {
-    const distance = distToBody(p, w)
+    let distance = distToBody(p, w)
+    if (extent && distance < Infinity) {
+      const course = courseOf(w)
+      const { along, across } = course.project(p)
+      const dir = course.dir(Math.max(0, Math.min(course.length, along)))
+      // How far the box reaches across the wall from its middle.
+      distance = Math.max(0, distance - (Math.abs(dir.y) * extent.x + Math.abs(dir.x) * extent.y))
+      // Turning to stand against this wall costs a millimetre: against two, it keeps to the one it faces from.
+      const turn = mountAt(node, mount, w, across >= middleAcross(w) ? 'right' : 'left', 0).rotation
+      if (Math.abs((((turn - (node.rotation ?? 0)) % 360) + 360) % 360) > 1e-6) distance += 1
+    }
     if (distance <= reach && distance < nearest) {
       wall = w
       nearest = distance
@@ -185,4 +201,97 @@ export function snapMountToWall(
   const centre = Math.max(from + half, Math.min(to - half, step > 0 ? Math.round(along / step) * step : along))
   const s = to - from >= 2 * half ? centre : (from + to) / 2
   return mountAt(node, mount, wall, face, s - way * middle)
+}
+
+/**
+ * A wall standing across the one what is moved stands against, which its box `placed` has been
+ * pushed into along `axis`: it stays against it, on the side of the wall its middle is on, as a
+ * wardrobe stops against the wall at the end of a room. The deepest such wall wins; null when none.
+ */
+function wallStop(doc: Document, placed: Alignable, row: Alignable[], axis: 'x' | 'y', way: Vec2): AlignCandidate | null {
+  const across = axis === 'x' ? 'y' : 'x'
+  const [lo, hi] = axis === 'x' ? [placed.bounds.minX, placed.bounds.maxX] : [placed.bounds.minY, placed.bounds.maxY]
+  const [from, to] = across === 'x' ? [placed.bounds.minX, placed.bounds.maxX] : [placed.bounds.minY, placed.bounds.maxY]
+  const [low, high] = axis === 'x' ? (['left', 'right'] as const) : (['top', 'bottom'] as const)
+  let stop: AlignCandidate | null = null
+  row.forEach((other, i) => {
+    const wall = other.id ? doc.nodes[other.id] : undefined
+    if (wall?.type !== 'wall') return
+    const length = Math.hypot(wall.b.x - wall.a.x, wall.b.y - wall.a.y)
+    // Only a wall running across: one along it, carrying on its line, is no stop.
+    if (length < 1e-6 || Math.abs(((wall.b.x - wall.a.x) * way.x + (wall.b.y - wall.a.y) * way.y) / length) > NEARLY_LEVEL) return
+    const [olo, ohi] = axis === 'x' ? [other.bounds.minX, other.bounds.maxX] : [other.bounds.minY, other.bounds.maxY]
+    const [ofrom, oto] = across === 'x' ? [other.bounds.minX, other.bounds.maxX] : [other.bounds.minY, other.bounds.maxY]
+    if (!(lo < ohi && hi > olo && from < oto && to > ofrom)) return
+    const before = (lo + hi) / 2 < (olo + ohi) / 2
+    const change = before ? olo - hi : ohi - lo
+    if (!stop || Math.abs(change) > Math.abs(stop.change)) stop = { rule: 'touch', axis, change, own: before ? high : low, target: before ? low : high, other: i }
+  })
+  return stop
+}
+
+/** How far from level (or upright) a wall may be, as the sine of the angle (2°), for what stands against it to be set against what is beside it. */
+const NEARLY_LEVEL = Math.sin((2 * Math.PI) / 180)
+
+/** Where `moveAgainstWall` puts what is moved, and what it went against along the wall. */
+export interface AgainstWall {
+  patch: { x: number; y: number; rotation: number }
+  /** What it went against along the wall, an index into `row`; null when nothing was near enough. */
+  why: AlignCandidate | null
+  /** What it could go against along the wall: what stands against walls as it does, and the walls. */
+  row: Alignable[]
+}
+
+/**
+ * Where an object that goes against walls goes when it is moved by `d`, `moving` being its box as
+ * it was taken and `others` what is around it (`alignables`). It goes against the wall its box
+ * comes within `reach` of, whichever way it faced: on the face on the side of the box's middle, its
+ * back on that face, turned to stand out of it, its middle where the box's middle has been moved
+ * to along the wall. So it does not matter where it was taken, nor which way it was turned. Then,
+ * along a wall upright or level, it goes against what is beside it within `touch`: what stands
+ * against walls as it does (a unit against the next unit, a socket against the next socket) and
+ * the walls standing across (a pillar, the wall of a corner). Nothing else pulls it, so between
+ * those it follows the pointer. Null when no wall is near, or the kind goes against none.
+ */
+export function moveAgainstWall(
+  doc: Document,
+  containerId: string,
+  registry: Registry,
+  node: NodeOf<'parametric'>,
+  moving: Alignable,
+  others: Alignable[],
+  d: Vec2,
+  reach: number,
+  touch: number,
+  step: number,
+): AgainstWall | null {
+  const mount = mountOf(node, registry)
+  if (!mount) return null
+  const b = moving.bounds
+  const half = { x: (b.maxX - b.minX) / 2, y: (b.maxY - b.minY) / 2 }
+  const middle = { x: (b.minX + b.maxX) / 2 + d.x, y: (b.minY + b.maxY) / 2 + d.y }
+  let patch = snapMountToWall(doc, containerId, registry, node, middle, reach, step, half)
+  if (!patch) return null
+  // Along the wall, its own X: lined up along X or Y when the wall is within a few degrees of level
+  // or upright, as walls traced from a scan are (one 0.00003° off level once stopped it all).
+  const r = (patch.rotation * Math.PI) / 180
+  const way = { x: Math.cos(r), y: Math.sin(r) }
+  const axis = Math.abs(way.y) <= NEARLY_LEVEL ? 'x' : Math.abs(way.x) <= NEARLY_LEVEL ? 'y' : null
+  if (!axis) return { patch, why: null, row: [] }
+  // Its box where it now stands: the middle of its box carried along with it, as wide as it was deep when turned a quarter.
+  const own = inverseTransform({ x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2 }, { x: node.x, y: node.y, rotation: node.rotation ?? 0, flipX: node.flipX })
+  const there = applyTransform(own, { ...patch, flipX: node.flipX })
+  const quarter = Math.abs(((((patch.rotation - (node.rotation ?? 0)) % 180) + 180) % 180) - 90) < 45
+  const [hx, hy] = quarter ? [half.y, half.x] : [half.x, half.y]
+  // A hair smaller across the wall, so that the wall it stands against, which it only touches, is not in its row.
+  const [ix, iy] = axis === 'x' ? [0, 0.5] : [0.5, 0]
+  const placed: Alignable = { bounds: { minX: there.x - hx + ix, maxX: there.x + hx - ix, minY: there.y - hy + iy, maxY: there.y + hy - iy }, points: [] }
+  const row = others.filter((other) => {
+    const at = other.id ? doc.nodes[other.id] : undefined
+    return at?.type === 'wall' || (at?.type === 'parametric' && at.id !== node.id && mountOf(at, registry)?.on === mount.on)
+  })
+  const why = wallStop(doc, placed, row, axis, way) ?? alignMove(placed, row, { x: 0, y: 0 }, 0, touch).why[axis]
+  // Slid along the wall by as much as it takes along the axis, so that it stays on a face a little off level.
+  if (why && why.rule === 'touch') patch = { ...patch, x: tidy(patch.x + (why.change / way[axis]) * way.x), y: tidy(patch.y + (why.change / way[axis]) * way.y) }
+  return { patch, why: why?.rule === 'touch' ? why : null, row }
 }

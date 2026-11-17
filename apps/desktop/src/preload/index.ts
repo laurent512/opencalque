@@ -36,6 +36,7 @@ const desktop: Platform = {
   },
   installUpdate: () => ipcRenderer.send('update:install'),
   setDirty: (dirty) => ipcRenderer.send('doc:dirty', dirty),
+  log: (name, text) => ipcRenderer.send('log:write', name, text),
   secrets: {
     available: () => ipcRenderer.invoke('secret:available'),
     get: (name) => ipcRenderer.invoke('secret:get', name),

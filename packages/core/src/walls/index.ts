@@ -16,7 +16,7 @@ export { bulgeThrough, distToWall, wallArc, wallContains, wallLength, wallMiddle
 export { autoJoinCuts, connectedWalls, cornerJoin, cornerJoinOps, looseEndOps, moveCornerOps, NEAR_JOIN, wallEndState, wallEndsAt, wallEndsOf, type NearEnd, type WallEnd, type WallJoin } from './joints'
 export { hostWall, openingSpan, snapOpeningToWall, wallOpenings } from './openings'
 export { mountFollowOps, openingFollowOps } from './follow'
-export { faceStretch, fixedOnWall, heightAboveFloor, mountAt, mountedOn, mountOf, snapMountToWall, wallMounted, type Mounting } from './mount'
+export { faceStretch, fixedOnWall, heightAboveFloor, mountAt, mountedOn, mountOf, moveAgainstWall, snapMountToWall, wallMounted, type AgainstWall, type Mounting } from './mount'
 export { endLineOps, endLineShown, endLineUsual, wallEdgeLines, wallOutline, wallOutlineRuns, wallParts, wallPolygons, wallSeams, withEdge, type WallPiece, type WallParts } from './outline'
 export type { Stop } from './joints'
 export { materialSeams } from './seams'
