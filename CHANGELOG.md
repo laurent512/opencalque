@@ -4,7 +4,7 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
-## Unreleased
+## 1.12.0 — 2026-11-17
 
 ### New
 - Under Heating, the outdoor unit of a heat pump, a gas boiler and a water heater. The heat pump's unit stands against an outside wall by its back, with its fan and the compartment its pipes come into; given a height above the floor, it is on brackets. The boiler hangs on the wall at 1 m to its underside, its flue on top. The water heater is a round tank against the wall, which a height above the floor hangs on it. All are resized by their sides and drawn in elevations.
