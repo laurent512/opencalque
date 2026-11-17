@@ -927,7 +927,6 @@ export const zh: Record<string, string> = {
   "One inside “{to}” itself was kept.": "位于“{to}”内部的 1 个已保留。",
   "{n} inside “{to}” itself were kept.": "位于“{to}”内部的 {n} 个已保留。",
   "“{from}” is placed nowhere any more: delete it if it is not wanted.": "“{from}”已不再放置于任何位置：如不需要可将其删除。",
-  "A component cannot hold itself: what is inside “{to}” was kept.": "组件不能包含自身：“{to}”内部的已保留。",
   "Select them all, to change them together": "全部选中，以便一起修改",
   "Delete them all": "全部删除",
   "Delete them": "删除",

@@ -1,6 +1,7 @@
 import { generateKeyBetween } from 'fractional-indexing'
 import { LAYER_COLOR } from './colors'
-import { isOrderKey, newId } from './document'
+import { deskDrewChair, isOrderKey, newId } from './document'
+import { applyTransform } from './geometry'
 import { DEFAULT_MATERIAL } from './schema'
 
 /** A drawing, or a part of one, as JSON read from a file: nothing about it is known yet. */
@@ -280,6 +281,59 @@ export function withViewLines(doc: Raw): Raw {
   return { ...doc, nodes }
 }
 
+/** The office chair of the built-in extension, part of its desk until format 5. */
+const OFFICE_CHAIR = 'arch.officechair'
+
+const length = (value: unknown, fallback: number, least: number) => Math.max(least, typeof value === 'number' && Number.isFinite(value) ? value : fallback)
+
+/**
+ * Version 4 to 5: the desk of the built-in extension no longer draws an office chair, which is an
+ * object of its own (`arch.officechair`). Each desk that drew one is given that chair where it drew
+ * it, pulled up to the middle of its front, turned to face it, on its layer and just above it; the
+ * desk is told it has none (`chair: false`), which 1.11 and earlier read the same way.
+ */
+function withOfficeChairs(doc: Raw): Raw {
+  if (!isPlain(doc.nodes) || !Object.values(doc.nodes).some((node) => isPlain(node) && deskDrewChair(node))) return doc
+  const nodes: Raw = { ...doc.nodes }
+  // The orders of each parent's children, for the chair to go just above its desk.
+  const orders = new Map<unknown, string[]>()
+  for (const node of Object.values(nodes)) {
+    if (isPlain(node) && typeof node.order === 'string' && isOrderKey(node.order)) orders.set(node.parent, [...(orders.get(node.parent) ?? []), node.order])
+  }
+  for (const [key, desk] of Object.entries(doc.nodes)) {
+    if (!isPlain(desk) || !deskDrewChair(desk)) continue
+    const props = isPlain(desk.props) ? desk.props : {}
+    nodes[key] = { ...desk, props: { ...props, chair: false } }
+    const place = { x: typeof desk.x === 'number' ? desk.x : 0, y: typeof desk.y === 'number' ? desk.y : 0, rotation: typeof desk.rotation === 'number' ? desk.rotation : 0, flipX: desk.flipX === true }
+    // Where the desk drew it, in its own terms: its middle, 20 mm in front of it, turned round.
+    const at = applyTransform({ x: length(props.width, 1400, 600) / 2 + 330, y: length(props.depth, 700, 400) + 750 }, place)
+    let order: string | undefined
+    if (typeof desk.order === 'string' && isOrderKey(desk.order)) {
+      const above = (orders.get(desk.parent) ?? []).filter((other) => other > (desk.order as string)).sort()[0] ?? null
+      order = generateKeyBetween(desk.order, above)
+      orders.set(desk.parent, [...(orders.get(desk.parent) ?? []), order])
+    }
+    let id = `${typeof desk.id === 'string' ? desk.id : key}_chair`
+    while (id in nodes) id = `${id}_`
+    nodes[id] = {
+      id,
+      type: 'parametric',
+      parent: desk.parent,
+      ...(order ? { order } : {}),
+      ...('layer' in desk ? { layer: desk.layer } : {}),
+      ...(desk.visible === false ? { visible: false } : {}),
+      ...(desk.locked === true ? { locked: true } : {}),
+      kind: OFFICE_CHAIR,
+      props: {},
+      x: at.x,
+      y: at.y,
+      rotation: (((place.rotation + 180) % 360) + 360) % 360,
+      ...(place.flipX ? { flipX: true } : {}),
+    }
+  }
+  return { ...doc, nodes }
+}
+
 /**
  * The steps that bring a drawing from one version of the format to the next, as plain JSON: the
  * one at index 0 turns version 1 into version 2, and so on.
@@ -292,4 +346,6 @@ export const MIGRATIONS: ((doc: Raw) => Raw)[] = [
   (doc) => doc,
   // Version 4 brings links between objects (the `link` node type): a switch and the lights it controls. Nothing else changes.
   (doc) => doc,
+  // Version 5: a desk's office chair is an object of its own.
+  withOfficeChairs,
 ]

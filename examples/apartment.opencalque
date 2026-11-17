@@ -1,7 +1,7 @@
 {
   "format": "opencalque",
   "version": 2,
-  "id": "doc_313sl0dw40",
+  "id": "doc_tyec74bzi8",
   "name": "Apartment",
   "unit": "mm",
   "layers": {
@@ -36,8 +36,8 @@
       "order": "a0",
       "type": "page"
     },
-    "n_pu7dmqnw6m": {
-      "id": "n_pu7dmqnw6m",
+    "n_8bw7zp5is2": {
+      "id": "n_8bw7zp5is2",
       "name": "Ground floor",
       "parent": "page_1",
       "order": "a0",
@@ -52,8 +52,8 @@
         "number": "{page-number} / {pages}"
       }
     },
-    "n_xt6jge2d2t": {
-      "id": "n_xt6jge2d2t",
+    "n_q35myviloe": {
+      "id": "n_q35myviloe",
       "parent": "page_1",
       "order": "a1",
       "layer": "layer_1",
@@ -68,8 +68,8 @@
       },
       "thickness": 250
     },
-    "n_q9snj2zmbv": {
-      "id": "n_q9snj2zmbv",
+    "n_xiizuystm9": {
+      "id": "n_xiizuystm9",
       "parent": "page_1",
       "order": "a2",
       "layer": "layer_1",
@@ -84,8 +84,8 @@
       },
       "thickness": 250
     },
-    "n_4nytxjykvv": {
-      "id": "n_4nytxjykvv",
+    "n_usp22wha1k": {
+      "id": "n_usp22wha1k",
       "parent": "page_1",
       "order": "a3",
       "layer": "layer_1",
@@ -100,8 +100,8 @@
       },
       "thickness": 250
     },
-    "n_2wp3o6d1ev": {
-      "id": "n_2wp3o6d1ev",
+    "n_scl11uo2vx": {
+      "id": "n_scl11uo2vx",
       "parent": "page_1",
       "order": "a4",
       "layer": "layer_1",
@@ -116,8 +116,8 @@
       },
       "thickness": 250
     },
-    "n_agq1gaqkma": {
-      "id": "n_agq1gaqkma",
+    "n_mvlozmltxp": {
+      "id": "n_mvlozmltxp",
       "parent": "page_1",
       "order": "a5",
       "layer": "layer_1",
@@ -132,8 +132,8 @@
       },
       "thickness": 100
     },
-    "n_x7qggefnzj": {
-      "id": "n_x7qggefnzj",
+    "n_0it6c5c88w": {
+      "id": "n_0it6c5c88w",
       "parent": "page_1",
       "order": "a6",
       "layer": "layer_1",
@@ -148,8 +148,8 @@
       },
       "thickness": 100
     },
-    "n_4vjwdn3yu9": {
-      "id": "n_4vjwdn3yu9",
+    "n_5tyvly1bmg": {
+      "id": "n_5tyvly1bmg",
       "parent": "page_1",
       "order": "a7",
       "layer": "layer_1",
@@ -164,8 +164,8 @@
       },
       "thickness": 100
     },
-    "n_tu6q96fb7i": {
-      "id": "n_tu6q96fb7i",
+    "n_15mt1uff2l": {
+      "id": "n_15mt1uff2l",
       "parent": "page_1",
       "order": "a8",
       "layer": "rooms",
@@ -179,8 +179,8 @@
         "y": 4300
       }
     },
-    "n_h7ulmjyopt": {
-      "id": "n_h7ulmjyopt",
+    "n_7zdj09759w": {
+      "id": "n_7zdj09759w",
       "parent": "page_1",
       "order": "a9",
       "layer": "rooms",
@@ -194,8 +194,8 @@
         "y": 7000
       }
     },
-    "n_kssqy6usqd": {
-      "id": "n_kssqy6usqd",
+    "n_yjorr7yv5x": {
+      "id": "n_yjorr7yv5x",
       "parent": "page_1",
       "order": "aA",
       "layer": "layer_1",
@@ -209,8 +209,8 @@
       "y": 7000,
       "rotation": 0
     },
-    "n_4f9z8ni502": {
-      "id": "n_4f9z8ni502",
+    "n_2277ae5o7k": {
+      "id": "n_2277ae5o7k",
       "parent": "page_1",
       "order": "aB",
       "layer": "layer_1",
@@ -223,8 +223,8 @@
       "y": 4350,
       "rotation": 90
     },
-    "n_g3ql3jt0v3": {
-      "id": "n_g3ql3jt0v3",
+    "n_57hj1vxqt6": {
+      "id": "n_57hj1vxqt6",
       "parent": "page_1",
       "order": "aC",
       "layer": "layer_1",
@@ -238,8 +238,8 @@
       "y": 3800,
       "rotation": 0
     },
-    "n_b4fh46garo": {
-      "id": "n_b4fh46garo",
+    "n_eolczf9rab": {
+      "id": "n_eolczf9rab",
       "parent": "page_1",
       "order": "aD",
       "layer": "layer_1",
@@ -253,8 +253,8 @@
       "y": 4900,
       "rotation": 90
     },
-    "n_mrdvh0ktuf": {
-      "id": "n_mrdvh0ktuf",
+    "n_0yawo5xjl9": {
+      "id": "n_0yawo5xjl9",
       "parent": "page_1",
       "order": "aE",
       "layer": "layer_1",
@@ -268,8 +268,8 @@
       "y": 0,
       "rotation": 0
     },
-    "n_jnmuan0ag2": {
-      "id": "n_jnmuan0ag2",
+    "n_8al3iilu29": {
+      "id": "n_8al3iilu29",
       "parent": "page_1",
       "order": "aF",
       "layer": "layer_1",
@@ -282,8 +282,8 @@
       "y": 0,
       "rotation": 0
     },
-    "n_8nxxxnupap": {
-      "id": "n_8nxxxnupap",
+    "n_72vpaaej5a": {
+      "id": "n_72vpaaej5a",
       "parent": "page_1",
       "order": "aG",
       "layer": "layer_1",
@@ -296,8 +296,8 @@
       "y": 1600,
       "rotation": 90
     },
-    "n_k60bcri01o": {
-      "id": "n_k60bcri01o",
+    "n_2a37u0458c": {
+      "id": "n_2a37u0458c",
       "parent": "page_1",
       "order": "aH",
       "layer": "layer_1",
@@ -310,8 +310,8 @@
       "y": 7000,
       "rotation": 0
     },
-    "n_0jum52wirb": {
-      "id": "n_0jum52wirb",
+    "n_mnjtpgl4rv": {
+      "id": "n_mnjtpgl4rv",
       "parent": "page_1",
       "order": "aI",
       "layer": "layer_1",
@@ -325,8 +325,8 @@
       "y": 5000,
       "rotation": 90
     },
-    "n_p8cuplfe3v": {
-      "id": "n_p8cuplfe3v",
+    "n_3rwpg8gwt1": {
+      "id": "n_3rwpg8gwt1",
       "name": "Living room",
       "parent": "page_1",
       "order": "aJ",
@@ -349,8 +349,8 @@
       "y": 3300,
       "size": 220
     },
-    "n_az7fq3gc9z": {
-      "id": "n_az7fq3gc9z",
+    "n_aq4vttropg": {
+      "id": "n_aq4vttropg",
       "name": "Kitchen",
       "parent": "page_1",
       "order": "aK",
@@ -373,8 +373,8 @@
       "y": 5300,
       "size": 220
     },
-    "n_sh4gfca5zl": {
-      "id": "n_sh4gfca5zl",
+    "n_6z9j3v9kl2": {
+      "id": "n_6z9j3v9kl2",
       "name": "Bedroom",
       "parent": "page_1",
       "order": "aL",
@@ -398,8 +398,8 @@
       "y": 2500,
       "size": 220
     },
-    "n_0wcxvo5591": {
-      "id": "n_0wcxvo5591",
+    "n_nysc5ghb2t": {
+      "id": "n_nysc5ghb2t",
       "name": "Bathroom",
       "parent": "page_1",
       "order": "aM",
@@ -422,8 +422,8 @@
       "y": 5200,
       "size": 220
     },
-    "n_muylmln1t0": {
-      "id": "n_muylmln1t0",
+    "n_duajxmxvjr": {
+      "id": "n_duajxmxvjr",
       "name": "Hall",
       "parent": "page_1",
       "order": "aN",
@@ -433,8 +433,8 @@
       "y": 5450,
       "size": 220
     },
-    "n_wwd588t19n": {
-      "id": "n_wwd588t19n",
+    "n_c2ghgaptbt": {
+      "id": "n_c2ghgaptbt",
       "parent": "page_1",
       "order": "aO",
       "layer": "notes",
@@ -453,8 +453,8 @@
       "decimals": 2,
       "showUnit": true
     },
-    "n_ukr1dxzkgm": {
-      "id": "n_ukr1dxzkgm",
+    "n_kvhvh4sq83": {
+      "id": "n_kvhvh4sq83",
       "parent": "page_1",
       "order": "aP",
       "layer": "notes",
@@ -473,8 +473,8 @@
       "decimals": 2,
       "showUnit": true
     },
-    "n_3wi4x82a5o": {
-      "id": "n_3wi4x82a5o",
+    "n_nd34n1ghsu": {
+      "id": "n_nd34n1ghsu",
       "parent": "page_1",
       "order": "aQ",
       "layer": "notes",
@@ -491,8 +491,8 @@
       "size": 220,
       "bend": 0.12
     },
-    "n_t83eykzv56": {
-      "id": "n_t83eykzv56",
+    "n_fm3a3pjq7x": {
+      "id": "n_fm3a3pjq7x",
       "parent": "page_1",
       "order": "aR",
       "layer": "notes",
@@ -509,8 +509,8 @@
       "size": 220,
       "bend": 0.15
     },
-    "n_iayp9hflt5": {
-      "id": "n_iayp9hflt5",
+    "n_yh59n0ksfq": {
+      "id": "n_yh59n0ksfq",
       "parent": "page_1",
       "order": "aS",
       "layer": "notes",
@@ -527,8 +527,8 @@
       "size": 220,
       "bend": -0.2
     },
-    "n_9gmzhqdv3x": {
-      "id": "n_9gmzhqdv3x",
+    "n_52l31o7e2v": {
+      "id": "n_52l31o7e2v",
       "parent": "page_1",
       "order": "aT",
       "layer": "notes",
@@ -538,8 +538,8 @@
       "text": "Apartment, ground floor",
       "size": 520
     },
-    "n_lk01vkjnxy": {
-      "id": "n_lk01vkjnxy",
+    "n_lumks9mhm2": {
+      "id": "n_lumks9mhm2",
       "parent": "page_1",
       "order": "aU",
       "layer": "notes",
@@ -549,8 +549,8 @@
       "text": "70 m², two rooms. Scale 1:50",
       "size": 260
     },
-    "component_e1sjvgcau6": {
-      "id": "component_e1sjvgcau6",
+    "component_tnc8cmrxuo": {
+      "id": "component_tnc8cmrxuo",
       "name": "Coffee table, round",
       "parent": null,
       "order": "a1",
@@ -561,9 +561,9 @@
       "description": "Ø 900",
       "height": 400
     },
-    "n_rr81uoz0j5": {
-      "id": "n_rr81uoz0j5",
-      "parent": "component_e1sjvgcau6",
+    "n_fp8kipz22z": {
+      "id": "n_fp8kipz22z",
+      "parent": "component_tnc8cmrxuo",
       "order": "a0",
       "type": "ellipse",
       "cx": 450,
@@ -571,9 +571,9 @@
       "rx": 450,
       "ry": 450
     },
-    "n_m1qhkmcocz": {
-      "id": "n_m1qhkmcocz",
-      "parent": "component_e1sjvgcau6",
+    "n_0930aynirx": {
+      "id": "n_0930aynirx",
+      "parent": "component_tnc8cmrxuo",
       "order": "a1",
       "style": {
         "strokeWidth": 0.5
@@ -584,1174 +584,8 @@
       "rx": 410,
       "ry": 410
     },
-    "component_r8w7tm9z9g": {
-      "id": "component_r8w7tm9z9g",
-      "name": "Toilet",
-      "parent": null,
-      "order": "a2",
-      "meta": {
-        "source": "warehouse.bathroom#bathroom_1"
-      },
-      "type": "component",
-      "description": "380 × 700",
-      "height": 800
-    },
-    "n_kcdgzwi2vo": {
-      "id": "n_kcdgzwi2vo",
-      "parent": "component_r8w7tm9z9g",
-      "order": "a0",
-      "type": "polyline",
-      "points": [
-        {
-          "x": 0,
-          "y": 8
-        },
-        {
-          "x": 0.3,
-          "y": 5.9
-        },
-        {
-          "x": 1.1,
-          "y": 4
-        },
-        {
-          "x": 2.3,
-          "y": 2.3
-        },
-        {
-          "x": 4,
-          "y": 1.1
-        },
-        {
-          "x": 5.9,
-          "y": 0.3
-        },
-        {
-          "x": 8,
-          "y": 0
-        },
-        {
-          "x": 372,
-          "y": 0
-        },
-        {
-          "x": 373.8,
-          "y": 0.2
-        },
-        {
-          "x": 375.5,
-          "y": 0.8
-        },
-        {
-          "x": 377,
-          "y": 1.7
-        },
-        {
-          "x": 378.3,
-          "y": 3
-        },
-        {
-          "x": 379.2,
-          "y": 4.5
-        },
-        {
-          "x": 379.8,
-          "y": 6.2
-        },
-        {
-          "x": 380,
-          "y": 8
-        },
-        {
-          "x": 380,
-          "y": 140
-        },
-        {
-          "x": 379,
-          "y": 147.8
-        },
-        {
-          "x": 376,
-          "y": 155
-        },
-        {
-          "x": 371.2,
-          "y": 161.2
-        },
-        {
-          "x": 365,
-          "y": 166
-        },
-        {
-          "x": 357.8,
-          "y": 169
-        },
-        {
-          "x": 350,
-          "y": 170
-        },
-        {
-          "x": 30,
-          "y": 170
-        },
-        {
-          "x": 22.2,
-          "y": 169
-        },
-        {
-          "x": 15,
-          "y": 166
-        },
-        {
-          "x": 8.8,
-          "y": 161.2
-        },
-        {
-          "x": 4,
-          "y": 155
-        },
-        {
-          "x": 1,
-          "y": 147.8
-        },
-        {
-          "x": 0,
-          "y": 140
-        }
-      ],
-      "closed": true
-    },
-    "n_1kiq4qsjhv": {
-      "id": "n_1kiq4qsjhv",
-      "parent": "component_r8w7tm9z9g",
-      "order": "a1",
-      "style": {
-        "strokeWidth": 0.5
-      },
-      "type": "ellipse",
-      "cx": 190,
-      "cy": 85,
-      "rx": 32,
-      "ry": 32
-    },
-    "n_9f0y90mvcm": {
-      "id": "n_9f0y90mvcm",
-      "parent": "component_r8w7tm9z9g",
-      "order": "a2",
-      "style": {
-        "strokeWidth": 0.5
-      },
-      "type": "line",
-      "a": {
-        "x": 158,
-        "y": 85
-      },
-      "b": {
-        "x": 222,
-        "y": 85
-      }
-    },
-    "n_809kjokvn8": {
-      "id": "n_809kjokvn8",
-      "parent": "component_r8w7tm9z9g",
-      "order": "a3",
-      "type": "polyline",
-      "points": [
-        {
-          "x": 370,
-          "y": 300
-        },
-        {
-          "x": 369.4,
-          "y": 343.5
-        },
-        {
-          "x": 367.5,
-          "y": 381.4
-        },
-        {
-          "x": 364.4,
-          "y": 417.1
-        },
-        {
-          "x": 360.1,
-          "y": 450.8
-        },
-        {
-          "x": 354.6,
-          "y": 482.8
-        },
-        {
-          "x": 347.9,
-          "y": 513
-        },
-        {
-          "x": 340.1,
-          "y": 541.3
-        },
-        {
-          "x": 331.3,
-          "y": 567.7
-        },
-        {
-          "x": 321.4,
-          "y": 591.9
-        },
-        {
-          "x": 310.4,
-          "y": 613.9
-        },
-        {
-          "x": 298.6,
-          "y": 633.7
-        },
-        {
-          "x": 285.9,
-          "y": 651
-        },
-        {
-          "x": 272.3,
-          "y": 665.8
-        },
-        {
-          "x": 257.9,
-          "y": 678
-        },
-        {
-          "x": 242.7,
-          "y": 687.6
-        },
-        {
-          "x": 226.6,
-          "y": 694.5
-        },
-        {
-          "x": 209.6,
-          "y": 698.6
-        },
-        {
-          "x": 190,
-          "y": 700
-        },
-        {
-          "x": 170.4,
-          "y": 698.6
-        },
-        {
-          "x": 153.4,
-          "y": 694.5
-        },
-        {
-          "x": 137.3,
-          "y": 687.6
-        },
-        {
-          "x": 122.1,
-          "y": 678
-        },
-        {
-          "x": 107.7,
-          "y": 665.8
-        },
-        {
-          "x": 94.1,
-          "y": 651
-        },
-        {
-          "x": 81.4,
-          "y": 633.7
-        },
-        {
-          "x": 69.6,
-          "y": 613.9
-        },
-        {
-          "x": 58.6,
-          "y": 591.9
-        },
-        {
-          "x": 48.7,
-          "y": 567.7
-        },
-        {
-          "x": 39.9,
-          "y": 541.3
-        },
-        {
-          "x": 32.1,
-          "y": 513
-        },
-        {
-          "x": 25.4,
-          "y": 482.8
-        },
-        {
-          "x": 19.9,
-          "y": 450.8
-        },
-        {
-          "x": 15.6,
-          "y": 417.1
-        },
-        {
-          "x": 12.5,
-          "y": 381.4
-        },
-        {
-          "x": 10.6,
-          "y": 343.5
-        },
-        {
-          "x": 10,
-          "y": 300
-        },
-        {
-          "x": 10.3,
-          "y": 251
-        },
-        {
-          "x": 11.1,
-          "y": 235.5
-        },
-        {
-          "x": 12.5,
-          "y": 224.3
-        },
-        {
-          "x": 14.4,
-          "y": 215.4
-        },
-        {
-          "x": 16.9,
-          "y": 207.9
-        },
-        {
-          "x": 20.1,
-          "y": 201.5
-        },
-        {
-          "x": 23.8,
-          "y": 195.9
-        },
-        {
-          "x": 28.2,
-          "y": 191.1
-        },
-        {
-          "x": 33.3,
-          "y": 186.8
-        },
-        {
-          "x": 39.2,
-          "y": 183.1
-        },
-        {
-          "x": 45.9,
-          "y": 180
-        },
-        {
-          "x": 53.6,
-          "y": 177.3
-        },
-        {
-          "x": 62.5,
-          "y": 175
-        },
-        {
-          "x": 72.8,
-          "y": 173.2
-        },
-        {
-          "x": 85.2,
-          "y": 171.8
-        },
-        {
-          "x": 100.6,
-          "y": 170.8
-        },
-        {
-          "x": 122.2,
-          "y": 170.2
-        },
-        {
-          "x": 190,
-          "y": 170
-        },
-        {
-          "x": 257.8,
-          "y": 170.2
-        },
-        {
-          "x": 279.4,
-          "y": 170.8
-        },
-        {
-          "x": 294.8,
-          "y": 171.8
-        },
-        {
-          "x": 307.2,
-          "y": 173.2
-        },
-        {
-          "x": 317.5,
-          "y": 175
-        },
-        {
-          "x": 326.4,
-          "y": 177.3
-        },
-        {
-          "x": 334.1,
-          "y": 180
-        },
-        {
-          "x": 340.8,
-          "y": 183.1
-        },
-        {
-          "x": 346.7,
-          "y": 186.8
-        },
-        {
-          "x": 351.8,
-          "y": 191.1
-        },
-        {
-          "x": 356.2,
-          "y": 195.9
-        },
-        {
-          "x": 359.9,
-          "y": 201.5
-        },
-        {
-          "x": 363.1,
-          "y": 207.9
-        },
-        {
-          "x": 365.6,
-          "y": 215.4
-        },
-        {
-          "x": 367.5,
-          "y": 224.3
-        },
-        {
-          "x": 368.9,
-          "y": 235.5
-        },
-        {
-          "x": 369.7,
-          "y": 251
-        }
-      ],
-      "closed": true
-    },
-    "n_2mdf12ycnx": {
-      "id": "n_2mdf12ycnx",
-      "parent": "component_r8w7tm9z9g",
-      "order": "a4",
-      "type": "ellipse",
-      "cx": 190,
-      "cy": 445,
-      "rx": 118,
-      "ry": 205
-    },
-    "component_qr9fi8ze10": {
-      "id": "component_qr9fi8ze10",
-      "name": "Shower tray",
-      "parent": null,
-      "order": "a3",
-      "meta": {
-        "source": "warehouse.bathroom#bathroom_4"
-      },
-      "type": "component",
-      "description": "900 × 900",
-      "height": 100
-    },
-    "n_tbt1g9y2r0": {
-      "id": "n_tbt1g9y2r0",
-      "parent": "component_qr9fi8ze10",
-      "order": "a0",
-      "type": "polyline",
-      "points": [
-        {
-          "x": 0,
-          "y": 10
-        },
-        {
-          "x": 0.3,
-          "y": 7.4
-        },
-        {
-          "x": 1.3,
-          "y": 5
-        },
-        {
-          "x": 2.9,
-          "y": 2.9
-        },
-        {
-          "x": 5,
-          "y": 1.3
-        },
-        {
-          "x": 7.4,
-          "y": 0.3
-        },
-        {
-          "x": 10,
-          "y": 0
-        },
-        {
-          "x": 890,
-          "y": 0
-        },
-        {
-          "x": 892.2,
-          "y": 0.3
-        },
-        {
-          "x": 894.3,
-          "y": 1
-        },
-        {
-          "x": 896.2,
-          "y": 2.2
-        },
-        {
-          "x": 897.8,
-          "y": 3.8
-        },
-        {
-          "x": 899,
-          "y": 5.7
-        },
-        {
-          "x": 899.7,
-          "y": 7.8
-        },
-        {
-          "x": 900,
-          "y": 10
-        },
-        {
-          "x": 900,
-          "y": 890
-        },
-        {
-          "x": 899.7,
-          "y": 892.6
-        },
-        {
-          "x": 898.7,
-          "y": 895
-        },
-        {
-          "x": 897.1,
-          "y": 897.1
-        },
-        {
-          "x": 895,
-          "y": 898.7
-        },
-        {
-          "x": 892.6,
-          "y": 899.7
-        },
-        {
-          "x": 890,
-          "y": 900
-        },
-        {
-          "x": 10,
-          "y": 900
-        },
-        {
-          "x": 7.8,
-          "y": 899.7
-        },
-        {
-          "x": 5.7,
-          "y": 899
-        },
-        {
-          "x": 3.8,
-          "y": 897.8
-        },
-        {
-          "x": 2.2,
-          "y": 896.2
-        },
-        {
-          "x": 1,
-          "y": 894.3
-        },
-        {
-          "x": 0.3,
-          "y": 892.2
-        },
-        {
-          "x": 0,
-          "y": 890
-        }
-      ],
-      "closed": true
-    },
-    "n_rv0wvzipov": {
-      "id": "n_rv0wvzipov",
-      "parent": "component_qr9fi8ze10",
-      "order": "a1",
-      "style": {
-        "strokeWidth": 0.5
-      },
-      "type": "polyline",
-      "points": [
-        {
-          "x": 40,
-          "y": 70
-        },
-        {
-          "x": 41,
-          "y": 62.2
-        },
-        {
-          "x": 44,
-          "y": 55
-        },
-        {
-          "x": 48.8,
-          "y": 48.8
-        },
-        {
-          "x": 55,
-          "y": 44
-        },
-        {
-          "x": 62.2,
-          "y": 41
-        },
-        {
-          "x": 70,
-          "y": 40
-        },
-        {
-          "x": 830,
-          "y": 40
-        },
-        {
-          "x": 837.8,
-          "y": 41
-        },
-        {
-          "x": 845,
-          "y": 44
-        },
-        {
-          "x": 851.2,
-          "y": 48.8
-        },
-        {
-          "x": 856,
-          "y": 55
-        },
-        {
-          "x": 859,
-          "y": 62.2
-        },
-        {
-          "x": 860,
-          "y": 70
-        },
-        {
-          "x": 860,
-          "y": 830
-        },
-        {
-          "x": 859,
-          "y": 837.8
-        },
-        {
-          "x": 856,
-          "y": 845
-        },
-        {
-          "x": 851.2,
-          "y": 851.2
-        },
-        {
-          "x": 845,
-          "y": 856
-        },
-        {
-          "x": 837.8,
-          "y": 859
-        },
-        {
-          "x": 830,
-          "y": 860
-        },
-        {
-          "x": 70,
-          "y": 860
-        },
-        {
-          "x": 62.2,
-          "y": 859
-        },
-        {
-          "x": 55,
-          "y": 856
-        },
-        {
-          "x": 48.8,
-          "y": 851.2
-        },
-        {
-          "x": 44,
-          "y": 845
-        },
-        {
-          "x": 41,
-          "y": 837.8
-        },
-        {
-          "x": 40,
-          "y": 830
-        }
-      ],
-      "closed": true
-    },
-    "n_6ei9dto42m": {
-      "id": "n_6ei9dto42m",
-      "parent": "component_qr9fi8ze10",
-      "order": "a2",
-      "style": {
-        "strokeWidth": 0.5
-      },
-      "type": "line",
-      "a": {
-        "x": 48.8,
-        "y": 48.8
-      },
-      "b": {
-        "x": 414.6,
-        "y": 414.6
-      }
-    },
-    "n_gjbnqv8rps": {
-      "id": "n_gjbnqv8rps",
-      "parent": "component_qr9fi8ze10",
-      "order": "a3",
-      "style": {
-        "strokeWidth": 0.5
-      },
-      "type": "line",
-      "a": {
-        "x": 851.2,
-        "y": 48.8
-      },
-      "b": {
-        "x": 485.4,
-        "y": 414.6
-      }
-    },
-    "n_jn9mpfjbzg": {
-      "id": "n_jn9mpfjbzg",
-      "parent": "component_qr9fi8ze10",
-      "order": "a4",
-      "style": {
-        "strokeWidth": 0.5
-      },
-      "type": "line",
-      "a": {
-        "x": 48.8,
-        "y": 851.2
-      },
-      "b": {
-        "x": 414.6,
-        "y": 485.4
-      }
-    },
-    "n_ofm679f36x": {
-      "id": "n_ofm679f36x",
-      "parent": "component_qr9fi8ze10",
-      "order": "a5",
-      "style": {
-        "strokeWidth": 0.5
-      },
-      "type": "line",
-      "a": {
-        "x": 851.2,
-        "y": 851.2
-      },
-      "b": {
-        "x": 485.4,
-        "y": 485.4
-      }
-    },
-    "n_dxoja5qyny": {
-      "id": "n_dxoja5qyny",
-      "parent": "component_qr9fi8ze10",
-      "order": "a6",
-      "type": "ellipse",
-      "cx": 450,
-      "cy": 450,
-      "rx": 50,
-      "ry": 50
-    },
-    "n_mpnqtfojdj": {
-      "id": "n_mpnqtfojdj",
-      "parent": "component_qr9fi8ze10",
-      "order": "a7",
-      "style": {
-        "strokeWidth": 0.5
-      },
-      "type": "ellipse",
-      "cx": 450,
-      "cy": 450,
-      "rx": 28,
-      "ry": 28
-    },
-    "component_3vktky90ld": {
-      "id": "component_3vktky90ld",
-      "name": "Toilet, wall-hung",
-      "parent": null,
-      "order": "a4",
-      "meta": {
-        "source": "warehouse.bathroom#bathroom_6"
-      },
-      "type": "component",
-      "description": "360 × 540",
-      "height": 400
-    },
-    "n_ijz8s3uff2": {
-      "id": "n_ijz8s3uff2",
-      "parent": "component_3vktky90ld",
-      "order": "a0",
-      "type": "polyline",
-      "points": [
-        {
-          "x": 360,
-          "y": 150
-        },
-        {
-          "x": 359.4,
-          "y": 192.4
-        },
-        {
-          "x": 357.5,
-          "y": 229.4
-        },
-        {
-          "x": 354.4,
-          "y": 264.1
-        },
-        {
-          "x": 350.1,
-          "y": 297.1
-        },
-        {
-          "x": 344.6,
-          "y": 328.2
-        },
-        {
-          "x": 337.9,
-          "y": 357.7
-        },
-        {
-          "x": 330.1,
-          "y": 385.3
-        },
-        {
-          "x": 321.3,
-          "y": 411
-        },
-        {
-          "x": 311.4,
-          "y": 434.6
-        },
-        {
-          "x": 300.4,
-          "y": 456.1
-        },
-        {
-          "x": 288.6,
-          "y": 475.3
-        },
-        {
-          "x": 275.9,
-          "y": 492.2
-        },
-        {
-          "x": 262.3,
-          "y": 506.6
-        },
-        {
-          "x": 247.9,
-          "y": 518.6
-        },
-        {
-          "x": 232.7,
-          "y": 527.9
-        },
-        {
-          "x": 216.6,
-          "y": 534.6
-        },
-        {
-          "x": 199.6,
-          "y": 538.7
-        },
-        {
-          "x": 180,
-          "y": 540
-        },
-        {
-          "x": 160.4,
-          "y": 538.7
-        },
-        {
-          "x": 143.4,
-          "y": 534.6
-        },
-        {
-          "x": 127.3,
-          "y": 527.9
-        },
-        {
-          "x": 112.1,
-          "y": 518.6
-        },
-        {
-          "x": 97.7,
-          "y": 506.6
-        },
-        {
-          "x": 84.1,
-          "y": 492.2
-        },
-        {
-          "x": 71.4,
-          "y": 475.3
-        },
-        {
-          "x": 59.6,
-          "y": 456.1
-        },
-        {
-          "x": 48.6,
-          "y": 434.6
-        },
-        {
-          "x": 38.7,
-          "y": 411
-        },
-        {
-          "x": 29.9,
-          "y": 385.3
-        },
-        {
-          "x": 22.1,
-          "y": 357.7
-        },
-        {
-          "x": 15.4,
-          "y": 328.2
-        },
-        {
-          "x": 9.9,
-          "y": 297.1
-        },
-        {
-          "x": 5.6,
-          "y": 264.1
-        },
-        {
-          "x": 2.5,
-          "y": 229.4
-        },
-        {
-          "x": 0.6,
-          "y": 192.4
-        },
-        {
-          "x": 0,
-          "y": 150
-        },
-        {
-          "x": 0.2,
-          "y": 83.5
-        },
-        {
-          "x": 0.9,
-          "y": 66.3
-        },
-        {
-          "x": 2.1,
-          "y": 54.4
-        },
-        {
-          "x": 3.7,
-          "y": 45.1
-        },
-        {
-          "x": 5.8,
-          "y": 37.4
-        },
-        {
-          "x": 8.4,
-          "y": 30.9
-        },
-        {
-          "x": 11.6,
-          "y": 25.4
-        },
-        {
-          "x": 15.3,
-          "y": 20.5
-        },
-        {
-          "x": 19.6,
-          "y": 16.4
-        },
-        {
-          "x": 24.7,
-          "y": 12.8
-        },
-        {
-          "x": 30.4,
-          "y": 9.6
-        },
-        {
-          "x": 37.1,
-          "y": 7
-        },
-        {
-          "x": 44.9,
-          "y": 4.8
-        },
-        {
-          "x": 54.1,
-          "y": 3.1
-        },
-        {
-          "x": 65.3,
-          "y": 1.7
-        },
-        {
-          "x": 79.6,
-          "y": 0.8
-        },
-        {
-          "x": 100.2,
-          "y": 0.2
-        },
-        {
-          "x": 180,
-          "y": 0
-        },
-        {
-          "x": 259.8,
-          "y": 0.2
-        },
-        {
-          "x": 280.4,
-          "y": 0.8
-        },
-        {
-          "x": 294.7,
-          "y": 1.7
-        },
-        {
-          "x": 305.9,
-          "y": 3.1
-        },
-        {
-          "x": 315.1,
-          "y": 4.8
-        },
-        {
-          "x": 322.9,
-          "y": 7
-        },
-        {
-          "x": 329.6,
-          "y": 9.6
-        },
-        {
-          "x": 335.3,
-          "y": 12.8
-        },
-        {
-          "x": 340.4,
-          "y": 16.4
-        },
-        {
-          "x": 344.7,
-          "y": 20.5
-        },
-        {
-          "x": 348.4,
-          "y": 25.4
-        },
-        {
-          "x": 351.6,
-          "y": 30.9
-        },
-        {
-          "x": 354.2,
-          "y": 37.4
-        },
-        {
-          "x": 356.3,
-          "y": 45.1
-        },
-        {
-          "x": 357.9,
-          "y": 54.4
-        },
-        {
-          "x": 359.1,
-          "y": 66.3
-        },
-        {
-          "x": 359.8,
-          "y": 83.5
-        }
-      ],
-      "closed": true
-    },
-    "n_1zo15v7p2g": {
-      "id": "n_1zo15v7p2g",
-      "parent": "component_3vktky90ld",
-      "order": "a1",
-      "type": "ellipse",
-      "cx": 180,
-      "cy": 330,
-      "rx": 112,
-      "ry": 180
-    },
-    "n_hz1vi2bjc0": {
-      "id": "n_hz1vi2bjc0",
-      "parent": "component_3vktky90ld",
-      "order": "a2",
-      "style": {
-        "strokeWidth": 0.5
-      },
-      "type": "line",
-      "a": {
-        "x": 0.2,
-        "y": 100
-      },
-      "b": {
-        "x": 359.8,
-        "y": 100
-      }
-    },
-    "n_hh0u91mtsj": {
-      "id": "n_hh0u91mtsj",
+    "n_ty9p026cpf": {
+      "id": "n_ty9p026cpf",
       "parent": "page_1",
       "order": "aV",
       "layer": "furniture",
@@ -1765,19 +599,19 @@
       "x": 500,
       "y": 500
     },
-    "n_mj6cap5d3z": {
-      "id": "n_mj6cap5d3z",
+    "n_gbgkjovv04": {
+      "id": "n_gbgkjovv04",
       "parent": "page_1",
       "order": "aW",
       "layer": "furniture",
       "type": "instance",
-      "component": "component_e1sjvgcau6",
+      "component": "component_tnc8cmrxuo",
       "x": 850,
       "y": 1650,
       "rotation": 0
     },
-    "n_rbh1in09dm": {
-      "id": "n_rbh1in09dm",
+    "n_vol4e7w57m": {
+      "id": "n_vol4e7w57m",
       "parent": "page_1",
       "order": "aX",
       "layer": "furniture",
@@ -1791,8 +625,8 @@
       "y": 1550,
       "rotation": 90
     },
-    "n_hhq14o2kbc": {
-      "id": "n_hhq14o2kbc",
+    "n_vd4t0k07e0": {
+      "id": "n_vd4t0k07e0",
       "parent": "page_1",
       "order": "aY",
       "layer": "furniture",
@@ -1806,8 +640,8 @@
       "x": 3500,
       "y": 1130
     },
-    "n_wyhvc30vt5": {
-      "id": "n_wyhvc30vt5",
+    "n_m2ebulg206": {
+      "id": "n_m2ebulg206",
       "parent": "page_1",
       "order": "aZ",
       "layer": "furniture",
@@ -1820,8 +654,8 @@
       "x": 7800,
       "y": 250
     },
-    "n_4ez7qe3pvm": {
-      "id": "n_4ez7qe3pvm",
+    "n_drbgif0p4x": {
+      "id": "n_drbgif0p4x",
       "parent": "page_1",
       "order": "aa",
       "layer": "furniture",
@@ -1836,8 +670,8 @@
       "y": 3700,
       "rotation": 180
     },
-    "n_ad8d2mxbi4": {
-      "id": "n_ad8d2mxbi4",
+    "n_l4842z4rap": {
+      "id": "n_l4842z4rap",
       "parent": "page_1",
       "order": "ab",
       "layer": "furniture",
@@ -1852,8 +686,8 @@
       "y": 6850,
       "rotation": 180
     },
-    "n_ep29tgl6xo": {
-      "id": "n_ep29tgl6xo",
+    "n_9astlmbcri": {
+      "id": "n_9astlmbcri",
       "parent": "page_1",
       "order": "ac",
       "layer": "furniture",
@@ -1869,8 +703,8 @@
       "y": 6850,
       "rotation": 180
     },
-    "n_q367n8t1p1": {
-      "id": "n_q367n8t1p1",
+    "n_rjh342b435": {
+      "id": "n_rjh342b435",
       "parent": "page_1",
       "order": "ad",
       "layer": "furniture",
@@ -1884,8 +718,8 @@
       "y": 6850,
       "rotation": 180
     },
-    "n_lsqf8ckhj5": {
-      "id": "n_lsqf8ckhj5",
+    "n_f0nn79ja66": {
+      "id": "n_f0nn79ja66",
       "parent": "page_1",
       "order": "ae",
       "layer": "furniture",
@@ -1899,8 +733,8 @@
       "y": 6850,
       "rotation": 180
     },
-    "n_vu5tjsq8ko": {
-      "id": "n_vu5tjsq8ko",
+    "n_qxdq3viwev": {
+      "id": "n_qxdq3viwev",
       "parent": "page_1",
       "order": "af",
       "layer": "furniture",
@@ -1915,27 +749,34 @@
       "y": 3900,
       "rotation": 0
     },
-    "n_zxxe5tvvon": {
-      "id": "n_zxxe5tvvon",
+    "n_cxqzjhy57f": {
+      "id": "n_cxqzjhy57f",
       "parent": "page_1",
       "order": "ag",
       "layer": "furniture",
-      "type": "instance",
-      "component": "component_r8w7tm9z9g",
+      "type": "parametric",
+      "kind": "arch.toilet",
+      "props": {
+        "width": 380,
+        "depth": 700
+      },
       "x": 8950,
-      "y": 3950,
-      "rotation": 0
+      "y": 3850
     },
-    "n_e0je7lx567": {
-      "id": "n_e0je7lx567",
+    "n_q43nptw538": {
+      "id": "n_q43nptw538",
       "parent": "page_1",
       "order": "ah",
       "layer": "furniture",
-      "type": "instance",
-      "component": "component_qr9fi8ze10",
-      "x": 8950,
-      "y": 5950,
-      "rotation": 0
+      "type": "parametric",
+      "kind": "arch.showertray",
+      "props": {
+        "width": 900,
+        "depth": 900
+      },
+      "x": 9875,
+      "y": 6875,
+      "rotation": 180
     }
   },
   "info": {

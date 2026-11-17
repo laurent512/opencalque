@@ -10,7 +10,7 @@
     },
     "version": {
       "type": "number",
-      "const": 4
+      "const": 5
     },
     "id": {
       "type": "string",

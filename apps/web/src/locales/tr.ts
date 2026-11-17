@@ -927,7 +927,6 @@ export const tr: Record<string, string> = {
   "One inside “{to}” itself was kept.": "“{to}” bileşeninin kendi içindeki bir tanesi korundu.",
   "{n} inside “{to}” itself were kept.": "“{to}” bileşeninin kendi içindeki {n} tanesi korundu.",
   "“{from}” is placed nowhere any more: delete it if it is not wanted.": "“{from}” artık hiçbir yere yerleştirilmemiş: istenmiyorsa silin.",
-  "A component cannot hold itself: what is inside “{to}” was kept.": "Bir bileşen kendini içeremez: “{to}” içindekiler korundu.",
   "Select them all, to change them together": "Birlikte değiştirmek için hepsini seç",
   "Delete them all": "Hepsini sil",
   "Delete them": "Onları sil",

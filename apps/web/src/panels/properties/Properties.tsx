@@ -1,7 +1,4 @@
-import { type Bounds, type NodeOf, applyOps, controlSide, linksAt, boundsOf, dist, mountedOn, mountOf, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, componentUses, rootOf, type Node, type Op, roomAt, regionPerimeter, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
-import { swapSelectedComponent } from '../../actions'
-import { EntryChoice } from '../../EntryChoice'
-import { entryOf, isModel } from '../../entries'
+import { type Bounds, type NodeOf, applyOps, controlSide, linksAt, boundsOf, dist, mountedOn, mountOf, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, rootOf, type Node, type Op, roomAt, regionPerimeter, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
 import { executeById } from '../../commands'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Eye, EyeOff, Lock, LockOpen } from 'lucide-react'
@@ -200,9 +197,10 @@ function Selection({ nodes }: { nodes: Node[] }) {
           </>
         ),
       },
-    placed && {
+    // Only when there is something to show under it: a shower tray's own sizes are its W and D, and
+    // a section of its name with nothing in it is left out.
+    placed && single && (node.type === 'instance' || controlSide(node, registry)) && {
       title: placedTitle,
-      before: <InstanceComponent instances={placed} />,
       after: (
         <>
           {single && controlSide(node, registry) && <Controls node={node} />}
@@ -374,28 +372,3 @@ export function Properties() {
   )
 }
 
-/**
- * What the selected placements are of (a component, or a model of parametric objects: `entries.ts`),
- * to be made placements of another, each where it is, as it is turned. Inside a component, the
- * components that would hold it are not offered.
- */
-function InstanceComponent({ instances }: { instances: (NodeOf<'instance'> | NodeOf<'parametric'>)[] }) {
-  const doc = useStore((s) => s.doc)
-  const scope = useStore((s) => s.scope)
-  const placed = new Set(instances.map((instance) => entryOf(instance)))
-  const root = rootOf(doc, scope)
-  const one = placed.size === 1 ? [...placed][0] : null
-  return (
-    // Not a label: a label would hand every click to the button inside, opening its list again.
-    <div className="field">
-      <span>{t('Component')}</span>
-      <EntryChoice
-        label={t('Component')}
-        value={one ?? undefined}
-        mixed={placed.size > 1}
-        exclude={(entry) => !isModel(entry) && root?.type === 'component' && componentUses(doc, entry, root.id)}
-        pick={swapSelectedComponent}
-      />
-    </div>
-  )
-}

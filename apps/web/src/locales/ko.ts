@@ -927,7 +927,6 @@ export const ko: Record<string, string> = {
   "One inside “{to}” itself was kept.": "“{to}” 안에 있는 1개는 그대로 두었습니다.",
   "{n} inside “{to}” itself were kept.": "“{to}” 안에 있는 {n}개는 그대로 두었습니다.",
   "“{from}” is placed nowhere any more: delete it if it is not wanted.": "“{from}”은(는) 더 이상 어디에도 배치되어 있지 않습니다. 필요 없으면 삭제하세요.",
-  "A component cannot hold itself: what is inside “{to}” was kept.": "컴포넌트는 자기 자신을 담을 수 없습니다. “{to}” 안의 것은 그대로 두었습니다.",
   "Select them all, to change them together": "모두 선택해 함께 바꾸기",
   "Delete them all": "모두 삭제",
   "Delete them": "삭제",

@@ -4,6 +4,22 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### New
+- Under Heating, the outdoor unit of a heat pump, a gas boiler and a water heater. The heat pump's unit stands against an outside wall by its back, with its fan and the compartment its pipes come into; given a height above the floor, it is on brackets. The boiler hangs on the wall at 1 m to its underside, its flue on top. The water heater is a round tank against the wall, which a height above the floor hangs on it. All are resized by their sides and drawn in elevations.
+- A shower head, fixed on the wall at the height of its mixer (1.10 m) over a shower tray or a bathtub: a column with an overhead shower and a hand shower, a slide rail with its hand shower, or a head on its arm. It goes against the wall it is put near, as a socket does; on the plan, the head over the tray is dashed, and elevations draw the fittings.
+- The vanity unit under a washbasin (its drawers or doors, chosen under Below) can stand on feet down to the floor rather than hang on the wall: On feet, in its properties.
+- A single bed (90 × 190) beside the double bed (160 × 200), which was called Bed: both are the same adjustable bed, at two sizes.
+
+### Improved
+- The toilet, the wall-hung toilet and the shower tray go against the wall they are put near and turn to stand out of it, as the washbasin does, and follow the wall when it moves. They are resized by their sides (the shower tray's rim and drain keep their size) and drawn in elevations, the wall-hung toilet off the floor with its flush plate on the wall. Toilets and shower trays already placed are still components, which do not go against walls: place one of the new ones, then replace the old ones with it from the Components panel (the replace button of the old one's row).
+- The bed goes against the wall by its headboard.
+- The desk and its office chair are two objects: the office chair is in the library under Office, and is placed, turned and moved on its own. Desks already drawn keep their chair where it was, as a chair of its own beside them.
+- Drawings with a desk placed in this version are of format version 5, which 1.11 and earlier refuse with their "newer version" message, so as not to draw a chair that is not there. A drawing without one, or whose desks were all drawn before, is still written as before and opens in them.
+- The properties of a selected object no longer have a Component field to swap it for another: it read as a description of the object, and changing it replaced it. To make every placement of a component or model another one, keeping where each is, use the replace button of its row in the Components panel.
+- In elevations, a toilet shows its lid: closed over the seat of one standing on the floor, raised against the wall over a wall-hung one.
+
 ## 1.11.0 — 2026-11-17
 
 ### New

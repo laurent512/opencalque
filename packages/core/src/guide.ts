@@ -51,9 +51,10 @@ export function drawingGuide(registry: Registry, { pictures = true, schema = tru
     kind: k.kind,
     what: k.description ? `${k.label}. ${k.description}` : k.label,
     props: Object.fromEntries(k.params.map((p) => [p.key, `${p.options ? `one of ${p.options.join(' | ')}` : p.type}${p.unit === 'length' ? ' in mm' : p.unit === 'angle' ? ' in degrees' : ''} (default ${p.default})`])),
-    cutsWalls: Boolean(k.opening),
-    fixedOnWall: k.mount?.on === 'wall' ? { back: k.mount.back ?? 0, out: k.mount.out ?? 'down', height: k.mount.height } : undefined,
-    againstWall: k.mount?.on === 'floor' ? { back: k.mount.back ?? 0, out: k.mount.out ?? 'down' } : undefined,
+    // Only what is not the usual, so that sixty kinds stay well within what a client takes from a tool.
+    cutsWalls: k.opening ? true : undefined,
+    fixedOnWall: k.mount?.on === 'wall' ? { back: k.mount.back || undefined, out: k.mount.out === 'up' ? 'up' : undefined, height: k.mount.height } : undefined,
+    againstWall: k.mount?.on === 'floor' ? { back: k.mount.back || undefined, out: k.mount.out === 'up' ? 'up' : undefined } : undefined,
     ports: portsOfKind(k),
   }))
   return `# How a drawing is stored
@@ -86,7 +87,7 @@ ${JSON.stringify(kinds)}
 
 Kinds with "cutsWalls" are doors and windows. One cuts an opening when it lies on a wall: put its insertion point (x, y) in the middle of the wall's thickness (on its line for a wall without "justify", half its thickness off it towards the wall otherwise) and set its rotation to the wall's direction, the angle from the wall's "a" to "b". The opening then runs along the wall from the insertion point for its width. It adapts to the wall's thickness by itself, and moves with the wall only by being on it.
 
-Kinds with "fixedOnWall" (sockets, switches, wall lights) are fixed on a face of a wall, and follow the wall when it changes only while they are exactly on it. Their own point (0, back) lies on the face, their own X along it, and they stand out of the wall into the room towards their own +Y, or -Y when "out" is "up". For a wall whose direction from "a" to "b" is the angle θ, that is rotation θ on its right face (the face to the right as it runs from a to b, at +90° from its direction since Y grows downward) and θ + 180 on its left face, adding 180 to either when "out" is "up"; then place the insertion point so that (0, back) turned by that rotation lands on the face. "z" on such an object is its height above the floor in mm, to its centre; left out, it is the "height" given. Kinds with "againstWall" (kitchen units, a fridge, a washbasin) stand on the floor with their back against a face, placed by the same rule. Anything else, and a placement of a component, stands on the floor too unless given "z", the height of its underside above the floor in mm (a raised unit, a shelf, a mirror), which elevations draw it at.
+Kinds with "fixedOnWall" (sockets, switches, wall lights) are fixed on a face of a wall, and follow the wall when it changes only while they are exactly on it. Their own point (0, back) lies on the face, "back" being 0 when not given, their own X along it, and they stand out of the wall into the room towards their own +Y, or -Y when "out" is "up". For a wall whose direction from "a" to "b" is the angle θ, that is rotation θ on its right face (the face to the right as it runs from a to b, at +90° from its direction since Y grows downward) and θ + 180 on its left face, adding 180 to either when "out" is "up"; then place the insertion point so that (0, back) turned by that rotation lands on the face. "z" on such an object is its height above the floor in mm, to its centre; left out, it is the "height" given. Kinds with "againstWall" (kitchen units, a fridge, a washbasin) stand on the floor with their back against a face, placed by the same rule. Anything else, and a placement of a component, stands on the floor too unless given "z", the height of its underside above the floor in mm (a raised unit, a shelf, a mirror), which elevations draw it at.
 
 A "group" holds several nodes so they are selected, moved and stacked as one. It has no coordinates of its own: to group nodes, add a group and set their "parent" to its id; to move a group, move the nodes inside it. Its "opacity" (0 to 1, 1 when left out) makes everything inside it see-through.
 

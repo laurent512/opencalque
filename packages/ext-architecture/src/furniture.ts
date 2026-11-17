@@ -192,60 +192,90 @@ function officeChairPlan(): Primitive[] {
   })
   return [band(330, 900, 820, 70, 253, 287), roundBox(92, 150, 568, 590, [60, 60, 110, 110]), roundBox(46, 215, 88, 505, 21), roundBox(572, 215, 614, 505, 21), ...base.slice(2)]
 }
-/** How wide and deep the office chair is on the plan, from its back to the front of its base. */
-const OFFICE = { width: 660, depth: 730 }
+/** How wide the office chair is on the plan. */
+const OFFICE = { width: 660 }
 /** How high a desk's top is, in mm. */
 const DESK_TOP = 750
 
 /**
- * A desk against the wall with a screen, a keyboard and a mouse on it, and its office chair pulled
- * up to it, or none. In elevations, its top on its two sides, the screen, and the chair's back in front.
+ * A desk against the wall with a screen, a keyboard and a mouse on it. In elevations, its top on its
+ * two sides and the screen. Its office chair is an object of its own (`officeChair`): until 1.12 the
+ * desk drew one pulled up to it, which drawings of then hold as a chair of their own since (format 5).
  */
 export const desk: ParametricKind = {
   kind: 'arch.desk',
   label: 'Desk',
   category: 'office',
-  description: 'Against the wall, with its office chair pulled up to it, or without. Pull its sides to make it wider or deeper.',
-  params: [{ ...WIDTH, default: 1400 }, DEPTH(700), { key: 'chair', label: 'Office chair', type: 'boolean', default: true }],
+  description: 'Against the wall. Pull its sides to make it wider or deeper. Its office chair is an object of its own.',
+  params: [{ ...WIDTH, default: 1400 }, DEPTH(700)],
   box: sizedBox('width', 'depth', 600, 400),
   mount: { on: 'floor' },
   height: () => DESK_TOP,
-  build({ width, depth, chair }) {
+  build({ width, depth }) {
     const [w, d] = [atLeast(600, width), atLeast(400, depth)]
     const mid = w / 2
-    const prims: Primitive[] = [
+    return [
       rect(0, 0, w, d),
       roundBox(mid - 70, 100, mid + 70, 180, 20, THIN),
       roundBox(mid - 280, 180, mid + 280, 212, 12, THIN),
       roundBox(mid - 220, d - 320, mid + 220, d - 170, 16, THIN),
       { kind: 'ellipse', cx: mid + 310, cy: d - 245, rx: 30, ry: 48, strokeWidth: 0.5 },
     ]
-    // The chair turned to face the desk, its back away from it.
-    if (chair !== false) prims.push(...officeChairPlan().map((p) => transformPrimitive(p, { x: mid + OFFICE.width / 2, y: d + 20 + OFFICE.depth, rotation: 180 })))
-    return prims
   },
-  front: ({ width, chair }) => {
+  front: ({ width }) => {
     const w = atLeast(600, width)
     const mid = w / 2
-    const prims: Primitive[] = [rect(0, -DESK_TOP + 30, w, -DESK_TOP), rect(0, 0, 30, -DESK_TOP + 30, THIN), rect(w - 30, 0, w, -DESK_TOP + 30, THIN), rect(mid - 280, -DESK_TOP - 60, mid + 280, -DESK_TOP - 380), line([pt(mid, -DESK_TOP), pt(mid, -DESK_TOP - 60)])]
-    // The chair in front of it, seen from behind: its back over its seat, its column and its base.
-    if (chair !== false) prims.push(roundBox(mid - 240, -520, mid + 240, -1050, 40, THIN), line([pt(mid, -470), pt(mid, -90)], { strokeWidth: 1.5 }), line([pt(mid - 300, -40), pt(mid + 300, -40)], THIN), circle(mid - 300, -20, 20, THIN), circle(mid + 300, -20, 20, THIN))
-    return prims
+    return [rect(0, -DESK_TOP + 30, w, -DESK_TOP), rect(0, 0, 30, -DESK_TOP + 30, THIN), rect(w - 30, 0, w, -DESK_TOP + 30, THIN), rect(mid - 280, -DESK_TOP - 60, mid + 280, -DESK_TOP - 380), line([pt(mid, -DESK_TOP), pt(mid, -DESK_TOP - 60)])]
   },
-  side: ({ depth, chair }) => {
+  side: ({ depth }) => {
     const d = atLeast(400, depth)
-    const prims: Primitive[] = [rect(0, -DESK_TOP + 30, d, -DESK_TOP), rect(0, 0, d, -DESK_TOP + 30, THIN), rect(120, -DESK_TOP, 140, -DESK_TOP - 380, THIN)]
-    if (chair !== false) {
-      const at = d + 20
-      prims.push(
-        rect(at + 60, -470, at + OFFICE.depth - 200, -520, THIN),
-        outline([pt(at + OFFICE.depth - 200, -520), pt(at + OFFICE.depth - 160, -1050), pt(at + OFFICE.depth - 110, -1050), pt(at + OFFICE.depth - 150, -520)]),
-        line([pt(at + 300, -470), pt(at + 300, -90)], { strokeWidth: 1.5 }),
-        line([pt(at, -40), pt(at + OFFICE.depth - 100, -40)], THIN),
-      )
-    }
-    return prims
+    return [rect(0, -DESK_TOP + 30, d, -DESK_TOP), rect(0, 0, d, -DESK_TOP + 30, THIN), rect(120, -DESK_TOP, 140, -DESK_TOP - 380, THIN)]
   },
+}
+
+/** How high an office chair's seat and the top of its back are, in mm. */
+const OFFICE_SEAT = 470
+const OFFICE_BACK = 1050
+/** An office chair seen from in front or from behind: its back over its seat, its armrests, its column and its base on two of its casters. */
+const officeChairFront = (): Primitive[] => {
+  const mid = OFFICE.width / 2
+  return [
+    roundBox(mid - 240, -OFFICE_SEAT - 50, mid + 240, -OFFICE_BACK, 40),
+    rect(92, -OFFICE_SEAT, 568, -OFFICE_SEAT - 50),
+    roundBox(46, -OFFICE_SEAT - 180, 88, -OFFICE_SEAT - 220, 15, THIN),
+    roundBox(572, -OFFICE_SEAT - 180, 614, -OFFICE_SEAT - 220, 15, THIN),
+    line([pt(67, -OFFICE_SEAT - 180), pt(67, -OFFICE_SEAT - 50)], THIN),
+    line([pt(593, -OFFICE_SEAT - 180), pt(593, -OFFICE_SEAT - 50)], THIN),
+    line([pt(mid, -OFFICE_SEAT), pt(mid, -90)], { strokeWidth: 1.5 }),
+    line([pt(mid - 300, -40), pt(mid + 300, -40)], THIN),
+    circle(mid - 300, -20, 20, THIN),
+    circle(mid + 300, -20, 20, THIN),
+  ]
+}
+
+/**
+ * An office chair on its five casters, its back at the top: a seat, armrests, a curved back. It
+ * stands in the room, turned to face its desk, as the dining chair does.
+ */
+export const officeChair: ParametricKind = {
+  kind: 'arch.officechair',
+  label: 'Office chair',
+  category: 'office',
+  description: 'On five casters, its back at the top. Turn it to face the desk.',
+  params: [],
+  height: () => OFFICE_BACK,
+  build: () => officeChairPlan(),
+  front: () => officeChairFront(),
+  back: () => officeChairFront(),
+  // From its side, its own Y from its back: the back leaning over the seat, the column, the base.
+  side: () => [
+    rect(60, -OFFICE_SEAT, 530, -OFFICE_SEAT - 50, THIN),
+    outline([pt(200, -OFFICE_SEAT - 50), pt(160, -OFFICE_BACK), pt(110, -OFFICE_BACK), pt(150, -OFFICE_SEAT - 50)]),
+    line([pt(370, -OFFICE_SEAT), pt(370, -90)], { strokeWidth: 1.5 }),
+    line([pt(70, -40), pt(670, -40)], THIN),
+    circle(70, -20, 20, THIN),
+    circle(670, -20, 20, THIN),
+  ],
 }
 
 /**

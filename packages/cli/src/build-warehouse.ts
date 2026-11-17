@@ -62,63 +62,6 @@ const roundRect = (x: number, y: number, width: number, height: number, radius: 
     ],
     radius,
   )
-/**
- * A bowl seen from above, its back toward the wall at the top: nearly square at the back (the
- * higher `square`, the squarer) and round at the front, `back` and `front` deep from (cx, cy).
- */
-function bowl(cx: number, cy: number, halfWidth: number, back: number, front: number, square = 5): Pt[] {
-  return Array.from({ length: 72 }, (_, i) => {
-    const t = (i / 72) * 2 * Math.PI
-    const [c, s] = [Math.cos(t), Math.sin(t)]
-    const power = (v: number, n: number) => Math.sign(v) * Math.abs(v) ** (2 / n)
-    const n = s < 0 ? square : 2.2
-    return [cx + halfWidth * power(c, n), cy + (s < 0 ? back : front) * power(s, n)]
-  })
-}
-/** Where a horizontal line at `y` crosses a closed outline: its leftmost and rightmost points there. */
-function across(outline: Pt[], y: number): [number, number] {
-  const xs = outline.flatMap(([x1, y1], i) => {
-    const [x2, y2] = outline[(i + 1) % outline.length]
-    return (y1 - y) * (y2 - y) <= 0 && y1 !== y2 ? [x1 + ((y - y1) * (x2 - x1)) / (y2 - y1)] : []
-  })
-  return [Math.min(...xs), Math.max(...xs)]
-}
-
-/** A toilet standing on the floor: its cistern against the wall with a dual flush button, the bowl, and the opening of its seat. */
-function toilet(): Shape[] {
-  return [
-    roundRect(0, 0, 380, 170, [8, 8, 30, 30]),
-    thin(oval(190, 85, 32)),
-    thin(line(158, 85, 222, 85)),
-    poly(bowl(190, 300, 180, 130, 400), true),
-    oval(190, 445, 118, 205),
-  ]
-}
-
-/** A toilet hung on the wall, its cistern in the wall: the bowl, the opening of its seat, and the line of its hinge. */
-function wallHungToilet(): Shape[] {
-  const outline = bowl(180, 150, 180, 150, 390, 6)
-  const [left, right] = across(outline, 100)
-  return [poly(outline, true), oval(180, 330, 112, 180), thin(line(tenth(left), 100, tenth(right), 100))]
-}
-
-/** A shower tray: its rim, the slopes to the drain in the middle, and the drain's grating. */
-function showerTray(size = 900): Shape[] {
-  const c = size / 2
-  // From the middle of each rounded inner corner to the edge of the drain.
-  const corner = 40 + 30 * (1 - Math.SQRT1_2)
-  const drain = c - 50 * Math.SQRT1_2
-  const slopes = (
-    [
-      [1, 1],
-      [-1, 1],
-      [1, -1],
-      [-1, -1],
-    ] as const
-  ).map(([sx, sy]) => thin(line(tenth(c - sx * (c - corner)), tenth(c - sy * (c - corner)), tenth(c - sx * (c - drain)), tenth(c - sy * (c - drain)))))
-  return [roundRect(0, 0, size, size, 10), thin(roundRect(40, 40, size - 80, size - 80, 30)), ...slopes, oval(c, c, 50), thin(oval(c, c, 28))]
-}
-
 
 interface Library {
   id: string
@@ -136,9 +79,6 @@ interface Library {
 /** How tall each component stands on the floor, in mm, by its name: what elevations draw it as. */
 const HEIGHTS: Record<string, number> = {
   'Coffee table, round': 400,
-  Toilet: 800,
-  'Shower tray': 100,
-  'Toilet, wall-hung': 400,
 }
 
 const LIBRARIES: Library[] = [
@@ -147,10 +87,10 @@ const LIBRARIES: Library[] = [
     name: 'Furniture',
     description: 'Beds, seating, tables and storage for furnishing a plan.',
     components: [
-      // The double bed and the dining table are the adjustable Bed and Table with chairs now, which
-      // ship with the app (furniture.json), at the same sizes: their places stay empty.
+      // The double bed and the dining table are the adjustable Double bed and Table with chairs now,
+      // which ship with the app (furniture.json), at the same sizes: their places stay empty.
       null,
-      // The single bed is the adjustable Bed made 90 cm wide, and the wardrobe the adjustable one of
+      // The single bed is the adjustable Single bed, and the wardrobe the adjustable one of
       // the built-in extension, which elevations draw by their fronts: their places stay empty.
       null,
       // The sofa, the armchair, the chair and the desk with its chair are adjustable objects of the
@@ -169,18 +109,18 @@ const LIBRARIES: Library[] = [
     name: 'Bathroom',
     description: 'Sanitary fittings.',
     components: [
-      ['Toilet', '380 × 700', toilet()],
+      // The toilet, the shower tray and the wall-hung toilet are parametric objects now (in the
+      // built-in extension), which go against walls and are resized by their sides: their places stay empty.
+      null,
       // The washbasin is a parametric object now (in the built-in extension): its counter is resized, its bowls keep their size.
       null,
       // The bathtub is a parametric object now (in the built-in extension): its rim keeps its thickness when it is resized.
       null,
-      ['Shower tray', '900 × 900', showerTray()],
-      // Added after the others: a component already imported from a library is known by its place in it.
+      null,
       // This place held a double washbasin while it was being made, then the wall-hung toilet in
       // 1.0.0-rc.3; drawings hold either under it, so it stays empty, neither to be taken for the other.
       null,
-      // Hung on the wall with its cistern in it: a straight back, a rounded front, the hinge of its seat.
-      ['Toilet, wall-hung', '360 × 540', wallHungToilet()],
+      null,
     ],
   },
   {
@@ -210,9 +150,6 @@ const TRANSLATIONS: Record<string, [fr: string, es: string, de: string, zh: stri
   'Coffee table, round': ['Table basse ronde', 'Mesa de centro redonda', 'Couchtisch, rund', '圆形茶几', '丸いローテーブル', '원형 커피 테이블', 'Sehpa, yuvarlak'],
   Bathroom: ['Salle de bain', 'Baño', 'Bad', '卫生间', '浴室・トイレ', '욕실', 'Banyo'],
   'Sanitary fittings.': ['Appareils sanitaires.', 'Aparatos sanitarios.', 'Sanitärobjekte.', '卫生洁具。', '衛生器具。', '위생 기구.', 'Vitrifiye ve armatürler.'],
-  Toilet: ['WC', 'Inodoro', 'WC', '坐便器', '便器', '양변기', 'Klozet'],
-  'Shower tray': ['Receveur de douche', 'Plato de ducha', 'Duschwanne', '淋浴底盘', 'シャワーパン', '샤워 트레이', 'Duş teknesi'],
-  'Toilet, wall-hung': ['WC suspendu', 'Inodoro suspendido', 'Wand-WC', '壁挂式坐便器', '壁掛け便器', '벽걸이 양변기', 'Asma klozet'],
   Kitchen: ['Cuisine', 'Cocina', 'Küche', '厨房', 'キッチン', '주방', 'Mutfak'],
   'Units and appliances on a 600 mm module.': ['Meubles et appareils sur un module de 600 mm.', 'Muebles y electrodomésticos en módulo de 600 mm.', 'Schränke und Geräte im 600-mm-Raster.', '按 600 mm 模数排布的橱柜和电器。', '600 mm モジュールのキャビネットと家電。', '600 mm 모듈의 수납장과 가전.', '600 mm modülde dolaplar ve cihazlar.'],
 }

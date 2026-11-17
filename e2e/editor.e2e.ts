@@ -761,11 +761,17 @@ test('lists the furniture by room in the object library, the adjustable pieces w
   // The library's single bed and wardrobe too: the adjustable bed and wardrobe draw them, and the
   // bedroom's furniture is all adjustable now, drawn by its fronts in elevations.
   await librarySection(page, 'Bedroom').click()
-  await expect(page.locator('.warehouse-card strong')).toHaveText(['Bedside table', 'Chest of drawers', 'Wardrobe', 'Bed'])
-  // The components shown can be copied into the drawing at once: the bathroom's toilets and shower tray, the whole library.
-  await librarySection(page, 'Bathroom').click()
+  await expect(page.locator('.warehouse-card strong')).toHaveText(['Bedside table', 'Chest of drawers', 'Wardrobe', 'Single bed', 'Double bed'])
+  // The components shown can be taken at once: the whole furniture library, the round coffee table
+  // alone now, which is put on the pointer as one card clicked is.
+  await librarySection(page, 'Living room').click()
   await page.getByRole('button', { name: 'Add the whole library' }).click()
-  await expect(page.locator('.toast')).toContainText('3 components added')
+  await expect(page.getByRole('dialog', { name: 'Object library' })).toBeHidden()
+  const box = (await canvas(page).boundingBox())!
+  await page.mouse.click(box.x + 400, box.y + 300)
+  await page.keyboard.press('Escape')
+  await expect(objectRows(page)).toHaveCount(1)
+  await expect(objectRows(page).first()).toContainText('Coffee table, round')
 })
 
 test('has the furniture and the electrical symbols from the start, which are not extensions', async ({ page }) => {
@@ -773,7 +779,7 @@ test('has the furniture and the electrical symbols from the start, which are not
   await openEditor(page)
   await page.getByTitle('Object library: stairs, furniture and every other object').click()
   await librarySection(page, 'Bedroom').click()
-  await expect(page.locator('.warehouse-card strong')).toHaveText(['Bedside table', 'Chest of drawers', 'Wardrobe', 'Bed'])
+  await expect(page.locator('.warehouse-card strong')).toHaveText(['Bedside table', 'Chest of drawers', 'Wardrobe', 'Single bed', 'Double bed'])
   await page.keyboard.press('Escape')
   // Preferences › Extensions lists only what was added: nothing here.
   await page.keyboard.press('Control+k')
@@ -917,23 +923,28 @@ test('takes a component of its own from the object library each time, placed as 
   await expect(panel.locator('.row')).toHaveCount(2)
 })
 
-test('places the wall-hung toilet from the library in a drawing that took a double washbasin from where it was being made', async ({ page }) => {
+test('puts the wall-hung toilet from the library against the wall it is placed near, turned to stand out of it', async ({ page }) => {
   await startWith(page)
   await openEditor(page)
-  // While the double washbasin was being made it was the bathroom library's fifth component, and
-  // drawings of that time hold it under that place.
-  const plan = drawing({
-    basin: { id: 'basin', type: 'component', parent: null, order: 'a0', name: 'Double washbasin', description: '1200 × 500', meta: { source: 'warehouse.bathroom#bathroom_5' } },
-    counter: { id: 'counter', type: 'rect', parent: 'basin', order: 'a0', x: 0, y: 0, width: 1200, height: 500 },
-  })
+  // A wall from (0, 0) down to (0, 4000), 200 thick: the face on its right as seen on the sheet at x = 100.
+  const plan = drawing({ wall: { id: 'wall', type: 'wall', parent: 'page_1', order: 'a0', a: { x: 0, y: 0 }, b: { x: 0, y: 4000 }, thickness: 200 } })
   await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
+  await expect(objectRows(page)).toHaveCount(1)
+  const onScreen = await drawingOnScreen(page)
   await page.getByTitle('Object library: stairs, furniture and every other object').click()
   await page.locator('.warehouse-card', { has: page.locator('strong', { hasText: /^Toilet, wall-hung$/ }) }).click()
-  const box = (await canvas(page).boundingBox())!
-  await page.mouse.click(box.x + 400, box.y + 300)
+  // Placed by its middle, a little off the wall: within reach of it (40 pixels), it goes against it.
+  await page.mouse.click(...onScreen(250, 2000))
   await page.keyboard.press('Escape')
-  await expect(objectRows(page)).toHaveCount(1)
-  await expect(objectRows(page).first()).toContainText('Toilet, wall-hung')
+  await expect(objectRows(page)).toHaveCount(2)
+  await objectRows(page).filter({ hasText: 'Toilet, wall-hung' }).click()
+  // Its back on the face, its bowl out into the room: turned a quarter from how it is drawn.
+  const field = (name: string) => page.locator('.field', { has: page.locator(`span:text-is("${name}")`) }).locator('input')
+  await expect(field('X')).toHaveValue('100')
+  await expect(field('Rotation')).toHaveValue('270')
+  // Its width and depth are its W and D: no section under its name is left with nothing in it.
+  await expect(page.locator('[data-panel="properties"] .section h3', { hasText: 'Geometry' })).toHaveCount(1)
+  await expect(page.locator('[data-panel="properties"] .section h3', { hasText: 'Toilet, wall-hung' })).toHaveCount(0)
 })
 
 test('makes a group see-through from its properties, one drag of the slider being one step to undo', async ({ page }) => {
@@ -1139,7 +1150,7 @@ test('goes through the instances of a component one by one, on every page and in
   await expect(field('X')).toHaveValue('0')
 })
 
-test('makes the instances of one component instances of another, all from the Components panel or those selected from their properties', async ({ page }) => {
+test('makes the instances of one component instances of another from the Components panel, not from their properties', async ({ page }) => {
   await startWith(page)
   await openEditor(page)
   const shape = (id: string, parent: string) => ({ id, type: 'ellipse', parent, order: 'a0', cx: 0, cy: 0, rx: 100, ry: 100 })
@@ -1168,15 +1179,9 @@ test('makes the instances of one component instances of another, all from the Co
   await expect(page.locator('.toast')).toContainText('2 instances of “Socket 2” now place “Socket”.')
   await expect(row('Socket').locator('.uses')).toHaveText('3')
   await expect(row('Socket 2').locator('.uses')).toHaveText('0')
-  // One selected, from its properties: only it.
+  // Not from the properties of one selected: they say what it is, and replacing is done from here.
   await objectRows(page).nth(0).click()
-  const choice = page.locator('.field', { has: page.locator('span:text-is("Component")') }).locator('.component-choice > button')
-  await expect(choice).toHaveText('Lamp')
-  await choice.click()
-  await page.locator('.material-menu .color-option', { hasText: 'Socket' }).first().click()
-  await expect(choice).toHaveText('Socket')
-  await expect(row('Socket').locator('.uses')).toHaveText('4')
-  await expect(row('Lamp').locator('.uses')).toHaveText('0')
+  await expect(page.locator('[data-panel="properties"] .component-choice')).toHaveCount(0)
 })
 
 test('lists the objects placed with the same settings as one entry beside the components, which changes them together', async ({ page }) => {

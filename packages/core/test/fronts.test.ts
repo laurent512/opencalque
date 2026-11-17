@@ -174,12 +174,15 @@ describe('seats, desks and the bathroom in elevations', () => {
     expect(box(side('arch.sofa.corner'))).toEqual({ minX: 0, maxX: 1800, minY: -850, maxY: 0 })
   })
 
-  it('draw a chair the same from behind as from in front, and a desk with its office chair or without', () => {
+  it('draw a chair the same from behind as from in front, and a desk and its office chair each on its own', () => {
     const chair = kindOf('arch.chair')
     expect(chair.back!(registry.resolveProps(chair, {}))).toEqual(chair.front!(registry.resolveProps(chair, {})))
-    expect(front('arch.desk').length).toBeGreaterThan(front('arch.desk', { chair: false }).length)
-    expect(box(side('arch.desk')).maxX).toBeGreaterThan(700)
-    expect(box(side('arch.desk', { chair: false })).maxX).toBe(700)
+    // The desk alone: its top and the screen on it, as deep as it is from the side.
+    expect(box(front('arch.desk'))).toEqual({ minX: 0, maxX: 1400, minY: -1130, maxY: 0 })
+    expect(box(side('arch.desk')).maxX).toBe(700)
+    // The office chair from in front, its back up to 1050, on its casters; from the side, as deep as its plan.
+    expect(box(front('arch.officechair'))).toEqual({ minX: 10, maxX: 650, minY: -1050, maxY: 0 })
+    expect(box(side('arch.officechair'))).toMatchObject({ minY: -1050, maxY: 0 })
   })
 
   it('hang a washbasin’s vanity unit under its counter when asked, and stand a radiator off the floor', () => {
@@ -188,5 +191,28 @@ describe('seats, desks and the bathroom in elevations', () => {
     expect(box(front('arch.washbasin', { below: 'Drawers' })).maxY).toBe(-300)
     expect(box(front('arch.radiator'))).toMatchObject({ minY: -750 })
     expect(box(front('arch.bathtub'))).toMatchObject({ minX: 0, maxX: 1700, maxY: 0 })
+  })
+
+  it('stand a washbasin’s vanity unit on feet down to the floor when asked, from in front and from the side', () => {
+    expect(box(front('arch.washbasin', { below: 'Doors', feet: true })).maxY).toBe(0)
+    expect(box(side('arch.washbasin', { below: 'Doors', feet: true })).maxY).toBe(0)
+    // Without a unit under it, feet stand under nothing.
+    expect(front('arch.washbasin', { feet: true })).toEqual(front('arch.washbasin'))
+  })
+
+  it('draw a toilet’s lid: closed over the seat, or raised against the wall over a wall-hung one', () => {
+    // The lid closed, 30 thick on the seat at 420, the cistern over it up to 800.
+    expect(front('arch.toilet').some((p) => p.kind === 'path' && p.closed && Math.round(Math.min(...p.points.map((q) => q.y))) === -450 && Math.round(Math.max(...p.points.map((q) => q.y))) === -420)).toBe(true)
+    // Raised, the lid stands 430 over the seat at 400, under the flush plate.
+    expect(box(front('arch.toilet.wallhung').filter((p) => p.kind === 'path' && p.strokeWidth === undefined)).minY).toBe(-830)
+    expect(box(side('arch.toilet.wallhung')).minY).toBe(-860)
+  })
+
+  it('draw a shower head by its type, from its mixer up to the head over it', () => {
+    // Its mixer's middle at 1100 above the floor, at 0; the head at 2100, 1000 over it.
+    expect(box(front('arch.shower'))).toMatchObject({ minX: -125, maxX: 125, minY: -1005 })
+    expect(box(front('arch.shower', { type: 'Slide rail' })).minY).toBe(-960)
+    expect(box(front('arch.shower', { type: 'Fixed head' })).minY).toBe(-985)
+    for (const type of ['Column', 'Slide rail', 'Fixed head']) expect(box(side('arch.shower', { type })).minX, type).toBe(0)
   })
 })

@@ -213,15 +213,24 @@ export function withoutAssets(doc: Document): Document {
   return rest
 }
 
+/**
+ * Whether a desk draws its office chair as format 4 read it: unless told it has none, it drew one
+ * pulled up to it. A drawing of format 5 holding such a desk is written as 5, so that an older
+ * version refuses it rather than drawing a chair that is not there (`serializeDocument`).
+ */
+export const deskDrewChair = (node: { type?: unknown; kind?: unknown; props?: unknown }): boolean =>
+  node.type === 'parametric' && node.kind === 'arch.desk' && !(typeof node.props === 'object' && node.props !== null && (node.props as Record<string, unknown>).chair === false)
+
 /** Assets no image refers to any more are left out, so deleting a picture shrinks the file. */
 export function serializeDocument(doc: Document): string {
   const used = new Set(Object.values(doc.nodes).flatMap((n) => (n.type === 'image' ? [n.asset] : [])))
   const assets = Object.fromEntries(Object.entries(doc.assets ?? {}).filter(([id]) => used.has(id)))
   const { assets: _, ...rest } = doc
   // A drawing says the oldest version that knows all it holds, so that older versions of the app
-  // still open it: version 2 with no elevation, view line or link (1.8 and earlier), 3 with no link (1.9).
+  // still open it: version 2 with no elevation, view line or link (1.8 and earlier), 3 with no link
+  // (1.9), 4 with no desk that an older version would draw with an office chair (1.11).
   const nodes = Object.values(doc.nodes)
-  const needed = nodes.some((n) => n.type === 'link') ? 4 : nodes.some((n) => n.type === 'elevation' || n.type === 'viewline') ? 3 : 2
+  const needed = nodes.some(deskDrewChair) ? 5 : nodes.some((n) => n.type === 'link') ? 4 : nodes.some((n) => n.type === 'elevation' || n.type === 'viewline') ? 3 : 2
   const version = Math.min(doc.version, needed)
   return JSON.stringify(used.size > 0 ? { ...rest, version, assets } : { ...rest, version }, null, 2) + '\n'
 }

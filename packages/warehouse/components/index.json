@@ -51,56 +51,35 @@
     "name": "Bathroom",
     "description": "Sanitary fittings.",
     "file": "bathroom.opencalque",
-    "components": 3,
+    "components": 0,
     "translations": {
       "fr": {
         "Bathroom": "Salle de bain",
-        "Sanitary fittings.": "Appareils sanitaires.",
-        "Toilet": "WC",
-        "Shower tray": "Receveur de douche",
-        "Toilet, wall-hung": "WC suspendu"
+        "Sanitary fittings.": "Appareils sanitaires."
       },
       "es": {
         "Bathroom": "Baño",
-        "Sanitary fittings.": "Aparatos sanitarios.",
-        "Toilet": "Inodoro",
-        "Shower tray": "Plato de ducha",
-        "Toilet, wall-hung": "Inodoro suspendido"
+        "Sanitary fittings.": "Aparatos sanitarios."
       },
       "de": {
         "Bathroom": "Bad",
-        "Sanitary fittings.": "Sanitärobjekte.",
-        "Toilet": "WC",
-        "Shower tray": "Duschwanne",
-        "Toilet, wall-hung": "Wand-WC"
+        "Sanitary fittings.": "Sanitärobjekte."
       },
       "zh": {
         "Bathroom": "卫生间",
-        "Sanitary fittings.": "卫生洁具。",
-        "Toilet": "坐便器",
-        "Shower tray": "淋浴底盘",
-        "Toilet, wall-hung": "壁挂式坐便器"
+        "Sanitary fittings.": "卫生洁具。"
       },
       "ja": {
         "Bathroom": "浴室・トイレ",
-        "Sanitary fittings.": "衛生器具。",
-        "Toilet": "便器",
-        "Shower tray": "シャワーパン",
-        "Toilet, wall-hung": "壁掛け便器"
+        "Sanitary fittings.": "衛生器具。"
       },
       "ko": {
         "Bathroom": "욕실",
-        "Sanitary fittings.": "위생 기구.",
-        "Toilet": "양변기",
-        "Shower tray": "샤워 트레이",
-        "Toilet, wall-hung": "벽걸이 양변기"
+        "Sanitary fittings.": "위생 기구."
       },
       "tr": {
         "Bathroom": "Banyo",
-        "Sanitary fittings.": "Vitrifiye ve armatürler.",
-        "Toilet": "Klozet",
-        "Shower tray": "Duş teknesi",
-        "Toilet, wall-hung": "Asma klozet"
+        "Sanitary fittings.": "Vitrifiye ve armatürler."
       }
     }
   },

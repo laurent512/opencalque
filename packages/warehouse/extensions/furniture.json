@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "id": "opencalque.furniture",
   "name": "Adjustable furniture",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "author": "OpenCalque",
   "description": "Tables, beds and shelving whose size and number of seats or bays you set.",
   "translations": {
@@ -11,7 +11,8 @@
       "Adjustable furniture": "Mobilier ajustable",
       "Tables, beds and shelving whose size and number of seats or bays you set.": "Tables, lits et étagères dont vous réglez la taille et le nombre de places ou de travées.",
       "Table with chairs": "Table avec chaises",
-      "Bed": "Lit",
+      "Single bed": "Lit simple",
+      "Double bed": "Lit double",
       "Shelving unit": "Étagère",
       "Length": "Longueur",
       "Width": "Largeur",
@@ -23,7 +24,8 @@
       "Adjustable furniture": "Mobiliario ajustable",
       "Tables, beds and shelving whose size and number of seats or bays you set.": "Mesas, camas y estanterías cuyo tamaño y número de plazas o módulos usted define.",
       "Table with chairs": "Mesa con sillas",
-      "Bed": "Cama",
+      "Single bed": "Cama individual",
+      "Double bed": "Cama doble",
       "Shelving unit": "Estantería",
       "Length": "Longitud",
       "Width": "Ancho",
@@ -35,7 +37,8 @@
       "Adjustable furniture": "Anpassbare Möbel",
       "Tables, beds and shelving whose size and number of seats or bays you set.": "Tische, Betten und Regale, deren Größe und Anzahl der Plätze oder Felder Sie festlegen.",
       "Table with chairs": "Tisch mit Stühlen",
-      "Bed": "Bett",
+      "Single bed": "Einzelbett",
+      "Double bed": "Doppelbett",
       "Shelving unit": "Regal",
       "Length": "Länge",
       "Width": "Breite",
@@ -47,7 +50,8 @@
       "Adjustable furniture": "可调家具",
       "Tables, beds and shelving whose size and number of seats or bays you set.": "可设置尺寸及座位数或格数的桌子、床和置物架。",
       "Table with chairs": "桌椅",
-      "Bed": "床",
+      "Single bed": "单人床",
+      "Double bed": "双人床",
       "Shelving unit": "置物架",
       "Length": "长度",
       "Width": "宽度",
@@ -59,7 +63,8 @@
       "Adjustable furniture": "サイズ可変の家具",
       "Tables, beds and shelving whose size and number of seats or bays you set.": "サイズや席数・棚の数を設定できるテーブル、ベッド、棚。",
       "Table with chairs": "テーブルといす",
-      "Bed": "ベッド",
+      "Single bed": "シングルベッド",
+      "Double bed": "ダブルベッド",
       "Shelving unit": "棚",
       "Length": "長さ",
       "Width": "幅",
@@ -71,7 +76,8 @@
       "Adjustable furniture": "크기 조절 가구",
       "Tables, beds and shelving whose size and number of seats or bays you set.": "크기와 좌석 수 또는 칸 수를 정할 수 있는 테이블, 침대, 선반.",
       "Table with chairs": "테이블과 의자",
-      "Bed": "침대",
+      "Single bed": "싱글 침대",
+      "Double bed": "더블 침대",
       "Shelving unit": "선반",
       "Length": "길이",
       "Width": "너비",
@@ -83,7 +89,8 @@
       "Adjustable furniture": "Ayarlanabilir mobilya",
       "Tables, beds and shelving whose size and number of seats or bays you set.": "Boyutunu ve oturma yeri ya da bölme sayısını ayarladığınız masalar, yataklar ve raflar.",
       "Table with chairs": "Sandalyeli masa",
-      "Bed": "Yatak",
+      "Single bed": "Tek kişilik yatak",
+      "Double bed": "Çift kişilik yatak",
       "Shelving unit": "Raf ünitesi",
       "Length": "Uzunluk",
       "Width": "Genişlik",
@@ -198,10 +205,62 @@
       ]
     },
     {
-      "kind": "furn.bed",
+      "kind": "furn.bed.single",
+      "mount": { "on": "floor" },
       "height": "500",
       "category": "bedroom",
-      "label": "Bed",
+      "label": "Single bed",
+      "params": [
+        { "key": "width", "label": "Width", "type": "number", "default": 900, "unit": "length" },
+        { "key": "length", "label": "Length", "type": "number", "default": 1900, "unit": "length" }
+      ],
+      "box": { "width": "width", "height": "length" },
+      "draw": [
+        { "closed": true, "radius": 25, "path": [[0, 0], ["width", 0], ["width", "length"], [0, "length"]] },
+        { "path": [[0, 50], ["width", 50]] },
+        {
+          "repeat": { "count": "width >= 1400 ? 2 : 1" },
+          "closed": true,
+          "radius": 90,
+          "path": [
+            ["80 + i * ((width - 160 - ((width >= 1400 ? 2 : 1) - 1) * 60) / (width >= 1400 ? 2 : 1) + 60)", 100],
+            ["80 + i * ((width - 160 - ((width >= 1400 ? 2 : 1) - 1) * 60) / (width >= 1400 ? 2 : 1) + 60) + max(1, (width - 160 - ((width >= 1400 ? 2 : 1) - 1) * 60) / (width >= 1400 ? 2 : 1))", 100],
+            ["80 + i * ((width - 160 - ((width >= 1400 ? 2 : 1) - 1) * 60) / (width >= 1400 ? 2 : 1) + 60) + max(1, (width - 160 - ((width >= 1400 ? 2 : 1) - 1) * 60) / (width >= 1400 ? 2 : 1))", 480],
+            ["80 + i * ((width - 160 - ((width >= 1400 ? 2 : 1) - 1) * 60) / (width >= 1400 ? 2 : 1) + 60)", 480]
+          ]
+        },
+        { "path": [[0, 620], ["width - min(500, width * 0.3)", 620]] },
+        {
+          "closed": true,
+          "path": [
+            ["width - min(500, width * 0.3)", 620],
+            ["width", "620 + min(500, width * 0.3)"],
+            ["width - min(500, width * 0.3)", "620 + min(500, width * 0.3)"]
+          ]
+        }
+      ],
+      "front": [
+        { "closed": true, "path": [[0, 0], [60, 0], [60, -100], [0, -100]] },
+        { "closed": true, "path": [["width - 60", 0], ["width", 0], ["width", -100], ["width - 60", -100]] },
+        { "closed": true, "path": [[0, -100], ["width", -100], ["width", -300], [0, -300]] },
+        { "radius": 40, "closed": true, "path": [[10, -300], ["width - 10", -300], ["width - 10", -500], [10, -500]] },
+        { "path": [[0, -500], [0, -1000], ["width", -1000], ["width", -500]] }
+      ],
+      "side": [
+        { "closed": true, "path": [[0, 0], [50, 0], [50, -1000], [0, -1000]] },
+        { "closed": true, "path": [[50, -100], ["length", -100], ["length", -300], [50, -300]] },
+        { "closed": true, "path": [[50, 0], [110, 0], [110, -100], [50, -100]] },
+        { "closed": true, "path": [["length - 60", 0], ["length", 0], ["length", -100], ["length - 60", -100]] },
+        { "radius": 40, "closed": true, "path": [[60, -300], ["length - 10", -300], ["length - 10", -500], [60, -500]] },
+        { "radius": 40, "closed": true, "path": [[100, -500], [480, -500], [480, -590], [100, -590]] }
+      ]
+    },
+    {
+      "kind": "furn.bed",
+      "mount": { "on": "floor" },
+      "height": "500",
+      "category": "bedroom",
+      "label": "Double bed",
       "params": [
         { "key": "width", "label": "Width", "type": "number", "default": 1600, "unit": "length" },
         { "key": "length", "label": "Length", "type": "number", "default": 2000, "unit": "length" }

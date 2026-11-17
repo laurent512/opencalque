@@ -77,7 +77,6 @@ function furnish(name: string) {
   }
 }
 const furniture = furnish('furniture')
-const bathroom = furnish('bathroom')
 
 doc = applyOps(doc, [
   add({ type: 'parametric', layer: 'furniture', kind: 'arch.sofa', x: 500, y: 500, props: { width: 1600, depth: 850, seats: 2 } }),
@@ -94,8 +93,9 @@ doc = applyOps(doc, [
   add({ type: 'parametric', layer: 'furniture', kind: 'arch.hob', x: 2850, y: 6850, rotation: 180, props: { width: 600, depth: 600 } }),
   add({ type: 'parametric', layer: 'furniture', kind: 'arch.baseunit', x: 3550, y: 6850, rotation: 180, props: { width: 600, depth: 600 } }),
   add({ type: 'parametric', layer: 'furniture', kind: 'arch.washbasin', x: 7850, y: 3900, rotation: 0, props: { width: 600, depth: 450, bowls: 1 } }),
-  bathroom('Toilet', 8950, 3950),
-  bathroom('Shower tray', 8950, 5950),
+  // The toilet against the partition above it, the shower tray in the corner against the outside wall below it.
+  add({ type: 'parametric', layer: 'furniture', kind: 'arch.toilet', x: 8950, y: 3850, props: { width: 380, depth: 700 } }),
+  add({ type: 'parametric', layer: 'furniture', kind: 'arch.showertray', x: 9875, y: 6875, rotation: 180, props: { width: 900, depth: 900 } }),
 ])
 
 const out = join(here, '../../../examples/apartment.opencalque')

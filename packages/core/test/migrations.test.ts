@@ -1,7 +1,7 @@
 import { generateNKeysBetween } from 'fractional-indexing'
 import { describe, expect, it } from 'vitest'
 import { architecture } from '../../ext-architecture/src'
-import { applyOps, checkIntegrity, childrenOf, componentsOf, createDocument, FORMAT_VERSION, quantities, readDocument, Registry, toSVG, type Document, type NodeInput } from '../src'
+import { applyOps, buildScene, checkIntegrity, childrenOf, componentsOf, createDocument, FORMAT_VERSION, quantities, readDocument, Registry, serializeDocument, toSVG, type Document, type NodeInput } from '../src'
 
 const registry = new Registry().use(architecture)
 
@@ -286,5 +286,60 @@ describe('a drawing of version 2 that breaks its rules', () => {
     expect(doc.nodes.seat.layer).toBeUndefined()
     expect(doc.nodes.placed.style).toBeUndefined()
     expect(repairs).toHaveLength(2)
+  })
+})
+
+describe('version 4 to 5: a desk’s office chair, an object of its own', () => {
+  /** A drawing as version 4 wrote it, with desks placed as the editor placed them then. */
+  const desk = (id: string, order: string, x: number, y: number, rotation: number, props: Record<string, unknown>) => ({ id, type: 'parametric', parent: 'page_1', layer: 'layer_1', order, kind: 'arch.desk', props, x, y, rotation })
+  const raw = {
+    ...createDocument(),
+    version: 4,
+    nodes: {
+      ...createDocument().nodes,
+      plain: desk('plain', 'a1', 0, 0, 0, {}),
+      turned: desk('turned', 'a2', 1000, 2000, 90, { width: 1400, depth: 700, chair: true }),
+      without: desk('without', 'a3', 5000, 0, 0, { chair: false }),
+      lamp: { id: 'lamp', type: 'rect', parent: 'page_1', layer: 'layer_1', order: 'a4', x: 0, y: 0, width: 10, height: 10 },
+    },
+  }
+  const doc = read(raw)
+  const chairs = Object.values(doc.nodes).filter((node) => node.type === 'parametric' && node.kind === 'arch.officechair')
+
+  it('gives each desk that drew a chair that chair where it drew it, turned to face it, and tells the desk it has none', () => {
+    expect(doc.version).toBe(FORMAT_VERSION)
+    expect(chairs.map((chair) => chair.id).sort()).toEqual(['plain_chair', 'turned_chair'])
+    // Its middle, 20 mm in front of the desk, turned round: in the desk's terms (1030, 1450) for one 1400 × 700.
+    expect(doc.nodes.plain_chair).toMatchObject({ x: 1030, y: 1450, rotation: 180, layer: 'layer_1', props: {} })
+    // A desk turned a quarter at (1000, 2000) takes it round with it.
+    const turned = doc.nodes.turned_chair as unknown as { x: number; y: number; rotation: number }
+    expect([Math.round(turned.x), Math.round(turned.y), turned.rotation]).toEqual([-450, 3030, 270])
+    expect(doc.nodes.plain).toMatchObject({ props: { chair: false } })
+    expect(doc.nodes.turned).toMatchObject({ props: { width: 1400, depth: 700, chair: false } })
+    expect(doc.nodes.without).toEqual(raw.nodes.without)
+  })
+
+  it('puts each chair just above its desk, under what was above it', () => {
+    const plain = doc.nodes.plain_chair as unknown as { order: string }
+    expect(plain.order > 'a1' && plain.order < 'a2').toBe(true)
+    const turned = doc.nodes.turned_chair as unknown as { order: string }
+    expect(turned.order > 'a2' && turned.order < 'a3').toBe(true)
+  })
+
+  it('draws the desk and its chair where the desk drew both', () => {
+    // The chair's plan in front of the desk: its casters reach 85 mm past it, its back 650.
+    const box = buildScene(doc, 'page_1', registry).find((item) => item.id === 'plain_chair')!.bounds!
+    expect([Math.round(box.minY), Math.round(box.maxY)]).toEqual([785, 1370])
+    expect(Math.round((box.minX + box.maxX) / 2)).toBe(700)
+  })
+})
+
+describe('the version a drawing is written as', () => {
+  const withDesk = (props: Record<string, unknown>) =>
+    applyOps(createDocument(), [{ op: 'add_node', node: { type: 'parametric', id: 'd', parent: 'page_1', kind: 'arch.desk', props, x: 0, y: 0 } as NodeInput }])
+  it('is 5 for a desk an older version would draw with an office chair, and older for one that says it has none', () => {
+    expect(JSON.parse(serializeDocument(withDesk({}))).version).toBe(5)
+    expect(JSON.parse(serializeDocument(withDesk({ chair: false }))).version).toBe(2)
+    expect(JSON.parse(serializeDocument(createDocument())).version).toBe(2)
   })
 })

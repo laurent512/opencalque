@@ -927,7 +927,6 @@ export const ja: Record<string, string> = {
   "One inside “{to}” itself was kept.": "「{to}」の中にある 1 個はそのままです。",
   "{n} inside “{to}” itself were kept.": "「{to}」の中にある {n} 個はそのままです。",
   "“{from}” is placed nowhere any more: delete it if it is not wanted.": "「{from}」はどこにも配置されていません。不要なら削除してください。",
-  "A component cannot hold itself: what is inside “{to}” was kept.": "コンポーネントは自分自身を含めません。「{to}」の中のものはそのままです。",
   "Select them all, to change them together": "すべて選択してまとめて変更",
   "Delete them all": "すべて削除",
   "Delete them": "削除",

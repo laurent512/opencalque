@@ -328,19 +328,6 @@ export function replaceInstances(from: string, to: string): void {
   toast(`${done}${kept}${left}`)
 }
 
-/** Makes the selected placements placements of another entry, those that become another sort of thing selected again under their new ids. */
-export function swapSelectedComponent(to: string): void {
-  const { doc, selection } = get()
-  const target = entryTarget(doc, to)
-  if (!target) return
-  const { ops, skipped } = replaceWithOps(doc, selection, target)
-  if (ops.length > 0 && apply(ops)) {
-    const added = ops.flatMap((op) => (op.op === 'add_node' ? [op.node.id as string] : []))
-    select([...selection.filter((id) => get().doc.nodes[id]), ...added])
-  }
-  if (skipped > 0) toast(t('A component cannot hold itself: what is inside “{to}” was kept.', { to: entryName(doc, to) }))
-}
-
 /** Deletes an entry: a component with its placements, or every object of a model, once the user has said yes. */
 export function deleteEntry(entry: string): void {
   if (!isModel(entry)) return deleteComponent(entry)

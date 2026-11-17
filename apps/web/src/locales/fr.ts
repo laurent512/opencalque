@@ -927,7 +927,6 @@ export const fr: Record<string, string> = {
   "One inside “{to}” itself was kept.": "Celle qui est dans « {to} » même a été gardée.",
   "{n} inside “{to}” itself were kept.": "Les {n} qui sont dans « {to} » même ont été gardées.",
   "“{from}” is placed nowhere any more: delete it if it is not wanted.": "« {from} » n’est plus posé nulle part : supprimez-le s’il ne sert plus.",
-  "A component cannot hold itself: what is inside “{to}” was kept.": "Un composant ne peut pas se contenir : ce qui est dans « {to} » a été gardé.",
   "Select them all, to change them together": "Les sélectionner toutes, pour les modifier ensemble",
   "Delete them all": "Les supprimer toutes",
   "Delete them": "Les supprimer",
