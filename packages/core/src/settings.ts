@@ -4,18 +4,24 @@ import type { Document, DrawingSettings } from './schema'
 import { unitless } from './tables'
 
 /** What each drawing setting is when the drawing does not say: stored, it is left out. */
-const DEFAULTS: Required<DrawingSettings> = { system: 'metric', decimal: '.' }
+const DEFAULTS = { system: 'metric', decimal: '.' } as const
+
+/** The settings of how the drawing writes its numbers, which what is placed in it may also say for itself. */
+type NumberSetting = keyof typeof DEFAULTS
 
 /**
  * The operations that make a drawing write its numbers as `next` says, and everything in it with
  * it: the rooms, tables of quantities, dimensions and dimension styles that wrote theirs their own
  * way stop doing so, and the words of a table that name a unit ("Area (m²)") say "{unit}" there,
- * to follow the drawing too. Only the settings `next` gives are changed.
+ * to follow the drawing too. Only the settings `next` gives are changed. A title block laid out in
+ * the corner, the default, is stored as nothing, its captions with it.
  */
 export function drawingSettingsOps(doc: Document, next: DrawingSettings): Op[] {
-  const keys = (Object.keys(next) as (keyof DrawingSettings)[]).filter((key) => next[key] !== undefined)
-  if (keys.length === 0) return []
-  const settings = Object.fromEntries(keys.map((key) => [key, next[key] === DEFAULTS[key] ? null : next[key]]))
+  const keys = (['system', 'decimal'] as NumberSetting[]).filter((key) => next[key] !== undefined)
+  const settings: NonNullable<Extract<Op, { op: 'set_document' }>['settings']> = Object.fromEntries(keys.map((key) => [key, next[key] === DEFAULTS[key] ? null : next[key]]))
+  // The title blocks: in the corner, the default, the drawing says nothing of them, captions included.
+  if (next.titleBlock !== undefined) settings.titleBlock = next.titleBlock.layout === 'strip' ? next.titleBlock : null
+  if (Object.keys(settings).length === 0) return []
   const ops: Op[] = [{ op: 'set_document', settings }]
   const system = settingsOf(doc).system
   for (const node of Object.values(doc.nodes)) {

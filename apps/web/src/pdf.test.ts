@@ -53,6 +53,17 @@ describe('PDF export', () => {
     for (const expected of ['Floor plan', '1:48', 'ARCH D']) expect(words).toContain(expected)
   })
 
+  it('prints the title block down the right edge with its captions and revisions', async () => {
+    // A 36 × 24 inch sheet at 1:48 in a drawing whose blocks are strips, with the revisions of the sheet.
+    const sheet = applyOps(createDocument('House'), [
+      { op: 'set_document', info: { project: 'House on Elm St', author: 'KL' }, settings: { titleBlock: { layout: 'strip' } } },
+      add({ type: 'paper', id: 'p', name: 'Floor plan', x: 0, y: 0, width: 36 * 25.4 * 48, height: 24 * 25.4 * 48, scale: 48, titleBlock: { number: 'A-101', revisions: '1 | 2026-10-02 | Issued for review\n2 | 2026-11-17 | Issued for permit' } }),
+    ])
+    const page = await (await open(toPDF(sheet, registry))).getPage(1)
+    const words = (await page.getTextContent()).items.map((item: any) => item.str)
+    for (const expected of ['Project', 'House on Elm St', 'Revisions', '2026-11-17', 'Issued for permit', 'Drawn by', 'KL', 'Sheet title', 'Floor plan', 'Scale', '1:48', 'Sheet no.', 'A-101']) expect(words).toContain(expected)
+  })
+
   it('draws to scale: 6 m of wall at 1:50 is 120 mm on the sheet', async () => {
     const text = new TextDecoder('latin1').decode(toPDF(doc, registry, ['a3']))
     // The wall's centerline runs from x = 2000 to 8000 mm of drawing: 40 to 160 mm of paper, 113.386 to 453.543 points.

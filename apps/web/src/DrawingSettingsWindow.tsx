@@ -1,4 +1,4 @@
-import { drawingSettingsOps, settingsOf, type DrawingSettings } from '@opencalque/core'
+import { drawingSettingsOps, settingsOf, TITLE_FIELDS, type DrawingSettings, type TitleField } from '@opencalque/core'
 import { msg, t } from './i18n'
 import { apply, useStore } from './store'
 import { useWindows } from './windows'
@@ -13,10 +13,28 @@ const INFO: [field: 'project' | 'client' | 'address' | 'author', label: string][
   ['author', msg('Author')],
 ]
 
+/** What the strip down the right edge calls each entry on the sheet, in the usual words of US sheets: "Drawn by" for the author. */
+const STRIP_CAPTIONS: Record<TitleField, string> = {
+  project: msg('Project'),
+  client: msg('Client'),
+  address: msg('Address'),
+  sheet: msg('Sheet title'),
+  page: msg('Page'),
+  author: msg('Drawn by'),
+  scale: msg('Scale'),
+  format: msg('Format'),
+  date: msg('Date'),
+  number: msg('Sheet no.'),
+  revisions: msg('Revisions'),
+}
+
+/** The captions the strip is given when it is chosen, in the language in use: the drawing keeps them, as a table keeps its words. */
+const stripLabels = (): Record<string, string> => Object.fromEntries(TITLE_FIELDS.map((field) => [field, t(STRIP_CAPTIONS[field])]))
+
 /**
  * What belongs to the drawing rather than to one object or to the user: how it writes its numbers
- * (the areas of its rooms, its tables of quantities, its dimensions and the CSV export) and what it
- * says about itself in title blocks. A setting changed here is taken by everything in the drawing,
+ * (the areas of its rooms, its tables of quantities, its dimensions and the CSV export), what it
+ * says about itself in title blocks, and how the title blocks of all its sheets are laid out. A setting changed here is taken by everything in the drawing,
  * which stops writing its numbers its own way (`drawingSettingsOps`), in one step to undo.
  */
 export function DrawingSettingsWindow() {
@@ -72,6 +90,13 @@ export function DrawingSettingsWindow() {
               )}
             </label>
           ))}
+          <label className="pref-field">
+            <span>{t('Title block')}</span>
+            <select value={doc.settings?.titleBlock?.layout ?? 'corner'} onChange={(e) => set({ titleBlock: e.target.value === 'strip' ? { layout: 'strip', labels: stripLabels() } : {} })}>
+              <option value="corner">{t('In the bottom right corner')}</option>
+              <option value="strip">{t('Down the right edge, with captions')}</option>
+            </select>
+          </label>
           <p className="hint">{t('Shown in the title block of every sheet, and where a text says {project}, {client}, {address} or {author}.')}</p>
         </section>
       </div>

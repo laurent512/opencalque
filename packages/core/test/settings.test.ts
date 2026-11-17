@@ -106,3 +106,19 @@ describe('the words of a table', () => {
     expect(unitless('Nom', 'name', 'metric')).toBe('Nom')
   })
 })
+
+describe('the layout of the title blocks', () => {
+  it('is kept with the drawing as a strip, its captions with it, and leaves the tables and their words alone', () => {
+    const labels = { project: 'Projet', number: 'N° de feuille' }
+    const strip = set(house, drawingSettingsOps(house, { titleBlock: { layout: 'strip', labels } }))
+    expect(strip.settings).toEqual({ titleBlock: { layout: 'strip', labels } })
+    expect(strip.nodes.table).toEqual(house.nodes.table)
+    expect(settingsOf(strip)).toEqual({ system: 'metric', decimal: '.' })
+    // Back in the corner, the default, the drawing says nothing of its title blocks, as before.
+    const corner = set(strip, drawingSettingsOps(strip, { titleBlock: {} }))
+    expect(corner.settings).toBeUndefined()
+    expect(set(house, drawingSettingsOps(house, { titleBlock: { layout: 'corner' } })).settings).toBeUndefined()
+    // The units change without it.
+    expect(set(strip, drawingSettingsOps(strip, { system: 'imperial' })).settings).toEqual({ system: 'imperial', titleBlock: { layout: 'strip', labels } })
+  })
+})
