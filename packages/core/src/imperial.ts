@@ -14,7 +14,11 @@ export const INCH_FRACTIONS = [2, 4, 8, 16, 32] as const
  * 7' 6 1/2", 7' 0", 6 1/2" (under a foot, the feet are left out), -3' 2".
  */
 export function formatFeetInches(mm: number, denominator = 16): string {
-  const parts = Math.round((Math.abs(mm) / MM_PER_INCH) * denominator)
+  // A length typed as 3 5/8" is stored in millimetres and comes back a hair off (3.4999999999999996
+  // quarters), so ties would round either way by luck. Snapping off that error first makes every
+  // length exactly half-way round up, as a drafter does.
+  const units = (Math.abs(mm) / MM_PER_INCH) * denominator
+  const parts = Math.round(Math.round(units * 1e6) / 1e6)
   if (parts === 0) return '0"'
   const feet = Math.floor(parts / (12 * denominator))
   const rest = parts - feet * 12 * denominator

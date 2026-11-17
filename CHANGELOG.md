@@ -4,6 +4,11 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### Fixed
+- In feet and inches, a length exactly half-way between two fractions of an inch always rounds up: 3 5/8" at the nearest 1/4" reads 3 3/4", where it could read 3 1/2" like 3 3/8" (about one such length in ten rounded down).
+
 ## 1.10.2 — 2026-11-17
 
 ### Improved
