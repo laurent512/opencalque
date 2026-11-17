@@ -4,7 +4,7 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
-## Unreleased
+## 1.11.0 — 2026-11-17
 
 ### New
 - The properties of every placed object begin the same way: X, Y, Z on one row (Z its height above the floor, empty for on the floor), its rotation, then W, D, H (width, depth, height) on one row, which can keep their proportions; what is its own (a unit's contents, a door's leaves) follows under its name. For a placement of a component, W and D stretch it and H is its component's height, which every placement shares (it replaces "Height in elevations").
