@@ -365,11 +365,12 @@ export const NodeSchema = z
             author: z.string().optional().describe('Overrides the author of the drawing on this sheet.'),
             date: z.string().optional(),
             number: z.string().optional(),
-            hide: z.array(z.string()).optional().describe("Entries this sheet leaves out, among project, client, address, sheet, page, author, scale, format, date and number. Defaults to ['page']."),
+            revisions: z.string().optional().describe("The sheet's revisions, one per line, each its mark, date and description separated by '|' (\"2 | 2026-11-17 | Issued for permit\"). Only the strip shows them (the drawing's \"settings\", titleBlock)."),
+            hide: z.array(z.string()).optional().describe("Entries this sheet leaves out, among project, client, address, sheet, page, author, scale, format, date, number and revisions. Defaults to ['page']."),
           })
           .optional()
           .describe(
-            'When present (even empty), the sheet gets a border and a title block in its bottom right corner. The block is made of the entries that have something to say and are not hidden: the project, client and address (from the document\'s "info"; the project falls back on the document name), the name of the paper and of its page, the author, the scale and format, and the date and sheet number given here. An entry with nothing in it takes no room. Texts may hold fields such as {date} or {page-number}.',
+            'When present (even empty), the sheet gets a border and a title block, in its bottom right corner or down its right edge, as the drawing\'s "settings" say (titleBlock). The block is made of the entries that have something to say and are not hidden: the project, client and address (from the document\'s "info"; the project falls back on the document name), the name of the paper and of its page, the author, the scale and format, and the date, sheet number and revisions given here. An entry with nothing in it takes no room. Texts may hold fields such as {date} or {page-number}.',
           ),
       })
       .describe(
@@ -532,10 +533,20 @@ export const NodeSchema = z
   ])
   .describe('All coordinates and lengths are millimetres. X grows to the right, Y grows downward.')
 
-/** How a whole drawing writes its numbers. What is placed in it follows, unless it says otherwise itself. */
+/** How a whole drawing writes its numbers, and lays out the title blocks of its sheets. What is placed in it follows, unless it says otherwise itself. */
 export const DrawingSettingsSchema = z.object({
   system: z.enum(['metric', 'imperial']).optional().describe("'imperial': areas in square feet, and the lengths, volumes and thicknesses of tables of quantities in feet and inches. Defaults to 'metric' (square metres, metres)."),
   decimal: z.enum(['.', ',']).optional().describe("The decimal separator of the areas, tables and dimensions. Defaults to '.'."),
+  titleBlock: z
+    .object({
+      layout: z
+        .enum(['corner', 'strip'])
+        .optional()
+        .describe("'corner' (the default): a block of values in the bottom right corner. 'strip': a column down the right edge of the sheet, as US sheets have it, each entry under its caption, the project at the top, the revisions under it and the sheet title and number at the bottom."),
+      labels: z.record(z.string(), z.string()).optional().describe('The captions of the strip, by entry (project, client, address, sheet, page, author, scale, format, date, number, revisions). Left out, English ones; an empty one is not drawn.'),
+    })
+    .optional()
+    .describe('How the title blocks of every sheet are laid out, the same throughout the set. Left out, in the corner. What each sheet shows is its own ("titleBlock" of a paper).'),
 })
 
 export const DocumentSchema = z
@@ -557,7 +568,7 @@ export const DocumentSchema = z
       .object({ project: z.string().optional(), client: z.string().optional(), address: z.string().optional(), author: z.string().optional() })
       .optional()
       .describe('What the drawing says about itself, shown in the title block of every sheet: the project (the document name when not given), the client, the address of the site (lines separated by a line break), the author.'),
-    settings: DrawingSettingsSchema.optional().describe('How the drawing writes its numbers: the floor areas of its rooms, its tables of quantities, its dimensions. Left out, in metric with a decimal point.'),
+    settings: DrawingSettingsSchema.optional().describe('How the drawing writes its numbers (the floor areas of its rooms, its tables of quantities, its dimensions) and lays out the title blocks of its sheets. Left out, in metric with a decimal point, the block in the corner.'),
     meta: z.record(z.string(), z.unknown()).optional(),
   })
   .describe('An OpenCalque document (.opencalque file).')

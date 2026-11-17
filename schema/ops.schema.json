@@ -493,6 +493,35 @@
                     "type": "null"
                   }
                 ]
+              },
+              "titleBlock": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "layout": {
+                        "type": "string",
+                        "enum": [
+                          "corner",
+                          "strip"
+                        ]
+                      },
+                      "labels": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -502,7 +531,7 @@
           "op"
         ],
         "additionalProperties": false,
-        "description": "Renames the document and/or changes what it says about itself (\"info\": project, client, address, author), shown in title blocks, and/or how it writes its numbers (\"settings\": system, decimal). In \"info\" and \"settings\" each key replaces that entry and a null or empty value removes it."
+        "description": "Renames the document and/or changes what it says about itself (\"info\": project, client, address, author), shown in title blocks, and/or how it writes its numbers and lays out its title blocks (\"settings\": system, decimal, titleBlock). In \"info\" and \"settings\" each key replaces that entry and a null or empty value removes it."
       }
     ]
   }
