@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { applyOps, createDocument, Registry, toPDF, type Op } from '@opencalque/core'
+import { applyOps, createDocument, paperSize, Registry, toPDF, type Op } from '@opencalque/core'
 import { architecture } from '@opencalque/ext-architecture'
 // The same reader the app uses to import PDFs, here to check that what is exported is a real one.
 import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
@@ -34,6 +34,23 @@ describe('PDF export', () => {
     expect([Math.round((a3.width * 25.4) / 72), Math.round((a3.height * 25.4) / 72)]).toEqual([420, 297])
     const a4 = (await pdf.getPage(2)).getViewport({ scale: 1 })
     expect([Math.round((a4.width * 25.4) / 72), Math.round((a4.height * 25.4) / 72)]).toEqual([210, 297])
+  })
+
+  it('prints the US sheets at their size in inches, and names them in the title block', async () => {
+    // An ARCH D lying at 1:48 (1/4" = 1'-0") and an ANSI B upright at 1:96: 36 × 24 and 11 × 17 inches, 72 points to the inch.
+    const us = applyOps(createDocument('House'), [
+      add({ type: 'paper', id: 'archD', name: 'Floor plan', x: 0, y: 0, ...paperSize('ARCH D', true, 48), scale: 48, titleBlock: {} }),
+      add({ type: 'paper', id: 'ansiB', name: 'Site', x: 60000, y: 0, ...paperSize('ANSI B', false, 96), scale: 96, titleBlock: {} }),
+    ])
+    const pdf = await open(toPDF(us, registry))
+    const inches = async (number: number) => {
+      const page = (await pdf.getPage(number)).getViewport({ scale: 1 })
+      return [page.width / 72, page.height / 72].map((n) => Math.round(n * 1000) / 1000)
+    }
+    expect(await inches(1)).toEqual([36, 24])
+    expect(await inches(2)).toEqual([11, 17])
+    const words = (await (await pdf.getPage(1)).getTextContent()).items.map((item: any) => item.str)
+    for (const expected of ['Floor plan', '1:48', 'ARCH D']) expect(words).toContain(expected)
   })
 
   it('draws to scale: 6 m of wall at 1:50 is 120 mm on the sheet', async () => {

@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { DEFAULT_INK, resolveColor } from '@opencalque/core'
+import { DEFAULT_INK, PAPER_SERIES, resolveColor, type PaperSeries } from '@opencalque/core'
 import { drawing } from './canvas/drawing'
 import { ColorChoice } from './ColorChoice'
 import { FillChoice } from './FillChoice'
 import { msg, t } from './i18n'
+import { setPrefs, usePrefs } from './prefs'
 import { useStore } from './store'
 import { type Tool } from './tools'
 import { WallToolMaterial } from './panels/properties/walls'
@@ -130,6 +131,7 @@ export function QuickBar() {
   const wallThickness = useStore((s) => s.wallThickness)
   const wallJustify = useStore((s) => s.wallJustify)
   const paperScale = useStore((s) => s.paperScale)
+  const paperSeries = usePrefs((p) => p.paperSeries)
   // The rotate tool takes an angle once its base line is set, at its second step.
   const started = useStore((s) => s.drawStep > (s.tool === 'rotate' ? 1 : 0))
   const bending = useStore((s) => s.tool === 'arc' && s.drawStep >= 2)
@@ -187,6 +189,24 @@ export function QuickBar() {
               onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
             />
           </label>
+        )}
+        {tool === 'paper' && (
+          <select
+            className="quick-select"
+            aria-label={t('Sheet sizes')}
+            title={t('The standard sheets a paper is drawn to: ISO (A4, A3…), or the ARCH and ANSI sizes used in the United States. Any of them can be given to a paper in its properties.')}
+            value={paperSeries}
+            onChange={(e) => {
+              setPrefs({ paperSeries: e.target.value as PaperSeries })
+              drawing.refresh?.()
+            }}
+          >
+            {PAPER_SERIES.map((series) => (
+              <option key={series} value={series}>
+                {series}
+              </option>
+            ))}
+          </select>
         )}
       </div>
       <div className="quick-group" hidden={!INKED.includes(tool)}>

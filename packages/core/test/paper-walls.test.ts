@@ -7,6 +7,7 @@ import {
   hitTest,
   moveOps,
   paintOrder,
+  PAPER_FORMATS,
   paperContents,
   paperFormat,
   paperScaleTo,
@@ -50,6 +51,33 @@ describe('paper', () => {
     expect(paperFormat({ width: 42000, height: 29700, scale: 100 })).toEqual({ name: 'A3', landscape: true })
     expect(paperFormat({ width: 29700, height: 42000 })).toEqual({ name: 'A3', landscape: false })
     expect(paperFormat({ width: 30000, height: 20000, scale: 100 })).toBeNull()
+  })
+
+  it('knows the US sheets, ARCH and ANSI, to the tenth of a millimetre', () => {
+    const inches = (name: string) => {
+      const sheet = PAPER_FORMATS.find((f) => f.name === name)!
+      return [sheet.short / 25.4, sheet.long / 25.4].map((n) => Math.round(n * 1000) / 1000)
+    }
+    expect(['ARCH A', 'ARCH B', 'ARCH C', 'ARCH D', 'ARCH E1', 'ARCH E'].map(inches)).toEqual([[9, 12], [12, 18], [18, 24], [24, 36], [30, 42], [36, 48]])
+    expect(['ANSI A', 'ANSI B', 'ANSI C', 'ANSI D', 'ANSI E'].map(inches)).toEqual([[8.5, 11], [11, 17], [17, 22], [22, 34], [34, 44]])
+    // A 24 × 36 lying at 1/4" = 1'-0" (1:48) is 914.4 × 609.6 mm of paper, 48 times that in the drawing.
+    const archD = paperSize('ARCH D', true, 48)!
+    expect(archD.width).toBeCloseTo(43891.2, 6)
+    expect(archD.height).toBeCloseTo(29260.8, 6)
+    expect(paperFormat({ ...archD, scale: 48 })).toEqual({ name: 'ARCH D', landscape: true })
+    // A sheet drawn to that size by hand, to the millimetre, is still one.
+    expect(paperFormat({ width: 24 * 25.4 * 50 + 10, height: 36 * 25.4 * 50, scale: 50 })).toEqual({ name: 'ARCH D', landscape: false })
+  })
+
+  it('tells every standard sheet from every other, either way up', () => {
+    expect(new Set(PAPER_FORMATS.map((f) => f.name)).size).toBe(PAPER_FORMATS.length)
+    for (const sheet of PAPER_FORMATS)
+      for (const landscape of [false, true]) expect(paperFormat({ ...paperSize(sheet.name, landscape, 100)!, scale: 100 })).toEqual({ name: sheet.name, landscape })
+    // Each series smallest first, as the formats are offered.
+    for (const series of ['ISO', 'ARCH', 'ANSI']) {
+      const longs = PAPER_FORMATS.filter((f) => f.series === series).map((f) => f.long)
+      expect(longs).toEqual([...longs].sort((a, b) => a - b))
+    }
   })
 
   it('changes scale, not shape, when a corner is pulled', () => {

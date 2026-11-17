@@ -353,6 +353,8 @@ export const es: Record<string, string> = {
   "Direction": "Orientación",
   "Upright": "Vertical",
   "Lying": "Horizontal",
+  "Sheet sizes": "Tamaños de papel",
+  "The standard sheets a paper is drawn to: ISO (A4, A3…), or the ARCH and ANSI sizes used in the United States. Any of them can be given to a paper in its properties.": "Los tamaños estándar a los que se dibuja un papel: ISO (A4, A3…), o los tamaños ARCH y ANSI que se usan en Estados Unidos. Cualquiera de ellos puede darse a un papel en sus propiedades.",
   "Scale 1:": "Escala 1:",
   "A paper moves on its own, over the drawing: put it where it frames what to print. Pulling a corner changes its scale, or its size with Alt. Copying or duplicating it takes along what lies on it.": "Un papel se mueve solo, por encima del dibujo: colóquelo donde enmarque lo que se va a imprimir. Tirar de una esquina cambia su escala, o su tamaño con Alt. Copiarlo o duplicarlo se lleva lo que hay sobre él.",
   "Paper tool": "Herramienta Papel",

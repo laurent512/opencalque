@@ -7,15 +7,35 @@ import type { SceneItem } from './scene'
  * belongs to it by position, not by reference, the way openings belong to walls.
  */
 
-/** Standard sheet sizes in millimetres of real paper, smallest first. */
+/** The families of standard sheets: ISO 216 (A4, A3…), and the ARCH and ANSI sizes of plans and prints in the United States. */
+export const PAPER_SERIES = ['ISO', 'ARCH', 'ANSI'] as const
+export type PaperSeries = (typeof PAPER_SERIES)[number]
+
+/** An inch, in millimetres: the US sheets are whole inches, or half ones. */
+const INCH = 25.4
+
+/** Standard sheet sizes in millimetres of real paper, one series after the other, smallest first in each. */
 export const PAPER_FORMATS = [
-  { name: 'A5', short: 148, long: 210 },
-  { name: 'A4', short: 210, long: 297 },
-  { name: 'A3', short: 297, long: 420 },
-  { name: 'A2', short: 420, long: 594 },
-  { name: 'A1', short: 594, long: 841 },
-  { name: 'A0', short: 841, long: 1189 },
-] as const
+  { name: 'A5', series: 'ISO', short: 148, long: 210 },
+  { name: 'A4', series: 'ISO', short: 210, long: 297 },
+  { name: 'A3', series: 'ISO', short: 297, long: 420 },
+  { name: 'A2', series: 'ISO', short: 420, long: 594 },
+  { name: 'A1', series: 'ISO', short: 594, long: 841 },
+  { name: 'A0', series: 'ISO', short: 841, long: 1189 },
+  // The sizes US plan sets are printed on, 9 × 12 to 36 × 48 inches; E1, 30 × 42, comes between D and E.
+  { name: 'ARCH A', series: 'ARCH', short: 9 * INCH, long: 12 * INCH },
+  { name: 'ARCH B', series: 'ARCH', short: 12 * INCH, long: 18 * INCH },
+  { name: 'ARCH C', series: 'ARCH', short: 18 * INCH, long: 24 * INCH },
+  { name: 'ARCH D', series: 'ARCH', short: 24 * INCH, long: 36 * INCH },
+  { name: 'ARCH E1', series: 'ARCH', short: 30 * INCH, long: 42 * INCH },
+  { name: 'ARCH E', series: 'ARCH', short: 36 * INCH, long: 48 * INCH },
+  // The engineering sizes of ASME Y14.1: A is US Letter, B is Tabloid (11 × 17), each next one twice the one before.
+  { name: 'ANSI A', series: 'ANSI', short: 8.5 * INCH, long: 11 * INCH },
+  { name: 'ANSI B', series: 'ANSI', short: 11 * INCH, long: 17 * INCH },
+  { name: 'ANSI C', series: 'ANSI', short: 17 * INCH, long: 22 * INCH },
+  { name: 'ANSI D', series: 'ANSI', short: 22 * INCH, long: 34 * INCH },
+  { name: 'ANSI E', series: 'ANSI', short: 34 * INCH, long: 44 * INCH },
+] as const satisfies readonly { name: string; series: PaperSeries; short: number; long: number }[]
 
 /** The scale a paper has when it does not say: 1:100, usual for a floor plan. */
 export const DEFAULT_PAPER_SCALE = 100
