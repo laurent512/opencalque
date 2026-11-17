@@ -68,3 +68,55 @@ describe('title block', () => {
     expect(project.size).toBeGreaterThanOrEqual(125)
   })
 })
+
+describe('title block down the right edge', () => {
+  // The same A3 lying at 1:50, its block as a strip: 70 mm wide inside the 10 mm border, the whole height of it.
+  const strip = (titleBlock: Record<string, unknown> = {}) => sheet({ layout: 'strip', ...titleBlock })
+  const words = (doc: Document) => prims(doc).flatMap((p) => (p.kind === 'text' ? [{ text: p.text, x: p.x / 50, y: p.y / 50, size: p.size / 50 }] : []))
+  const find = (doc: Document, text: string) => words(doc).find((word) => word.text === text)!
+
+  it('names each entry over what it says, from the project at the top to the sheet number at the bottom', () => {
+    const doc = drawing([strip({ number: 'A-101', date: '2026-11-17' }), { op: 'set_document', info: { project: 'House on Elm St', client: 'J. Smith', author: 'KL' } }])
+    expect(texts(doc)).toEqual(['Project', 'House on Elm St', 'Client', 'J. Smith', 'Drawn by', 'KL', 'Date', '2026-11-17', 'Sheet title', 'Ground floor', 'Scale', '1:50', 'Format', 'A3', 'Sheet no.', 'A-101'])
+    const box = boundsOf([prims(doc).filter((p) => p.kind === 'path' && p.closed && !p.backdrop)[1]])!
+    expect([box.minX / 50, box.maxX / 50, box.minY / 50, box.maxY / 50]).toEqual([340, 410, 10, 287])
+    // Captions in small letters at the left of each cell, the values under them; the sheet number large, at the bottom.
+    expect(find(doc, 'Project')).toMatchObject({ x: 343, size: 2 })
+    expect(find(doc, 'House on Elm St').y).toBeGreaterThan(find(doc, 'Project').y)
+    expect(find(doc, 'A-101')).toMatchObject({ size: 9 })
+    expect(find(doc, 'A-101').y).toBeGreaterThan(280)
+    expect(find(doc, 'Ground floor').y).toBeGreaterThan(200)
+    expect(find(doc, 'Drawn by').y).toBeLessThan(80)
+  })
+
+  it('lists the revisions in columns under the project, as many as there is room for', () => {
+    const doc = drawing([strip({ revisions: '1 | 2026-10-02 | Issued for review\n\n2 | 2026-11-17 | Issued for permit\nRevised stair' })])
+    expect(texts(doc).slice(0, 10)).toEqual(['Project', 'House', 'Revisions', '1', '2026-10-02', 'Issued for review', '2', '2026-11-17', 'Issued for permit', 'Revised stair'])
+    // The mark, the date and the description each in its column; a line with no '|' is a description.
+    expect([find(doc, '2').x, find(doc, '2026-11-17').x, find(doc, 'Issued for permit').x, find(doc, 'Revised stair').x]).toEqual([341.5, 349.5, 367.5, 367.5])
+    // A hundred revisions on the sheet: twenty are drawn, and the strip stays inside the border.
+    const many = drawing([strip({ revisions: Array.from({ length: 100 }, (_, i) => `${i + 1} | | Change ${i + 1}`).join('\n') })])
+    expect(texts(many).filter((text) => text.startsWith('Change'))).toHaveLength(20)
+    expect(Math.max(...words(many).map((word) => word.y))).toBeLessThan(287)
+    // On a sheet with room for fewer, fewer: an A5 lying holds 128 mm of strip.
+    const small = applyOps(createDocument('House'), [add({ type: 'paper', id: 'sheet', name: 'Detail', x: 0, y: 0, width: 10500, height: 7400, scale: 50, titleBlock: { layout: 'strip', revisions: Array.from({ length: 100 }, (_, i) => `${i + 1} | | Change ${i + 1}`).join('\n') } })])
+    const listed = texts(small).filter((text) => text.startsWith('Change')).length
+    expect(listed).toBeGreaterThan(0)
+    expect(listed).toBeLessThan(20)
+    expect(Math.max(...words(small).map((word) => word.y))).toBeLessThan(138)
+  })
+
+  it('takes its captions from the block, and leaves out what is hidden or empty', () => {
+    const labels = { project: 'Projet', sheet: 'Titre de la feuille', scale: 'Échelle', format: 'Format', number: 'N° de feuille' }
+    const doc = drawing([strip({ labels, hide: ['page', 'format'], number: '3' })])
+    expect(texts(doc)).toEqual(['Projet', 'House', 'Titre de la feuille', 'Ground floor', 'Échelle', '1:50', 'N° de feuille', '3'])
+    // With everything hidden, the border alone, as in the corner.
+    const none = drawing([strip({ hide: ['project', 'sheet', 'page', 'scale', 'format'] })])
+    expect(texts(none)).toEqual([])
+    expect(blockHeight(none)).toBe(0)
+  })
+
+  it('leaves the block in the corner as it was for a sheet that does not ask for the strip', () => {
+    expect(texts(drawing([sheet({ layout: 'corner', revisions: '1 | today | Issued' })]))).toEqual(['House', 'Ground floor', '1:50', 'A3'])
+  })
+})

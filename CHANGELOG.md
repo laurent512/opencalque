@@ -4,6 +4,11 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### New
+- A title block down the right edge of the sheet, as US sheets have it: in a paper's properties, Title block › Layout › Down the right edge. Each entry is under its caption, in the language of the app when it was chosen: the project, client and address at the top, then the revisions, typed one per line as mark | date | description and drawn as a table, who drew it and the date; the sheet title, its scale and format and the sheet number, in large letters, at the bottom. The block in the corner stays the default and is unchanged.
+
 ## 1.10.2 — 2026-11-17
 
 ### Improved

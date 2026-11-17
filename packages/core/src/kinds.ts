@@ -248,8 +248,26 @@ function dimensionMarker(type: NodeOf<'dimension'>['startMarker'], at: Vec2, out
 }
 
 /** What a title block can show, in the order it is listed for the user. */
-export const TITLE_FIELDS = ['project', 'client', 'address', 'sheet', 'page', 'author', 'scale', 'format', 'date', 'number'] as const
+export const TITLE_FIELDS = ['project', 'client', 'address', 'sheet', 'page', 'author', 'scale', 'format', 'date', 'number', 'revisions'] as const
 export type TitleField = (typeof TITLE_FIELDS)[number]
+
+/**
+ * What the strip down the right edge calls each entry when its paper's block has no `labels`. The
+ * editor writes them in the user's language when the strip is chosen, as it does a table's words.
+ */
+export const TITLE_CAPTIONS: Record<TitleField, string> = {
+  project: 'Project',
+  client: 'Client',
+  address: 'Address',
+  sheet: 'Sheet title',
+  page: 'Page',
+  author: 'Drawn by',
+  scale: 'Scale',
+  format: 'Format',
+  date: 'Date',
+  number: 'Sheet no.',
+  revisions: 'Revisions',
+}
 
 /** The entries a sheet leaves out when it does not say: the page's name usually repeats the sheet's. */
 const TITLE_HIDDEN: TitleField[] = ['page']
@@ -280,6 +298,7 @@ export function titleBlockValues(node: NodeOf<'paper'>, doc: Document): Record<T
     format: paperFormat(node)?.name ?? `${Math.round(node.width / s)} × ${Math.round(node.height / s)}`,
     date: fill(block.date),
     number: fill(block.number),
+    revisions: fill(block.revisions),
   }
 }
 
@@ -332,6 +351,7 @@ function titleBlock(node: NodeOf<'paper'>, doc: Document): Primitive[] {
   const cellsHeight = cells.length > 0 ? 9 : 0
 
   const frame: Primitive = { kind: 'path', closed: true, ...ink, strokeWidth: 1.2, points: boxCorners({ x: node.x + margin, y: node.y + margin, width: node.width - 2 * margin, height: node.height - 2 * margin }) }
+  if (node.titleBlock.layout === 'strip') return [frame, ...titleStrip(node, shown, { ink, line, words })]
   const height = (headingHeight + namesHeight + cellsHeight) * s
   if (height === 0) return [frame]
   const top = bottom - height
@@ -363,6 +383,83 @@ function titleBlock(node: NodeOf<'paper'>, doc: Document): Primitive[] {
       out.push(words(shown(field), x + pad, y + 6 * s, 3.5, cell / s - 6))
       x += cell
     })
+  }
+  return out
+}
+
+/** At most this many revisions are listed in a strip, from the first; the others are not drawn. */
+const MAX_REVISIONS = 20
+
+/**
+ * The title block as a column down the right edge of the sheet, inside its border, as US sheets
+ * have it: each entry is a cell with its caption over what it says, those of the project at the
+ * top with the revisions under them, the sheet title, its scale and the sheet number at the
+ * bottom, the number in large letters. The space between is left free, for a stamp or notes.
+ * Captions are the block's `labels`, else English ones. Sizes are in mm of the printed sheet.
+ */
+function titleStrip(
+  node: NodeOf<'paper'>,
+  shown: (field: TitleField) => string,
+  draw: { ink: { stroke: string; own: boolean }; line: (x1: number, y1: number, x2: number, y2: number) => Primitive; words: (text: string, x: number, y: number, size: number, room: number, look?: { bold?: boolean }) => Primitive },
+): Primitive[] {
+  const s = node.scale ?? DEFAULT_PAPER_SCALE
+  const [width, margin, pad] = [70, 10, 3]
+  const room = width - 2 * pad
+  const left = node.x + node.width - (margin + width) * s
+  const [top, bottom] = [node.y + margin * s, node.y + node.height - margin * s]
+  const caption = (field: TitleField) => node.titleBlock?.labels?.[field] ?? TITLE_CAPTIONS[field]
+
+  // A cell: its caption, then each line of what it says; empty, it takes no room.
+  type Cell = { height: number; draw: (y: number) => Primitive[] }
+  const cell = (field: TitleField, size = 3, bold = false): Cell[] => {
+    const lines = shown(field).split('\n').map((part) => part.trim()).filter(Boolean)
+    if (lines.length === 0) return []
+    const step = size * 1.5
+    return [
+      {
+        height: 7 + size + (lines.length - 1) * step,
+        draw: (y) => [draw.words(caption(field), left + pad * s, y + 3.5 * s, 2, room), ...lines.map((text, i) => draw.words(text, left + pad * s, y + (4.5 + size + i * step) * s, size, room, { bold }))],
+      },
+    ]
+  }
+  // The revisions: a row each, its mark, date and description in columns 8, 18 and 44 mm wide.
+  const revisions = (rows: string[]): Cell[] => {
+    if (rows.length === 0) return []
+    const starts = [0, 8, 26, width]
+    const row = (text: string, rowTop: number): Primitive[] => {
+      const parts = text.split('|').map((part) => part.trim())
+      // A line with no '|' is all description.
+      const cells = parts.length === 1 ? ['', '', parts[0]] : [parts[0], parts[1], parts.slice(2).join(' | ')]
+      const out = [draw.line(left, rowTop, left + width * s, rowTop), draw.line(left + 8 * s, rowTop, left + 8 * s, rowTop + 5 * s), draw.line(left + 26 * s, rowTop, left + 26 * s, rowTop + 5 * s)]
+      cells.forEach((words, i) => words && out.push(draw.words(words, left + (starts[i] + 1.5) * s, rowTop + 3.7 * s, 2.5, starts[i + 1] - starts[i] - 3)))
+      return out
+    }
+    return [{ height: 5 + rows.length * 5, draw: (y) => [draw.words(caption('revisions'), left + pad * s, y + 3.5 * s, 2, room), ...rows.flatMap((text, i) => row(text, y + (5 + i * 5) * s))] }]
+  }
+
+  const below = [...cell('sheet', 4, true), ...cell('page'), ...cell('scale'), ...cell('format'), ...cell('number', 9, true)]
+  const head = [...cell('project', 4.5, true), ...cell('client'), ...cell('address')]
+  const signed = [...cell('author'), ...cell('date')]
+  const sum = (cells: Cell[]) => cells.reduce((total, one) => total + one.height, 0)
+  // A sheet too short for the other entries goes without the strip; the revisions take what room is left, up to MAX_REVISIONS.
+  const free = (bottom - top) / s - sum(head) - sum(signed) - sum(below)
+  if (free < 0) return []
+  const listed = shown('revisions').split('\n').map((row) => row.trim()).filter(Boolean)
+  const above = [...head, ...revisions(listed.slice(0, Math.max(0, Math.min(MAX_REVISIONS, Math.floor((free - 5) / 5))))), ...signed]
+  if (above.length + below.length === 0) return []
+
+  const out: Primitive[] = [{ kind: 'path', closed: true, ...draw.ink, strokeWidth: 1.2, points: boxCorners({ x: left, y: top, width: width * s, height: bottom - top }) }]
+  let y = top
+  above.forEach((one, i) => {
+    if (i > 0) out.push(draw.line(left, y, left + width * s, y))
+    out.push(...one.draw(y))
+    y += one.height * s
+  })
+  if (above.length > 0) out.push(draw.line(left, y, left + width * s, y))
+  y = bottom - sum(below) * s
+  for (const one of below) {
+    out.push(draw.line(left, y, left + width * s, y), ...one.draw(y))
+    y += one.height * s
   }
   return out
 }

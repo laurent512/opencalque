@@ -176,6 +176,31 @@ test('lays a paper at a standard format by pulling towards its corner', async ({
   expect((await saved(page)).find((n) => n.type === 'paper')).toMatchObject({ x: 0, y: 0, width: 42000, height: 29700, scale: 100 })
 })
 
+test('lays a paper\'s title block down its right edge, with captions and revisions', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  const plan = drawing({
+    sheet: { id: 'sheet', type: 'paper', parent: 'page_1', layer: 'layer_1', order: 'a1', name: 'Floor plan', x: 0, y: 0, width: 42000, height: 29700, scale: 100, titleBlock: { number: 'A-101' } },
+  })
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
+  await objectRows(page).filter({ hasText: 'Floor plan' }).click()
+  const layout = page.locator('.field', { has: page.locator('span:text-is("Layout")') }).locator('select')
+  await expect(layout).toHaveValue('corner')
+  await expect(page.locator('.title-entry', { hasText: 'Revisions' })).toHaveCount(0)
+  await layout.selectOption('strip')
+  // The captions are written with the block, in the language of the app; revisions can now be typed.
+  const revisions = page.locator('.title-entry', { hasText: 'Revisions' }).locator('textarea')
+  await revisions.fill('1 | 2026-11-17 | Issued for permit')
+  await revisions.blur()
+  const paper = (await saved(page)).find((n) => n.type === 'paper')!
+  expect(paper.titleBlock).toMatchObject({ layout: 'strip', number: 'A-101', revisions: '1 | 2026-11-17 | Issued for permit', labels: { sheet: 'Sheet title', author: 'Drawn by', number: 'Sheet no.' } })
+  // Back in the corner, the block goes without its captions and keeps what was typed.
+  await layout.selectOption('corner')
+  const back = (await saved(page)).find((n) => n.type === 'paper')!
+  expect(back.titleBlock).toEqual({ number: 'A-101', revisions: '1 | 2026-11-17 | Issued for permit' })
+})
+
 test('names the rooms that closed walls make, and splits one with a divider', async ({ page }) => {
   const at = await blank(page)
   await page.keyboard.press('w')

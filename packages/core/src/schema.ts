@@ -365,11 +365,17 @@ export const NodeSchema = z
             author: z.string().optional().describe('Overrides the author of the drawing on this sheet.'),
             date: z.string().optional(),
             number: z.string().optional(),
-            hide: z.array(z.string()).optional().describe("Entries this sheet leaves out, among project, client, address, sheet, page, author, scale, format, date and number. Defaults to ['page']."),
+            revisions: z.string().optional().describe("The sheet's revisions, one per line, each its mark, date and description separated by '|' (\"2 | 2026-11-17 | Issued for permit\"). Only the strip shows them."),
+            hide: z.array(z.string()).optional().describe("Entries this sheet leaves out, among project, client, address, sheet, page, author, scale, format, date, number and revisions. Defaults to ['page']."),
+            layout: z
+              .enum(['corner', 'strip'])
+              .optional()
+              .describe("'corner' (the default): a block of values in the bottom right corner. 'strip': a column down the right edge of the sheet, as US sheets have it, each entry under its caption, the project at the top, the revisions under it and the sheet title and number at the bottom."),
+            labels: z.record(z.string(), z.string()).optional().describe("The captions of the strip, by entry (project, client, address, sheet, page, author, scale, format, date, number, revisions). Left out, English ones."),
           })
           .optional()
           .describe(
-            'When present (even empty), the sheet gets a border and a title block in its bottom right corner. The block is made of the entries that have something to say and are not hidden: the project, client and address (from the document\'s "info"; the project falls back on the document name), the name of the paper and of its page, the author, the scale and format, and the date and sheet number given here. An entry with nothing in it takes no room. Texts may hold fields such as {date} or {page-number}.',
+            'When present (even empty), the sheet gets a border and a title block, in its bottom right corner or down its right edge ("layout"). The block is made of the entries that have something to say and are not hidden: the project, client and address (from the document\'s "info"; the project falls back on the document name), the name of the paper and of its page, the author, the scale and format, and the date, sheet number and revisions given here. An entry with nothing in it takes no room. Texts may hold fields such as {date} or {page-number}.',
           ),
       })
       .describe(

@@ -1,4 +1,4 @@
-import { paperRescaled, sheetContentOf, sheetContentOps, DEFAULT_PAPER_SCALE, PAPER_FORMATS, paperFormat, paperSize, type Node, type Op, titleBlockHidden, titleBlockValues, type TitleField } from '@opencalque/core'
+import { paperRescaled, sheetContentOf, sheetContentOps, DEFAULT_PAPER_SCALE, PAPER_FORMATS, paperFormat, paperSize, type Node, type Op, TITLE_FIELDS, titleBlockHidden, titleBlockValues, type TitleField } from '@opencalque/core'
 import { openComponent } from '../../actions'
 import { msg, t } from '../../i18n'
 import { apply, useStore } from '../../store'
@@ -19,12 +19,19 @@ const TITLE_NAMES: Record<TitleField, string> = {
   format: msg('Format'),
   date: msg('Date'),
   number: msg('Sheet no.'),
+  revisions: msg('Revisions'),
 }
+
+/** What the strip down the right edge calls each entry on the sheet, where US sheets have their usual words: "Drawn by" for the author. */
+const STRIP_CAPTIONS: Record<TitleField, string> = { ...TITLE_NAMES, sheet: msg('Sheet title'), author: msg('Drawn by') }
+
+/** The captions a strip is given when it is chosen, in the language in use: the sheet keeps them, as a table keeps its words. */
+const stripLabels = (): Record<string, string> => Object.fromEntries(TITLE_FIELDS.map((field) => [field, t(STRIP_CAPTIONS[field])]))
 
 /** The entries said once for the whole drawing, and those typed for one sheet; the others are read from the sheet itself. */
 const DRAWING_ENTRIES: TitleField[] = ['project', 'client', 'address', 'author']
 
-const SHEET_ENTRIES: TitleField[] = ['sheet', 'page', 'scale', 'format', 'date', 'number']
+const SHEET_ENTRIES: TitleField[] = ['sheet', 'page', 'scale', 'format', 'date', 'number', 'revisions']
 
 /**
  * The entries of a paper's title block: a tick for each says whether this sheet shows it, and an
@@ -52,7 +59,9 @@ function TitleBlockEntries({ node }: { node: Extract<Node, { type: 'paper' }> })
   }
   // What is typed, as against what is shown: fields such as {date} stay as written here.
   const written = (field: TitleField) => ((block as Record<string, unknown>)[field] as string | undefined) ?? (doc.info as Record<string, string> | undefined)?.[field] ?? ''
-  const typed = (field: TitleField) => DRAWING_ENTRIES.includes(field) || field === 'date' || field === 'number'
+  const typed = (field: TitleField) => DRAWING_ENTRIES.includes(field) || field === 'date' || field === 'number' || field === 'revisions'
+  // Only the strip lists revisions.
+  const strip = block.layout === 'strip'
   const placeholder: Partial<Record<TitleField, string>> = { project: doc.name, date: '{date}', number: '{page-number} / {pages}' }
 
   const row = (field: TitleField) => (
@@ -60,7 +69,7 @@ function TitleBlockEntries({ node }: { node: Extract<Node, { type: 'paper' }> })
       <YesNo value={!hidden.includes(field)} title={t('Show it on this sheet')} label={t(TITLE_NAMES[field])} onChange={(on) => show(field, on)} />
       <span>{t(TITLE_NAMES[field])}</span>
       {typed(field) ? (
-        field === 'address' ? (
+        field === 'address' || field === 'revisions' ? (
           <textarea key={`${node.id} ${written(field)}`} rows={2} defaultValue={written(field)} onBlur={(e) => e.target.value.trim() !== written(field) && write(field, e.target.value)} />
         ) : (
           <input
@@ -81,10 +90,17 @@ function TitleBlockEntries({ node }: { node: Extract<Node, { type: 'paper' }> })
       <h4 className="title-heading">{t('For the whole drawing')}</h4>
       {DRAWING_ENTRIES.map(row)}
       <h4 className="title-heading">{t('For this sheet')}</h4>
-      {SHEET_ENTRIES.map(row)}
+      {SHEET_ENTRIES.filter((field) => strip || field !== 'revisions').map(row)}
+      {strip && <p className="hint">{t('One revision per line: its mark, its date and what changed, separated by |.')}</p>}
       <p className="hint">{t('An entry left empty takes no room in the block. Write {date} for the day’s date, {page-number} and {pages} for the page and how many there are.')}</p>
     </>
   )
+}
+
+/** A title block laid out down the right edge, its captions in the language in use, or back in the corner, without them. */
+function layoutOf(block: NonNullable<Extract<Node, { type: 'paper' }>['titleBlock']>, strip: boolean) {
+  const { layout: _, labels: __, ...rest } = block
+  return strip ? { ...rest, layout: 'strip' as const, labels: stripLabels() } : rest
 }
 
 /** The sheet a paper stands for: a standard format or a custom size, which way up, and at what drawing scale. */
@@ -132,6 +148,15 @@ export function PaperSheet({ node, update }: { node: Extract<Node, { type: 'pape
         <span>{t('Title block')}</span>
         <YesNo value={node.titleBlock !== undefined} label={t('Title block')} onChange={(on) => update(() => ({ titleBlock: on ? {} : null }))} />
       </div>
+      {node.titleBlock && (
+        <label className="field">
+          <span>{t('Layout')}</span>
+          <select value={node.titleBlock.layout ?? 'corner'} onChange={(e) => update(() => ({ titleBlock: layoutOf(node.titleBlock ?? {}, e.target.value === 'strip') }))}>
+            <option value="corner">{t('In the bottom right corner')}</option>
+            <option value="strip">{t('Down the right edge, with captions')}</option>
+          </select>
+        </label>
+      )}
       {node.titleBlock && <TitleBlockEntries node={node} />}
       <h4 className="title-heading">{t('On every sheet')}</h4>
       {common ? (
