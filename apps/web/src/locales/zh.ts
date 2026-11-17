@@ -478,7 +478,6 @@ export const zh: Record<string, string> = {
   "Revisions": "修订",
   "Sheet title": "图名",
   "Drawn by": "绘图",
-  "Layout": "布局",
   "In the bottom right corner": "右下角",
   "Down the right edge, with captions": "沿右边缘，带标题",
   "One revision per line: its mark, its date and what changed, separated by |.": "每行一条修订：编号、日期和修改内容，用 | 分隔。",

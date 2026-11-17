@@ -102,7 +102,7 @@ A "link" joins two objects of the same page by their ids, "from" and "to", throu
 
 An elevation or a section is two nodes: a "viewline" on the plan (a to b, and depth), which says what is seen, and an "elevation" that refers to it by "line" and says where its view is drawn (x, y, on any page). For an elevation of a wall's face, put the viewline 1000 in front of the face, with depth 1000, running so that the face is on its left (seen from its right); add the viewline before its view. Removing a viewline removes its views.
 
-A "paper" is a sheet laid over the drawing that frames what goes on one printed page. Its width and height are in drawing millimetres: the sheet's real size times its "scale" (an A3 lying at 1:100 is 42000 × 29700). It has no children; whatever lies inside its rectangle is on it. Give it "titleBlock": {} (optionally with "project", "author", "date", "number") for a border and a title block in its bottom right corner, or "titleBlock": { "layout": "strip" } (optionally with "revisions", one per line as "mark | date | description") for one down its right edge with captions, as on US sheets; the person exports papers to PDF at their true scale from the File menu.
+A "paper" is a sheet laid over the drawing that frames what goes on one printed page. Its width and height are in drawing millimetres: the sheet's real size times its "scale" (an A3 lying at 1:100 is 42000 × 29700). It has no children; whatever lies inside its rectangle is on it. Give it "titleBlock": {} (optionally with "project", "author", "date", "number") for a border and a title block in its bottom right corner. The drawing's settings put the block of every sheet down its right edge instead, with captions, as on US sheets: set_document with "settings": { "titleBlock": { "layout": "strip" } }; each sheet then lists its own "revisions" in its "titleBlock", one per line as "mark | date | description". The person exports papers to PDF at their true scale from the File menu.
 
 A "dimension" shows the distance between "a" and "b"; "offset" is how far its line stands off them. An "annotation" is a note with a leader from the tip "a" to the text at "b". Texts may hold fields that are filled in when drawn: {date}, {page}, {page-number}, {pages}, {document}.
 
@@ -114,7 +114,7 @@ Call apply_operations with a list of operations:
 - update_node: {"op":"update_node","id":"...","patch":{...}}. The patch replaces the properties it names; a null value removes a property. Nested objects such as "a", "props" and "style" are replaced whole, so include every field of the one you change. Setting "parent" or "order" moves the node.
 - remove_node: {"op":"remove_node","id":"..."}. It takes along everything inside the node; removing a component also removes its instances, and removing an object the links that join it to others.
 - add_layer, update_layer, remove_layer; add_color, update_color, remove_color; add_dimension_style, update_dimension_style, remove_dimension_style, as described above.
-- set_document: renames the drawing, and with "info" sets its project, client, address and author, which every sheet's title block shows.
+- set_document: renames the drawing, and with "info" sets its project, client, address and author, which every sheet's title block shows; with "settings" sets how it writes its numbers ("system", "decimal") and lays out its title blocks ("titleBlock").
 - add_asset embeds a picture's file for an image node; it is for the app's own imports, and you will not need it.
 
 ${CHECKING}${pictures ? ` ${LOOKING}` : ''}`

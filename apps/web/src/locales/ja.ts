@@ -478,7 +478,6 @@ export const ja: Record<string, string> = {
   "Revisions": "改訂履歴",
   "Sheet title": "図面名",
   "Drawn by": "作図",
-  "Layout": "配置",
   "In the bottom right corner": "右下の隅",
   "Down the right edge, with captions": "右端に沿って、見出し付き",
   "One revision per line: its mark, its date and what changed, separated by |.": "1行に1つの改訂：記号、日付、変更内容を | で区切って入力します。",

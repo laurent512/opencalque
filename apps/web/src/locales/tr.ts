@@ -478,7 +478,6 @@ export const tr: Record<string, string> = {
   "Revisions": "Revizyonlar",
   "Sheet title": "Pafta adı",
   "Drawn by": "Çizen",
-  "Layout": "Yerleşim",
   "In the bottom right corner": "Sağ alt köşede",
   "Down the right edge, with captions": "Sağ kenar boyunca, başlıklarla",
   "One revision per line: its mark, its date and what changed, separated by |.": "Her satıra bir revizyon: işareti, tarihi ve neyin değiştiği, | ile ayrılarak.",

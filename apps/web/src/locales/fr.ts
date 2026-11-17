@@ -478,7 +478,6 @@ export const fr: Record<string, string> = {
   "Revisions": "Révisions",
   "Sheet title": "Titre de la feuille",
   "Drawn by": "Dessiné par",
-  "Layout": "Disposition",
   "In the bottom right corner": "Dans le coin en bas à droite",
   "Down the right edge, with captions": "Le long du bord droit, avec intitulés",
   "One revision per line: its mark, its date and what changed, separated by |.": "Une révision par ligne : son indice, sa date et ce qui a changé, séparés par |.",

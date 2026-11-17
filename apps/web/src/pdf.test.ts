@@ -37,10 +37,10 @@ describe('PDF export', () => {
   })
 
   it('prints the title block down the right edge with its captions and revisions', async () => {
-    // A 36 × 24 inch sheet at 1:48, its block as a strip with the revisions of the set.
+    // A 36 × 24 inch sheet at 1:48 in a drawing whose blocks are strips, with the revisions of the sheet.
     const sheet = applyOps(createDocument('House'), [
-      { op: 'set_document', info: { project: 'House on Elm St', author: 'KL' } },
-      add({ type: 'paper', id: 'p', name: 'Floor plan', x: 0, y: 0, width: 36 * 25.4 * 48, height: 24 * 25.4 * 48, scale: 48, titleBlock: { layout: 'strip', number: 'A-101', revisions: '1 | 2026-10-02 | Issued for review\n2 | 2026-11-17 | Issued for permit' } }),
+      { op: 'set_document', info: { project: 'House on Elm St', author: 'KL' }, settings: { titleBlock: { layout: 'strip' } } },
+      add({ type: 'paper', id: 'p', name: 'Floor plan', x: 0, y: 0, width: 36 * 25.4 * 48, height: 24 * 25.4 * 48, scale: 48, titleBlock: { number: 'A-101', revisions: '1 | 2026-10-02 | Issued for review\n2 | 2026-11-17 | Issued for permit' } }),
     ])
     const page = await (await open(toPDF(sheet, registry))).getPage(1)
     const words = (await page.getTextContent()).items.map((item: any) => item.str)

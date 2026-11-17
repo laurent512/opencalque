@@ -3228,7 +3228,7 @@
                 "type": "boolean"
               },
               "titleBlock": {
-                "description": "When present (even empty), the sheet gets a border and a title block, in its bottom right corner or down its right edge (\"layout\"). The block is made of the entries that have something to say and are not hidden: the project, client and address (from the document's \"info\"; the project falls back on the document name), the name of the paper and of its page, the author, the scale and format, and the date, sheet number and revisions given here. An entry with nothing in it takes no room. Texts may hold fields such as {date} or {page-number}.",
+                "description": "When present (even empty), the sheet gets a border and a title block, in its bottom right corner or down its right edge, as the drawing's \"settings\" say (titleBlock). The block is made of the entries that have something to say and are not hidden: the project, client and address (from the document's \"info\"; the project falls back on the document name), the name of the paper and of its page, the author, the scale and format, and the date, sheet number and revisions given here. An entry with nothing in it takes no room. Texts may hold fields such as {date} or {page-number}.",
                 "type": "object",
                 "properties": {
                   "project": {
@@ -3246,31 +3246,13 @@
                     "type": "string"
                   },
                   "revisions": {
-                    "description": "The sheet's revisions, one per line, each its mark, date and description separated by '|' (\"2 | 2026-11-17 | Issued for permit\"). Only the strip shows them.",
+                    "description": "The sheet's revisions, one per line, each its mark, date and description separated by '|' (\"2 | 2026-11-17 | Issued for permit\"). Only the strip shows them (the drawing's \"settings\", titleBlock).",
                     "type": "string"
                   },
                   "hide": {
                     "description": "Entries this sheet leaves out, among project, client, address, sheet, page, author, scale, format, date, number and revisions. Defaults to ['page'].",
                     "type": "array",
                     "items": {
-                      "type": "string"
-                    }
-                  },
-                  "layout": {
-                    "description": "'corner' (the default): a block of values in the bottom right corner. 'strip': a column down the right edge of the sheet, as US sheets have it, each entry under its caption, the project at the top, the revisions under it and the sheet title and number at the bottom.",
-                    "type": "string",
-                    "enum": [
-                      "corner",
-                      "strip"
-                    ]
-                  },
-                  "labels": {
-                    "description": "The captions of the strip, by entry (project, client, address, sheet, page, author, scale, format, date, number, revisions). Left out, English ones.",
-                    "type": "object",
-                    "propertyNames": {
-                      "type": "string"
-                    },
-                    "additionalProperties": {
                       "type": "string"
                     }
                   }
@@ -5676,7 +5658,7 @@
       "additionalProperties": false
     },
     "settings": {
-      "description": "How the drawing writes its numbers: the floor areas of its rooms, its tables of quantities, its dimensions. Left out, in metric with a decimal point.",
+      "description": "How the drawing writes its numbers (the floor areas of its rooms, its tables of quantities, its dimensions) and lays out the title blocks of its sheets. Left out, in metric with a decimal point, the block in the corner.",
       "type": "object",
       "properties": {
         "system": {
@@ -5694,6 +5676,31 @@
             ".",
             ","
           ]
+        },
+        "titleBlock": {
+          "description": "How the title blocks of every sheet are laid out, the same throughout the set. Left out, in the corner. What each sheet shows is its own (\"titleBlock\" of a paper).",
+          "type": "object",
+          "properties": {
+            "layout": {
+              "description": "'corner' (the default): a block of values in the bottom right corner. 'strip': a column down the right edge of the sheet, as US sheets have it, each entry under its caption, the project at the top, the revisions under it and the sheet title and number at the bottom.",
+              "type": "string",
+              "enum": [
+                "corner",
+                "strip"
+              ]
+            },
+            "labels": {
+              "description": "The captions of the strip, by entry (project, client, address, sheet, page, author, scale, format, date, number, revisions). Left out, English ones; an empty one is not drawn.",
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

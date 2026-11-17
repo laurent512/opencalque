@@ -176,7 +176,7 @@ test('lays a paper at a standard format by pulling towards its corner', async ({
   expect((await saved(page)).find((n) => n.type === 'paper')).toMatchObject({ x: 0, y: 0, width: 42000, height: 29700, scale: 100 })
 })
 
-test('lays a paper\'s title block down its right edge, with captions and revisions', async ({ page }) => {
+test('lays the title blocks of a drawing down the right edge from its settings, with captions, each sheet with its revisions', async ({ page }) => {
   await startWith(page)
   await recordSaves(page)
   await openEditor(page)
@@ -185,20 +185,37 @@ test('lays a paper\'s title block down its right edge, with captions and revisio
   })
   await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
   await objectRows(page).filter({ hasText: 'Floor plan' }).click()
-  const layout = page.locator('.field', { has: page.locator('span:text-is("Layout")') }).locator('select')
-  await expect(layout).toHaveValue('corner')
   await expect(page.locator('.title-entry', { hasText: 'Revisions' })).toHaveCount(0)
+  const settings = async () => {
+    await page.keyboard.press('Control+k')
+    // The palette keeps its last search: replace it.
+    await page.getByPlaceholder('Type a command…').fill('Drawing settings')
+    await page.keyboard.press('Enter')
+    return page.getByRole('dialog', { name: 'Drawing settings' })
+  }
+  const lastSettings = async () => {
+    await saved(page)
+    return JSON.parse(await page.evaluate(() => (window as any).saves.at(-1))).settings
+  }
+  let dialog = await settings()
+  const layout = dialog.locator('.pref-field', { hasText: 'Title block' }).locator('select')
+  await expect(layout).toHaveValue('corner')
   await layout.selectOption('strip')
-  // The captions are written with the block, in the language of the app; revisions can now be typed.
+  await dialog.getByRole('button', { name: 'Done' }).click()
+  // The captions are written with the drawing, in the language of the app; the sheet is left as it was.
+  expect(await lastSettings()).toMatchObject({ titleBlock: { layout: 'strip', labels: { sheet: 'Sheet title', author: 'Drawn by', number: 'Sheet no.' } } })
+  // Each sheet types its own revisions.
+  await objectRows(page).filter({ hasText: 'Floor plan' }).click()
   const revisions = page.locator('.title-entry', { hasText: 'Revisions' }).locator('textarea')
   await revisions.fill('1 | 2026-11-17 | Issued for permit')
   await revisions.blur()
-  const paper = (await saved(page)).find((n) => n.type === 'paper')!
-  expect(paper.titleBlock).toMatchObject({ layout: 'strip', number: 'A-101', revisions: '1 | 2026-11-17 | Issued for permit', labels: { sheet: 'Sheet title', author: 'Drawn by', number: 'Sheet no.' } })
-  // Back in the corner, the block goes without its captions and keeps what was typed.
-  await layout.selectOption('corner')
-  const back = (await saved(page)).find((n) => n.type === 'paper')!
-  expect(back.titleBlock).toEqual({ number: 'A-101', revisions: '1 | 2026-11-17 | Issued for permit' })
+  expect((await saved(page)).find((n) => n.type === 'paper')!.titleBlock).toEqual({ number: 'A-101', revisions: '1 | 2026-11-17 | Issued for permit' })
+  // Back in the corner, the drawing goes without its captions, and the sheet keeps what was typed.
+  dialog = await settings()
+  await dialog.locator('.pref-field', { hasText: 'Title block' }).locator('select').selectOption('corner')
+  await dialog.getByRole('button', { name: 'Done' }).click()
+  expect(await lastSettings()).toBeUndefined()
+  expect((await saved(page)).find((n) => n.type === 'paper')!.titleBlock).toEqual({ number: 'A-101', revisions: '1 | 2026-11-17 | Issued for permit' })
 })
 
 test('names the rooms that closed walls make, and splits one with a divider', async ({ page }) => {

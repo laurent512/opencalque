@@ -478,7 +478,6 @@ export const ko: Record<string, string> = {
   "Revisions": "개정 이력",
   "Sheet title": "도면명",
   "Drawn by": "작도",
-  "Layout": "배치",
   "In the bottom right corner": "오른쪽 아래 모서리",
   "Down the right edge, with captions": "오른쪽 가장자리를 따라, 항목명과 함께",
   "One revision per line: its mark, its date and what changed, separated by |.": "한 줄에 개정 하나: 기호, 날짜, 변경 내용을 |로 구분합니다.",
