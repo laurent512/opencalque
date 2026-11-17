@@ -1,4 +1,4 @@
-import { leavesOf, rootOf } from './document'
+import { isVisible, leavesOf, rootOf } from './document'
 import { applyTransform, dist, norm, perp, sub, unionBounds, type Bounds, type Vec2 } from './geometry'
 import type { Op } from './ops'
 import { primitiveBounds, transformPrimitive, type Primitive } from './primitives'
@@ -433,7 +433,7 @@ export interface ElevationItem {
   node: NodeOf<'parametric'> | NodeOf<'instance'>
   role: 'opening' | 'fixed' | 'standing'
   box: Bounds
-  /** Whether it goes up and down when dragged: what is fixed on the face, and an opening whose kind says its sill. */
+  /** Whether it goes up and down when dragged: anything but a door or window, and a window whose kind says its sill. */
   raises: boolean
   /** Whether what is drawn in front of it hides all of it: it is then neither dimensioned nor taken by a click in the view. */
   hidden?: boolean
@@ -603,6 +603,17 @@ export function seenFrom(facing: Vec2, viewer: Vec2): 'front' | 'side' | 'back' 
 /** What stands on the floor is drawn lighter than the walls: its kind's lines given no weight of their own. */
 const standingWeight = (p: Primitive): Primitive => ((p.kind === 'path' || p.kind === 'ellipse') && p.strokeWidth === undefined ? { ...p, strokeWidth: STANDING_WEIGHT } : p)
 
+/**
+ * Whether the plan shows `node`: it, its layer and every group it is in shown. What the plan does
+ * not show, its views do not draw either: an object, a door, a wall hidden, or on a hidden layer.
+ */
+function shownOnPlan(doc: Document, node: Node): boolean {
+  for (let at: Node | undefined = node, depth = 0; at && at.type !== 'page' && depth < 64; at = at.parent ? doc.nodes[at.parent] : undefined, depth++) {
+    if (!isVisible(doc, at)) return false
+  }
+  return true
+}
+
 /** What an elevation draws, and where in it each object of the plan is. */
 function layout(view: Elevation, doc: Document, registry: Registry, measure: Measure = () => []): { prims: Primitive[]; items: ElevationItem[] } {
   const line = lineOf(doc, view)
@@ -651,7 +662,7 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
     const box = prims.map(primitiveBounds).reduce<Bounds | null>((all, one) => (one ? (all ? unionBounds(all, one) : one) : all), null)
     const kind = object.type === 'parametric' ? registry.parametric.get(object.kind) : undefined
     if (box) {
-      const item: ElevationItem = { node: object, role, box, raises: role === 'fixed' || !!kind?.sill }
+      const item: ElevationItem = { node: object, role, box, raises: role !== 'opening' || !!kind?.sill }
       items.push(item)
       if (prims[0]) drawnFirst.set(item, prims[0])
     }
@@ -660,7 +671,7 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
   const deep = depthOf(node)
   const front = viewer(node.a, node.b)
   const off = (p: Vec2) => dot(sub(p, node.a), front)
-  const walls = wallsIn(doc, node.parent)
+  const walls = wallsIn(doc, node.parent).filter((wall) => shownOnPlan(doc, wall))
 
   // Everything seen beyond the line is drawn as layers, each over the stretch of the view it takes,
   // the furthest first where two take the same stretch (`paintOrder`): a face, filled, hides what
@@ -714,6 +725,7 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
     layers.push({ from, to, depth: depthOn(ends), prims: faces })
     faces.push({ kind: 'path', points: box(from, to, 0, height), closed: true, fill: WALL_SEEN, own: true })
     for (const { node: opening } of wallOpenings(doc, wall, registry)) {
+      if (!shownOnPlan(doc, opening)) continue
       const kind = registry.parametric.get(opening.kind)
       if (!kind) continue
       const props = registry.resolveProps(kind, opening.props)
@@ -725,6 +737,7 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
       faces.push(...shown(opening, 'opening', own ? placed(opening, own, 0) : [{ kind: 'path', points: box(Math.min(s0, s1), Math.max(s0, s1), bottom, top), closed: true }]))
     }
     for (const object of wallMounted(doc, wall, registry)) {
+      if (!shownOnPlan(doc, object)) continue
       // What stands on the floor against the face is drawn as what stands in front of it, below.
       const origin = applyTransform({ x: 0, y: 0 }, object)
       if (mountOf(object, registry)?.on !== 'wall' || mountedOn(doc, object, registry)?.face !== face || !within(along(origin)) || !between(origin)) continue
@@ -798,16 +811,18 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
   // appliances, as boxes of the width they take along the view and as tall as they say. Only
   // outlined, so that nothing fixed on a face behind is hidden; a wall in front of one hides it.
   for (const leaf of drawnBy ? everythingIn(doc, rootOf(doc, node.parent)?.id ?? '') : []) {
-    if (leaf.type !== 'instance' && leaf.type !== 'parametric') continue
+    if ((leaf.type !== 'instance' && leaf.type !== 'parametric') || !shownOnPlan(doc, leaf)) continue
     if (leaf.type === 'parametric' && (mountOf(leaf, registry)?.on === 'wall' || openingSpan(leaf, registry))) continue
     let tall: number | undefined
     let looks: Primitive[] | null = null
+    // On the floor, unless it is raised: its underside that high.
+    const raised = heightAboveFloor(leaf, registry) ?? 0
     if (leaf.type === 'parametric') {
       const kind = registry.parametric.get(leaf.kind)
       const props = kind ? registry.resolveProps(kind, leaf.props) : {}
       tall = kind?.height?.(props)
       // Drawn as its kind draws it from where it is seen, lighter than the walls; else as its box.
-      looks = kind ? seenAs(leaf, props, 0) : null
+      looks = kind ? seenAs(leaf, props, raised) : null
     } else {
       const component = doc.nodes[leaf.component]
       tall = component?.type === 'component' && component.height ? component.height * (leaf.scale ?? 1) : undefined
@@ -822,7 +837,7 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
     const from = Math.max(0, Math.min(...ss))
     const to = Math.min(length, Math.max(...ss))
     if (to - from < 1) continue
-    const drawn = looks ? looks.map(standingWeight) : [{ kind: 'path', points: box(from, to, 0, tall), closed: true, strokeWidth: STANDING_WEIGHT, own: true } as Primitive]
+    const drawn = looks ? looks.map(standingWeight) : [{ kind: 'path', points: box(from, to, raised, raised + tall), closed: true, strokeWidth: STANDING_WEIGHT, own: true } as Primitive]
     layers.push({ from, to, depth: depthOn(seenOf(points)), prims: shown(leaf, 'standing', drawn) })
   }
 
@@ -831,7 +846,7 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
   // its height, as what stands is.
   const onFaces = new Set(items.filter((item) => item.role === 'fixed').map((item) => item.node.id))
   for (const leaf of drawnBy ? everythingIn(doc, rootOf(doc, node.parent)?.id ?? '') : []) {
-    if (leaf.type !== 'parametric' || onFaces.has(leaf.id) || mountOf(leaf, registry)?.on !== 'wall') continue
+    if (leaf.type !== 'parametric' || onFaces.has(leaf.id) || mountOf(leaf, registry)?.on !== 'wall' || !shownOnPlan(doc, leaf)) continue
     const points = drawnBy!(leaf, doc, registry).flatMap(outlineOf)
     if (points.length === 0) continue
     const offs = points.map(off)
@@ -896,6 +911,29 @@ export function elevationItemAt(node: Elevation, doc: Document, registry: Regist
   return items.find((item) => item.role === 'fixed' && inside(item)) ?? items.find(inside) ?? null
 }
 
+/** Every elevation of the drawing that shows the object `id`, not all hidden there, with how it shows it. */
+export function elevationItemsOf(doc: Document, registry: Registry, id: string): { view: Elevation; item: ElevationItem }[] {
+  return Object.values(doc.nodes).flatMap((view) => (view.type === 'elevation' ? layout(view, doc, registry).items.filter((item) => item.node.id === id && !item.hidden).map((item) => ({ view, item })) : []))
+}
+
+/**
+ * What something dragged in an elevation lines up with, in the drawing: the sides (`xs`), the tops
+ * and bottoms (`ys`) and the middles across (`middles`) of everything else it shows of the plan, the
+ * sides and tops of the walls it draws, its floor and its two ends. `except` is the object dragged.
+ */
+export function elevationEdges(view: Elevation, doc: Document, registry: Registry, except: string): { xs: number[]; ys: number[]; middles: number[] } {
+  const { prims, items } = layout(view, doc, registry)
+  const others = items.filter((item) => !item.hidden && item.node.id !== except)
+  const walls = prims.flatMap((p) => (p.kind === 'path' && p.own && p.closed && (p.fill === WALL_SEEN || p.fill === WALL_GREY) ? [primitiveBounds(p)!] : []))
+  const line = lineOf(doc, view)
+  const length = line ? dist(line.a, line.b) : 0
+  return {
+    xs: [...others.flatMap(({ box }) => [box.minX, box.maxX]), ...walls.flatMap((b) => [b.minX, b.maxX]), view.x, view.x + length],
+    ys: [...others.flatMap(({ box }) => [box.minY, box.maxY]), ...walls.map((b) => b.minY), view.y],
+    middles: others.map(({ box }) => (box.minX + box.maxX) / 2),
+  }
+}
+
 /** Where the elevations of the drawing show the objects of `ids`: each elevation, and the box of each object in it. */
 export function shownInElevations(doc: Document, registry: Registry, ids: string[]): { view: Elevation; box: Bounds }[] {
   if (ids.length === 0) return []
@@ -908,8 +946,8 @@ export function shownInElevations(doc: Document, registry: Registry, ids: string
  * on the plan, as a patch: what is fixed on the face slides along it, staying on the wall, and
  * goes up or down, never below the floor; a door or window slides along its wall, and a window
  * (whose kind says its sill) goes up or down by its sill height; what stands in front of the face
- * moves across the view, as what is made to be fixed on a wall but is on none does, up and down
- * too. Null when the view has no line, or one of no length.
+ * moves across the view, as what is made to be fixed on a wall but is on none does, and up or down
+ * by its height above the floor (`z`, left out back on the floor). Null when the view has no line, or one of no length.
  */
 export function elevationMovePatch(view: Elevation, doc: Document, registry: Registry, object: ElevationItem['node'], ds: number, dh: number): Record<string, unknown> | null {
   const node = lineOf(doc, view)
@@ -930,11 +968,40 @@ export function elevationMovePatch(view: Elevation, doc: Document, registry: Reg
     return { ...mountAt(object, mount, on.wall, on.face, along), z }
   }
   const moved = { x: tidy(object.x + d.x * ds), y: tidy(object.y + d.y * ds) }
-  if (object.type !== 'parametric' || dh === 0) return moved
+  if (dh === 0) return moved
+  if (object.type === 'parametric' && openingSpan(object, registry)) {
+    const kind = registry.parametric.get(object.kind)
+    const sill = kind?.sill
+    if (!kind || !sill) return moved
+    return { ...moved, props: { ...object.props, [sill]: Math.max(0, tidy(Number(registry.resolveProps(kind, object.props)[sill]) + dh)) } }
+  }
+  const z = Math.max(0, tidy((heightAboveFloor(object, registry) ?? 0) + dh))
+  return { ...moved, z: z > 0 ? z : null }
+}
+
+/**
+ * What raising the top of an object shown in an elevation by `dh` mm does to it, its bottom staying
+ * where it is: a parametric object whose kind has a `height` (a tall unit, a door, a wall cabinet)
+ * is made that much taller, and what is fixed on a wall by its centre goes up half as much; a
+ * placement of a component makes the component taller, and with it every placement of it. Never
+ * less than 1 mm tall. Null for what has no height to change.
+ */
+export function elevationHeightOps(doc: Document, registry: Registry, object: ElevationItem['node'], dh: number): Op[] | null {
+  if (object.type === 'instance') {
+    const component = doc.nodes[object.component]
+    if (component?.type !== 'component' || !component.height) return null
+    const scale = object.scale ?? 1
+    const height = Math.max(1, tidy(component.height * scale + dh)) / scale
+    return [{ op: 'update_node', id: component.id, patch: { height: tidy(height) } }]
+  }
   const kind = registry.parametric.get(object.kind)
-  const sill = kind?.sill
-  if (!kind || !sill) return moved
-  return { ...moved, props: { ...object.props, [sill]: Math.max(0, tidy(Number(registry.resolveProps(kind, object.props)[sill]) + dh)) } }
+  if (!kind?.params.some((p) => p.key === 'height' && p.type === 'number')) return null
+  const was = Number(registry.resolveProps(kind, object.props).height) || 0
+  const height = Math.max(1, tidy(was + dh))
+  const patch: Record<string, unknown> = { props: { ...object.props, height } }
+  const mount = mountOf(object, registry)
+  if (mount?.on === 'wall' && mount.measured !== 'bottom') patch.z = tidy((heightAboveFloor(object, registry) ?? 0) + (height - was) / 2)
+  return [{ op: 'update_node', id: object.id, patch }]
 }
 
 /** The faces of walls that a line lies on (the far side of an elevation), each with where it ends as drawn (`faceStretch`), along its wall and as points. */

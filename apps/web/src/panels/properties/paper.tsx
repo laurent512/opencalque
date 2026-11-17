@@ -2,7 +2,7 @@ import { paperRescaled, sheetContentOf, sheetContentOps, DEFAULT_PAPER_SCALE, PA
 import { openComponent } from '../../actions'
 import { msg, t } from '../../i18n'
 import { apply, useStore } from '../../store'
-import { Field, Section, YesNo } from '../../ui'
+import { Field, YesNo } from '../../ui'
 import type { Update } from './FieldRow'
 
 /* A paper in the Properties panel: its format and scale, its title block, and what is on every sheet. */
@@ -87,7 +87,7 @@ function TitleBlockEntries({ node }: { node: Extract<Node, { type: 'paper' }> })
   )
 }
 
-/** The sheet a paper stands for: a standard format or a custom size, which way up, and at what drawing scale. */
+/** The sheet a paper stands for: a standard format or a custom size, which way up, and at what drawing scale. Shown under Sheet. */
 export function PaperSheet({ node, update }: { node: Extract<Node, { type: 'paper' }>; update: Update }) {
   const doc = useStore((s) => s.doc)
   const common = sheetContentOf(doc)
@@ -106,7 +106,7 @@ export function PaperSheet({ node, update }: { node: Extract<Node, { type: 'pape
     update(() => (size ? { ...size, x: node.x + (node.width - size.width) / 2, y: node.y + (node.height - size.height) / 2, scale: at } : { scale: at }))
   }
   return (
-    <Section title={t('Sheet')}>
+    <>
       <label className="field">
         <span>{t('Format')}</span>
         <select value={format?.name ?? ''} onChange={(e) => resize(e.target.value, landscape, scale)}>
@@ -150,6 +150,6 @@ export function PaperSheet({ node, update }: { node: Extract<Node, { type: 'pape
         </button>
       )}
       <p className="hint">{t('What is drawn there shows on every sheet of the drawing: a title, a logo, a north arrow. It is drawn once, in millimetres of paper, and each sheet shows it at its own scale, each thing in the corner of the sheet it was drawn nearest to. In its texts, fields such as {sheet}, {scale} or {page} say each sheet’s own.')}</p>
-    </Section>
+    </>
   )
 }

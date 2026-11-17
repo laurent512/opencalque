@@ -508,6 +508,7 @@ export const NodeSchema = z
         scale: z.number().positive().optional().describe('Size multiplier of this placement. Defaults to 1.'),
         scaleX: z.number().positive().optional().describe('Stretch of this placement along the component\'s own X axis, on top of "scale": wider than it is drawn. Defaults to 1.'),
         scaleY: z.number().positive().optional().describe('Stretch of this placement along the component\'s own Y axis, on top of "scale": taller than it is drawn. Defaults to 1.'),
+        z: z.number().nonnegative().optional().describe('How high above the floor its underside is, in mm, as elevations draw it: a mirror, a shelf. Left out, it stands on the floor.'),
       })
       .describe('A placement of a component. Editing the component updates every instance.'),
     z
@@ -524,7 +525,7 @@ export const NodeSchema = z
           .number()
           .nonnegative()
           .optional()
-          .describe("How high above the floor it is, in mm, to its centre: a socket's or a switch's height. Left out, its kind's usual height for an object fixed on a wall, else none. The plan writes it only with showHeight."),
+          .describe("How high above the floor it is, in mm: for an object fixed on a wall, to its centre (a socket's or a switch's height) unless its kind measures it to its underside; for anything else, to its underside (a raised unit, a shelf). Left out, its kind's usual height for an object fixed on a wall, else on the floor. The plan writes it only with showHeight."),
         showHeight: z.boolean().optional().describe('For an object fixed on a wall: its height above the floor is written beside it on the plan, as electrical plans do.'),
       })
       .describe('An object generated from parameters by an extension. Unknown kinds are preserved and drawn as a placeholder.'),

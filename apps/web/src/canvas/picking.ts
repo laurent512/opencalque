@@ -1,4 +1,4 @@
-import { alignables, boundsFrame, dist, distToSegment, endLineShown, isLocked, wallEndsAt, sceneBounds, sub, wallEdgeLines, wallEndsOf, type Alignable, type Bounds, type Document, type Node, type NodeOf, type ResizeFrame, type SceneItem, type Vec2 } from '@opencalque/core'
+import { type ElevationItem, type ElevationSide, alignables, boundsFrame, dist, distToSegment, endLineShown, isLocked, wallEndsAt, sceneBounds, sub, wallEdgeLines, wallEndsOf, type Alignable, type Bounds, type Document, type Node, type NodeOf, type ResizeFrame, type SceneItem, type Vec2 } from '@opencalque/core'
 import { registry } from '../extensions'
 import { toWorld, visibleArea } from '../view'
 import { boxGrips, viewArrow } from './draw'
@@ -23,6 +23,29 @@ export function titleAt(c: Canvas, at: Vec2): SceneItem | null {
     return at.x >= x - 2 && at.x <= x + Math.max(30, title.text.length * 6.5) && at.y >= y - 20 && at.y <= y - 2
   })
   return (title && c.scene.find((item) => item.id === title.id && !item.locked)) ?? null
+}
+
+/**
+ * The side of the box a view draws the selected object in under a point of the canvas, among those
+ * that can be dragged: the line of that side (drawn 3 px outside the object) and a little either side.
+ */
+export function inViewGripAt(c: Canvas, at: Vec2): { view: NodeOf<'elevation'>; item: ElevationItem; side: ElevationSide } | null {
+  let best: { view: NodeOf<'elevation'>; item: ElevationItem; side: ElevationSide; off: number } | null = null
+  for (const { view, item, sides } of c.inViewGrips) {
+    const p = onScreen({ x: item.box.minX, y: item.box.minY })
+    const q = onScreen({ x: item.box.maxX, y: item.box.maxY })
+    const [left, right, top, bottom] = [p.x - 3, q.x + 3, p.y - 3, q.y + 3]
+    const across = at.y >= top - 5 && at.y <= bottom + 5
+    const along = at.x >= left - 5 && at.x <= right + 5
+    const offs: Record<ElevationSide, number> = {
+      left: across ? Math.abs(at.x - left) : Infinity,
+      right: across ? Math.abs(at.x - right) : Infinity,
+      top: along ? Math.abs(at.y - top) : Infinity,
+      bottom: along ? Math.abs(at.y - bottom) : Infinity,
+    }
+    for (const side of sides) if (offs[side] <= 5 && (!best || offs[side] < best.off)) best = { view, item, side, off: offs[side] }
+  }
+  return best && { view: best.view, item: best.item, side: best.side }
 }
 
 /** Which temporary dimension's length is written under a point of the canvas, by its place in their list. */

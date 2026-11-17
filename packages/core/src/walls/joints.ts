@@ -113,7 +113,7 @@ function facesCross(p: Vec2, a: Face, b: Face, reach: number): Vec2 | null {
  * Where the "plus" face of ray `a` meets the "minus" face of ray `b`, its neighbour going around
  * the joint. Returns the outline points each wall takes, ordered from its own face towards the joint.
  */
-function meet(p: Vec2, a: Ray, b: Ray, style: 'auto' | 'miter' | 'round' | 'bevel' = 'auto'): { a: Vec2[]; b: Vec2[] } {
+function meet(p: Vec2, a: Ray, b: Ray, style: 'auto' | 'miter' | 'round' | 'bevel' = 'auto'): { a: Vec2[]; b: Vec2[]; at?: Vec2 } {
   const qa = add(p, scale(perp(a.d), a.plus))
   const qb = sub(p, scale(perp(b.d), b.minus))
   const square = { a: [qa], b: [qb] }
@@ -133,30 +133,61 @@ function meet(p: Vec2, a: Ray, b: Ray, style: 'auto' | 'miter' | 'round' | 'beve
     if (!crossing) return square
     c = crossing
   } else if (s > a.length || u > b.length) return square // The faces would cross beyond the far end of a wall: too short to mitre.
-  // Only the outer side of a corner, where the faces cross beyond the joint, has a point to round or cut off.
-  if (s < 0 && style === 'round') {
-    // An arc around the joint from one face to the other, each wall taking the half on its side.
-    const from = Math.atan2(qa.y - p.y, qa.x - p.x)
-    let sweep = Math.atan2(qb.y - p.y, qb.x - p.x) - from
-    if (sweep > Math.PI) sweep -= 2 * Math.PI
-    if (sweep < -Math.PI) sweep += 2 * Math.PI
-    const steps = Math.max(2, Math.ceil(Math.abs(sweep) / (Math.PI / 16)))
-    const at = (t: number): Vec2 => {
-      const r = a.plus + (b.minus - a.plus) * t
-      return { x: tidy(p.x + r * Math.cos(from + sweep * t)), y: tidy(p.y + r * Math.sin(from + sweep * t)) }
+  if (style === 'round' || style === 'bevel') {
+    // Rounded and cut off are worked out from the faces of the walls, not from the joint: walls drawn
+    // by a face have their joint on that face, and a corner whose point is the joint itself would
+    // have nothing left to round or cut. So the corner is the same whichever line the walls are drawn
+    // by. Which side is the outer one is judged from where the middles of the walls cross.
+    const o = middlesCross(p, a, b)
+    const ga = add(o, scale(perp(a.d), (a.plus + a.minus) / 2))
+    const gb = sub(o, scale(perp(b.d), (b.plus + b.minus) / 2))
+    // Only the outer side of a corner, where the faces cross beyond that point, has a point to round or cut off.
+    if (cross(sub(gb, ga), b.d) / denom < 0) {
+      // A circle touching both outer faces, as wide as the thinner wall: for two walls of one
+      // thickness drawn by their middle, the circle about the joint. Its centre is inside both
+      // walls, where they are divided.
+      const r = Math.min(a.plus + a.minus, b.plus + b.minus) / 2
+      const ia = sub(qa, scale(perp(a.d), r))
+      const ib = add(qb, scale(perp(b.d), r))
+      const centre = add(ia, scale(a.d, cross(sub(ib, ia), b.d) / denom))
+      const ta = add(centre, scale(perp(a.d), r))
+      const tb = sub(centre, scale(perp(b.d), r))
+      if (style === 'bevel') {
+        const m = mid(ta, tb)
+        return { a: [ta, m], b: [tb, m], at: centre }
+      }
+      // The arc from where it touches one face to where it touches the other, each wall taking the half on its side.
+      const from = Math.atan2(ta.y - centre.y, ta.x - centre.x)
+      let sweep = Math.atan2(tb.y - centre.y, tb.x - centre.x) - from
+      if (sweep > Math.PI) sweep -= 2 * Math.PI
+      if (sweep < -Math.PI) sweep += 2 * Math.PI
+      const steps = Math.max(2, Math.ceil(Math.abs(sweep) / (Math.PI / 16)))
+      const point = (t: number): Vec2 => ({ x: tidy(centre.x + r * Math.cos(from + sweep * t)), y: tidy(centre.y + r * Math.sin(from + sweep * t)) })
+      const half = Array.from({ length: steps + 1 }, (_, i) => i / (2 * steps))
+      return { a: half.map((t) => point(t)), b: half.map((t) => point(1 - t)), at: centre }
     }
-    const half = Array.from({ length: steps + 1 }, (_, i) => i / (2 * steps))
-    return { a: half.map((t) => at(t)), b: half.map((t) => at(1 - t)) }
   }
-  // Cut off when asked, or, left to itself, when the point would stick out too far. A sharp point
-  // asked for by name is drawn whatever its length, short of what no drawing could hold.
+  // Left to itself, cut off when the point would stick out too far. A sharp point asked for by name
+  // is drawn whatever its length, short of what no drawing could hold.
   // Measured against the faces that meet there, which for a wall drawn by a face may be its whole thickness from the joint.
   const tip = dist(c, p) / Math.max(a.plus, b.minus, 1e-9)
-  if (s < 0 && (style === 'bevel' || (style === 'auto' && tip > MITER_LIMIT) || tip > FORCED_MITER_LIMIT)) {
+  if (s < 0 && ((style === 'auto' && tip > MITER_LIMIT) || tip > FORCED_MITER_LIMIT)) {
     const m = mid(qa, qb)
     return { a: [qa, m], b: [qb, m] }
   }
   return { a: [c], b: [c] }
+}
+
+/**
+ * Where the middles of two walls leaving a joint cross, along the way each leaves it: the joint
+ * itself for walls drawn by their middle, and for walls drawn by a face half a thickness in from it.
+ */
+function middlesCross(p: Vec2, a: Ray, b: Ray): Vec2 {
+  const ma = add(p, scale(perp(a.d), (a.plus - a.minus) / 2))
+  const mb = add(p, scale(perp(b.d), (b.plus - b.minus) / 2))
+  const denom = cross(a.d, b.d)
+  if (Math.abs(denom) < 1e-9) return p
+  return add(ma, scale(a.d, cross(sub(mb, ma), b.d) / denom))
 }
 
 /** How far from the face of a wall, in mm, an end may be and still stop against it. */
@@ -272,13 +303,17 @@ export function cap(p: Vec2, wall: Wall, away: Vec2, doc: Document, seams?: [Vec
   const drawsLine = (usual: boolean) => (me.look === next.look ? usual : !!me.look)
   /**
    * The two walls brought to the line between them, in the given shape (a mitre unless said), and
-   * that line kept to be drawn when `draws`. They meet exactly at the joint, at any angle.
+   * that line kept to be drawn when `draws`. They meet exactly at the joint, at any angle; a corner
+   * rounded or cut off, at the point it is worked out about (`meet`'s `at`), which the joint of walls
+   * drawn by a face would leave outside it.
    */
   const joined = (shape: 'auto' | 'miter' | 'round' | 'bevel', draws: boolean): Vec2[] => {
-    const before = meet(p, prev, me, shape).b
-    const after = meet(p, me, next, shape).a
+    const back = meet(p, prev, me, shape)
+    const ahead = meet(p, me, next, shape)
+    const before = back.b
+    const after = ahead.a
     if (draws) seams?.push([before[before.length - 1], after[after.length - 1]])
-    return [...before, p, ...after.reverse()]
+    return [...before, back.at ?? ahead.at ?? p, ...after.reverse()]
   }
   if (style === 'butt') {
     // One wall passes: it runs on, square, far enough to cover the end of the other. The other

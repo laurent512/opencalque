@@ -748,6 +748,28 @@ html.dock-dragging .tab-more {
   width: 100%;
 }
 
+/* Three values on one row (X, Y, Z; W, D, H): a shorter name, and the unit left out of their boxes
+   while the panel is too narrow for it beside the number. */
+.field-pair.three {
+  container-type: inline-size;
+  gap: 4px;
+}
+
+.field-pair.three > .field-pair-name {
+  width: 64px;
+  white-space: nowrap;
+}
+
+@container (max-width: 330px) {
+  .field-pair.three .field.with-unit > input:not([type]) {
+    padding-right: 6px;
+  }
+
+  .field-pair.three .field > span.field-unit {
+    display: none;
+  }
+}
+
 /* Locked or not, seen or not: two pairs of pictures in the room of one value. */
 .status-field {
   flex-wrap: wrap;
@@ -3689,6 +3711,17 @@ button.crumb.ahead:hover {
 /* The joints of walls, as pictures to pick from */
 .joint-picker button {
   height: 24px;
+}
+
+/* Seven pictures in a narrow column: they shrink to share its width rather than run past it. */
+.wall-end > .joint-picker {
+  align-self: stretch;
+}
+
+.joint-picker svg {
+  width: 100%;
+  max-width: 28px;
+  height: auto;
 }
 
 .field > em {

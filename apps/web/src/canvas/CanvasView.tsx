@@ -1,7 +1,7 @@
 import { useWindows } from '../windows'
 import { stopBrowsing } from '../actions/instances'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { type NodeOf, type Primitive, depthOf, dist, lineOf, rootOf, seenArea, shownInElevations, viewsOf, gridlineBubbles, wallEndState, boundsFrame, buildScene, connectedWalls, frameContains, frameGrips, hitTest, kindOf, modifierKind, modifierParams, newId, placedScene, resizeFrame, rotate, sceneBounds, turnedBox, wallEdgeLines, wallLength, wallMiddle } from '@opencalque/core'
+import { type NodeOf, type Primitive, depthOf, dist, elevationItemsOf, elevationSides, lineOf, rootOf, seenArea, shownInElevations, viewsOf, gridlineBubbles, wallEndState, boundsFrame, buildScene, connectedWalls, frameContains, frameGrips, hitTest, kindOf, modifierKind, modifierParams, newId, placedScene, resizeFrame, rotate, sceneBounds, turnedBox, wallEdgeLines, wallLength, wallMiddle } from '@opencalque/core'
 import { t } from '../i18n'
 import { finishTextEdit, zoomToFit } from '../actions'
 import { commandFor, onCommand } from '../commands'
@@ -141,7 +141,17 @@ export function CanvasView() {
 
   // The sizes of the one selected shape, shown beside it while nothing is being drawn.
   // What is selected, where an elevation shows it too.
-  const inViews = useMemo(() => shownInElevations(doc, registry, selection).map(({ box }) => box), [doc, selection, extensionsVersion])
+  const shownInViews = useMemo(() => shownInElevations(doc, registry, selection), [doc, selection, extensionsVersion])
+  const inViews = useMemo(() => shownInViews.map(({ box }) => box), [shownInViews])
+  // Where the views on this page show the one object selected, with the sides of its box there that can be dragged: a grip in the middle of each.
+  const inViewGrips = useMemo(() => {
+    const node = tool === 'select' && selection.length === 1 ? doc.nodes[selection[0]] : undefined
+    if ((node?.type !== 'parametric' && node?.type !== 'instance') || lockedAmong(doc, selection)) return []
+    return elevationItemsOf(doc, registry, node.id)
+      .filter(({ view }) => scene.some((item) => item.id === view.id && !item.locked))
+      .map(({ view, item }) => ({ view, item, sides: elevationSides(view, doc, registry, item) }))
+      .filter(({ sides }) => sides.length > 0)
+  }, [doc, selection, tool, scene, extensionsVersion])
   // The view lines selected, or those of the views selected, when on this page: what they see, up to
   // their depth, and where their start and end are on each view of them on this page, over its top
   // at its left and right. The one the pointer is on, not selected, shows what it sees faintly.
@@ -250,12 +260,13 @@ export function CanvasView() {
     ownBox: null,
     clearanceLabels: [],
     gripCursor: null,
+    inViewGrips: [],
     element: () => canvasRef.current!,
     setOverlay,
     setGripCursor,
   }
   const c = runtime.current
-  Object.assign(c, { scene, snappable, titles, frames, handles, frame, ownBox, gripCursor, clearanceLabels: clearanceLines?.map((line) => line.label) ?? [] })
+  Object.assign(c, { scene, snappable, titles, frames, handles, frame, ownBox, gripCursor, inViewGrips, clearanceLabels: clearanceLines?.map((line) => line.label) ?? [] })
 
   // Switching tool or container abandons whatever was in progress.
   useEffect(() => {
@@ -296,8 +307,8 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette, around)
-  }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines, inViews, viewLines, drawnHandles])
+    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette, around)
+  }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines, inViews, inViewGrips, viewLines, drawnHandles])
 
   // Lets the quick bar finish the shape in progress with the sizes typed there.
   useEffect(() => {

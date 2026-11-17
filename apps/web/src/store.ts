@@ -231,7 +231,9 @@ function settle(s: State, doc: Document): Partial<State> {
     scope,
     through: scope === s.scope ? s.through : [],
     trail: scope === s.scope ? s.trail : null,
-    selection: s.selection.filter((id) => doc.nodes[id]?.parent === scope),
+    // What is selected is in the place being edited; but something an elevation shows, inside a group
+    // there, is picked where it is shown and stays selected while it stays in its group.
+    selection: s.selection.filter((id) => doc.nodes[id]?.parent === scope || (scope === s.scope && doc.nodes[id] !== undefined && doc.nodes[id].parent === s.doc.nodes[id]?.parent)),
     // A corner is a place, not an object: after an undo no wall may end there any more.
     corner: s.corner && wallEndsAt(doc, scope, s.corner).length > 0 ? s.corner : null,
     activeLayer: doc.layers[s.activeLayer] ? s.activeLayer : layersOf(doc)[0].id,

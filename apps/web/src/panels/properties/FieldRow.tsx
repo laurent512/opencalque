@@ -1,5 +1,5 @@
 import { depthPatch, type Document, lengthOf, newId, type Node, type NodeOf, resolveColor, DEFAULT_INK, type Op, type Pattern, wallEndsOf, wallLength, turnToOps } from '@opencalque/core'
-import { useState } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import { Pipette, Link2, Undo2, SquareSplitHorizontal } from 'lucide-react'
 import { msg, t } from '../../i18n'
 import { registry } from '../../extensions'
@@ -7,13 +7,13 @@ import { usePrefs } from '../../prefs'
 import { apply, setTool, useStore } from '../../store'
 import { ColorChoice, type LayerOption } from '../../ColorChoice'
 import { FillChoice, type FillChange } from '../../FillChoice'
-import { MaterialChoice, MaterialNote, type MaterialOption } from '../../MaterialChoice'
+import { MaterialChoice, type MaterialOption } from '../../MaterialChoice'
 import { unfilledPatch } from '../../materials'
 import { showPanel } from '../../dock'
 import { WeightChoice } from '../../WeightChoice'
 import { DashPicker, Field, FieldPair, IconButton, OpacitySlider, ProportionLock, Section, YesNo } from '../../ui'
 import { formatAngle, formatLength } from '../../units'
-import { GEOMETRY, LOOK_SECTIONS, PAIRS, rowsOf, STROKE, type FieldSpec, type Option } from './fields'
+import { GEOMETRY, LOOK_SECTIONS, rowName, rowsOf, STROKE, type FieldSpec, type Option } from './fields'
 import { WallEdges } from './walls'
 
 /* One field of the Properties panel, for one object or several, and the sections fields are shown in. */
@@ -21,6 +21,9 @@ import { WallEdges } from './walls'
 export function read(node: object, path: string): unknown {
   return path.split('.').reduce<any>((value, key) => value?.[key], node)
 }
+
+/** What a field shows for a node: the property at its path, or what its own reading (`get`) says. */
+export const valueOf = (field: FieldSpec, node: Node, doc: Document): unknown => (field.get ? field.get(node, doc) : read(node, field.path))
 
 /**
  * The patch that sets `path` to `value`, replacing the top-level property it lives in.
@@ -53,14 +56,15 @@ export function FieldRow({ node, nodes, field, update }: { node: Node; nodes: No
   const doc = useStore((s) => s.doc)
   // With several objects selected, a property they do not all agree on is shown as mixed, with no
   // value of its own; setting it gives them all the same.
-  const seen = (n: Node) => JSON.stringify(read(n, field.path) ?? field.fallback ?? null)
+  const seen = (n: Node) => JSON.stringify(valueOf(field, n, doc) ?? field.fallback ?? null)
   const mixed = nodes.some((n) => seen(n) !== seen(node))
-  const stored = mixed ? undefined : read(node, field.path)
+  const stored = mixed ? undefined : valueOf(field, node, doc)
   const value = mixed ? undefined : (stored ?? field.fallback)
   const commit = (next: unknown) => {
     // An angle turns each object about its own middle, as the knob above a box does, not about
     // the point its position is measured from. Read afresh: dragging the number writes many times.
     const now = useStore.getState().doc
+    if (field.set) return apply(nodes.flatMap((n) => (now.nodes[n.id] ? field.set!(now.nodes[n.id], next, now) : [])))
     if (field.path === 'rotation' && typeof next === 'number' && now.nodes[node.id]) {
       return apply(turnToOps(now, nodes.map((n) => now.nodes[n.id]).filter(Boolean), next, registry))
     }
@@ -72,7 +76,9 @@ export function FieldRow({ node, nodes, field, update }: { node: Node; nodes: No
     return (
       <Field
         label={t(field.label)}
-        placeholder={mixed ? t('Mixed') : undefined}
+        placeholder={mixed ? t('Mixed') : field.empty && t(field.empty)}
+        note={field.note && t(field.note)}
+        from={field.empty && !mixed ? 0 : undefined}
         multiline={field.multiline}
         numeric={field.type === 'number'}
         length={field.length}
@@ -132,13 +138,10 @@ export function FieldRow({ node, nodes, field, update }: { node: Node; nodes: No
     }
     // Not a label: a label would hand every click to the button inside, opening its list again.
     return (
-      <>
-        <div className="field">
-          <span>{t(field.label)}</span>
-          <MaterialChoice label={t(field.label)} value={mixed ? undefined : ((value as string | undefined) ?? '')} mixed={mixed} options={options} pick={(id) => made(id || null)} create={create} />
-        </div>
-        {(mixed || value) && <MaterialNote />}
-      </>
+      <div className="field">
+        <span>{t(field.label)}</span>
+        <MaterialChoice label={t(field.label)} value={mixed ? undefined : ((value as string | undefined) ?? '')} mixed={mixed} options={options} pick={(id) => made(id || null)} create={create} />
+      </div>
     )
   }
   if (field.ends) {
@@ -233,22 +236,49 @@ function TypedRow(props: { node: Node; nodes: Node[]; field: FieldSpec; update: 
 }
 
 /**
- * Two fields on one row (`PAIRS`). A size can keep its proportions: the other one then changes by
- * as much, each object in its own proportions. What has no size yet has none to keep.
+ * Fields on one row (`rowsOf`): X, Y and Z, a width, depth and height. A size can keep its
+ * proportions: the others of the row then change by as much, each object in its own proportions.
+ * What has no size yet has none to keep.
  */
-function PairRow({ fields: [first, second], ...props }: { node: Node; nodes: Node[]; fields: FieldSpec[]; update: Update }) {
-  const pair = PAIRS[first.path]
-  const kept = usePrefs((prefs) => prefs.keepProportions) && pair.size
-  const along = (own: string, other: string): Update => (patch) =>
+function GroupRow({ fields, ...props }: { node: Node; nodes: Node[]; fields: FieldSpec[]; update: Update }) {
+  const row = rowName(fields)
+  const kept = usePrefs((prefs) => prefs.keepProportions) && row.size
+  const others = (own: FieldSpec) => fields.filter((field) => field !== own)
+  // A property of the node: the others are set in the same patch, each in its own place.
+  const along = (own: FieldSpec): Update => (patch) =>
     props.update((n) => {
       const next = patch(n)
-      const [was, to, far] = [read(n, own), next[own], read(n, other)]
-      return typeof was === 'number' && typeof to === 'number' && typeof far === 'number' && was > 0 && to > 0 ? { ...next, [other]: tidy((far * to) / was) } : next
+      const [was, to] = [read(n, own.path), read({ ...n, ...next }, own.path)]
+      if (typeof was !== 'number' || typeof to !== 'number' || !(was > 0) || !(to > 0)) return next
+      let merged = { ...n, ...next } as Node
+      let out = next
+      for (const other of others(own)) {
+        const far = read(n, other.path)
+        if (typeof far !== 'number' || other.set) continue
+        const more = patchFor(merged, other.path, tidy((far * to) / was))
+        merged = { ...merged, ...more } as Node
+        out = { ...out, ...more }
+      }
+      return out
     })
+  // What its own reading and setting gives (`get`, `set`): the others by theirs.
+  const setAlong = (own: FieldSpec): FieldSpec => ({
+    ...own,
+    set: (n, value, now) => {
+      const was = valueOf(own, n, now)
+      const ops = own.set!(n, value, now)
+      if (typeof was !== 'number' || typeof value !== 'number' || !(was > 0) || !(value > 0)) return ops
+      return [...ops, ...others(own).flatMap((other) => {
+        const far = valueOf(other, n, now)
+        return typeof far === 'number' && other.set ? other.set(n, tidy((far * value) / was), now) : []
+      })]
+    },
+  })
   return (
-    <FieldPair label={t(pair.label)} lock={pair.size && <ProportionLock />}>
-      <TypedRow {...props} field={first} update={kept ? along(first.path, second.path) : props.update} />
-      <TypedRow {...props} field={second} update={kept ? along(second.path, first.path) : props.update} />
+    <FieldPair label={t(row.label)} lock={row.size && <ProportionLock />} three={fields.length === 3}>
+      {fields.map((field) => (
+        <TypedRow key={field.path} {...props} field={kept && field.set ? setAlong(field) : field} update={kept && !field.set ? along(field) : props.update} />
+      ))}
     </FieldPair>
   )
 }
@@ -290,11 +320,32 @@ function EndPicker(props: { side: 'start' | 'end'; options: Option[]; value: str
   )
 }
 
-/** Fields grouped under their section headings, in the order the sections first appear. */
-export function Sections({ node, nodes = [node], fields, update, pick }: { node: Node; nodes?: Node[]; fields: FieldSpec[]; update: Update; pick?: boolean }) {
+/**
+ * What a section shows besides its fields, under its title (untranslated, as a field's `section`):
+ * before them or after them. A wall's material, its ends, a group's contents, what a placement is of.
+ */
+export interface SectionExtra {
+  title: string
+  before?: ReactNode
+  after?: ReactNode
+}
+
+/**
+ * Fields grouped under their section headings, in the order the sections first appear. A section
+ * only `extras` have comes after Geometry (first, when there is none), in the order they give, so
+ * that every object reads alike: where it is, then what is its own, then its look.
+ */
+export function Sections({ node, nodes = [node], fields, update, pick, extras = [] }: { node: Node; nodes?: Node[]; fields: FieldSpec[]; update: Update; pick?: boolean; extras?: SectionExtra[] }) {
   // A field that does not apply to every object selected is left out.
   const shown = fields.filter((f) => !f.when || nodes.every(f.when))
   const titles = [...new Set(shown.map((f) => f.section ?? GEOMETRY))]
+  let at = titles.includes(GEOMETRY) ? titles.indexOf(GEOMETRY) + 1 : 0
+  for (const { title } of extras) {
+    if (titles.includes(title)) continue
+    if (title === GEOMETRY) titles.unshift(title)
+    else titles.splice(at, 0, title)
+    at++
+  }
   // A single wall can have its lines styled one by one; the view follows what the wall says, and the button opens it.
   const wall = nodes.length === 1 && node.type === 'wall' ? node : null
   const [byEdge, setByEdge] = useState(false)
@@ -328,13 +379,15 @@ export function Sections({ node, nodes = [node], fields, update, pick }: { node:
             ) : undefined
           }
         >
+          {extras.map((extra, i) => extra.title === title && <Fragment key={`before ${i}`}>{extra.before}</Fragment>)}
           {rowsOf(shown.filter((f) => (f.section ?? GEOMETRY) === title)).map((row) =>
-            row.length === 2 ? <PairRow key={row[0].path} node={node} nodes={nodes} fields={row} update={update} /> : <TypedRow key={row[0].path} node={node} nodes={nodes} field={row[0]} update={update} />,
+            row.length > 1 ? <GroupRow key={row[0].path} node={node} nodes={nodes} fields={row} update={update} /> : <TypedRow key={row[0].path} node={node} nodes={nodes} field={row[0]} update={update} />,
           )}
           {title === STROKE && wall && split && <WallEdges wall={wall} />}
           {/* A view's a-b is the line on the plan it looks at, not a length of its own to set. */}
           {title === GEOMETRY && nodes.length === 1 && 'a' in node && node.type !== 'viewline' && <LengthRow node={node} />}
           {title === GEOMETRY && nodes.length === 1 && (node.type === 'wall' || node.type === 'line') && <AngleRow node={node} />}
+          {extras.map((extra, i) => extra.title === title && <Fragment key={`after ${i}`}>{extra.after}</Fragment>)}
         </Section>
       ))}
     </>

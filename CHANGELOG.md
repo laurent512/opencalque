@@ -4,6 +4,23 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### New
+- The properties of every placed object begin the same way: X, Y, Z on one row (Z its height above the floor, empty for on the floor), its rotation, then W, D, H (width, depth, height) on one row, which can keep their proportions; what is its own (a unit's contents, a door's leaves) follows under its name. For a placement of a component, W and D stretch it and H is its component's height, which every placement shares (it replaces "Height in elevations").
+- Any object, and any placement of a component, can stand off the floor: its Z, empty for on the floor, is typed in its properties, dragged there with Alt, or set by dragging it up or down in an elevation, which draws it at that height. Resting the pointer on it says what it is measured to: the underside, or the centre of a socket or a switch. Kitchen units, wardrobes and furniture included: nothing is kept on the floor. Doors and windows still go up and down by their sill.
+- In an elevation, the object selected has a grip on each side that can be dragged, whatever the object: its left and right make it wider or narrower (deeper or shallower seen from its side, a door or a window along its wall), its top taller or shorter, its bottom raises its underside with its top staying where it is. The side across stays where it is. On a placement of a component, its height is the component's, and so every placement's.
+- What is dragged or resized in an elevation lines up with what is beside it: its sides with the sides of the next unit (flush against it) and with the walls, its middle with theirs, its top and bottom with their tops and bottoms and with the floor, a line showing where; else it goes by steps of the grid. Alt lines up with nothing.
+
+### Improved
+- The properties of every kind of object read in the same order: Selection (its name, layer and status only), Geometry, then what is its own, each in a section under its name (a wall's Material and Ends, a paper's Sheet, a group's contents, what a placement is of with its parameters), then its look. Selection is counted only when more than one object is selected. The notes on how to curve a wall and where a material's look is changed are gone: the Curve field and the Materials panel say it.
+- A wall's end is detached, and joined again, from the pictures of its joints: one more shows the two walls apart. Picking any other joint on a detached end joins it again with that joint. Where more than two walls meet, two pictures say joined or not.
+
+### Fixed
+- A corner of walls drawn by a face (Reference line on a face) is rounded or cut off when asked: the corner of walls drawn by their outer face stayed sharp whatever was chosen, and that of walls drawn by their inner face was rounded twice as wide. It is now a circle touching both outer faces (or a cut between where it touches them), as wide as the thinner wall, so it looks the same whichever line the walls are drawn by, and walls of different thicknesses get a true arc rather than a curve with a bump in it. Drawings with such corners rounded or cut off draw them so from now on.
+- What is hidden on the plan is left out of its elevations and sections too: an object, a door or a window, a wall, hidden or on a hidden layer or in a hidden group.
+- An object inside a group, picked where an elevation shows it, stays selected while it is changed: dragging its height with Alt no longer stops after the first step.
+
 ## 1.10.2 — 2026-11-17
 
 ### Improved

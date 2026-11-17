@@ -1,4 +1,7 @@
-import type { Alignable, Node, NodeOf, ResizeFrame, Vec2 } from '@opencalque/core'
+import type { Alignable, Bounds, ElevationItem, ElevationSide, Node, NodeOf, ResizeFrame, Vec2 } from '@opencalque/core'
+
+/** What something dragged in an elevation lines up with (`elevationEdges`). */
+export type ElevationEdges = { xs: number[]; ys: number[]; middles: number[] }
 import type { Tool } from '../tools'
 
 /** The interaction in progress on the canvas. Each kind is handled by its gesture module (`gestures/`). */
@@ -12,7 +15,10 @@ export type Gesture =
   /** A section line being drawn: where it starts, its end to click. */
   | { kind: 'section'; from: Vec2 }
   /** An object of the plan dragged where an elevation shows it: across the view along its wall, up and down for its height. */
-  | { kind: 'elevated'; view: NodeOf<'elevation'>; node: NodeOf<'parametric'> | NodeOf<'instance'>; start: Vec2; role: 'opening' | 'fixed' | 'standing'; raises: boolean }
+  /** `box` is where the view drew it when it was taken, and `edges` what it lines up with there (`elevationEdges`). */
+  | { kind: 'elevated'; view: NodeOf<'elevation'>; node: NodeOf<'parametric'> | NodeOf<'instance'>; start: Vec2; role: 'opening' | 'fixed' | 'standing'; raises: boolean; box: Bounds; edges: ElevationEdges }
+  /** A side of the box an elevation draws an object of the plan in, dragged: the side across stays where it is (`elevationSideOps`). */
+  | { kind: 'grip'; view: NodeOf<'elevation'>; item: ElevationItem; side: ElevationSide; start: Vec2; edges: ElevationEdges }
   /** `moving` and `others` are what is moved and what it can line up with, as they stood when the move began. */
   | { kind: 'move'; start: Vec2; nodes: Node[]; moving: Alignable | null; others: Alignable[] }
   /** With `grab`, the handle was taken that far from its point (the arrow at an end of a view, anywhere along it), which it keeps as it is dragged. */

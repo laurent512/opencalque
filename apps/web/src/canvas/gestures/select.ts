@@ -1,6 +1,11 @@
 import {
   add,
+  elevationEdges,
   elevationItemAt,
+  elevationItemsOf,
+  elevationSideOps,
+  type MoveGuides,
+  nearestEdge,
   elevationMovePatch,
   heightAboveFloor,
   isLocked,
@@ -45,14 +50,14 @@ import {
   type Vec2,
 } from '@opencalque/core'
 import { registry } from '../../extensions'
-import { t } from '../../i18n'
+import { msg, t } from '../../i18n'
 import { usePrefs } from '../../prefs'
 import { commit, preview, select, selectCorner, useStore, cancel } from '../../store'
 import { gridStep } from '../../view'
 import { formatLength, formatNumber } from '../../units'
 import { heldNearest, lineEnd, snap, squareFrom, type Target } from '../aim'
-import { ALIGN_REACH, MOUNT_REACH, SNAP_REACH, TOUCH_REACH, type GestureOf } from '../gesture'
-import { clearanceAt, cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, lineUp, titleAt, viewEdgeAt, viewLineHandleAt } from '../picking'
+import { ALIGN_REACH, MOUNT_REACH, SNAP_REACH, TOUCH_REACH, type ElevationEdges, type GestureOf } from '../gesture'
+import { clearanceAt, cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, inViewGripAt, lineUp, titleAt, viewEdgeAt, viewLineHandleAt } from '../picking'
 import { get, type Canvas, type Move, type Press, type Release } from '../runtime'
 import { logMoveEnd, logMoveStart, logMoveStep } from '../snapLog'
 import { faceAcross, faceOf, paperLabel, resizeCursor, round, sizes, thicknessLabel, thicknessStep, wallNormal } from '../shapes'
@@ -151,10 +156,17 @@ export const selectDown: Press = (c, e, at, world) => {
   }
   // A socket, a switch, a door shown in an elevation is the one of the plan: pressed there, it is
   // selected, and dragged, it moves on the plan, along its wall and up or down.
+  // A side of what is selected, where a view shows it, dragged: the side across stays where it is.
+  const side = e.shiftKey || e.ctrlKey || e.metaKey ? null : inViewGripAt(c, at)
+  if (side) {
+    c.gesture = { kind: 'grip', view: side.view, item: side.item, side: side.side, start: world, edges: elevationEdges(side.view, s.doc, registry, side.item.node.id) }
+    return
+  }
   const shown = e.shiftKey || e.ctrlKey || e.metaKey ? null : elevationAt(c, world)
   if (shown) {
     select([shown.item.node.id])
-    c.gesture = { kind: 'elevated', view: shown.view, node: shown.item.node, start: world, role: shown.item.role, raises: shown.item.raises }
+    const edges = elevationEdges(shown.view, s.doc, registry, shown.item.node.id)
+    c.gesture = { kind: 'elevated', view: shown.view, node: shown.item.node, start: world, role: shown.item.role, raises: shown.item.raises, box: shown.item.box, edges }
     return
   }
   const hit = titleAt(c, at) ?? hitTest(c.scene, world, 5 / s.view.zoom)
@@ -449,24 +461,64 @@ function elevationAt(c: Canvas, world: Vec2) {
 }
 
 /**
- * An object dragged in an elevation: by whole steps of the grid, across the view along its wall
- * and, for what is fixed on the face, up and down. Shift keeps it to whichever way it went further;
- * Alt lets it go off the grid. Its height is said as it goes.
+ * How far something dragged `raw` mm one way in an elevation goes: so far that one of its edges
+ * (`pairs`: edges of it, and what each may land on) lands on the nearest within `reach`, else by whole
+ * steps of the grid; `free` (Alt, or lining up turned off) lines up with nothing. And where it landed.
+ */
+function lineUpInView(raw: number, pairs: [number[], number[]][], reach: number, step: number, free: boolean): { delta: number; at: number | null } {
+  let best: { delta: number; at: number } | null = null
+  if (!free) {
+    for (const [own, targets] of pairs) {
+      const hit = nearestEdge(own.map((edge) => edge + raw), targets, reach)
+      if (hit && (!best || Math.abs(hit.delta) < Math.abs(best.delta))) best = hit
+    }
+  }
+  return best ? { delta: raw + best.delta, at: best.at } : { delta: Math.round(raw / step) * step, at: null }
+}
+
+/** The lines shown where something dragged in an elevation lined up: upright at `x`, level at `y`, across what the view draws. */
+function viewGuides(edges: ElevationEdges, x: number | null, y: number | null): MoveGuides | undefined {
+  const lines: [Vec2, Vec2][] = []
+  if (x !== null) lines.push([{ x, y: Math.min(...edges.ys) }, { x, y: Math.max(...edges.ys) }])
+  if (y !== null) lines.push([{ x: Math.min(...edges.xs), y }, { x: Math.max(...edges.xs), y }])
+  return lines.length > 0 ? { lines, gaps: [] } : undefined
+}
+
+/** How what is dragged in an elevation goes: the grid's steps (none with Alt or the grid off), whether it lines up (not with Alt), and how near. */
+function viewSteps(e: { altKey: boolean }) {
+  const s = get()
+  return {
+    step: e.altKey || !usePrefs.getState().snapToGrid ? 0.001 : gridStep(s.view.zoom),
+    free: e.altKey || !usePrefs.getState().snapToObjects,
+    reach: SNAP_REACH / s.view.zoom,
+  }
+}
+
+/**
+ * An object dragged in an elevation: across the view along its wall and, for what can be raised, up
+ * and down. Its sides and its middle line up with those of what is beside it, its top and bottom
+ * with theirs, the walls' and the floor, else it goes by whole steps of the grid. Shift keeps it to
+ * whichever way it went further; Alt lines up with nothing and leaves the grid. Its height is said as it goes.
  */
 export const elevatedMove: Move<'elevated'> = (_c, g, e, _at, world, out) => {
   const s = get()
-  const step = e.altKey || !usePrefs.getState().snapToGrid ? 0.001 : gridStep(s.view.zoom)
-  let ds = Math.round((world.x - g.start.x) / step) * step
-  let dh = g.raises ? Math.round((g.start.y - world.y) / step) * step : 0
+  const { step, free, reach } = viewSteps(e)
+  const { box, edges } = g
+  const middle = (box.minX + box.maxX) / 2
+  const across = lineUpInView(world.x - g.start.x, [[[box.minX, box.maxX], edges.xs], [[middle], edges.middles]], reach, step, free)
+  const upright = g.raises ? lineUpInView(world.y - g.start.y, [[[box.minY, box.maxY], edges.ys]], reach, step, free) : { delta: 0, at: null }
+  let [ds, dh] = [across.delta, -upright.delta]
+  let [x, y] = [across.at, upright.at]
   if (e.shiftKey) {
-    if (Math.abs(ds) >= Math.abs(dh)) dh = 0
-    else ds = 0
+    if (Math.abs(world.x - g.start.x) >= Math.abs(world.y - g.start.y)) [dh, y] = [0, null]
+    else [ds, x] = [0, null]
   }
   const before = s.base ?? s.doc
   const patch = elevationMovePatch(g.view, before, registry, g.node, ds, dh)
   if (!patch) return
   out.previewed = preview([{ op: 'update_node', id: g.node.id, patch }])
-  if (g.role === 'fixed') out.status = t('{height} above the floor', { height: formatLength(Number(patch.z ?? heightAboveFloor(g.node, registry) ?? 0)) })
+  out.smart = viewGuides(edges, x, y)
+  if (g.role !== 'opening') out.status = t('{height} above the floor', { height: formatLength(Number('z' in patch ? (patch.z ?? 0) : (heightAboveFloor(g.node, registry) ?? 0))) })
   else if (g.raises && g.node.type === 'parametric') {
     const kind = registry.parametric.get(g.node.kind)
     const sill = kind?.sill
@@ -475,12 +527,49 @@ export const elevatedMove: Move<'elevated'> = (_c, g, e, _at, world, out) => {
   }
 }
 
+/**
+ * A side of the box an elevation draws an object in, dragged (`elevationSideOps`): it lines up with
+ * the sides, tops and bottoms of what is beside it, the walls and the floor, else goes by whole steps
+ * of the grid; Alt lines up with nothing and leaves the grid. Its size in the view is said as it goes.
+ */
+export const gripMove: Move<'grip'> = (_c, g, e, _at, world, out) => {
+  const s = get()
+  const { step, free, reach } = viewSteps(e)
+  const { box } = g.item
+  const sideways = g.side === 'left' || g.side === 'right'
+  const edge = g.side === 'left' ? box.minX : g.side === 'right' ? box.maxX : g.side === 'top' ? box.minY : box.maxY
+  const moved = lineUpInView(sideways ? world.x - g.start.x : world.y - g.start.y, [[[edge], sideways ? g.edges.xs : g.edges.ys]], reach, step, free)
+  const ops = elevationSideOps(g.view, s.base ?? s.doc, registry, g.item, g.side, sideways ? moved.delta : -moved.delta)
+  if (!ops) return
+  out.previewed = preview(ops)
+  out.smart = viewGuides(g.edges, sideways ? moved.at : null, sideways ? null : moved.at)
+  const now = elevationItemsOf(get().doc, registry, g.item.node.id).find(({ view }) => view.id === g.view.id)?.item.box
+  if (now) out.status = `${formatLength(now.maxX - now.minX)} × ${formatLength(now.maxY - now.minY)}`
+}
+
+/** What a press on each side of the box a view draws the selected object in does, said while the pointer is on it. */
+const GRIP_HINTS = {
+  left: msg('Drag the side to make it wider or narrower: the other side stays where it is'),
+  right: msg('Drag the side to make it wider or narrower: the other side stays where it is'),
+  top: msg('Drag the top up or down to change its height'),
+  bottom: msg('Drag the bottom up or down: its top stays where it is'),
+}
+
 export const hover: Move<'idle'> = (c, _g, _e, at, world, out) => {
   const s = get()
+  // On a side of what is selected, where a view shows it, a press drags that side.
+  const side = s.tool === 'select' ? inViewGripAt(c, at) : null
+  if (side) {
+    out.status = t(GRIP_HINTS[side.side])
+    const cursor = side.side === 'left' || side.side === 'right' ? 'ew-resize' : 'ns-resize'
+    if (c.gripCursor !== cursor) c.setGripCursor(cursor)
+    if (s.wallFace !== null) useStore.setState({ wallFace: null })
+    return
+  }
   // Over what an elevation shows of the plan, a press takes it.
   const inView = s.tool === 'select' ? elevationAt(c, world) : null
   if (inView) {
-    out.status = inView.item.raises ? t('Drag it along the wall, or up and down to change its height') : t('Drag it along the wall')
+    out.status = inView.item.raises ? t('Drag it along the wall, or up and down to raise or lower it') : t('Drag it along the wall')
     if (c.gripCursor !== 'move') c.setGripCursor('move')
     if (s.wallFace !== null) useStore.setState({ wallFace: null })
     return

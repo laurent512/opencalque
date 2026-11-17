@@ -229,7 +229,8 @@ export function watchScrubKey(): () => void {
   }
 }
 
-export function Field(props: { label: string; value: string | number; numeric?: boolean; length?: boolean; optional?: boolean; step?: number; min?: number; snap?: number; decimals?: number; placeholder?: string; multiline?: boolean; lead?: ReactNode; suffix?: string; onCommit: (value: any) => void }) {
+/** `from`: where dragging the number with Alt starts while the field is empty; `note`: said when the pointer rests on it. */
+export function Field(props: { label: string; value: string | number; from?: number; note?: string; numeric?: boolean; length?: boolean; optional?: boolean; step?: number; min?: number; snap?: number; decimals?: number; placeholder?: string; multiline?: boolean; lead?: ReactNode; suffix?: string; onCommit: (value: any) => void }) {
   // What the number is counted in, written faint inside the box after it and not part of what is
   // typed: the user's unit for a length (none for feet and inches, which carry their marks), or `suffix`.
   usePrefs((prefs) => prefs.unit)
@@ -265,8 +266,8 @@ export function Field(props: { label: string; value: string | number; numeric?: 
       <input
         value={text}
         placeholder={props.placeholder}
-        title={props.numeric ? t('Hold Alt and drag sideways to change the value') : undefined}
-        {...(props.numeric ? scrub(() => (typeof props.value === 'number' ? props.value : null), props.onCommit, props.step ?? (props.length ? LENGTH_STEP : 1), props.min, props.snap) : {})}
+        title={[props.note, props.numeric ? t('Hold Alt and drag sideways to change the value') : undefined].filter(Boolean).join('\n') || undefined}
+        {...(props.numeric ? scrub(() => (typeof props.value === 'number' ? props.value : (props.from ?? null)), props.onCommit, props.step ?? (props.length ? LENGTH_STEP : 1), props.min, props.snap) : {})}
         onChange={(e) => setText(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
@@ -284,9 +285,9 @@ export function Field(props: { label: string; value: string | number; numeric?: 
  * Two values on one row under one name: X and Y, a width and a height. Each is a field of its own,
  * whose name is hidden here but still names its box for a screen reader. `lock` goes after the name.
  */
-export function FieldPair(props: { label: string; lock?: ReactNode; children: ReactNode }) {
+export function FieldPair(props: { label: string; lock?: ReactNode; three?: boolean; children: ReactNode }) {
   return (
-    <div className="field-pair">
+    <div className={`field-pair${props.three ? ' three' : ''}`}>
       <span className="field-pair-name">
         {props.label}
         {props.lock}

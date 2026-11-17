@@ -3,10 +3,10 @@ import { swapSelectedComponent } from '../../actions'
 import { EntryChoice } from '../../EntryChoice'
 import { entryOf, isModel } from '../../entries'
 import { executeById } from '../../commands'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Eye, EyeOff, Lock, LockOpen } from 'lucide-react'
 import { applyCalibration } from '../../floorplan'
-import { t } from '../../i18n'
+import { msg, t } from '../../i18n'
 import { LayerChoice } from '../../LayerChoice'
 import { editComponent } from '../../navigation'
 import { usePrefs } from '../../prefs'
@@ -15,9 +15,9 @@ import { apply, select, useStore } from '../../store'
 import { toast } from '../../windows'
 import { Field, FieldPair, FoldingSections, labelOf, ProportionLock, Section, TypeIcon, YesNo } from '../../ui'
 import { formatArea, formatLength, parseLength, unit, unitSuffix } from '../../units'
-import { Sections, type Update } from './FieldRow'
+import { Sections, type SectionExtra, type Update } from './FieldRow'
 import { AnnotationTool, DimensionTool, GridlineTool, SelectedDimensionStyle } from './dimensions'
-import { commonFields, FIELD_NAMES, fieldsOf, SHEET_FIELDS } from './fields'
+import { commonFields, FIELD_NAMES, fieldsOf, FLOOR, GEOMETRY, SHEET_FIELDS } from './fields'
 import { ModifierStack } from './modifiers'
 import { PaperSheet } from './paper'
 import { CornerPanel, WallCurve, WallEnds, WallLine, WallMaterial, WallToolMaterial } from './walls'
@@ -146,6 +146,14 @@ function SelectionStatus({ nodes }: { nodes: Node[] }) {
   )
 }
 
+/**
+ * The panel of what is selected, laid out alike for every kind of object: Selection (its name, its
+ * layer, its status, and for several their size together), then Geometry (where it is and how
+ * large), then what is its own, each under its name (a wall's material and ends, a paper's sheet,
+ * a group's contents, what a placement is of, under its kind's name with its own parameters), then
+ * its look and its modifiers. What only one kind of object has goes in a section of its own, never
+ * in Selection.
+ */
 function Selection({ nodes }: { nodes: Node[] }) {
   const inTemplate = useStore((state) => { const inside = rootOf(state.doc, state.scope); return inside?.type === 'component' && inside.sheet !== undefined })
   const doc = useStore((s) => s.doc)
@@ -154,9 +162,92 @@ function Selection({ nodes }: { nodes: Node[] }) {
   const single = nodes.length === 1
   // What a component holds is on no layer: each placement of it gives its own.
   const layered = rootOf(doc, node.parent)?.type !== 'component'
+  const walls = nodes.every((n) => n.type === 'wall') ? (nodes as NodeOf<'wall'>[]) : null
+  const placed = nodes.every((n) => n.type === 'instance' || n.type === 'parametric') ? (nodes as (NodeOf<'instance'> | NodeOf<'parametric'>)[]) : null
+  // Parametric objects of one kind have their own parameters under its name; anything else placed, under Component.
+  const kinds = new Set(placed?.map((n) => (n.type === 'parametric' ? n.kind : '')))
+  const placedTitle = (kinds.size === 1 && node.type === 'parametric' && registry.parametric.get(node.kind)?.label) || msg('Component')
+  const geometry = [
+    walls && <WallLine key="line" walls={walls} />,
+    single && node.type === 'wall' && <WallCurve key="curve" wall={node} />,
+    single && node.type === 'image' && (
+      <Fragment key="scale">
+        <button className="text-button" onClick={() => executeById('tool.calibrate')}>
+          {t('Set its scale again…')}
+        </button>
+        <p className="hint">{t('Click two points on the picture whose real distance you know, then type that distance. The picture is resized to match.')}</p>
+      </Fragment>
+    ),
+    single && mountOf(node, registry)?.on === 'wall' && !mountedOn(doc, node, registry) && <p key="mount" className="hint">{t('It is on no wall, so it does not follow one nor show in its elevations. Drag it onto a wall to fix it there.')}</p>,
+  ].filter(Boolean)
+  const extras: (SectionExtra | false | null)[] = [
+    geometry.length > 0 && { title: GEOMETRY, after: geometry },
+    walls && { title: msg('Material'), before: <WallMaterial walls={walls} /> },
+    single && node.type === 'wall' && { title: msg('Ends'), before: <WallEnds wall={node} /> },
+    nodes.every((n) => n.type === 'dimension') && { title: msg('Dimension style'), before: <SelectedDimensionStyle dimensions={nodes as NodeOf<'dimension'>[]} /> },
+    single && node.type === 'table' && { title: msg('Table of quantities'), before: <TableSettings node={node} /> },
+    single && node.type === 'paper' && { title: msg('Sheet'), before: <PaperSheet node={node} update={update} /> },
+    single && node.type === 'room' && { title: FLOOR, before: <RoomFacts node={node} /> },
+    single &&
+      node.type === 'group' && {
+        title: msg('Group'),
+        before: (
+          <>
+            <p className="hint">{t('{n} objects inside. Double-click the group on the drawing to edit them.', { n: childrenOf(doc, node.id).length })}</p>
+            <button className="text-button" onClick={() => executeById('edit.ungroup')}>
+              {t('Ungroup')}
+            </button>
+          </>
+        ),
+      },
+    placed && {
+      title: placedTitle,
+      before: <InstanceComponent instances={placed} />,
+      after: (
+        <>
+          {single && controlSide(node, registry) && <Controls node={node} />}
+          {single && node.type === 'instance' && (
+            <>
+              <p className="hint">{t('It looks as its component does. Lines the component gives no colour take the colour of the layer it is placed on.')}</p>
+              <button className="text-button" onClick={() => editComponent(node.component, node)}>
+                {t('Edit component')}
+              </button>
+              {(node.scaleX !== undefined || node.scaleY !== undefined) && (
+                // Stretched by the sides of its frame: back to the proportions of its component, its corner where it is.
+                <button className="text-button" onClick={() => update(() => ({ scaleX: null, scaleY: null }))}>
+                  {t('Back to its own proportions')}
+                </button>
+              )}
+            </>
+          )}
+        </>
+      ),
+    },
+    single &&
+      (node.type === 'text' || node.type === 'annotation') && {
+        title: msg('Fields'),
+        before: (
+          <>
+            <label className="field">
+              <span>{t('Insert')}</span>
+              <select value="" onChange={(e) => e.target.value && update((n) => ({ text: `${'text' in n ? n.text : ''}{${e.target.value}}` }))}>
+                <option value="">{t('A field…')}</option>
+                {TEXT_FIELDS.filter((field) => inTemplate || !SHEET_FIELDS.includes(field)).map((field) => (
+                  <option key={field} value={field}>
+                    {t(FIELD_NAMES[field])}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="hint">{t('A field is filled in by the drawing: written {page} in the text, it shows the name of the page it is on.')}</p>
+          </>
+        ),
+      },
+  ]
   return (
     <>
-      <Section title={t('Selection')} count={nodes.length}>
+      {/* Counted only when there is more than one: "Selection (1)" says nothing. */}
+      <Section title={t('Selection')} count={single ? undefined : nodes.length}>
         {/* What it says when it has no name of its own is what it is. Emptied, it goes back to that. */}
         {single && <Field key={node.id} label={t('Name')} lead={<TypeIcon node={node} />} placeholder={labelOf(doc, { ...node, name: undefined })} optional value={node.name ?? ''} onCommit={(name?: string) => update(() => ({ name: name?.trim() || null }))} />}
         {layered && (
@@ -167,74 +258,11 @@ function Selection({ nodes }: { nodes: Node[] }) {
           </div>
         )}
         <SelectionStatus nodes={nodes} />
+        {/* The box round several objects: what they are together, which no field of theirs says. */}
         {!single && <SelectionSize nodes={nodes} />}
         {/* Stacking, aligning and spacing are in the toolbar's Arrange menu, not here. */}
-        {single && node.type === 'paper' && (
-          <FieldPair label={t('X, Y')}>
-            <Field label={t('Position X')} numeric length value={node.x} onCommit={(x) => update(() => ({ x }))} />
-            <Field label={t('Position Y')} numeric length value={node.y} onCommit={(y) => update(() => ({ y }))} />
-          </FieldPair>
-        )}
-        {nodes.every((n) => n.type === 'wall') && <WallMaterial walls={nodes as NodeOf<'wall'>[]} />}
-        {nodes.every((n) => n.type === 'wall') && <WallLine walls={nodes as NodeOf<'wall'>[]} />}
-        {nodes.every((n) => n.type === 'dimension') && <SelectedDimensionStyle dimensions={nodes as NodeOf<'dimension'>[]} />}
-        {single && node.type === 'wall' && <WallEnds wall={node} />}
-        {single && node.type === 'wall' && <WallCurve wall={node} />}
-        {single && node.type === 'table' && <TableSettings node={node} />}
-        {single && node.type === 'paper' && <PaperSheet node={node} update={update} />}
-        {single && node.type === 'room' && <RoomFacts node={node} />}
-        {single && node.type === 'image' && (
-          <>
-            <button className="text-button" onClick={() => executeById('tool.calibrate')}>
-              {t('Set its scale again…')}
-            </button>
-            <p className="hint">{t('Click two points on the picture whose real distance you know, then type that distance. The picture is resized to match.')}</p>
-          </>
-        )}
-        {single && node.type === 'group' && (
-          <>
-            <p className="hint">{t('{n} objects inside. Double-click the group on the drawing to edit them.', { n: childrenOf(doc, node.id).length })}</p>
-            <button className="text-button" onClick={() => executeById('edit.ungroup')}>
-              {t('Ungroup')}
-            </button>
-          </>
-        )}
-        {single && mountOf(node, registry)?.on === 'wall' && !mountedOn(doc, node, registry) && <p className="hint">{t('It is on no wall, so it does not follow one nor show in its elevations. Drag it onto a wall to fix it there.')}</p>}
-        {single && controlSide(node, registry) && <Controls node={node} />}
-        {nodes.every((n) => n.type === 'instance' || n.type === 'parametric') && <InstanceComponent instances={nodes as (NodeOf<'instance'> | NodeOf<'parametric'>)[]} />}
-        {single && node.type === 'instance' && <ComponentHeight instance={node} />}
-        {single && node.type === 'instance' && (
-          <>
-            <p className="hint">{t('It looks as its component does. Lines the component gives no colour take the colour of the layer it is placed on.')}</p>
-            <button className="text-button" onClick={() => editComponent(node.component, node)}>
-              {t('Edit component')}
-            </button>
-            {(node.scaleX !== undefined || node.scaleY !== undefined) && (
-              // Stretched by the sides of its frame: back to the proportions of its component, its corner where it is.
-              <button className="text-button" onClick={() => update(() => ({ scaleX: null, scaleY: null }))}>
-                {t('Back to its own proportions')}
-              </button>
-            )}
-          </>
-        )}
       </Section>
-      {single && (node.type === 'text' || node.type === 'annotation') && (
-        <Section title={t('Fields')}>
-          <label className="field">
-            <span>{t('Insert')}</span>
-            <select value="" onChange={(e) => e.target.value && update((n) => ({ text: `${'text' in n ? n.text : ''}{${e.target.value}}` }))}>
-              <option value="">{t('A field…')}</option>
-              {TEXT_FIELDS.filter((field) => inTemplate || !SHEET_FIELDS.includes(field)).map((field) => (
-                <option key={field} value={field}>
-                  {t(FIELD_NAMES[field])}
-                </option>
-              ))}
-            </select>
-          </label>
-          <p className="hint">{t('A field is filled in by the drawing: written {page} in the text, it shows the name of the page it is on.')}</p>
-        </Section>
-      )}
-      <Sections node={node} nodes={nodes} fields={single ? fieldsOf(node, doc) : commonFields(nodes, doc)} update={update} pick />
+      <Sections node={node} nodes={nodes} fields={single ? fieldsOf(node, doc) : commonFields(nodes, doc)} update={update} pick extras={extras.filter((extra): extra is SectionExtra => !!extra)} />
       {single && <ModifierStack node={node} />}
     </>
   )
@@ -351,27 +379,6 @@ export function Properties() {
  * to be made placements of another, each where it is, as it is turned. Inside a component, the
  * components that would hold it are not offered.
  */
-/**
- * How tall what a component holds stands, which elevations draw its placements as: a property of
- * the component, so the same for every placement of it. Empty, they are left out of elevations.
- */
-function ComponentHeight({ instance }: { instance: NodeOf<'instance'> }) {
-  const component = useStore((s) => s.doc.nodes[instance.component])
-  if (component?.type !== 'component') return null
-  return (
-    <Field
-      label={t('Height in elevations')}
-      numeric
-      length
-      optional
-      min={0}
-      value={component.height ?? ''}
-      placeholder={t('None')}
-      onCommit={(height?: number) => apply([{ op: 'update_node', id: component.id, patch: { height: height && height > 0 ? height : null } }])}
-    />
-  )
-}
-
 function InstanceComponent({ instances }: { instances: (NodeOf<'instance'> | NodeOf<'parametric'>)[] }) {
   const doc = useStore((s) => s.doc)
   const scope = useStore((s) => s.scope)

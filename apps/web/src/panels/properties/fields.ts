@@ -1,4 +1,4 @@
-import { CONTROL, DEFAULT_MATERIAL, type Document, drawnSolid, type Node, OBJECT_FILL, portsOf, TEXT_FIELDS, type Pattern } from '@opencalque/core'
+import { add, CONTROL, DEFAULT_MATERIAL, type Document, drawnSolid, frameGrips, type Node, norm, OBJECT_FILL, type Op, type ParametricKind, portsOf, resizeFrame, resizePatch, scale, sub, TEXT_FIELDS, type Pattern } from '@opencalque/core'
 import { msg, t } from '../../i18n'
 import { registry } from '../../extensions'
 
@@ -32,6 +32,8 @@ export interface FieldSpec {
   angle?: boolean
   /** The property may be cleared by emptying the field. */
   optional?: boolean
+  /** For a number with no fallback: what it means unset, written faint in the empty field. Dragged with Alt, it starts from 0. */
+  empty?: string
   /** For a color: what an unset value means, e.g. "from layer". */
   unset?: string
   /** Shown only for objects this is true of: a polygon has no ends, a line no fill. */
@@ -44,29 +46,54 @@ export interface FieldSpec {
   ends?: 'start' | 'end'
   /** The choice is of one of the drawing's materials, picked from a list showing each with its swatch (`MaterialChoice`). */
   material?: boolean
+  /** Said when the pointer rests on the field: what the number is measured to. */
+  note?: string
+  /** The row it shares with the fields beside it, when its path does not say (`ROWS`): which, and what it is called there. */
+  row?: { id: string; name: string; size?: boolean; label?: string }
+  /** For what is not a property of the node itself (a placement's width, its component's height): how it is read, and the operations that set it. */
+  get?: (node: Node, doc: Document) => unknown
+  set?: (node: Node, value: unknown, doc: Document) => Op[]
 }
 
 export const GEOMETRY = msg('Geometry')
 
 /**
- * Fields shown side by side when one follows the other, by the path of the first: what the second
- * is and what the row is called. Those that are `size` can keep their proportions.
+ * Fields shown side by side on one row when they follow one another, by their paths: which row, and
+ * what each is called there; the row is called by those it has ("X, Y" or "X, Y, Z"), or by its
+ * `label`. A `size` row can keep its proportions. A field may also say its row itself (`row`).
  */
-export const PAIRS: Record<string, { second: string; label: string; size?: boolean }> = {
-  x: { second: 'y', label: msg('X, Y') },
-  cx: { second: 'cy', label: msg('X, Y') },
-  'a.x': { second: 'a.y', label: msg('X1, Y1') },
-  'b.x': { second: 'b.y', label: msg('X2, Y2') },
-  width: { second: 'height', label: msg('W, H'), size: true },
-  rx: { second: 'ry', label: msg('Radii'), size: true },
+const ROWS: Record<string, { id: string; name: string; size?: boolean; label?: string }> = {
+  x: { id: 'xyz', name: 'X' },
+  y: { id: 'xyz', name: 'Y' },
+  z: { id: 'xyz', name: 'Z' },
+  cx: { id: 'centre', name: 'X' },
+  cy: { id: 'centre', name: 'Y' },
+  'a.x': { id: 'a', name: 'X1' },
+  'a.y': { id: 'a', name: 'Y1' },
+  'b.x': { id: 'b', name: 'X2' },
+  'b.y': { id: 'b', name: 'Y2' },
+  width: { id: 'size', name: 'W', size: true },
+  height: { id: 'size', name: 'H', size: true },
+  rx: { id: 'radii', name: 'rx', size: true, label: msg('Radii') },
+  ry: { id: 'radii', name: 'ry', size: true, label: msg('Radii') },
 }
 
-/** Fields in the rows they are shown on: a pair (`PAIRS`) on one, any other alone. */
+/** The row a field is shown on with others, if any. */
+export const rowOf = (field: FieldSpec) => field.row ?? ROWS[field.path]
+
+/** What a row of fields is called, and whether it is a size, which can keep its proportions. */
+export function rowName(fields: FieldSpec[]): { label: string; size: boolean } {
+  const rows = fields.map(rowOf)
+  return { label: rows[0]?.label ?? rows.map((row) => row!.name).join(', '), size: !!rows[0]?.size }
+}
+
+/** Fields in the rows they are shown on: those of one row (`ROWS`) that follow one another together, any other alone. */
 export function rowsOf(fields: FieldSpec[]): FieldSpec[][] {
   const rows: FieldSpec[][] = []
   for (const field of fields) {
     const last = rows[rows.length - 1]
-    if (last?.length === 1 && PAIRS[last[0].path]?.second === field.path) last.push(field)
+    const row = rowOf(field)
+    if (row && last && rowOf(last[0])?.id === row.id) last.push(field)
     else rows.push([field])
   }
   return rows
@@ -116,7 +143,7 @@ const STYLE: FieldSpec[] = [...stroke(STROKE), fill('#ffffff', msg('default'))]
 /** A room in two parts: what is written in it (its name, its area), and its floor. */
 const ROOM_LABEL = msg('Label')
 
-const FLOOR = msg('Floor')
+export const FLOOR = msg('Floor')
 
 /** Where the look of a selection is changed, and so where it can be taken from another object. */
 export const LOOK_SECTIONS = [STROKE, 'Style', FLOOR]
@@ -193,8 +220,8 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
   annotation: ANNOTATION,
   gridline: GRIDLINE,
   rect: [len('x', msg('X')), len('y', msg('Y')), len('width', msg('W')), len('height', msg('H')), num('rotation', msg('Rotation'), 0), ...SHAPE_STYLE],
-  // A paper's size is its format and scale, and where it lies is typed at the top of its panel: it has no geometry section.
-  paper: [],
+  // A paper's size is its format and scale, set under Sheet: here only where it lies.
+  paper: [len('x', msg('X')), len('y', msg('Y'))],
   // Where the name is written is where the room is: its X and Y are the name's.
   room: [
     len('x', msg('X'), undefined, ROOM_LABEL),
@@ -337,21 +364,81 @@ function linkFields(node: Extract<Node, { type: 'link' }>, doc: Document): Field
   return [...button, { ...num('bend', msg('Curve')), optional: true }, ...stroke(STROKE)]
 }
 
+/** Rounded to a thousandth of a millimetre, as lengths are kept. */
+const tidy = (n: number) => Math.round(n * 1000) / 1000
+
+/** A field of the size of a placed object, on the row of its width, depth and height. */
+const SIZE = (name: string) => ({ id: 'object size', name, size: true })
+
+/** How high above the floor an object is, as Z: its underside, unless it is fixed on a wall by its centre. Empty, it is on the floor, which it says. */
+const aboveFloor = (fixed?: ParametricKind['mount']): FieldSpec => ({
+  path: 'z',
+  label: msg('Height above floor'),
+  type: 'number',
+  length: true,
+  optional: true,
+  ...(fixed?.on === 'wall' ? { fallback: fixed.height ?? 0 } : { empty: msg('Floor') }),
+  note: fixed?.on === 'wall' && fixed.measured !== 'bottom' ? msg('Height above the floor, to its centre') : msg('Height above the floor, to its underside'),
+})
+
+/** The side `moving` of a placement's frame (`frameGrips`) put `value` from the side across it, `fixed`, which stays. */
+function frameSideTo(node: Node, value: unknown, doc: Document, moving: number, fixed: number): Op[] {
+  const frame = resizeFrame(node, registry, doc)
+  if (!frame || typeof value !== 'number' || !(value > 0)) return []
+  const grips = frameGrips(frame)
+  const patch = resizePatch(node, moving, add(grips[fixed], scale(norm(sub(grips[moving], grips[fixed])), value)), false, registry, doc)
+  return patch ? [{ op: 'update_node', id: node.id, patch }] : []
+}
+
+/** How large a placement of a component is: as wide and deep as it is drawn on the plan, as tall as its component says (which every placement of it shares). */
+const PLACEMENT_SIZE: FieldSpec[] = [
+  { path: 'size.width', label: msg('Width'), type: 'number', length: true, row: SIZE('W'), get: (n, doc) => resizeFrame(n, registry, doc)?.width, set: (n, v, doc) => frameSideTo(n, v, doc, 5, 7) },
+  { path: 'size.depth', label: msg('Depth'), type: 'number', length: true, row: SIZE('D'), get: (n, doc) => resizeFrame(n, registry, doc)?.height, set: (n, v, doc) => frameSideTo(n, v, doc, 6, 4) },
+  {
+    path: 'size.height',
+    label: msg('Height'),
+    type: 'number',
+    length: true,
+    optional: true,
+    empty: msg('None'),
+    row: SIZE('H'),
+    get: (n, doc) => {
+      const component = n.type === 'instance' ? doc.nodes[n.component] : undefined
+      return n.type === 'instance' && component?.type === 'component' && component.height ? tidy(component.height * (n.scale ?? 1)) : undefined
+    },
+    set: (n, v) => (n.type === 'instance' ? [{ op: 'update_node', id: n.component, patch: { height: typeof v === 'number' && v > 0 ? tidy(v / (n.scale ?? 1)) : null } }] : []),
+  },
+]
+
+/**
+ * The parameters a kind is sized by on the plan, found by asking its box (`ParametricKind.box`) for
+ * another width, then another depth, and seeing which parameter it changes; else its size along its X
+ * (a door's width). And its height, a `height` parameter. Each only when it is one number.
+ */
+function sizeKeys(kind: ParametricKind, props: Record<string, unknown>): { W?: string; D?: string; H?: string } {
+  const numeric = (key: string | undefined) => (key && kind.params.some((p) => p.key === key && p.type === 'number') ? key : undefined)
+  const changed = (size: { width?: number; height?: number }) => {
+    const keys = Object.keys(kind.box!.resize(props, size))
+    return keys.length === 1 ? keys[0] : undefined
+  }
+  return {
+    W: numeric(kind.box ? changed({ width: 1000 }) : kind.size?.x),
+    D: numeric(kind.box ? changed({ height: 1000 }) : undefined),
+    H: numeric('height'),
+  }
+}
+
 export function fieldsOf(node: Node, doc: Document): FieldSpec[] {
   const fields = node.type === 'room' ? roomFields(node, doc) : node.type === 'elevation' ? viewFields(doc) : node.type === 'link' ? linkFields(node, doc) : (FIELDS[node.type] ?? [])
+  // What every placed object has, first: where it is (X, Y, and Z, its height above the floor),
+  // how it is turned, and how large it is (W, D, H). What is its own comes after.
+  const [x, y, rotation] = PLACEMENT
   // A placement looks as its component is drawn: it has no look of its own to set.
-  if (node.type === 'instance') return fields
+  if (node.type === 'instance') return [x, y, aboveFloor(), rotation, ...PLACEMENT_SIZE]
   if (node.type !== 'parametric') return drawnSolid(doc, node.parent) ? fields.map(placedFill) : fields
   const kind = registry.parametric.get(node.kind)
   const params = kind?.params ?? []
-  // Fixed on a wall, it stands at a height, its kind's usual one until another is typed.
-  const height: FieldSpec[] = kind?.mount?.on === 'wall'
-    ? [
-        { path: 'z', label: msg('Height above floor'), type: 'number', length: true, optional: true, fallback: kind.mount.height ?? 0 },
-        { path: 'showHeight', label: msg('Height on plan'), type: 'boolean', fallback: false },
-      ]
-    : []
-  const own = params.map((p): FieldSpec => ({
+  const asField = (p: ParametricKind['params'][number]): FieldSpec => ({
     path: `props.${p.key}`,
     label: p.label,
     type: p.type,
@@ -360,6 +447,16 @@ export function fieldsOf(node: Node, doc: Document): FieldSpec[] {
     fallback: p.default,
     // A value may be said differently for one parameter: "Single" glazing is not a "Single" door.
     options: p.options?.map((value) => ({ value, label: t(`${p.label}: ${value}`) !== `${p.label}: ${value}` ? `${p.label}: ${value}` : value })),
-  }))
-  return [...fields, ...height, ...own, ...STYLE]
+  })
+  // A door or a window has no height above the floor of its own: it is in its wall, and goes up and down by its sill.
+  const z = kind?.opening ? [] : [aboveFloor(kind?.mount)]
+  const shown = kind?.mount?.on === 'wall' ? [{ path: 'showHeight', label: msg('Height on plan'), type: 'boolean' as const, fallback: false }] : []
+  const keys = kind ? sizeKeys(kind, registry.resolveProps(kind, node.props)) : {}
+  const sized = (['W', 'D', 'H'] as const).flatMap((name) => {
+    const param = params.find((p) => p.key === keys[name])
+    return param ? [{ ...asField(param), row: SIZE(name) }] : []
+  })
+  // The rest of its parameters, under its own name.
+  const own = params.filter((p) => !Object.values(keys).includes(p.key)).map((p): FieldSpec => ({ ...asField(p), section: kind!.label }))
+  return [x, y, ...z, rotation, ...shown, ...sized, ...own, ...STYLE]
 }

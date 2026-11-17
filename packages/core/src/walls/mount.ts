@@ -36,8 +36,12 @@ export function mountOf(node: Node, registry: Registry): Mount | null {
 /** Whether `node` is fixed on a wall at a height (a socket), rather than standing against it. */
 export const fixedOnWall = (node: Node, registry: Registry): boolean => mountOf(node, registry)?.on === 'wall'
 
-/** How high above the floor an object is, in mm: its own `z`, else its kind's usual height when it is fixed on walls, else null. */
+/**
+ * How high above the floor an object is, in mm: its own `z` (a placement of a component's too), else
+ * its kind's usual height when it is fixed on walls, else null: on the floor.
+ */
 export function heightAboveFloor(node: Node, registry: Registry): number | null {
+  if (node.type === 'instance') return node.z ?? null
   if (node.type !== 'parametric') return null
   const mount = mountOf(node, registry)
   return node.z ?? (mount?.on === 'wall' ? (mount.height ?? null) : null)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdit, applyOps, createDocument, depthPatch, elevationItemAt, elevationMovePatch, elevationPrimitives, FORMAT_VERSION, NewerFormatError, parseDocument, Registry, serializeDocument, shownInElevations, splitWallOps, transformOps, wallFaceAt, type Document, type NodeOf, type Op, type Primitive } from '../src'
+import { applyEdit, applyOps, createDocument, depthPatch, elevationHeightOps, elevationItemAt, elevationMovePatch, elevationPrimitives, FORMAT_VERSION, NewerFormatError, parseDocument, Registry, serializeDocument, shownInElevations, splitWallOps, transformOps, wallFaceAt, type Document, type NodeOf, type Op, type Primitive } from '../src'
 import { viewNodes, viewOps, type ViewSpec } from './view-nodes'
 
 /*
@@ -187,6 +187,73 @@ describe('what an elevation shows is the plan', () => {
     expect(elevationMovePatch(elevation(doc), doc, registry, socket(doc), 500, 0)).toEqual({ x: 2500, y: -100, rotation: 180, z: 450 })
     // In the view, the socket 3 m from x = 6000, drawn from x = 100.
     expect(elevationItemAt(elevation(doc), doc, registry, { x: 3100, y: 9550 })).toMatchObject({ node: { id: 'socket' } })
+  })
+
+  it('makes what is pulled up by its top taller, its bottom where it is, and a component taller for all its placements', () => {
+    const cabinets = new Registry().use({
+      id: 'test.cabinets',
+      name: 'Cabinets',
+      version: '1.0.0',
+      activate(api) {
+        const height = { key: 'height', label: 'Height', type: 'number' as const, default: 700 }
+        api.registerParametric({ kind: 'test.hung', label: 'Hung', params: [height], mount: { on: 'wall', height: 1450, measured: 'bottom' }, build: () => [] })
+        api.registerParametric({ kind: 'test.mirror', label: 'Mirror', params: [height], mount: { on: 'wall', height: 1500 }, build: () => [] })
+      },
+    })
+    const doc = plan()
+    const grown = (id: string, dh: number, reg = registry, at = doc) => elevationHeightOps(at, reg, at.nodes[id] as NodeOf<'parametric'>, dh)
+    // A door from the floor, a window above its sill: taller by as much; never less than 1 mm.
+    expect(grown('door', 300)).toEqual([{ op: 'update_node', id: 'door', patch: { props: { height: 2300 } } }])
+    expect(grown('window', -5000)).toEqual([{ op: 'update_node', id: 'window', patch: { props: { height: 1 } } }])
+    // A socket has no height to change.
+    expect(grown('socket', 300)).toBeNull()
+    // Hung by its underside, it stays there; hung by its middle, that goes up half as much.
+    const hung = applyOps(doc, [
+      { op: 'add_node', node: { type: 'parametric', id: 'hung', parent: 'page_1', kind: 'test.hung', props: {}, x: 2000, y: 100 } },
+      { op: 'add_node', node: { type: 'parametric', id: 'mirror', parent: 'page_1', kind: 'test.mirror', props: {}, x: 4000, y: 100 } },
+    ])
+    expect(grown('hung', 100, cabinets, hung)).toEqual([{ op: 'update_node', id: 'hung', patch: { props: { height: 800 } } }])
+    expect(grown('mirror', 100, cabinets, hung)).toEqual([{ op: 'update_node', id: 'mirror', patch: { props: { height: 800 }, z: 1550 } }])
+    // A placement drawn at half size: its component is made 2 × 100 taller, for every placement of it.
+    const placed = applyOps(doc, [
+      { op: 'add_node', node: { type: 'component', id: 'cupboard', parent: null, height: 2000 } as never },
+      { op: 'add_node', node: { type: 'instance', id: 'i', parent: 'page_1', component: 'cupboard', x: 2000, y: 400, scale: 0.5 } as never },
+    ])
+    expect(elevationHeightOps(placed, registry, placed.nodes.i as NodeOf<'instance'>, 100)).toEqual([{ op: 'update_node', id: 'cupboard', patch: { height: 2200 } }])
+  })
+
+  it('draws what stands in view at its height above the floor, raised and lowered back to the floor by dragging it', () => {
+    const units = new Registry().use({
+      id: 'test.units',
+      name: 'Units',
+      version: '1.0.0',
+      activate(api) {
+        api.registerParametric({
+          kind: 'test.unit',
+          label: 'Unit',
+          params: [{ key: 'height', label: 'Height', type: 'number', default: 900 }],
+          mount: { on: 'floor' },
+          height: ({ height }) => height,
+          build: () => [{ kind: 'path', points: [{ x: 0, y: 0 }, { x: 600, y: 0 }, { x: 600, y: 500 }, { x: 0, y: 500 }], closed: true }],
+        })
+      },
+    })
+    const doc = applyOps(plan(), [
+      { op: 'add_node', node: { type: 'parametric', id: 'u', parent: 'page_1', kind: 'test.unit', props: {}, x: 2000, y: 100 } },
+      { op: 'add_node', node: { type: 'component', id: 'mirror', parent: null, height: 800 } as never },
+      { op: 'add_node', node: { type: 'instance', id: 'm', parent: 'page_1', component: 'mirror', x: 3500, y: 200, z: 1200 } as never },
+      { op: 'add_node', node: { type: 'rect', id: 'glass', parent: 'mirror', x: 0, y: 0, width: 600, height: 50 } as never },
+    ])
+    // The floor of the view is at y = 10 000: on it, 900 high; the mirror's underside 1200 above it.
+    expect(shownInElevations(doc, units, ['u'])[0].box).toMatchObject({ minY: 9100, maxY: 10000 })
+    expect(shownInElevations(doc, units, ['m'])[0].box).toMatchObject({ minY: 8000, maxY: 8800 })
+    const unit = doc.nodes.u as NodeOf<'parametric'>
+    expect(elevationMovePatch(elevation(doc), doc, units, unit, 0, 300)).toEqual({ x: 2000, y: 100, z: 300 })
+    const raised = applyOps(doc, [{ op: 'update_node', id: 'u', patch: { z: 300 } }])
+    expect(shownInElevations(raised, units, ['u'])[0].box).toMatchObject({ minY: 8800, maxY: 9700 })
+    // Pulled down past the floor: on it again, with no height of its own.
+    expect(elevationMovePatch(elevation(raised), raised, units, raised.nodes.u as NodeOf<'parametric'>, 0, -500)).toEqual({ x: 2000, y: 100, z: null })
+    expect(elevationMovePatch(elevation(doc), doc, units, doc.nodes.m as NodeOf<'instance'>, 100, -200)).toEqual({ x: 3600, y: 200, z: 1000 })
   })
 
   it('says where the elevations show what is selected, and nothing for what they do not show', () => {

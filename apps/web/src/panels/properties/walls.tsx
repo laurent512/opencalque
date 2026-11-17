@@ -2,14 +2,14 @@ import { type Document, type NodeOf, type Node, type Op, applyOps, DEFAULT_MATER
 import { executeById } from '../../commands'
 import { useEffect, type ReactNode } from 'react'
 import { Link2, Undo2 } from 'lucide-react'
-import { msg, t, tn } from '../../i18n'
+import { msg, t } from '../../i18n'
 import { registry } from '../../extensions'
 import { apply, selectCorner, useStore } from '../../store'
 import { ColorChoice } from '../../ColorChoice'
 import { WeightChoice } from '../../WeightChoice'
 import { DashPicker, Field, FieldPair, IconButton, JustifyPicker, Section, YesNo } from '../../ui'
 import { formatLength } from '../../units'
-import { MaterialChoice, MaterialNote, type MaterialOption } from '../../MaterialChoice'
+import { MaterialChoice, type MaterialOption } from '../../MaterialChoice'
 import { unfilledPatch } from '../../materials'
 import { showPanel } from '../../dock'
 
@@ -75,13 +75,10 @@ export function WallMaterial({ walls }: { walls: NodeOf<'wall'>[] }) {
   }
   return (
     // Not a label: a label would hand every click to the button inside, opening its list again.
-    <>
-      <div className="field">
-        <span>{t('Material')}</span>
-        <MaterialChoice label={t('Material')} value={values.size === 1 ? [...values][0] : undefined} mixed={values.size > 1} options={options} pick={(id) => made(id || null)} create={create} />
-      </div>
-      <MaterialNote />
-    </>
+    <div className="field">
+      <span>{t('Material')}</span>
+      <MaterialChoice label={t('Material')} value={values.size === 1 ? [...values][0] : undefined} mixed={values.size > 1} options={options} pick={(id) => made(id || null)} create={create} />
+    </div>
   )
 }
 
@@ -122,10 +119,10 @@ export function WallToolMaterial() {
   )
 }
 
-/** How to curve a wall, and for one that is curved, the circle it follows. */
+/** For a curved wall, the circle it follows. A straight one says nothing: its Curve field is enough. */
 export function WallCurve({ wall }: { wall: Extract<Node, { type: 'wall' }> }) {
   const arc = wallArc(wall)
-  if (!arc) return <p className="hint">{t('To curve the wall, drag the handle in its middle sideways, or type under Curve how far its middle should bow.')}</p>
+  if (!arc) return null
   return <p className="hint">{t('Curved: radius {radius}, {length} round the curve. Set Curve to 0 to straighten it.', { radius: formatLength(arc.radius), length: formatLength(wallLength(wall)) })}</p>
 }
 
@@ -135,9 +132,11 @@ export function WallCurve({ wall }: { wall: Extract<Node, { type: 'wall' }> }) {
  * pictures the tinted wall is "this wall" where the joint is chosen for one wall: the one that
  * passes, or the one that stops.
  */
-type JointChoice = 'auto' | 'miter' | 'round' | 'bevel' | 'through' | 'butt'
+type JointChoice = 'auto' | 'miter' | 'round' | 'bevel' | 'through' | 'butt' | 'free'
 
 const JOINT_PICTURES: Record<JointChoice, { name: string; own?: string; lines: string }> = {
+  // The two walls apart, each closed at its end: joined to nothing.
+  free: { name: msg('Not joined: the walls that end here do not follow it, nor it them'), lines: 'M5 16v-4h6v4M23 4h-6v6h6' },
   // Automatic has no picture of its own: it shows what it comes to at the corner's angle (see `JointPicker`).
   auto: { name: msg('Automatic: a sharp corner, cut off when the angle is too sharp'), lines: 'M5 16V4h18M11 16v-6h12' },
   miter: { name: msg('Sharp corner, at any angle'), lines: 'M5 16V4h18M11 16v-6h12' },
@@ -181,31 +180,38 @@ function JointPicker(props: { choices: JointChoice[]; value: JointChoice | undef
 export function WallEnds({ wall }: { wall: Extract<Node, { type: 'wall' }> }) {
   const doc = useStore((s) => s.doc)
   const rows = (['a', 'b'] as const).map((end) => {
-    const ends = wallEndsOf(doc, wall, end)
     const state = wallEndState(doc, wall, end)
+    // An end set loose where other walls end is shown as joining it again would make it: a joint
+    // picked there joins it again with that joint, and "not joined" is one more picture to pick.
+    const rejoin = state.loose && state.touching.length > 0 ? looseEndOps(wall, end, false) : []
+    const now = rejoin.length > 0 ? applyOps(doc, rejoin) : doc
+    const self = now.nodes[wall.id] as NodeOf<'wall'>
+    const ends = wallEndsOf(now, self, end)
     const mine = ends.findIndex((other) => other.wall.id === wall.id && other.end === end)
-    // What it is joined to, or why it is not, and what can be done about it: set it loose, join it
-    // again, or bring it onto the end of a wall it nearly meets.
+    const loosen = () => apply(looseEndOps(wall, end, true))
+    if (ends.length > 2 && mine >= 0) {
+      // Where more than two walls meet they are mitred together: joined, or not.
+      return { end, status: null, choices: ['miter', 'free'] as JointChoice[], names: { miter: msg('Where more than two walls meet, they are mitred together.') }, value: (state.loose ? 'free' : 'miter') as JointChoice, pick: (choice: JointChoice) => (choice === 'free' ? loosen() : apply(rejoin)), cuts: false }
+    }
+    if (ends.length === 2 && mine >= 0) {
+      const joint = cornerJoin(ends)
+      // A butt joint is one of two things for this wall: it is the one that passes, or the one that stops.
+      const value: JointChoice = state.loose ? 'free' : joint === 'butt' ? (self.joins?.[end] === 'through' || (self.joins?.[end] !== 'butt' && ends[1 - mine].wall.joins?.[ends[1 - mine].end] === 'butt') ? 'through' : 'butt') : joint
+      const pick = (choice: JointChoice) =>
+        choice === 'free' ? loosen() : apply([...rejoin, ...(choice === 'through' ? cornerJoinOps(ends, 'butt', mine) : choice === 'butt' ? cornerJoinOps(ends, 'butt', 1 - mine) : cornerJoinOps(ends, choice))])
+      return { end, status: null, choices: ['auto', 'miter', 'bevel', 'round', 'through', 'butt', 'free'] as JointChoice[], names: undefined, value, pick, cuts: autoJoinCuts(ends) }
+    }
+    // No other wall ends here: why it is not joined, and how to join it to a wall it nearly meets.
     const status =
-      state.joined.length > 0
-        ? { text: null, action: { label: t('Detach'), title: t('Join this end to no wall: the walls joined here no longer follow it, nor it them'), ops: () => looseEndOps(wall, end, true) } }
-        : state.loose
-          ? { text: state.touching.length > 0 ? tn(state.touching.length, 'Detached from the wall that ends here', 'Detached from the {n} walls that end here') : t('Detached'), action: { label: t('Join again'), title: t('Join this end to the walls that end at the same point'), ops: () => looseEndOps(wall, end, false) } }
-          : state.touching.length > 0
-            ? { text: t('Touches a wall without being joined to it: it stops against it'), action: null }
-            : state.near
-              ? {
-                  text: t('Nearly meets another wall, {distance} away, without being joined to it', { distance: formatLength(state.near.distance) }),
-                  action: { label: t('Join them'), title: t('Bring this end onto the end of the other wall, so that they are joined'), ops: () => moveCornerOps(useStore.getState().doc, wall.parent, wall[end], state.near!.at) },
-                }
-              : null
-    const base = { end, status }
-    if (ends.length !== 2 || mine < 0) return { ...base, note: ends.length < 2 ? t('free end') : t('{n} walls meet here, mitred', { n: ends.length }) }
-    const joint = cornerJoin(ends)
-    // A butt joint is one of two things for this wall: it is the one that passes, or the one that stops.
-    const value: JointChoice = joint === 'butt' ? (wall.joins?.[end] === 'through' || (wall.joins?.[end] !== 'butt' && ends[1 - mine].wall.joins?.[ends[1 - mine].end] === 'butt') ? 'through' : 'butt') : joint
-    const pick = (choice: JointChoice) => apply(choice === 'through' ? cornerJoinOps(ends, 'butt', mine) : choice === 'butt' ? cornerJoinOps(ends, 'butt', 1 - mine) : cornerJoinOps(ends, choice))
-    return { ...base, value, pick, cuts: autoJoinCuts(ends) }
+      state.touching.length > 0
+        ? { text: t('Touches a wall without being joined to it: it stops against it'), action: null }
+        : state.near
+          ? {
+              text: t('Nearly meets another wall, {distance} away, without being joined to it', { distance: formatLength(state.near.distance) }),
+              action: { label: t('Join them'), title: t('Bring this end onto the end of the other wall, so that they are joined'), ops: () => moveCornerOps(useStore.getState().doc, wall.parent, wall[end], state.near!.at) },
+            }
+          : null
+    return { end, status, note: t('free end') }
   })
   return (
     <>
@@ -213,8 +219,8 @@ export function WallEnds({ wall }: { wall: Extract<Node, { type: 'wall' }> }) {
         <div key={row.end} className="field">
           <span>{row.end === 'a' ? t('At its start') : t('At its end')}</span>
           <div className="wall-end">
-            {'pick' in row && row.pick ? (
-              <JointPicker choices={['auto', 'miter', 'bevel', 'round', 'through', 'butt']} value={row.value} cuts={row.cuts} onPick={row.pick} />
+            {row.pick && row.choices ? (
+              <JointPicker choices={row.choices} names={row.names} value={row.value} cuts={row.cuts} onPick={row.pick} />
             ) : (
               // A free end that touches or nearly meets another says that instead.
               !row.status?.text && <em className="faint">{'note' in row ? row.note : null}</em>
@@ -399,7 +405,7 @@ export function CornerPanel({ at }: { at: { x: number; y: number } }) {
               cuts={autoJoinCuts(ends)}
               names={{ through: msg('One wall runs through') }}
               value={join === 'butt' ? 'through' : join}
-              onPick={(choice) => apply(cornerJoinOps(ends, choice === 'through' ? 'butt' : (choice as Exclude<JointChoice, 'through' | 'butt'>), passing))}
+              onPick={(choice) => apply(cornerJoinOps(ends, choice === 'through' ? 'butt' : (choice as Exclude<JointChoice, 'through' | 'butt' | 'free'>), passing))}
             />
           </div>
           <div className="field">

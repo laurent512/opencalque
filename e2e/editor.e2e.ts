@@ -1913,10 +1913,11 @@ test('shows which ends of a wall are joined, sets one loose, and brings an end t
   expect((await saved()).nodes.side.b).toEqual({ x: 4000, y: 3004 })
   await expect(endOf('At its end')).not.toContainText('Nearly')
 
-  // Set loose at its start, it is joined to the top wall no more, and can be joined again.
-  await endOf('At its start').getByRole('button', { name: 'Detach' }).click()
+  // Set loose at its start by the picture of walls apart, it is joined to the top wall no more, and can be joined again.
+  const apart = (label: string) => endOf(label).getByRole('radio', { name: /^Not joined/ })
+  await apart('At its start').click()
   expect((await saved()).nodes.side.joins).toEqual({ a: 'free' })
-  await expect(endOf('At its start')).toContainText('Detached from the wall that ends here')
+  await expect(apart('At its start')).toHaveAttribute('aria-checked', 'true')
 
   // Dragged by that end, the selected wall moves, and the wall it was set loose from stays.
   const onScreen = await drawingOnScreen(page)
@@ -1933,8 +1934,10 @@ test('shows which ends of a wall are joined, sets one loose, and brings an end t
   await expect(page.locator('.field', { has: page.locator('span:text-is("At its start")') })).toBeVisible()
   await page.keyboard.press('Control+z')
 
-  await endOf('At its start').getByRole('button', { name: 'Join again' }).click()
-  expect((await saved()).nodes.side.joins).toBeUndefined()
+  // A joint picked joins it again, with that joint.
+  await endOf('At its start').getByRole('radio', { name: 'Rounded' }).click()
+  expect((await saved()).nodes.side.joins).toEqual({ a: 'round' })
+  await expect(apart('At its start')).toHaveAttribute('aria-checked', 'false')
 })
 
 test('brings the end of a wall level with its other end exactly, whatever decimals that one has, and says nothing of a hair off', async ({ page }) => {
@@ -2115,7 +2118,7 @@ test('the properties panel: a name, a layer by its colour, its status, and sizes
   const field = (name: string) => panel.locator('.field', { has: page.locator(`span:text-is("${name}")`) }).locator('input')
   const row = objectRows(page).filter({ has: page.locator('.type-icon') })
   await row.last().click()
-  await expect(panel.locator('.section h3').first()).toHaveText('Selection (1)')
+  await expect(panel.locator('.section h3').first()).toHaveText('Selection')
 
   // Unnamed, it says what it is; named, the Structure panel says the name; emptied, it goes back.
   await expect(field('Name')).toHaveAttribute('placeholder', 'Rectangle')

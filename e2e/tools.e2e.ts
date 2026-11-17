@@ -763,6 +763,164 @@ test('selects the socket of the plan by clicking it in an elevation, and moves i
   expect((await saved(page)).find((n) => n.type === 'parametric')).toMatchObject({ x: 2000, y: 100 })
 })
 
+test('keeps a unit picked in an elevation selected, inside its group, while its height is dragged with Alt or by its top', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  const plan = drawing(
+    {
+      w: { id: 'w', type: 'wall', parent: 'page_1', layer: 'layer_1', order: 'a1', a: { x: 0, y: 0 }, b: { x: 4000, y: 0 }, thickness: 200 },
+      g: { id: 'g', type: 'group', parent: 'page_1', layer: 'layer_1', order: 'a2', name: 'Kitchen' },
+      u: { id: 'u', type: 'parametric', parent: 'g', layer: 'layer_1', order: 'a1', kind: 'arch.baseunit', props: {}, x: 1500, y: 100 },
+      l: { id: 'l', type: 'viewline', parent: 'page_1', layer: 'layer_1', order: 'a3', a: { x: 0, y: 1100 }, b: { x: 4000, y: 1100 }, depth: 1000, name: 'Wall line' },
+      e: { id: 'e', type: 'elevation', parent: 'page_1', layer: 'layer_1', order: 'a4', line: 'l', x: 0, y: 6000, name: 'North' },
+    },
+    { version: 3 },
+  )
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
+  const at = await drawingOnScreen(page)
+  // A base unit inside a group, 900 high, picked where the elevation shows it, from 1500 to 2100 along it.
+  await page.mouse.click(...at(1800, 5500))
+  const height = field(page, 'Height')
+  await expect(height).toHaveValue('900')
+  const box = (await height.boundingBox())!
+  await page.keyboard.down('Alt')
+  await page.mouse.move(box.x + 20, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + 30, box.y + box.height / 2, { steps: 10 })
+  await page.mouse.up()
+  await page.keyboard.up('Alt')
+  // Ten pixels to the right: 100 mm higher, and still selected, the group not gone into.
+  await expect(height).toHaveValue('1000')
+  const unit = async () => (await saved(page)).find((n) => n.type === 'parametric')
+  expect(await unit()).toMatchObject({ parent: 'g', props: { height: 1000 } })
+  // Its top, at 1000 in the view, pulled up 300: 1300 high, one step to undo.
+  const [x, y] = at(1800, 5000)
+  await page.mouse.move(x, y - 3)
+  await expect(page.locator('.status')).toContainText('Drag the top up or down to change its height')
+  await page.mouse.down()
+  await page.mouse.move(...at(1800, 4700), { steps: 8 })
+  await expect(page.locator('.status')).toContainText('600 mm × 1300 mm')
+  await page.mouse.up()
+  expect(await unit()).toMatchObject({ x: 1500, y: 100, props: { height: 1300 } })
+  await expect(height).toHaveValue('1300')
+  await page.keyboard.press('Control+z')
+  await expect(height).toHaveValue('1000')
+})
+
+test('raises a unit standing on the floor by dragging it up in an elevation, and puts it back on the floor by emptying its height', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  const plan = drawing(
+    {
+      w: { id: 'w', type: 'wall', parent: 'page_1', layer: 'layer_1', order: 'a1', a: { x: 0, y: 0 }, b: { x: 4000, y: 0 }, thickness: 200 },
+      u: { id: 'u', type: 'parametric', parent: 'page_1', layer: 'layer_1', order: 'a2', kind: 'arch.baseunit', props: {}, x: 1500, y: 100 },
+      l: { id: 'l', type: 'viewline', parent: 'page_1', layer: 'layer_1', order: 'a3', a: { x: 0, y: 1100 }, b: { x: 4000, y: 1100 }, depth: 1000, name: 'Wall line' },
+      e: { id: 'e', type: 'elevation', parent: 'page_1', layer: 'layer_1', order: 'a4', line: 'l', x: 0, y: 6000, name: 'North' },
+    },
+    { version: 3 },
+  )
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
+  const at = await drawingOnScreen(page)
+  // On the floor: its height above it is empty, and says so.
+  await page.mouse.click(...at(1800, 5500))
+  const above = field(page, 'Height above floor')
+  await expect(above).toHaveValue('')
+  await expect(above).toHaveAttribute('placeholder', 'Floor')
+  // Dragged 500 up in the view: its underside 500 above the floor, where it was on the plan.
+  await page.mouse.move(...at(1800, 5500))
+  await page.mouse.down()
+  await page.mouse.move(...at(1800, 5000), { steps: 8 })
+  await expect(page.locator('.status')).toContainText('500 mm above the floor')
+  await page.mouse.up()
+  const unit = async () => (await saved(page)).find((n) => n.type === 'parametric')
+  expect(await unit()).toMatchObject({ x: 1500, y: 100, z: 500 })
+  await expect(above).toHaveValue('500')
+  // Emptied: back on the floor.
+  await above.fill('')
+  await above.press('Enter')
+  expect(await unit()).not.toHaveProperty('z')
+})
+
+test('widens a unit by its side in an elevation up against the next one, and moves another until it is flush, off the grid', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  // Three base units along the wall, 600 wide: from 1500, from 2537 and from 3700.
+  const unit = (id: string, x: number, order: string) => ({ id, type: 'parametric', parent: 'page_1', layer: 'layer_1', order, kind: 'arch.baseunit', props: {}, x, y: 100 })
+  const plan = drawing(
+    {
+      w: { id: 'w', type: 'wall', parent: 'page_1', layer: 'layer_1', order: 'a1', a: { x: 0, y: 0 }, b: { x: 5000, y: 0 }, thickness: 200 },
+      u1: unit('u1', 1500, 'a2'),
+      u2: unit('u2', 2537, 'a3'),
+      u3: unit('u3', 3700, 'a4'),
+      l: { id: 'l', type: 'viewline', parent: 'page_1', layer: 'layer_1', order: 'a5', a: { x: 0, y: 1100 }, b: { x: 5000, y: 1100 }, depth: 1000, name: 'Wall line' },
+      e: { id: 'e', type: 'elevation', parent: 'page_1', layer: 'layer_1', order: 'a6', line: 'l', x: 0, y: 6000, name: 'North' },
+    },
+    { version: 3 },
+  )
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
+  const at = await drawingOnScreen(page)
+  const units = async () => Object.fromEntries((await saved(page)).filter((n) => n.type === 'parametric').map((n) => [n.id, n]))
+  // The first picked in the view; its right side, at 2100, dragged to 2530: it goes against the next one, at 2537.
+  await page.mouse.click(...at(1800, 5500))
+  const [x, y] = at(2100, 5500)
+  await page.mouse.move(x + 3, y)
+  await expect(page.locator('.status')).toContainText('Drag the side to make it wider or narrower')
+  await page.mouse.down()
+  await page.mouse.move(...at(2530, 5500), { steps: 8 })
+  await expect(page.locator('.status')).toContainText('1037 mm × 900 mm')
+  await page.mouse.up()
+  expect((await units()).u1).toMatchObject({ x: 1500, y: 100, props: { width: 1037 } })
+  // The third, dragged 560 to the left: its left side, at 3140, goes against the right of the second, at 3137.
+  await page.mouse.move(...at(4000, 5500))
+  await page.mouse.down()
+  await page.mouse.move(...at(3440, 5500), { steps: 8 })
+  await page.mouse.up()
+  expect((await units()).u3).toMatchObject({ x: 3137, y: 100 })
+})
+
+test('shows every placed object by X, Y and Z, then W, D and H, then what is its own, and sets the size of a placement and the height of its component there', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  const plan = drawing(
+    {
+      u: { id: 'u', type: 'parametric', parent: 'page_1', layer: 'layer_1', order: 'a1', kind: 'arch.tallunit', props: {}, x: 1500, y: 100 },
+      c: { id: 'c', type: 'component', parent: null, order: 'a0', name: 'Mirror', height: 800 },
+      r: { id: 'r', type: 'rect', parent: 'c', order: 'a1', x: 0, y: 0, width: 600, height: 40 },
+      i: { id: 'i', type: 'instance', parent: 'page_1', layer: 'layer_1', order: 'a2', component: 'c', x: 2600, y: 100 },
+    },
+    { version: 3 },
+  )
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
+  await drawingOnScreen(page)
+  const row = (name: string) => page.locator('.field-pair', { has: page.locator(`.field-pair-name:text-is("${name}")`) })
+  const nodes = async () => Object.fromEntries((await saved(page)).map((n) => [n.id, n]))
+  // A tall unit: where it is, how large, and what it holds under its own name.
+  await objectRows(page).filter({ hasText: /Tall unit/ }).click()
+  await expect(row('X, Y, Z').locator('input')).toHaveCount(3)
+  await expect(row('W, D, H').locator('input')).toHaveCount(3)
+  await expect(page.locator('[data-panel="properties"] .section', { hasText: 'Tall unit' }).locator('.field', { hasText: 'Contents' })).toHaveCount(1)
+  await field(page, 'Height').fill('2300')
+  await field(page, 'Height').press('Enter')
+  expect((await nodes()).u).toMatchObject({ props: { height: 2300 } })
+  // A placement: twice as wide is stretched twice; taller is its component; Z raises it.
+  await objectRows(page).filter({ hasText: /Mirror/ }).click()
+  await expect(field(page, 'Width')).toHaveValue('600')
+  await expect(field(page, 'Height')).toHaveValue('800')
+  await field(page, 'Width').fill('1200')
+  await field(page, 'Width').press('Enter')
+  await field(page, 'Height').fill('900')
+  await field(page, 'Height').press('Enter')
+  await field(page, 'Height above floor').fill('1200')
+  await field(page, 'Height above floor').press('Enter')
+  const placed = await nodes()
+  expect(placed.i).toMatchObject({ x: 2600, y: 100, scaleX: 2, z: 1200 })
+  expect(placed.c).toMatchObject({ height: 900 })
+})
+
 test('keeps a socket dragged in an elevation to one way with Shift, on the wall and above the floor', async ({ page }) => {
   const at = await planWithElevation(page)
   const [x, y] = at(2000, 5700)

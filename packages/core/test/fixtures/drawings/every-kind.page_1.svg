@@ -27,8 +27,8 @@
 <g clip-path="url(#clip1)"><path d="M3000 150 L3000 3851.53" fill="none" stroke="#9aa3b2" stroke-width="0.6" vector-effect="non-scaling-stroke"/></g>
 <path d="M5800 3812.86 L5674.94 3766.66 L5305.12 3643.77 L4929.76 3539.32 L4549.27 3453.41 L4165.26 3386.42 L3778.41 3338.44 L3389.68 3309.61 L3000 3300 L3000 150 L5800 150 Z" fill="#607daa" fill-opacity="0.13"/>
 <path d="M-100 -150 L-100 150 L1000 150 L1000 -150 Z" fill="#b5543c" stroke="#b5543c" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
-<path d="M1900 -150 L1900 150 L5800 150 L6000 0 L6000 -150 Z" fill="#b5543c" stroke="#b5543c" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
-<path d="M6000 0 L5800 150 L5800 1000 L6000 1000 Z" fill="#ffffff" stroke="#ffffff" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
+<path d="M1900 -150 L1900 150 L5800 150 L5900 -50 L5970.711 -120.711 L5963.439 -127.301 L5955.557 -133.147 L5947.14 -138.192 L5938.268 -142.388 L5929.028 -145.694 L5919.509 -148.079 L5909.802 -149.518 L5900 -150 Z" fill="#b5543c" stroke="#b5543c" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
+<path d="M6000 -50 L5999.518 -59.802 L5998.079 -69.509 L5995.694 -79.028 L5992.388 -88.268 L5988.192 -97.14 L5983.147 -105.557 L5977.301 -113.439 L5970.711 -120.711 L5900 -50 L5800 150 L5800 1000 L6000 1000 Z" fill="#ffffff" stroke="#ffffff" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
 <path d="M6000 2500 L5800 2500 L5800 3812.849 L6000 4000 Z" fill="#ffffff" stroke="#ffffff" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
 <path d="M6000 4108.333 L6000 4000 L5800 3812.849 L5675.041 3766.686 L5305.108 3643.779 L4929.562 3539.269 L4549.317 3453.413 L4165.301 3386.417 L3778.447 3338.447 L3389.698 3309.618 L3000 3300 L2610.302 3309.618 L2221.553 3338.447 L1834.699 3386.417 L1450.683 3453.413 L1070.438 3539.269 L694.892 3643.779 L324.959 3766.686 L100 3851.531 L0 4000 L-100 4150 L38.462 4092.308 L392.681 3954.871 L753.249 3835.076 L1119.288 3733.212 L1489.906 3649.529 L1864.2 3584.23 L2241.26 3537.473 L2620.168 3509.374 L3000 3500 L3379.832 3509.374 L3758.74 3537.473 L4135.8 3584.23 L4510.094 3649.529 L4880.712 3733.212 L5246.751 3835.076 L5607.319 3954.871 L5961.538 4092.308 Z" fill="#ffffff" stroke="#ffffff" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
 <path d="M6000 4108.333 L6000 4000" fill="none"/>
@@ -43,8 +43,8 @@
 <path d="M5961.538 4092.308 L6000 4108.333" fill="none"/>
 <path d="M-100 4150 L0 4000 L100 3851.531 L100 150 L-100 150 Z" fill="#ffffff" stroke="#ffffff" stroke-width="0.8" vector-effect="non-scaling-stroke"/>
 <path d="M100 150 L1000 150 L1000 -150 L-100 -150 L-100 150" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
-<path d="M6000 0 L6000 -150 L1900 -150 L1900 150 L5800 150" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
-<path d="M5800 150 L5800 1000 L6000 1000 L6000 0" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
+<path d="M5970.711 -120.711 L5963.439 -127.301 L5955.557 -133.147 L5947.14 -138.192 L5938.268 -142.388 L5929.028 -145.694 L5919.509 -148.079 L5909.802 -149.518 L5900 -150 L1900 -150 L1900 150 L5800 150" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
+<path d="M5800 150 L5800 1000 L6000 1000 L6000 -50 L5999.518 -59.802 L5998.079 -69.509 L5995.694 -79.028 L5992.388 -88.268 L5988.192 -97.14 L5983.147 -105.557 L5977.301 -113.439 L5970.711 -120.711" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
 <path d="M6000 4000 L6000 2500 L5800 2500 L5800 3812.849" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
 <path d="M6000 4108.333 L6000 4000" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
 <path d="M5800 3812.849 L5675.041 3766.686" fill="none" stroke="#b5543c" stroke-width="2" vector-effect="non-scaling-stroke"/>
@@ -55,7 +55,8 @@
 <path d="M5961.538 4092.308 L6000 4108.333" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
 <path d="M100 3851.531 L100 150" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
 <path d="M-100 150 L-100 4150" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
-<path d="M6000 0 L5800 150" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
+<path d="M5970.711 -120.711 L5900 -50" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
+<path d="M5900 -50 L5800 150" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
 <path d="M100 150 L-100 150" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
 <path d="M100 150 L-100 150" fill="none" stroke="#1f1f1f" stroke-width="1" vector-effect="non-scaling-stroke"/>
 <path d="M1000 -150 L1900 -150" fill="none" stroke="#1f1f1f" stroke-width="0.5" vector-effect="non-scaling-stroke"/>

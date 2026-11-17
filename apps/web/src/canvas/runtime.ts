@@ -1,4 +1,4 @@
-import type { Node, ResizeFrame, SceneItem, Snap, Vec2 } from '@opencalque/core'
+import type { ElevationItem, ElevationSide, Node, NodeOf, ResizeFrame, SceneItem, Snap, Vec2 } from '@opencalque/core'
 import { cancel, useStore, type View } from '../store'
 import type { AngleMark, Overlay, SizeLabel } from './draw'
 import type { Gesture, GestureOf, Keys, PointerAt } from './gesture'
@@ -73,6 +73,8 @@ export interface Canvas {
   clearanceLabels: { x: number; y: number; width: number; height: number }[]
   /** The pointer shown over a grip, so it says what dragging there does. */
   gripCursor: string | null
+  /** Where the views on the page show the one selected object, and the sides of its box there that can be dragged (`elevationSides`). */
+  inViewGrips: { view: NodeOf<'elevation'>; item: ElevationItem; sides: ElevationSide[] }[]
 
   element(): HTMLCanvasElement
   setOverlay(overlay: Overlay | ((o: Overlay) => Overlay)): void

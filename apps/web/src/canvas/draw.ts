@@ -138,6 +138,8 @@ export interface Overlay {
   face?: Vec2[][]
   /** The boxes in which elevations show what is selected on the plan: the same objects, seen from in front. */
   inViews?: Bounds[]
+  /** The sides of those boxes that can be dragged, by the box and the side: a grip in the middle of each. */
+  inViewGrips?: { box: Bounds; side: 'left' | 'right' | 'top' | 'bottom' }[]
   /**
    * The lines on the plan that the selected elevations and sections look at, each seen from its
    * right, the area each sees up to its depth (its back, written with `depth`), and where its left
@@ -1078,6 +1080,15 @@ export function drawScene(
     for (const box of overlay.inViews) {
       const [p, q] = [toScreen({ x: box.minX, y: box.minY }), toScreen({ x: box.maxX, y: box.maxY })]
       ctx.strokeRect(p.x - 3, p.y - 3, q.x - p.x + 6, q.y - p.y + 6)
+    }
+    ctx.fillStyle = '#ffffff'
+    ctx.lineWidth = 1
+    for (const { box, side } of overlay.inViewGrips ?? []) {
+      // On the line of the box, which is drawn 3 px outside the object.
+      const [p, q] = [toScreen({ x: box.minX, y: box.minY }), toScreen({ x: box.maxX, y: box.maxY })]
+      const at = side === 'left' ? { x: p.x - 3, y: (p.y + q.y) / 2 } : side === 'right' ? { x: q.x + 3, y: (p.y + q.y) / 2 } : { x: (p.x + q.x) / 2, y: side === 'top' ? p.y - 3 : q.y + 3 }
+      ctx.fillRect(Math.round(at.x) - 3.5, Math.round(at.y) - 3.5, 7, 7)
+      ctx.strokeRect(Math.round(at.x) - 3.5, Math.round(at.y) - 3.5, 7, 7)
     }
   }
   if (overlay.face) {

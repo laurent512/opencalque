@@ -86,6 +86,50 @@ describe('wall corners', () => {
     expect(points).toContainEqual({ x: 4050, y: -50 })
   })
 
+  it('are rounded and cut off alike whichever line the walls are drawn by', () => {
+    // The L drawn by a face of its walls: the outer one ('left' here), whose joint is then the
+    // outer corner itself, or the inner one, the corner then reaching out a whole thickness.
+    for (const [justify, outer] of [
+      ['left', { x: 4000, y: 0 }],
+      ['right', { x: 4200, y: -200 }],
+    ] as const) {
+      const drawn = applyOps(ell, [
+        { op: 'update_node', id: 'top', patch: { justify } },
+        { op: 'update_node', id: 'side', patch: { justify } },
+      ])
+      const at = (join: 'miter' | 'round' | 'bevel') => {
+        const doc = applyOps(drawn, cornerJoinOps(wallEndsAt(drawn, 'page_1', corner), join))
+        return [...outline(doc, 'top').points, ...outline(doc, 'side').points] as { x: number; y: number }[]
+      }
+      expect(at('miter')).toContainEqual(outer)
+      // The middles cross half a thickness in from the outer corner, and the corner is worked out
+      // about there, as for walls drawn by their middle: cut 50 in along each way, rounded 100 round.
+      const middles = { x: outer.x - 100, y: outer.y + 100 }
+      const cut = at('bevel')
+      expect(cut).not.toContainEqual(outer)
+      expect(cut).toContainEqual({ x: middles.x + 50, y: middles.y - 50 })
+      const round = at('round').filter((p) => p.x > middles.x && p.y < middles.y)
+      expect(round.length).toBeGreaterThan(3)
+      for (const p of round) expect(Math.hypot(p.x - middles.x, p.y - middles.y)).toBeCloseTo(100, 3)
+    }
+  })
+
+  it('are rounded by a circle touching both faces, as wide as the thinner wall, when the walls differ in thickness', () => {
+    // The top wall 300 thick, from -150 to 150; the side one 200, from 3900 to 4100. The outer corner is (4100, -150).
+    const thick = applyOps(ell, [{ op: 'update_node', id: 'top', patch: { thickness: 300 } }])
+    const doc = applyOps(thick, cornerJoinOps(wallEndsAt(thick, 'page_1', corner), 'round'))
+    const points: { x: number; y: number }[] = [...outline(doc, 'top').points, ...outline(doc, 'side').points]
+    // A circle of 100 about (4000, -50), touching the top face at (4000, -150) and the side face at (4100, -50).
+    expect(points).toContainEqual({ x: 4000, y: -150 })
+    expect(points).toContainEqual({ x: 4100, y: -50 })
+    const arc = points.filter((p) => p.x > 4000 && p.y < -50)
+    expect(arc.length).toBeGreaterThan(3)
+    for (const p of arc) expect(Math.hypot(p.x - 4000, p.y + 50)).toBeCloseTo(100, 3)
+    // Nothing reaches past either face.
+    expect(Math.max(...points.map((p) => p.x))).toBeLessThanOrEqual(4100)
+    expect(Math.min(...points.map((p) => p.y))).toBeGreaterThanOrEqual(-150)
+  })
+
   it('can let one wall run through while the other stops against it', () => {
     // The top wall passes: it runs on to the far face of the side wall, which stops at its near face.
     const topPasses = joined('butt', 0)
