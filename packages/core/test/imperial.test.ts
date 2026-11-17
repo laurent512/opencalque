@@ -23,6 +23,19 @@ describe('feet and inches', () => {
     expect(formatFeetInches(feet(2, 3.3), 32)).toBe(`2' 3 5/16"`)
   })
 
+  it('rounds a length exactly half-way between two fractions up, every time', () => {
+    // Stored in millimetres, these come back a hair above or below the tie; each must still round up.
+    expect(formatFeetInches(feet(0, 3.375), 4)).toBe(`3 1/2"`)
+    expect(formatFeetInches(feet(0, 3.625), 4)).toBe(`3 3/4"`)
+    expect(formatFeetInches(feet(0, 6.625), 4)).toBe(`6 3/4"`)
+    for (const denominator of [2, 4, 8, 16]) {
+      for (let tie = 1; tie < 20 * 12 * denominator; tie++) {
+        const mm = ((tie + 0.5) / denominator) * inch
+        expect(formatFeetInches(mm, denominator)).toBe(formatFeetInches(((tie + 1) / denominator) * inch, denominator))
+      }
+    }
+  })
+
   it('reads the ways people type it', () => {
     const read = (text: string, unmarked = false) => {
       const mm = parseFeetInches(text, unmarked)
