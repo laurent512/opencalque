@@ -4,7 +4,7 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
-## Unreleased
+## 1.13.0 — 2026-11-20
 
 ### New
 - Report a bug or suggest an idea from inside the app, with no GitHub account: from the welcome window, the Preferences menu, About or the command list. The report is posted as a public issue on GitHub, where the answers are written, with the version, web or desktop, the system, language and screen size; you can also attach the open drawing (without its pictures), a picture of the drawing area and the errors the app ran into. Everything that is sent is shown before you send it.
