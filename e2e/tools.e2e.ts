@@ -1129,6 +1129,8 @@ test('copies a view as another view of the same line, which stays on the plan', 
   await objectRows(page).filter({ hasText: 'North' }).click()
   await page.keyboard.press('Control+c')
   await page.keyboard.press('Control+v')
+  // A paste reads the clipboard first, which takes a moment: what is saved before it lands has one view.
+  await expect.poll(async () => (await saved(page)).filter((n) => n.type === 'elevation').length).toBe(2)
   const nodes = await saved(page)
   expect(nodes.filter((n) => n.type === 'viewline')).toMatchObject([{ id: 'l', a: { x: 0, y: 1100 }, b: { x: 4000, y: 1100 } }])
   expect(nodes.filter((n) => n.type === 'elevation').map((n) => n.line)).toEqual(['l', 'l'])
