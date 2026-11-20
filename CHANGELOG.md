@@ -4,6 +4,23 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## 1.14.0 — 2026-11-20
+
+### New
+- A report of a bug or an idea can show what you mean: Capture an area hides the window, freezes the app and lets you drag over the part to take (a click takes all of it), and Record an area records the part you drag over while you use the app, for 30 seconds at most. Up to six pictures and two recordings go with a report, each shown as a small tile that opens larger and can be taken out, as can the open drawing and the errors. The desktop app takes them without asking; a browser asks to share the tab first.
+
+### Improved
+- Reporting a bug or an idea: the kind is chosen with two tabs side by side instead of a list, and what happened and what you expected are written in one description.
+- The panels, the preferences and the windows keep the room of their scrollbar: one appearing as a panel grows short, or as a page of preferences is longer than the last, no longer moves what is in them sideways.
+- With the Select tool, what the pointer is on is outlined in thin blue as it passes over it, however many groups it is in: the lines of a wall, a door, a piece of furniture, the box of a component or a text. When it is in a group, the group a click would select is shown by a faint dashed box around it.
+- A fresher welcome window: what is new in this version sits in its top right corner, unsaved work to bring back stands out in a box of its own, and no line of it breaks in the middle of a sentence.
+- About keeps to a short line of links: the source code and the licences, and the downloads in the browser. Reporting a bug and looking for a new version are in the Preferences menu and the command list.
+- A double-click on something in a group goes straight to it, however many groups it is in: inside the group that holds it, with it selected. Escape climbs back out one group at a time, leaving the group you came out of selected. It stops at a component, which a second double-click opens, as before.
+- A floor plan imported to trace over, from a PDF or a picture, is kept twice as sharp: up to 8192 pixels on its longer side instead of 4096, so that small writing and thin lines on a large sheet stay readable (an A1 PDF comes in at about 250 dpi). A drawing holding a large scan is a few megabytes heavier for it.
+
+### Fixed
+- A click picks what is under the pointer rather than what is drawn over it a few pixels away: a wall next to the words of a note, a door at the tip of an arrow, are no longer passed over for them.
+
 ## 1.13.0 — 2026-11-20
 
 ### New

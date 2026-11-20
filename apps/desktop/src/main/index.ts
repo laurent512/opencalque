@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, net, safeStorage, shell, type WebContents } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, net, safeStorage, session, shell, type WebContents } from 'electron'
 import { spawn, type ChildProcess } from 'node:child_process'
 import { cpSync, existsSync, readFileSync } from 'node:fs'
 import { appendFile, copyFile, mkdir, readdir, readFile, realpath, rename, stat, unlink, writeFile } from 'node:fs/promises'
@@ -354,6 +354,15 @@ app.whenReady().then(() => {
     return void import('./mcp').then(({ serveAgents }) => serveAgents(app.getVersion(), () => app.exit(0)))
   }
   Menu.setApplicationMenu(null)
+
+  // A report of a bug or an idea may take a picture or a recording of part of the app
+  // (feedback/capture.ts, through getDisplayMedia). What is given is only the window's own page,
+  // without asking: never the screen or another window, which nothing in the app needs.
+  session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    const page = request.frame?.top
+    const ours = page && BrowserWindow.getAllWindows().some(({ webContents: { mainFrame } }) => mainFrame.processId === page.processId && mainFrame.routingId === page.routingId)
+    callback(ours && !request.audioRequested ? { video: page } : null)
+  })
 
   ipcMain.handle('file:open', async (event, extensions: string[]) => {
     const win = BrowserWindow.fromWebContents(event.sender)!

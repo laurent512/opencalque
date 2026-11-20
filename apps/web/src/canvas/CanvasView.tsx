@@ -23,7 +23,7 @@ import { finishOffset } from './gestures/offset'
 import { finishMove } from './gestures/move'
 import { finishTurn } from './gestures/turn'
 import { shownClearances, useClearances, type ScreenBox } from './clearances'
-import { lockedAmong, titleAt } from './picking'
+import { lockedAmong, pointedAt, titleAt } from './picking'
 import { get, local, reset, syncStep, type Canvas, type Move, type Release, type Shown } from './runtime'
 import { wheelMove, type WheelStream } from './wheel'
 import { connectStart } from './gestures/connect'
@@ -381,7 +381,7 @@ export function CanvasView() {
     // A finished measurement stays on screen until the next one starts.
     const { marker } = out
     const tracked = trackedPoints(c)
-    setOverlay((o) => ({ tracked: tracked.length > 0 ? tracked : undefined, cut: out.cut, trim: out.trim, lit: out.lit, loose: out.loose, face: out.face, box: out.turning, marker: marker && { ...marker, label: snapName(marker.kind) }, smart: out.smart ?? (marker?.guides ? { lines: marker.guides, gaps: [], dashed: marker.kind === 'extension' } : undefined), link: out.link, labels: out.labels, angle: out.angle, axis: out.axis, guide: out.guide, ghosts: out.ghosts, marquee: out.marquee, clearanceHover: out.clearanceHover, viewHover: out.viewHover, measure: out.measure ?? o.measure, angleReading: out.angleReading ?? o.angleReading }))
+    setOverlay((o) => ({ tracked: tracked.length > 0 ? tracked : undefined, cut: out.cut, trim: out.trim, lit: out.lit, hovered: out.hovered, loose: out.loose, face: out.face, box: out.turning, marker: marker && { ...marker, label: snapName(marker.kind) }, smart: out.smart ?? (marker?.guides ? { lines: marker.guides, gaps: [], dashed: marker.kind === 'extension' } : undefined), link: out.link, labels: out.labels, angle: out.angle, axis: out.axis, guide: out.guide, ghosts: out.ghosts, marquee: out.marquee, clearanceHover: out.clearanceHover, viewHover: out.viewHover, measure: out.measure ?? o.measure, angleReading: out.angleReading ?? o.angleReading }))
     // A failed preview has put its reason in the status bar; keep it there.
     if (out.previewed) useStore.setState({ status: out.status, drawLive: out.live })
   }
@@ -434,11 +434,15 @@ export function CanvasView() {
       select(whole ? connectedWalls(s.doc, hit.node, true) : run)
     } else if (hit?.node.type === 'instance') editComponent(hit.node.component, hit.node)
     else if (hit?.node.type === 'group') {
-      // Into the group, with what was double-clicked in it selected: a door seen through a group is
-      // picked up in one double-click, as a drawing program does.
-      editComponent(hit.id)
-      const inside = hitTest(buildScene(s.doc, hit.id, registry), toWorld(local(c, e), s.view), 5 / s.view.zoom)
-      if (inside) select([inside.id])
+      // Into the innermost group there, with what was double-clicked in it selected: a door seen
+      // through groups in groups is picked up in one double-click, and Esc climbs out a group at a
+      // time, the one left selected. It stops at a component's placement, which a second
+      // double-click goes into: changing a component changes it everywhere it is placed.
+      // It is the thing the pointer outlines (`pointedAt`).
+      const thing = pointedAt(c, local(c, e), toWorld(local(c, e), s.view))?.thing
+      if (!thing || thing.id === hit.id || !thing.node.parent) return editComponent(hit.id)
+      editComponent(thing.node.parent)
+      select([thing.id])
     }
     else if (hit?.node.type === 'text' || hit?.node.type === 'annotation') useStore.setState({ editingText: { id: hit.id } })
     else if (hit?.node.type === 'gridline') {
@@ -541,7 +545,8 @@ export function CanvasView() {
       onPointerMove={moveTo}
       onPointerUp={(e) => (onPointerUp(e), syncStep(c))}
       onPointerLeave={() => {
-        // A face pointed at is no longer once the pointer has gone, to the panels or elsewhere.
+        // A face or a thing pointed at is no longer once the pointer has gone, to the panels or elsewhere.
+        setOverlay((o) => (o.hovered ? { ...o, hovered: undefined } : o))
         if (c.gesture.kind !== 'idle' || !get().wallFace) return
         useStore.setState({ wallFace: null })
         setOverlay((o) => ({ ...o, face: undefined }))

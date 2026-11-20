@@ -1,4 +1,4 @@
-import { type ElevationItem, type ElevationSide, alignables, boundsFrame, dist, distToSegment, endLineShown, isLocked, wallEndsAt, sceneBounds, sub, wallEdgeLines, wallEndsOf, type Alignable, type Bounds, type Document, type Node, type NodeOf, type ResizeFrame, type SceneItem, type Vec2 } from '@opencalque/core'
+import { type ElevationItem, type ElevationSide, alignables, boundsFrame, dist, distToSegment, endLineShown, heldItems, hitTest, isLocked, wallEndsAt, sceneBounds, sub, wallEdgeLines, wallEndsOf, type Alignable, type Bounds, type Document, type Node, type NodeOf, type ResizeFrame, type SceneItem, type Vec2 } from '@opencalque/core'
 import { registry } from '../extensions'
 import { toWorld, visibleArea } from '../view'
 import { boxGrips, viewArrow } from './draw'
@@ -23,6 +23,32 @@ export function titleAt(c: Canvas, at: Vec2): SceneItem | null {
     return at.x >= x - 2 && at.x <= x + Math.max(30, title.text.length * 6.5) && at.y >= y - 20 && at.y <= y - 2
   })
   return (title && c.scene.find((item) => item.id === title.id && !item.locked)) ?? null
+}
+
+/**
+ * What groups hold, however deeply, each thing an item of its own (`heldItems`), kept while the
+ * drawing stays the same: every change makes a new `doc.nodes`. Worked out again at each move of
+ * the pointer, over a floor of a few hundred things grouped together, it could not keep up.
+ */
+const held = new WeakMap<object, Map<string, SceneItem[]>>()
+function heldIn(doc: Document, groupId: string): SceneItem[] {
+  let groups = held.get(doc.nodes)
+  if (!groups) held.set(doc.nodes, (groups = new Map()))
+  let items = groups.get(groupId)
+  if (!items) groups.set(groupId, (items = heldItems(doc, groupId, registry)))
+  return items
+}
+
+/**
+ * What a point of the canvas is on: what a click there picks up (`item`, an item of the scene),
+ * and the thing itself, however deeply it is grouped (`thing`), which a double-click goes to.
+ * They differ only on a group.
+ */
+export function pointedAt(c: Canvas, at: Vec2, world: Vec2): { item: SceneItem; thing: SceneItem } | null {
+  const { view, doc } = get()
+  const item = titleAt(c, at) ?? hitTest(c.scene, world, 5 / view.zoom)
+  if (item?.node.type !== 'group') return item && { item, thing: item }
+  return { item, thing: hitTest(heldIn(doc, item.id), world, 5 / view.zoom) ?? item }
 }
 
 /**

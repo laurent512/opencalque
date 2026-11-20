@@ -7,7 +7,7 @@
  * `src/feedback/report.ts`) and posts it as an issue on GitHub as the feedback GitHub App, so
  * that people need no GitHub account to send one. The App's private key is a secret of the
  * worker and never reaches the app. An issue made through GitHub's API cannot hold files, so the
- * files attached to a report (the drawing, a screenshot) are kept in an R2 bucket, served by
+ * files attached to a report (the drawing, pictures, recordings) are kept in an R2 bucket, served by
  * `GET /api/feedback/files/…`, and the issue links them. See ARCHITECTURE, "Reports from the
  * app", for setting it up.
  */
@@ -49,8 +49,10 @@ const CORS = {
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
 
 const FILES = '/api/feedback/files/'
-/** The only names files are kept under: a report's folder, then one of the two files it may have. */
-const FILE_NAME = /^\d{4}-\d\d-\d\d-[0-9a-f]{18}\/(screenshot\.png|drawing\.opencalque)$/
+/** The only names files are kept under: a report's folder, then one of the files it may have (`screenshot.png` is how 1.13's picture was kept). */
+const FILE_NAME = /^\d{4}-\d\d-\d\d-[0-9a-f]{18}\/(screenshot\.png|picture-[1-9]\.png|recording-[1-9]\.(webm|mp4)|drawing\.opencalque)$/
+
+const bytesOf = (base64: string) => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
 
 /** A folder name nobody can guess, so that attached files are found only from their issue. */
 function folder(now: Date): string {
@@ -59,15 +61,18 @@ function folder(now: Date): string {
 }
 
 async function storeAttachments(env: Env, origin: string, report: Report): Promise<StoredAttachments> {
-  if (!report.drawing && !report.screenshot) return {}
+  if (!report.drawing && !report.pictures && !report.recordings) return {}
   if (!env.FEEDBACK_FILES) return { missing: 'The person attached files, but this server keeps none.' }
   try {
     const at = folder(new Date())
     const stored: StoredAttachments = {}
-    if (report.screenshot) {
-      const bytes = Uint8Array.from(atob(report.screenshot), (c) => c.charCodeAt(0))
-      await env.FEEDBACK_FILES.put(`${at}/screenshot.png`, bytes, { httpMetadata: { contentType: 'image/png' } })
-      stored.screenshot = `${origin}${FILES}${at}/screenshot.png`
+    const store = async (name: string, base64: string, contentType: string) => {
+      await env.FEEDBACK_FILES!.put(`${at}/${name}`, bytesOf(base64), { httpMetadata: { contentType } })
+      return `${origin}${FILES}${at}/${name}`
+    }
+    if (report.pictures) stored.pictures = await Promise.all(report.pictures.map((picture, i) => store(`picture-${i + 1}.png`, picture, 'image/png')))
+    if (report.recordings) {
+      stored.recordings = await Promise.all(report.recordings.map((r, i) => store(`recording-${i + 1}.${r.type === 'video/mp4' ? 'mp4' : 'webm'}`, r.content, r.type)))
     }
     if (report.drawing) {
       const name = report.drawing.name.replace(/[^\p{L}\p{N} ._-]/gu, '_')

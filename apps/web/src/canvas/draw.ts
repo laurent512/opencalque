@@ -155,6 +155,12 @@ export interface Overlay {
   cut?: { at: Vec2; dir: Vec2; half: number; parts?: Vec2[][]; gap?: number }
   /** The object a tool would act on, lit up as if it were selected. */
   lit?: string
+  /**
+   * What the pointer is on with the select tool: the thing itself, however deeply it is grouped,
+   * outlined thinly (its lines, or the box of a component's placement, a text or a picture), and
+   * the box of the group a click would pick up instead (`group`), dashed.
+   */
+  hovered?: { thing: SceneItem; group?: { id: string; bounds: Bounds | null } }
   /** What the connect tool marks as left unconnected: the boxes of the lights that nothing controls. */
   loose?: Bounds[]
   /** What the trim tool would take away: the stretch of a wall or a line, along its line, and how wide to show it in pixels (a wall's thickness). */
@@ -696,10 +702,36 @@ export function drawScene(
     }
   }
 
+  // What the pointer is on, thinner than what is selected: the lines of the thing itself, however
+  // deeply grouped, or the box of a component's placement, whose every line would be noise, and of
+  // a text or a picture, which have none.
+  const thing = overlay.hovered && !selection.includes(overlay.hovered.thing.id) ? overlay.hovered.thing : undefined
+  const outlined = thing?.prims.filter((prim) => prim.kind !== 'text' && prim.kind !== 'image' && !prim.texture) ?? []
+  const boxed = thing && (thing.node.type === 'instance' || outlined.length === 0) ? thing.bounds : null
+  if (thing && !boxed) {
+    for (const prim of outlined) paint(ctx, { prim: { ...prim, stroke: ACCENT, strokeWidth: 1, dash: undefined }, stroke: true, fill: false, widthScale: 1, widthExtra: 0, seam: 0 }, view.zoom)
+  }
+
   screen()
   ctx.setLineDash([])
   ctx.strokeStyle = ACCENT
   ctx.lineWidth = 1
+  const outline = (b: Bounds) => {
+    const p = toScreen({ x: b.minX, y: b.minY })
+    const q = toScreen({ x: b.maxX, y: b.maxY })
+    ctx.strokeRect(Math.round(p.x) + 0.5, Math.round(p.y) + 0.5, Math.round(q.x - p.x), Math.round(q.y - p.y))
+  }
+  if (boxed) outline(boxed)
+  // The group a click would pick up rather than the thing pointed at, faintly: which of the two a
+  // click takes, and which a double-click, shows before either. None around a group already selected.
+  const group = overlay.hovered?.group
+  if (group?.bounds && !selection.includes(group.id)) {
+    ctx.globalAlpha = 0.6
+    ctx.setLineDash([4, 3])
+    outline(group.bounds)
+    ctx.setLineDash([])
+    ctx.globalAlpha = 1
+  }
   // One box around everything selected: it shows the selection as a whole, and is the area where
   // a right-click is about the selection. A single object with draggable handles needs none, and
   // nor do rooms, whose floor is outlined already and may be any shape: an arch in a rectangle.

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { executeById } from './commands'
 import { msg, t } from './i18n'
 import { platform } from './platform'
 import { RELEASES, REPOSITORY, VERSION } from './release'
@@ -12,9 +11,14 @@ const close = () => useWindows.setState({ aboutOpen: false })
 /** The headings the changelog files changes under, so that they can be shown in the user's language. */
 const HEADINGS: Record<string, string> = { New: msg('New'), Improved: msg('Improved'), Fixed: msg('Fixed') }
 
+/**
+ * Kept to a few words on one line. Reporting a bug and looking for a new version are in the
+ * Preferences menu and the command list; the downloads are offered only in the browser, where
+ * they are how to get the desktop app (which looks for its new versions itself).
+ */
 const LINKS: [string, string][] = [
   [msg('Source code'), REPOSITORY],
-  [msg('Downloads'), `${REPOSITORY}/releases`],
+  ...(platform.checkForUpdate ? [] : [[msg('Downloads'), `${REPOSITORY}/releases`] as [string, string]]),
 ]
 
 /**
@@ -54,17 +58,9 @@ export function About() {
                   {t(name)}
                 </a>
               ))}
-              <button className="link-button" onClick={() => useWindows.setState({ aboutOpen: false, feedbackOpen: true })}>
-                {t('Report a bug or suggest an idea')}
-              </button>
               <button className="link-button" onClick={() => setLicences(!licences)}>
                 {licences ? t('What is new') : t('Licences')}
               </button>
-              {platform.checkForUpdate && (
-                <button className="link-button" onClick={() => executeById('app.checkUpdate')}>
-                  {t('Check for a new version…')}
-                </button>
-              )}
             </p>
           </div>
           <button className="text-button" autoFocus onClick={close}>

@@ -185,6 +185,17 @@ describe('scene', () => {
     expect(hitTest(buildScene(doc, 'page_1', registry), { x: 500, y: 500 }, 1)).toBeNull()
   })
 
+  it('hit-tests what is nearest the point before what is drawn over it a little way off', () => {
+    // A wall, and over it a line that passes 4 mm above its top face: within reach of a click on the face.
+    const doc = applyOps(createDocument(), [wall('w', 0, 0, 1000, 0), { op: 'add_node', node: { type: 'line', id: 'l', parent: 'page_1', a: { x: 0, y: -104 }, b: { x: 1000, y: -104 } } }])
+    const scene = buildScene(doc, 'page_1', registry)
+    expect(hitTest(scene, { x: 500, y: -100 }, 5)?.id).toBe('w')
+    expect(hitTest(scene, { x: 500, y: -50 }, 5)?.id).toBe('w')
+    expect(hitTest(scene, { x: 500, y: -104 }, 5)?.id).toBe('l')
+    // Seen in the same place, within a fifth of the reach of each other, the one on top is taken.
+    expect(hitTest(scene, { x: 500, y: -102 }, 5)?.id).toBe('l')
+  })
+
   it('picks an object by its inside even when it is only an outline, and a plain shape by its line', () => {
     const doc = applyOps(createDocument(), [
       { op: 'add_node', node: { type: 'rect', id: 'frame', parent: 'page_1', x: -500, y: -500, width: 1000, height: 1000 } },

@@ -37,6 +37,57 @@ test('saves a drawing, then saves each change by itself', async ({ page }) => {
   expect((await page.evaluate(() => (window as any).saves[1])).match(/"type": "wall"/g)).toHaveLength(2)
 })
 
+test('imports a large scan as a plan to trace, kept up to 8192 pixels wide so that small details stay sharp', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  // A scan of 10000 × 5000 pixels, made in the page: a PNG of it is small, all white but a dot.
+  const png = await page.evaluate(async () => {
+    const scan = new OffscreenCanvas(10000, 5000)
+    const ctx = scan.getContext('2d')!
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, scan.width, scan.height)
+    ctx.fillStyle = '#000000'
+    ctx.fillRect(100, 100, 2, 2)
+    const bytes = new Uint8Array(await (await scan.convertToBlob({ type: 'image/png' })).arrayBuffer())
+    let text = ''
+    for (const byte of bytes) text += String.fromCharCode(byte)
+    return btoa(text)
+  })
+  const chooser = page.waitForEvent('filechooser')
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('Import floor plan')
+  await page.keyboard.press('Enter')
+  await (await chooser).setFiles({ name: 'scan.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') })
+  await expect(page.locator('.toast')).toContainText('Plan imported')
+  await page.keyboard.press('Control+s')
+  await expect.poll(() => page.evaluate(() => (window as any).saves.length)).toBe(1)
+  const saved = JSON.parse(await page.evaluate(() => (window as any).saves[0]))
+  const assets = Object.values(saved.assets) as { mime: string; width: number; height: number }[]
+  expect(assets.map(({ mime, width, height }) => [mime, width, height])).toEqual([['image/jpeg', 8192, 4096]])
+})
+
+test('imports a page of an A1 PDF as a plan to trace, drawn 8192 pixels wide and placed as if at 1:100', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  // A blank A1 sheet, landscape: 2384 × 1684 points.
+  const pdf = '%PDF-1.4\n1 0 obj <</Type/Catalog/Pages 2 0 R>> endobj\n2 0 obj <</Type/Pages/Kids[3 0 R]/Count 1>> endobj\n3 0 obj <</Type/Page/Parent 2 0 R/MediaBox[0 0 2384 1684]>> endobj\ntrailer <</Root 1 0 R>>\n%%EOF\n'
+  const chooser = page.waitForEvent('filechooser')
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('Import floor plan')
+  await page.keyboard.press('Enter')
+  await (await chooser).setFiles({ name: 'sheet.pdf', mimeType: 'application/pdf', buffer: Buffer.from(pdf) })
+  await expect(page.locator('.toast')).toContainText('Plan imported')
+  await page.keyboard.press('Control+s')
+  await expect.poll(() => page.evaluate(() => (window as any).saves.length)).toBe(1)
+  const saved = JSON.parse(await page.evaluate(() => (window as any).saves[0]))
+  const assets = Object.values(saved.assets) as { width: number; height: number }[]
+  expect(assets.map(({ width, height }) => [width, height])).toEqual([[8192, 5787]])
+  const plan = Object.values(saved.nodes).find((node: any) => node.type === 'image') as { width: number }
+  expect(plan.width).toBeCloseTo(((2384 * 25.4) / 72) * 100, 0)
+})
+
 test('a drawing saved under a name of its own takes that name, which exports then use', async ({ page }) => {
   await startWith(page)
   // A save dialog in which the user types "Cabin" over the name suggested.
@@ -727,6 +778,54 @@ test('inside a group, lines up what is moved with what is around the group, whic
   await page.mouse.move(...onScreen(250 + 3020, 1000), { steps: 6 })
   await page.mouse.up()
   await expect(field('X')).toHaveValue('3033')
+})
+
+test('outlines what the pointer is on through groups in groups, and goes to it in one double-click', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  // A group holding a box and a group, which holds another box: the outer group spans (0, 0) to (1500, 1500).
+  const rect = (id: string, parent: string, order: string, x: number, y: number) => ({ id, type: 'rect', parent, order, x, y, width: 500, height: 500, layer: 'layer_1' })
+  const plan = drawing({
+    set: { id: 'set', type: 'group', name: 'Set', parent: 'page_1', order: 'a1' },
+    corner: rect('corner', 'set', 'a0', 1000, 0),
+    inner: { id: 'inner', type: 'group', name: 'Inner', parent: 'set', order: 'a1' },
+    box: rect('box', 'inner', 'a0', 0, 1000),
+  })
+  await choose(page, () => page.keyboard.press('Control+o'), 'nested.opencalque', plan)
+  await expect(objectRows(page)).toHaveCount(1)
+  const onScreen = await drawingOnScreen(page)
+  // Whether the selection's blue is drawn within a few pixels of a point of the drawing.
+  const blueNear = (x: number, y: number) =>
+    page.evaluate(([x, y]) => {
+      const stage = document.querySelector<HTMLCanvasElement>('.stage canvas')!
+      const rect = stage.getBoundingClientRect()
+      const scale = stage.width / rect.width
+      const data = stage.getContext('2d')!.getImageData((x - rect.left) * scale - 3, (y - rect.top) * scale - 3, 7, 7).data
+      // Solid or faint: never the black of the lines nor the grey of the grid.
+      for (let i = 0; i < data.length; i += 4) if (data[i] < 150 && data[i + 1] > 120 && data[i + 1] < 215 && data[i + 2] > 215) return true
+      return false
+    }, onScreen(x, y))
+  // On the page, the inner box pointed at is outlined, its bottom too, and the box of the outer
+  // group a click would pick up is dashed, where nothing is drawn. The other box stays black.
+  expect(await blueNear(0, 500)).toBe(false)
+  expect(await blueNear(250, 1500)).toBe(false)
+  await page.mouse.move(...onScreen(250, 1000))
+  await expect.poll(() => blueNear(250, 1500)).toBe(true)
+  await expect.poll(() => blueNear(0, 500)).toBe(true)
+  expect(await blueNear(1250, 500)).toBe(false)
+  await page.mouse.move(...onScreen(3000, 3000))
+  await expect.poll(() => blueNear(0, 500)).toBe(false)
+  await expect.poll(() => blueNear(250, 1500)).toBe(false)
+  // One double-click goes into the inner group, the box selected; Esc lets go of it, then climbs out to the outer group, the inner one selected.
+  const crumbs = page.locator('.breadcrumb .crumb:not(.ahead)')
+  const selected = page.locator('[data-panel="objects"] .row.selected')
+  await page.mouse.dblclick(...onScreen(250, 1000))
+  await expect(crumbs).toHaveText(['Page 1', 'Set', 'Inner'])
+  await expect(selected).toHaveCount(1)
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await expect(crumbs).toHaveText(['Page 1', 'Set'])
+  await expect(selected).toHaveText(/Inner/)
 })
 
 test('says in the Structure list when an object is locked by its layer, which picking it on the drawing does not', async ({ page }) => {

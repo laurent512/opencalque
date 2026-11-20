@@ -100,6 +100,7 @@ export interface Shown {
   cut?: Overlay['cut']
   trim?: Overlay['trim']
   lit?: Overlay['lit']
+  hovered?: Overlay['hovered']
   loose?: Overlay['loose']
   angleReading?: Overlay['angleReading']
   face?: Overlay['face']

@@ -443,6 +443,8 @@ html.dock-dragging .tab-more {
 .dock-panel {
   height: 100%;
   overflow-y: auto;
+  /* The room of a scrollbar is kept, so that one appearing as the panel grows short moves nothing. */
+  scrollbar-gutter: stable;
 }
 
 /* Top bar */
@@ -538,6 +540,7 @@ html.dock-dragging .tab-more {
 .panel-body {
   flex: 1;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .tabs {
@@ -1608,6 +1611,9 @@ button.crumb.ahead:hover {
   width: min(520px, calc(100vw - 32px));
   max-height: 76vh;
   overflow-y: auto;
+  /* The room of a scrollbar is kept on both sides: content that grows past the height moves
+     nothing sideways, and stays centred where there is none. */
+  scrollbar-gutter: stable both-edges;
   border-radius: 12px;
   background: var(--bg);
   box-shadow: 0 16px 48px rgb(0 0 0 / 28%);
@@ -1709,6 +1715,8 @@ button.crumb.ahead:hover {
   min-height: 0;
   padding: 12px 24px 20px;
   overflow-y: auto;
+  /* From a short page to a long one, the scrollbar's room is kept: the settings do not move sideways. */
+  scrollbar-gutter: stable;
 }
 
 .prefs-content .pref-row > .faint {
@@ -1991,18 +1999,242 @@ button.crumb.ahead:hover {
   border-color: var(--accent);
 }
 
-.feedback-screenshot {
-  display: block;
-  max-width: 100%;
-  max-height: 160px;
-  margin: 4px 0 8px 24px;
+.feedback-kind {
+  margin: 4px 0 10px;
+}
+
+.feedback-kind button {
+  height: 28px;
+}
+
+/* What is attached, as tiles of one size, each with its cross to take it out */
+.feedback-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.feedback-tile {
+  position: relative;
+  width: 96px;
+  height: 68px;
+}
+
+.feedback-thumb {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
   border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--hover);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+}
+
+button.feedback-thumb {
+  cursor: zoom-in;
+}
+
+button.feedback-thumb:hover,
+button.feedback-thumb:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.feedback-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.feedback-thumb.file > span {
+  max-width: 100%;
+  padding: 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.feedback-play {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 5px;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 60%);
+  color: #fff;
+  font-size: 10px;
+}
+
+.feedback-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.feedback-remove:hover {
+  border-color: var(--danger-text);
+  color: var(--danger-text);
+}
+
+.feedback-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.feedback-add .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* A picture or a recording at full size, over the window */
+.feedback-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: rgb(0 0 0 / 70%);
+  cursor: zoom-out;
+}
+
+.feedback-preview img,
+.feedback-preview video {
+  max-width: 100%;
+  max-height: 100%;
   border-radius: 4px;
+  background: var(--bg);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 40%);
+}
+
+.feedback-preview video {
+  cursor: default;
+}
+
+/* Choosing the area to take or record: the app as it was, frozen, over the whole window */
+.area-picker {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  overflow: hidden;
+  background: #000;
+  cursor: crosshair;
+  outline: 0;
+  user-select: none;
+  touch-action: none;
+  -webkit-app-region: no-drag;
+}
+
+.area-picker > canvas {
+  position: absolute;
+}
+
+.area-picker-dim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 30%);
+}
+
+.area-picker-box {
+  position: absolute;
+  outline: 2px solid var(--accent);
+  box-shadow: 0 0 0 200vmax rgb(0 0 0 / 40%);
+}
+
+.area-picker-hint {
+  position: absolute;
+  top: 48px;
+  left: 50%;
+  margin: 0;
+  padding: 8px 14px;
+  transform: translateX(-50%);
+  border-radius: 8px;
+  background: var(--bg);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 30%);
+  color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* While recording: the area outlined, just outside it, and the bar to stop beside it */
+.recording-outline {
+  position: fixed;
+  z-index: 1000;
+  outline: 2px dashed #e5484d;
+  outline-offset: 2px;
+  pointer-events: none;
+}
+
+.recording-bar {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 8px 0 14px;
+  transform: translateX(-50%);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--bg);
+  box-shadow: 0 6px 24px rgb(0 0 0 / 25%);
+  -webkit-app-region: no-drag;
+}
+
+.recording-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e5484d;
+  animation: recording-blink 1s steps(2, start) infinite;
+}
+
+@keyframes recording-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+.recording-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.recording-bar .pill {
+  padding: 0 14px;
 }
 
 .feedback-errors {
   max-height: 120px;
-  margin: 4px 0 8px 24px;
+  margin: 4px 0 8px;
   padding: 6px 8px;
   overflow: auto;
   border-radius: 4px;
@@ -2069,6 +2301,7 @@ button.crumb.ahead:hover {
   flex: 1;
   padding: 8px 12px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   user-select: text;
 }
 
@@ -2378,6 +2611,7 @@ button.crumb.ahead:hover {
   padding: 8px;
   border-right: 1px solid var(--border);
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .warehouse-sections h5 {
@@ -2548,6 +2782,7 @@ button.crumb.ahead:hover {
   gap: 10px;
   padding: 4px 16px 16px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .warehouse-card {
@@ -2644,6 +2879,7 @@ button.crumb.ahead:hover {
   flex: 1;
   padding: 0 16px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .warehouse-row {
@@ -2848,7 +3084,7 @@ button.crumb.ahead:hover {
 /* Welcome window: where to begin */
 
 .dialog.welcome {
-  width: min(660px, calc(100vw - 32px));
+  width: min(680px, calc(100vw - 32px));
   max-height: 84vh;
 }
 
@@ -2856,7 +3092,12 @@ button.crumb.ahead:hover {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 24px 24px 6px;
+  padding: 24px 24px 8px;
+}
+
+.welcome-title {
+  flex: 1;
+  min-width: 0;
 }
 
 .welcome-head h2 {
@@ -2871,33 +3112,84 @@ button.crumb.ahead:hover {
   flex: none;
 }
 
+/* What changed in this version, in the corner: there to be seen, not in the way. */
+.welcome-news {
+  display: inline-flex;
+  flex: none;
+  align-self: flex-start;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.welcome-news svg {
+  color: var(--accent);
+}
+
+.welcome-news span {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.welcome-news:hover,
+.welcome-news:focus-visible {
+  border-color: var(--accent);
+  color: var(--text);
+  outline: none;
+}
+
 .welcome-choices {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  padding: 16px 24px;
+  gap: 12px;
+  padding: 16px 24px 18px;
 }
 
 .welcome-choice {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 14px;
+  gap: 4px;
+  padding: 16px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
   background: var(--bg);
   text-align: left;
   cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s, transform 0.12s;
 }
 
 .welcome-choice:hover,
 .welcome-choice:focus-visible {
   border-color: var(--accent);
-  background: var(--accent-soft);
+  box-shadow: 0 4px 14px rgb(13 153 255 / 14%);
+  transform: translateY(-1px);
   outline: none;
 }
 
-.welcome-choice svg {
+.welcome-choice i {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 8px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* The export dialog's formats use the same cards, with the icon bare. */
+.welcome-choice > svg {
   margin-bottom: 4px;
   color: var(--accent);
 }
@@ -2905,7 +3197,7 @@ button.crumb.ahead:hover {
 .welcome-choice span {
   color: var(--muted);
   font-size: 12px;
-  line-height: 1.35;
+  line-height: 1.4;
 }
 
 .welcome-recent {
@@ -2936,11 +3228,16 @@ button.crumb.ahead:hover {
   background: var(--hover);
 }
 
+/* A long path must not squeeze the icon or the name: only the path gives way. */
+.welcome-recent button svg,
 .welcome-recent button span {
+  flex: none;
   white-space: nowrap;
 }
 
 .welcome-recent button .faint {
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   font-size: 12px;
   text-overflow: ellipsis;
@@ -2950,35 +3247,36 @@ button.crumb.ahead:hover {
 
 .dialog.welcome footer {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px 10px 24px;
+  gap: 4px 16px;
+  padding: 10px 14px 10px 24px;
   border-top: 1px solid var(--border);
   color: var(--muted);
 }
 
-.dialog.welcome footer label {
+/* Each says one thing on one line; on a narrow screen they go one under the other, never broken. */
+.dialog.welcome footer label,
+.welcome-feedback {
   display: flex;
   align-items: center;
   gap: 8px;
+  white-space: nowrap;
 }
 
-.welcome-links {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.welcome-links .text-button {
-  display: inline-flex;
-  align-items: center;
+.dialog.welcome footer .welcome-feedback {
   gap: 5px;
-  margin: 4px 0 4px 12px;
+  margin: 4px 0;
 }
 
 @media (max-width: 560px) {
   .welcome-choices {
     grid-template-columns: 1fr;
+  }
+
+  .welcome-head {
+    flex-wrap: wrap;
   }
 }
 
@@ -3013,8 +3311,10 @@ button.crumb.ahead:hover {
 
 .about-links {
   display: flex;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 4px 16px;
   padding-top: 6px;
+  white-space: nowrap;
 }
 
 .about-links a {
@@ -3050,6 +3350,7 @@ button.crumb.ahead:hover {
   min-height: 0;
   padding: 6px 24px 20px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   border-top: 1px solid var(--border);
 }
 
@@ -4186,7 +4487,11 @@ button.crumb.ahead:hover {
 /* Unsaved work offered back at the top of the welcome window (recovery.ts) */
 
 .welcome-recover {
-  padding-top: 12px;
+  margin: 12px 24px 0;
+  padding: 8px 8px 6px;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--danger) 6%, var(--bg));
 }
 
 .welcome-recover-row {
@@ -4200,7 +4505,15 @@ button.crumb.ahead:hover {
 }
 
 .welcome-recover h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 8px 4px;
   color: var(--danger-text);
+}
+
+.welcome-recover-row button:first-child:hover {
+  background: color-mix(in srgb, var(--danger) 10%, var(--bg));
 }
 
 /* What the next message tells the assistant is selected (AssistantPanel.tsx) */
@@ -4405,17 +4718,22 @@ button.crumb.ahead:hover {
   min-height: 408px;
 }
 
-.fill-tabs {
+/* Tabs (`Tabs` in ui.tsx): equal widths when the names fit, and on one line each, a longer name
+   taking the room the shorter ones leave. Every tab is as bold as the chosen one, so choosing
+   moves no text. */
+.segments {
   display: flex;
   gap: 2px;
-  margin-bottom: 8px;
   padding: 2px;
   border-radius: 6px;
   background: var(--hover);
 }
 
-/* On one line each: a longer name takes the room the shorter ones leave. */
-.fill-tabs button {
+.fill-tabs {
+  margin-bottom: 8px;
+}
+
+.segments button {
   flex: 1;
   height: 24px;
   white-space: nowrap;
@@ -4428,11 +4746,11 @@ button.crumb.ahead:hover {
   cursor: pointer;
 }
 
-.fill-tabs button:hover {
+.segments button:hover {
   color: var(--text);
 }
 
-.fill-tabs button.active {
+.segments button.active {
   background: var(--bg);
   box-shadow: 0 0 0 1px var(--border), 0 1px 2px rgb(0 0 0 / 8%);
   color: var(--text);

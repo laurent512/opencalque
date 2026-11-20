@@ -57,7 +57,7 @@ import { gridStep } from '../../view'
 import { formatLength, formatNumber } from '../../units'
 import { heldNearest, lineEnd, snap, squareFrom, type Target } from '../aim'
 import { ALIGN_REACH, MOUNT_REACH, SNAP_REACH, TOUCH_REACH, type ElevationEdges, type GestureOf } from '../gesture'
-import { clearanceAt, cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, inViewGripAt, lineUp, titleAt, viewEdgeAt, viewLineHandleAt } from '../picking'
+import { clearanceAt, cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, inViewGripAt, lineUp, pointedAt, titleAt, viewEdgeAt, viewLineHandleAt } from '../picking'
 import { get, type Canvas, type Move, type Press, type Release } from '../runtime'
 import { logMoveEnd, logMoveStart, logMoveStep } from '../snapLog'
 import { faceAcross, faceOf, paperLabel, resizeCursor, round, sizes, thicknessLabel, thicknessStep, wallNormal } from '../shapes'
@@ -599,9 +599,13 @@ export const hover: Move<'idle'> = (c, _g, _e, at, world, out) => {
   if (shown !== c.gripCursor) c.setGripCursor(shown)
   const over = ending ? 'end hover' : faced ? 'hover' : null
   if (s.wallFace !== over) useStore.setState({ wallFace: over })
-  // On a view line or a view, what it sees is shown faintly, to know what it covers without selecting it.
-  if (s.tool === 'select' && shown === null) {
-    const hit = hitTest(c.scene, world, 5 / s.view.zoom)
+  // What a click would pick up is outlined, and on a view line or a view, what it sees is shown
+  // faintly, to know what it covers without selecting it. Not over a grip or a face, where a press
+  // does something else, nor while words are typed in place.
+  if (s.tool === 'select' && shown === null && !s.editingText) {
+    const pointed = pointedAt(c, at, world)
+    const hit = pointed?.item
+    if (pointed) out.hovered = { thing: pointed.thing, ...(pointed.thing !== hit ? { group: { id: hit!.id, bounds: hit!.bounds } } : {}) }
     const type = hit && s.doc.nodes[hit.id]?.type
     if (type === 'viewline' || type === 'elevation') out.viewHover = hit!.id
   }

@@ -6,11 +6,23 @@
 
 export type ReportKind = 'bug' | 'idea'
 
+/** The kinds of video a recording may be: what `MediaRecorder` writes in Chromium (WebM) and in Safari (MP4). */
+export const RECORDING_TYPES = ['video/webm', 'video/mp4'] as const
+export type RecordingType = (typeof RECORDING_TYPES)[number]
+
+/** A short recording of part of the app, base64 without the `data:` prefix. */
+export interface Recording {
+  type: RecordingType
+  content: string
+  /** How long it lasts, as the app measured it while recording. */
+  seconds: number
+}
+
 export interface Report {
   kind: ReportKind
   title: string
   description: string
-  /** For a bug: what the person expected instead. */
+  /** What the person expected instead: a field of its own up to 1.13, now part of the description. Still read from those versions. */
   expected?: string
   /** Where it was sent from, label → value (version, web or desktop, system, language…), shown in the issue as a table. */
   environment: Record<string, string>
@@ -18,8 +30,13 @@ export interface Report {
   errors?: string[]
   /** The open drawing without its pictures (`withoutAssets`), as saved, when the person chose to attach it. */
   drawing?: { name: string; content: string }
-  /** The drawing area as a PNG, base64 without the `data:` prefix, when the person chose to attach it. */
-  screenshot?: string
+  /**
+   * Pictures of parts of the app the person took, PNGs in base64 without the `data:` prefix.
+   * (Up to 1.13 a report sent one, `screenshot`, which `checkReport` reads as the first.)
+   */
+  pictures?: string[]
+  /** Short recordings of part of the app the person made. */
+  recordings?: Recording[]
 }
 
 export const LIMITS = {
@@ -33,16 +50,47 @@ export const LIMITS = {
   error: 2_000,
   /** Characters of the drawing as saved: a plan without pictures is far smaller. */
   drawing: 3_000_000,
-  /** Characters of base64. */
-  screenshot: 3_000_000,
+  pictures: 6,
+  /** Characters of base64 of one picture. */
+  picture: 3_000_000,
+  recordings: 2,
+  /** Characters of base64 of one recording. */
+  recording: 8_000_000,
+  /** Seconds of one recording: the app stops it there. */
+  seconds: 30,
   /** The whole request, which holds all of the above. */
-  body: 7_000_000,
+  body: 25_000_000,
 }
 
 /** Labels every issue sent from the app carries, by kind. `from-app` says there is no GitHub account to answer. */
 export const LABELS: Record<ReportKind, string[]> = { bug: ['bug', 'from-app'], idea: ['enhancement', 'from-app'] }
 
 const text = (value: unknown): value is string => typeof value === 'string'
+const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/
+
+/** The first bytes of a file in base64, to tell what it is from what it says it is. */
+function head(base64: string): string {
+  try {
+    return atob(base64.slice(0, 16))
+  } catch {
+    return ''
+  }
+}
+const isPng = (base64: string) => head(base64).startsWith('\x89PNG')
+const isVideo = (base64: string, type: RecordingType) => (type === 'video/webm' ? head(base64).startsWith('\x1a\x45\xdf\xa3') : head(base64).slice(4, 8) === 'ftyp')
+
+/** A picture as sent, or what is wrong with it. */
+function checkPicture(value: unknown): string | null {
+  return text(value) && value.length <= LIMITS.picture && BASE64.test(value) && isPng(value) ? null : 'Each picture must be a PNG in base64, of a reasonable size'
+}
+
+function checkRecording(value: unknown): string | null {
+  const r = value as Record<string, unknown> | null
+  if (!r || !RECORDING_TYPES.includes(r.type as RecordingType)) return `A recording must be one of ${RECORDING_TYPES.join(', ')}`
+  if (typeof r.seconds !== 'number' || !(r.seconds >= 0 && r.seconds <= LIMITS.seconds + 5)) return `A recording lasts at most ${LIMITS.seconds} seconds`
+  if (!text(r.content) || r.content.length > LIMITS.recording || !BASE64.test(r.content) || !isVideo(r.content, r.type as RecordingType)) return 'Each recording must be a video in base64, of a reasonable size'
+  return null
+}
 
 /** Reads a report sent over the network, or says what is wrong with it. */
 export function checkReport(input: unknown): Report | string {
@@ -69,7 +117,21 @@ export function checkReport(input: unknown): Report | string {
     if (!d || !text(d.name) || !text(d.content) || d.name.length > 200) return 'drawing must have a name and a content'
     if (d.content.length > LIMITS.drawing) return 'The drawing is too large to attach'
   }
-  if (r.screenshot !== undefined && (!text(r.screenshot) || r.screenshot.length > LIMITS.screenshot || !/^[A-Za-z0-9+/]*={0,2}$/.test(r.screenshot))) return 'The screenshot must be a PNG in base64, of a reasonable size'
+  // 1.13 sent one picture, as `screenshot`.
+  const pictures = [...(r.screenshot !== undefined ? [r.screenshot] : []), ...(Array.isArray(r.pictures) ? r.pictures : [])]
+  if (r.pictures !== undefined && !Array.isArray(r.pictures)) return 'pictures must be a list'
+  if (pictures.length > LIMITS.pictures) return `At most ${LIMITS.pictures} pictures`
+  for (const picture of pictures) {
+    const wrong = checkPicture(picture)
+    if (wrong) return wrong
+  }
+  if (r.recordings !== undefined) {
+    if (!Array.isArray(r.recordings) || r.recordings.length > LIMITS.recordings) return `recordings must be a list of at most ${LIMITS.recordings}`
+    for (const recording of r.recordings) {
+      const wrong = checkRecording(recording)
+      if (wrong) return wrong
+    }
+  }
   return {
     kind: r.kind,
     title: r.title.trim(),
@@ -78,7 +140,8 @@ export function checkReport(input: unknown): Report | string {
     environment: Object.fromEntries(environment) as Record<string, string>,
     ...(Array.isArray(r.errors) && r.errors.length > 0 && { errors: r.errors as string[] }),
     ...(r.drawing !== undefined && { drawing: r.drawing as Report['drawing'] }),
-    ...(text(r.screenshot) && r.screenshot && { screenshot: r.screenshot }),
+    ...(pictures.length > 0 && { pictures: pictures as string[] }),
+    ...(Array.isArray(r.recordings) && r.recordings.length > 0 && { recordings: (r.recordings as Recording[]).map(({ type, content, seconds }) => ({ type, content, seconds })) }),
   }
 }
 
@@ -104,7 +167,8 @@ const cell = (value: string) => inert(value).replace(/\r?\n/g, ' ').replace(/\|/
 /** Where the attached files were stored, to link them from the issue. */
 export interface StoredAttachments {
   drawing?: string
-  screenshot?: string
+  pictures?: string[]
+  recordings?: string[]
   /** Why the attachments the person chose are not there, when they could not be stored. */
   missing?: string
 }
@@ -114,7 +178,11 @@ export function issueBody(report: Report, stored: StoredAttachments = {}): strin
   const parts: string[] = [report.description.trim() ? inert(report.description.trim()) : '_No description._']
   if (report.expected?.trim()) parts.push(`### Expected\n\n${inert(report.expected.trim())}`)
   const attached: string[] = []
-  if (stored.screenshot) attached.push(`![The drawing area when the report was written](${stored.screenshot})`)
+  stored.pictures?.forEach((url, i) => attached.push(`![Picture ${i + 1} taken in the app](${url})`))
+  if (stored.recordings?.length) {
+    const length = (i: number) => (report.recordings?.[i] ? ` (${Math.round(report.recordings[i].seconds)} s)` : '')
+    attached.push(stored.recordings.map((url, i) => `- Recording ${i + 1}${length(i)}: [${url.split('/').pop()}](${url})`).join('\n'))
+  }
   if (stored.drawing) attached.push(`- Drawing: [${cell(report.drawing?.name ?? 'drawing.opencalque')}](${stored.drawing})`)
   if (stored.missing) attached.push(`_${stored.missing}_`)
   if (attached.length > 0) parts.push(`### Attached\n\n${attached.join('\n\n')}`)
@@ -136,7 +204,7 @@ export const issueTitle = (report: Report) => inert(report.title.trim()).slice(0
 export function newIssueUrl(repository: string, report: Report): string {
   const room = 5000
   const cut = report.description.length > room ? { ...report, description: `${report.description.slice(0, room)}…` } : report
-  const body = issueBody({ ...cut, errors: cut.errors?.slice(-5), drawing: undefined, screenshot: undefined }).replace(/\n\n_Sent from inside OpenCalque[^]*$/, '')
+  const body = issueBody({ ...cut, errors: cut.errors?.slice(-5), drawing: undefined, pictures: undefined, recordings: undefined }).replace(/\n\n_Sent from inside OpenCalque[^]*$/, '')
   const query = new URLSearchParams({ title: report.title.trim(), body, labels: LABELS[report.kind][0] })
   return `${repository}/issues/new?${query}`
 }

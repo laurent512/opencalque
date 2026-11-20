@@ -123,16 +123,37 @@ export function sceneBounds(scene: SceneItem[]): Bounds | null {
 /** A component or an object is a thing, not a set of lines: inside one of its closed shapes is on it. */
 const isSolid = (item: SceneItem) => item.node.type === 'instance' || item.node.type === 'parametric'
 
-/** The topmost unlocked item within `tolerance` of the point. */
+/** How far an item is from a point, as a click finds it: 0 on it or inside what it fills. */
+function distToItem(item: SceneItem, p: Vec2): number {
+  const solid = isSolid(item)
+  let best = Infinity
+  for (const prim of item.prims) {
+    if (solid && insidePrimitive(prim, p)) return 0
+    best = Math.min(best, distToPrimitive(prim, p))
+    if (best === 0) return 0
+  }
+  return item.area?.some((outline) => pointInPolygon(p, outline)) ? 0 : best
+}
+
+/**
+ * The unlocked item within `tolerance` of the point that is nearest it, the topmost of those as
+ * near: a wall the pointer is on, not the words of a note a few pixels off, which are drawn over
+ * it. What lies under must be nearer by a fifth of the tolerance to win, so that of two things
+ * seen in the same place, the one on top is taken.
+ */
 export function hitTest(scene: SceneItem[], p: Vec2, tolerance: number): SceneItem | null {
-  for (let i = scene.length - 1; i >= 0; i--) {
+  let best: SceneItem | null = null
+  let nearest = Infinity
+  for (let i = scene.length - 1; i >= 0 && nearest > 0; i--) {
     const item = scene[i]
     if (item.locked || !item.bounds || !boundsContainPoint(item.bounds, p, tolerance)) continue
-    const solid = isSolid(item)
-    if (item.prims.some((prim) => distToPrimitive(prim, p) <= tolerance || (solid && insidePrimitive(prim, p)))) return item
-    if (item.area?.some((outline) => pointInPolygon(p, outline))) return item
+    const off = distToItem(item, p)
+    if (off <= tolerance && (best === null || off < nearest - tolerance / 5)) {
+      best = item
+      nearest = off
+    }
   }
-  return null
+  return best
 }
 
 /** Unlocked items lying entirely inside the rectangle. */

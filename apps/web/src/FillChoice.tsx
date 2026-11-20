@@ -6,7 +6,7 @@ import { ColorChoice, ColorPanel, colorState, lastColor, swatch, type LayerOptio
 import { FLOATING, useFloating } from './floating'
 import { msg, t } from './i18n'
 import { useStore } from './store'
-import { Field, OpacitySlider } from './ui'
+import { Field, OpacitySlider, Tabs } from './ui'
 import { WeightChoice } from './WeightChoice'
 
 /** The patterns a fill can have, each with its name and a small picture of its strokes. */
@@ -264,13 +264,13 @@ export function FillChoice(props: {
         // At the top of the page, as the colour window is: a bar moved into place would take it along.
         createPortal(
           <div className={`color-menu fill-menu ${FLOATING}`} ref={menu} style={style} role="dialog" aria-label={t('Fill')} onClick={(e) => e.stopPropagation()}>
-            <div className="fill-tabs" role="tablist" aria-label={t('Kind of fill')}>
-              {PAGES.filter(([which]) => which !== 'none' || !filled).map(([which, name]) => (
-                <button key={which} type="button" role="tab" aria-selected={which === kind} className={which === kind ? 'active' : ''} onClick={() => choose(which)}>
-                  {t(name)}
-                </button>
-              ))}
-            </div>
+            <Tabs
+              className="fill-tabs"
+              label={t('Kind of fill')}
+              value={kind}
+              options={PAGES.filter(([which]) => which !== 'none' || !filled).map(([which, name]) => ({ value: which, label: t(name) }))}
+              onChange={choose}
+            />
             {page === 'none' && <p className="hint">{t('No fill: what lies under it shows through.')}</p>}
             {/* Where having no fill of its own is having no fill, the None tab above is the way back to it. */}
             {page === 'solid' && <ColorPanel stored={fill} fallback={solid} unset={unset} layer={layer} close={close} noReset={noFill === undefined} commit={(next) => commit({ fill: next as string | undefined })} />}

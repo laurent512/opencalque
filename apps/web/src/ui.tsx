@@ -434,3 +434,20 @@ export function DashPicker(props: { value: unknown; none?: boolean; label?: stri
     </div>
   )
 }
+
+/**
+ * A choice among a few, all in sight: a row of tabs. The tabs take equal widths when the names
+ * fit, so moving from one to another moves nothing; use it where a `Select` would hide choices
+ * that are better seen side by side.
+ */
+export function Tabs<T extends string>(props: { label: string; value: T | undefined; options: { value: T; label: string }[]; onChange: (value: T) => void; className?: string }) {
+  return (
+    <div className={props.className ? `segments ${props.className}` : 'segments'} role="tablist" aria-label={props.label}>
+      {props.options.map((option) => (
+        <button key={option.value} type="button" role="tab" aria-selected={option.value === props.value} className={option.value === props.value ? 'active' : ''} onClick={() => props.onChange(option.value)}>
+          {option.label}
+        </button>
+      ))}
+    </div>
+  )
+}

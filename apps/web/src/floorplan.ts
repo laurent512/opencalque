@@ -8,20 +8,30 @@ import { apply, layerHere, select, setTool, useStore } from './store'
 import { visibleArea } from './view'
 import { toast } from './windows'
 
-/** Largest side, in pixels, of the picture kept in the drawing. Bigger scans are scaled down. */
-const MAX_PIXELS = 4096
+/**
+ * Largest side, in pixels, of a plan to trace kept in the drawing, then the size to fall back to
+ * where a browser cannot hold a canvas that large (Safari on an iPad, around 4096 × 4096). Bigger
+ * scans are scaled down. 8192 keeps an A1 sheet at about 250 dpi, small writing readable.
+ */
+const PLAN_PIXELS = [8192, 4096]
+/** Largest side, in pixels, of a pasted picture (a screenshot, an image from a browser). */
+const PICTURE_PIXELS = 4096
 
-interface Picture {
-  canvas: HTMLCanvasElement
+/** A page of a PDF or a picture, opened once and drawn at the size asked for. */
+interface Source {
+  /** The picture with its longer side at most `max` pixels, or null when the browser cannot make a canvas that large. */
+  draw(max: number): Promise<HTMLCanvasElement | null>
   /** A first guess at the width the picture covers, in mm. Calibration replaces it. */
   width: number
 }
 
-function blankCanvas(width: number, height: number, see = false): [HTMLCanvasElement, CanvasRenderingContext2D] {
+function blankCanvas(width: number, height: number, see = false): [HTMLCanvasElement, CanvasRenderingContext2D] | null {
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(width)
   canvas.height = Math.round(height)
-  const ctx = canvas.getContext('2d')!
+  // Null when the canvas is larger than the browser allows.
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
   // Plans are stored as JPEG, which has no transparency: anything see-through becomes white paper.
   if (!see) {
     ctx.fillStyle = '#ffffff'
@@ -31,10 +41,10 @@ function blankCanvas(width: number, height: number, see = false): [HTMLCanvasEle
 }
 
 /**
- * A page of a PDF as a picture: its only page, or the one the user asks for. Null when they give
- * up. A PDF knows its paper size, so the guess assumes it was drawn at 1:100.
+ * A page of a PDF: its only page, or the one the user asks for. Null when they give up. A PDF
+ * knows its paper size, so the guess assumes it was drawn at 1:100.
  */
-async function fromPdf(bytes: Uint8Array): Promise<Picture | null> {
+async function fromPdf(bytes: Uint8Array): Promise<Source | null> {
   // Loaded on demand: the PDF library is larger than the rest of the app.
   const pdfjs = await import('pdfjs-dist')
   // Running the "worker" code on this thread avoids a separate worker file, which a desktop app
@@ -49,18 +59,46 @@ async function fromPdf(bytes: Uint8Array): Promise<Picture | null> {
   }
   const page = await pdf.getPage(number)
   const paper = page.getViewport({ scale: 1 })
-  const viewport = page.getViewport({ scale: Math.min(4, MAX_PIXELS / Math.max(paper.width, paper.height)) })
-  const [canvas, ctx] = blankCanvas(viewport.width, viewport.height)
-  await page.render({ canvas, canvasContext: ctx, viewport }).promise
-  return { canvas, width: ((paper.width * 25.4) / 72) * 100 }
+  return {
+    width: ((paper.width * 25.4) / 72) * 100,
+    async draw(max) {
+      // At most 4 times the PDF's own 72 dpi: 288 dpi is sharper than any screen shows a plan.
+      const viewport = page.getViewport({ scale: Math.min(4, max / Math.max(paper.width, paper.height)) })
+      const blank = blankCanvas(viewport.width, viewport.height)
+      if (!blank) return null
+      const [canvas, ctx] = blank
+      await page.render({ canvas, canvasContext: ctx, viewport }).promise
+      return canvas
+    },
+  }
 }
 
-async function fromImage(bytes: Uint8Array, see = false): Promise<Picture> {
+async function fromImage(bytes: Uint8Array, see = false): Promise<Source> {
   const bitmap = await createImageBitmap(new Blob([bytes as BlobPart]))
-  const scale = Math.min(1, MAX_PIXELS / Math.max(bitmap.width, bitmap.height))
-  const [canvas, ctx] = blankCanvas(bitmap.width * scale, bitmap.height * scale, see)
-  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-  return { canvas, width: 10000 }
+  return {
+    width: 10000,
+    async draw(max) {
+      const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height))
+      const blank = blankCanvas(bitmap.width * scale, bitmap.height * scale, see)
+      if (!blank) return null
+      const [canvas, ctx] = blank
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+      return canvas
+    },
+  }
+}
+
+/**
+ * A plan drawn at the largest of `PLAN_PIXELS` the browser can hold, as JPEG. A browser that
+ * cannot hold a canvas so large may also make one that stays empty, whose JPEG is then nothing.
+ */
+async function planJpeg(source: Source): Promise<{ data: string; width: number; height: number }> {
+  for (const max of PLAN_PIXELS) {
+    const canvas = await source.draw(max)
+    const data = canvas?.toDataURL('image/jpeg', 0.85).split(',')[1]
+    if (canvas && data) return { data, width: canvas.width, height: canvas.height }
+  }
+  throw new Error(t('This picture is too large to open here.'))
 }
 
 /** Whether any of a picture is see-through. */
@@ -78,7 +116,8 @@ function seeThrough(canvas: HTMLCanvasElement): boolean {
  * Kept as JPEG, or as PNG when some of it is see-through (a logo), so that it stays so.
  */
 export async function placePicture(bytes: Uint8Array, at?: Vec2): Promise<void> {
-  const { canvas } = await fromImage(bytes, true)
+  const canvas = await (await fromImage(bytes, true)).draw(PICTURE_PIXELS)
+  if (!canvas) throw new Error(t('This picture is too large to open here.'))
   const see = seeThrough(canvas)
   const { scope, view, viewport } = useStore.getState()
   const area = visibleArea(view, viewport) ?? { minX: 0, minY: 0, maxX: 10000, maxY: 10000 }
@@ -115,10 +154,11 @@ export const importFloorPlan = () =>
  */
 export async function placeFloorPlan(file: { name: string; bytes: Uint8Array }, at?: Vec2): Promise<void> {
   {
-    const picture = /\.pdf$/i.test(file.name) ? await fromPdf(file.bytes) : await fromImage(file.bytes)
-    if (!picture) return
-    const { canvas, width } = picture
-    const height = (width * canvas.height) / canvas.width
+    const source = /\.pdf$/i.test(file.name) ? await fromPdf(file.bytes) : await fromImage(file.bytes)
+    if (!source) return
+    const picture = await planJpeg(source)
+    const { width } = source
+    const height = (width * picture.height) / picture.width
     const { doc, scope, view, viewport } = useStore.getState()
     const reference = t('Reference')
     // On a layer of its own, but on none inside a component, whose placements give theirs.
@@ -127,7 +167,7 @@ export async function placeFloorPlan(file: { name: string; bytes: Uint8Array }, 
     const node = newId()
     const ops: Op[] = [
       ...(!placed.layer || doc.layers[placed.layer] ? [] : [{ op: 'add_layer', layer: { id: placed.layer, name: reference } } as Op]),
-      { op: 'add_asset', asset: { id: asset, mime: 'image/jpeg', data: canvas.toDataURL('image/jpeg', 0.85).split(',')[1], width: canvas.width, height: canvas.height } },
+      { op: 'add_asset', asset: { id: asset, mime: 'image/jpeg', ...picture } },
       {
         op: 'add_node',
         node: {

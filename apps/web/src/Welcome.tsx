@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FilePlus, FileText, FolderOpen, History, LayoutTemplate, MessageSquarePlus, X, type LucideIcon } from 'lucide-react'
+import { FilePlus, FileText, FolderOpen, History, LayoutTemplate, MessageSquarePlus, Sparkles, TriangleAlert, X, type LucideIcon } from 'lucide-react'
 import { guarded, newDocument, openDocument, openExample, openRecent } from './actions'
 import { language, LANGUAGES, t } from './i18n'
 import { platform } from './platform'
@@ -28,7 +28,9 @@ export function Logo({ size }: { size: number }) {
 function Choice(props: { icon: LucideIcon; title: string; note: string; onClick: () => void }) {
   return (
     <button className="welcome-choice" onClick={props.onClick}>
-      <props.icon size={22} strokeWidth={1.6} />
+      <i>
+        <props.icon size={20} strokeWidth={1.7} />
+      </i>
       <strong>{props.title}</strong>
       <span>{props.note}</span>
     </button>
@@ -85,14 +87,22 @@ export function Welcome() {
       <div className="dialog welcome" role="dialog" aria-label={t('Welcome to OpenCalque')} tabIndex={-1} ref={box} onMouseDown={(e) => e.stopPropagation()}>
         <div className="welcome-head">
           <Logo size={46} />
-          <div>
+          <div className="welcome-title">
             <h2>{t('Welcome to OpenCalque')}</h2>
             <p className="faint">{t('Plans and layouts drawn to scale, free and open source.')}</p>
           </div>
+          <button className="welcome-news" onClick={() => useWindows.setState({ welcomeOpen: false, aboutOpen: true })}>
+            <Sparkles size={13} />
+            {t('What is new')}
+            <span>{VERSION}</span>
+          </button>
         </div>
         {lost.length > 0 && (
           <div className="welcome-recent welcome-recover">
-            <h3>{t('Unsaved work from a window that closed unexpectedly')}</h3>
+            <h3>
+              <TriangleAlert size={14} />
+              {t('Unsaved work from a window that closed unexpectedly')}
+            </h3>
             {lost.map((kept) => (
               <div key={kept.session} className="welcome-recover-row">
                 <button title={t('Open it as an unsaved drawing')} onClick={() => bringBack(kept)}>
@@ -148,15 +158,10 @@ export function Welcome() {
             <input type="checkbox" checked={show} onChange={(e) => setPrefs({ showWelcome: e.target.checked })} />
             {t('Show this window when the app starts')}
           </label>
-          <span className="welcome-links">
-            <button className="text-button" onClick={() => useWindows.setState({ welcomeOpen: false, feedbackOpen: true })}>
-              <MessageSquarePlus size={13} />
-              {t('Report a bug or suggest an idea')}
-            </button>
-            <button className="text-button" onClick={() => useWindows.setState({ welcomeOpen: false, aboutOpen: true })}>
-              {t('What is new in version {version}', { version: VERSION })}
-            </button>
-          </span>
+          <button className="text-button welcome-feedback" onClick={() => useWindows.setState({ welcomeOpen: false, feedbackOpen: true })}>
+            <MessageSquarePlus size={13} />
+            {t('Report a bug or suggest an idea')}
+          </button>
         </footer>
       </div>
     </div>

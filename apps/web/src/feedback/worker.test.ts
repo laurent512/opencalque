@@ -85,19 +85,40 @@ describe('the feedback worker', () => {
     const calls = fakeGitHub()
     const { bucket, files } = fakeBucket()
     const png = 'iVBORw0KGgo='
-    await feedback(post({ ...report, kind: 'bug', screenshot: png, drawing: { name: 'Flat.opencalque', content: '{"format":"opencalque"}' } }), env({ FEEDBACK_FILES: bucket }))
+    const webm = 'GkXfo59ChoEBQg=='
+    await feedback(
+      post({ ...report, kind: 'bug', pictures: [png, png], recordings: [{ type: 'video/webm', content: webm, seconds: 3 }], drawing: { name: 'Flat.opencalque', content: '{"format":"opencalque"}' } }),
+      env({ FEEDBACK_FILES: bucket }),
+    )
     const names = [...files.keys()]
-    expect(names).toEqual([expect.stringMatching(/^\d{4}-\d\d-\d\d-[0-9a-f]{18}\/screenshot\.png$/), expect.stringMatching(/\/drawing\.opencalque$/)])
+    expect(names).toEqual([
+      expect.stringMatching(/^\d{4}-\d\d-\d\d-[0-9a-f]{18}\/picture-1\.png$/),
+      expect.stringMatching(/\/picture-2\.png$/),
+      expect.stringMatching(/\/recording-1\.webm$/),
+      expect.stringMatching(/\/drawing\.opencalque$/),
+    ])
     const body = calls.find((c) => c.path === '/repos/o/app/issues')!.body.body as string
     expect(body).toContain(`](https://opencalque.com/api/feedback/files/${names[0]})`)
-    expect(body).toContain(`[Flat.opencalque](https://opencalque.com/api/feedback/files/${names[1]})`)
+    expect(body).toContain(`](https://opencalque.com/api/feedback/files/${names[1]})`)
+    expect(body).toContain(`[recording-1.webm](https://opencalque.com/api/feedback/files/${names[2]})`)
+    expect(body).toContain(`[Flat.opencalque](https://opencalque.com/api/feedback/files/${names[3]})`)
 
     const picture = await worker.fetch(new Request(`https://opencalque.com/api/feedback/files/${names[0]}`), env({ FEEDBACK_FILES: bucket }))
     expect(picture.headers.get('Content-Type')).toBe('image/png')
     expect(Buffer.from(await picture.arrayBuffer()).toString('base64')).toBe(png)
-    const drawing = await worker.fetch(new Request(`https://opencalque.com/api/feedback/files/${names[1]}`), env({ FEEDBACK_FILES: bucket }))
+    const video = await worker.fetch(new Request(`https://opencalque.com/api/feedback/files/${names[2]}`), env({ FEEDBACK_FILES: bucket }))
+    expect(video.headers.get('Content-Type')).toBe('video/webm')
+    expect(Buffer.from(await video.arrayBuffer()).toString('base64')).toBe(webm)
+    const drawing = await worker.fetch(new Request(`https://opencalque.com/api/feedback/files/${names[3]}`), env({ FEEDBACK_FILES: bucket }))
     expect(await drawing.text()).toBe('{"format":"opencalque"}')
     expect(drawing.headers.get('Content-Disposition')).toContain('Flat.opencalque')
+  })
+
+  it('keeps the one picture 1.13 sends', async () => {
+    fakeGitHub()
+    const { bucket, files } = fakeBucket()
+    expect((await feedback(post({ ...report, screenshot: 'iVBORw0KGgo=' }), env({ FEEDBACK_FILES: bucket }))).status).toBe(201)
+    expect([...files.keys()]).toEqual([expect.stringMatching(/\/picture-1\.png$/)])
   })
 
   it('serves nothing but the files of reports', async () => {
