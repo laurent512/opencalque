@@ -2,6 +2,7 @@ import { drawingSettingsOps, settingsOf, TITLE_FIELDS, type DrawingSettings, typ
 import { msg, t } from './i18n'
 import { apply, useStore } from './store'
 import { useWindows } from './windows'
+import { Select } from './Select'
 
 const close = () => useWindows.setState({ drawingSettingsOpen: false })
 
@@ -58,17 +59,25 @@ export function DrawingSettingsWindow() {
           <h3>{t('Numbers')}</h3>
           <label className="pref-field">
             <span>{t('Units')}</span>
-            <select value={settings.system} onChange={(e) => set({ system: e.target.value as 'metric' | 'imperial' })}>
-              <option value="metric">{t('Metric: m², m')}</option>
-              <option value="imperial">{t('Imperial: ft², ft')}</option>
-            </select>
+            <Select
+              value={settings.system}
+              onChange={(system) => set({ system: system as 'metric' | 'imperial' })}
+              options={[
+                { value: 'metric', label: t('Metric: m², m') },
+                { value: 'imperial', label: t('Imperial: ft², ft') },
+              ]}
+            />
           </label>
           <label className="pref-field">
             <span>{t('Decimal mark')}</span>
-            <select value={settings.decimal} onChange={(e) => set({ decimal: e.target.value as '.' | ',' })}>
-              <option value=".">{t('With a point: 1.5')}</option>
-              <option value=",">{t('With a comma: 1,5')}</option>
-            </select>
+            <Select
+              value={settings.decimal}
+              onChange={(decimal) => set({ decimal: decimal as '.' | ',' })}
+              options={[
+                { value: '.', label: t('With a point: 1.5') },
+                { value: ',', label: t('With a comma: 1,5') },
+              ]}
+            />
           </label>
           <p className="hint">{t('The areas of the rooms, the tables of quantities, the dimensions and the quantities exported are written so, everywhere in this drawing. Lengths in the panels are in the unit of the preferences.')}</p>
         </section>
@@ -92,10 +101,14 @@ export function DrawingSettingsWindow() {
           ))}
           <label className="pref-field">
             <span>{t('Title block')}</span>
-            <select value={doc.settings?.titleBlock?.layout ?? 'corner'} onChange={(e) => set({ titleBlock: e.target.value === 'strip' ? { layout: 'strip', labels: stripLabels() } : {} })}>
-              <option value="corner">{t('In the bottom right corner')}</option>
-              <option value="strip">{t('Down the right edge, with captions')}</option>
-            </select>
+            <Select
+              value={doc.settings?.titleBlock?.layout ?? 'corner'}
+              onChange={(layout) => set({ titleBlock: layout === 'strip' ? { layout: 'strip', labels: stripLabels() } : {} })}
+              options={[
+                { value: 'corner', label: t('In the bottom right corner') },
+                { value: 'strip', label: t('Down the right edge, with captions') },
+              ]}
+            />
           </label>
           <p className="hint">{t('Shown in the title block of every sheet, and where a text says {project}, {client}, {address} or {author}.')}</p>
         </section>

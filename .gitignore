@@ -8,3 +8,4 @@ test-results
 playwright-report
 .claude/
 packages/cli/npm
+packages/evals/results

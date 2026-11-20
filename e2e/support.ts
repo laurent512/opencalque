@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 /*
  * What the browser tests share: a fresh profile with chosen settings, a stand-in save dialog, the
@@ -43,6 +43,12 @@ export async function recordSaves(page: Page) {
 }
 
 export const canvas = (page: Page) => page.locator('.stage canvas')
+
+/** Chooses `label` in one of the app's dropdowns (`Select`, found with `.select`): opens its list and clicks it there. */
+export async function pickIn(page: Page, select: Locator, label: string) {
+  await select.click()
+  await page.getByRole('listbox').getByRole('option', { name: label, exact: true }).click()
+}
 export const objectRows = (page: Page) => page.locator('[data-panel="objects"] .row')
 /** A section of the object library, in the list on its left, by its name. */
 export const librarySection = (page: Page, name: string) => page.locator('.warehouse-section', { has: page.locator('.warehouse-section-name', { hasText: new RegExp(`^${name}$`) }) })

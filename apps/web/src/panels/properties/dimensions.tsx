@@ -6,6 +6,7 @@ import { Section } from '../../ui'
 import { unit } from '../../units'
 import { Sections, type Update } from './FieldRow'
 import { ANNOTATION, DIMENSION, GRIDLINE } from './fields'
+import { Select } from '../../Select'
 
 /* Dimension styles in the Properties panel, and the settings of the dimension and annotation tools. */
 
@@ -19,16 +20,12 @@ function DimensionStyleChoice(props: { value: string; label: string; onChange: (
     <>
       <label className="field">
         <span>{props.label}</span>
-        <select value={props.value} onChange={(e) => props.onChange(e.target.value)}>
-          {props.value === 'mixed' && <option value="mixed">{t('Mixed')}</option>}
-          <option value="">{t('No style')}</option>
-          {Object.values(styles ?? {}).map((style) => (
-            <option key={style.id} value={style.id}>
-              {style.name}
-            </option>
-          ))}
-          <option value="new">{t('New style from this dimension…')}</option>
-        </select>
+        <Select
+          value={props.value}
+          placeholder={t('Mixed')}
+          onChange={props.onChange}
+          options={[{ value: '', label: t('No style') }, ...Object.values(styles ?? {}).map((style) => ({ value: style.id, label: style.name })), { value: 'new', label: t('New style from this dimension…') }]}
+        />
       </label>
       {props.value !== '' && props.value !== 'mixed' && <p className="hint">{t('It takes what its style defines, shown with a link. A value set here instead is an exception, and the arrow beside it gives it back to the style.')}</p>}
     </>

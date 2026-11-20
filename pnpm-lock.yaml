@@ -141,6 +141,18 @@ importers:
         specifier: 6.4.0
         version: 6.4.0
 
+  packages/evals:
+    dependencies:
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.32.2
+        version: 1.32.2(zod@4.6.5)
+      '@opencalque/core':
+        specifier: workspace:*
+        version: link:../core
+      '@opencalque/warehouse':
+        specifier: workspace:*
+        version: link:../warehouse
+
   packages/ext-architecture:
     dependencies:
       '@opencalque/core':

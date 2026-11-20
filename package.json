@@ -18,6 +18,7 @@
     "rooms:gallery": "tsx packages/core/test/rooms-gallery.ts",
     "smoke": "pnpm --filter @opencalque/desktop smoke",
     "e2e": "pnpm build:web && playwright test",
+    "evals": "tsx packages/evals/src/cli.ts",
     "warehouse": "tsx packages/cli/src/build-warehouse.ts",
     "warehouse:gallery": "tsx packages/cli/src/warehouse-gallery.ts",
     "example": "tsx packages/cli/src/build-example.ts",

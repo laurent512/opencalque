@@ -14,6 +14,8 @@ interface Windows {
   /** Whether File › Drawing settings is open. */
   drawingSettingsOpen: boolean
   aboutOpen: boolean
+  /** Whether the window for reporting a bug or an idea is open (`Feedback.tsx`). */
+  feedbackOpen: boolean
   /** Whether the object library is open. */
   warehouse: 'components' | null
   /** What is asked before it is done (`ask`), while its window is open. */
@@ -32,7 +34,7 @@ export interface Question {
   run: () => void
 }
 
-const CLOSED: Windows = { welcomeOpen: false, preferencesOpen: false, preferencesPage: null, exportOpen: false, drawingSettingsOpen: false, aboutOpen: false, warehouse: null, question: null, toast: null, browsing: null }
+const CLOSED: Windows = { welcomeOpen: false, preferencesOpen: false, preferencesPage: null, exportOpen: false, drawingSettingsOpen: false, aboutOpen: false, feedbackOpen: false, warehouse: null, question: null, toast: null, browsing: null }
 
 export const useWindows = create<Windows>(() => CLOSED)
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FilePlus, FileText, FolderOpen, History, LayoutTemplate, X, type LucideIcon } from 'lucide-react'
+import { FilePlus, FileText, FolderOpen, History, LayoutTemplate, MessageSquarePlus, X, type LucideIcon } from 'lucide-react'
 import { guarded, newDocument, openDocument, openExample, openRecent } from './actions'
 import { language, LANGUAGES, t } from './i18n'
 import { platform } from './platform'
@@ -10,6 +10,7 @@ import { isDirty, useStore } from './store'
 import { IconButton } from './ui'
 import { UNITS } from './units'
 import { useWindows } from './windows'
+import { Select } from './Select'
 
 const close = () => useWindows.setState({ welcomeOpen: false })
 
@@ -135,24 +136,11 @@ export function Welcome() {
         <div className="welcome-settings">
           <label>
             <span>{t('Language')}</span>
-            <select value={chosenLanguage} onChange={(e) => setPrefs({ language: e.target.value })}>
-              <option value="auto">{t('Same as the system')}</option>
-              {LANGUAGES.map(([code, name]) => (
-                <option key={code} value={code}>
-                  {name}
-                </option>
-              ))}
-            </select>
+            <Select value={chosenLanguage} onChange={(language) => setPrefs({ language })} options={[{ value: 'auto', label: t('Same as the system') }, ...LANGUAGES.map(([code, name]) => ({ value: code, label: name }))]} />
           </label>
           <label>
             <span>{t('Unit')}</span>
-            <select value={chosenUnit} onChange={(e) => setPrefs({ unit: e.target.value as typeof chosenUnit })}>
-              {UNITS.map(([code, name]) => (
-                <option key={code} value={code}>
-                  {t(name)}
-                </option>
-              ))}
-            </select>
+            <Select value={chosenUnit} onChange={(unit) => setPrefs({ unit: unit as typeof chosenUnit })} options={UNITS.map(([code, name]) => ({ value: code, label: t(name) }))} />
           </label>
         </div>
         <footer>
@@ -160,9 +148,15 @@ export function Welcome() {
             <input type="checkbox" checked={show} onChange={(e) => setPrefs({ showWelcome: e.target.checked })} />
             {t('Show this window when the app starts')}
           </label>
-          <button className="text-button" onClick={() => useWindows.setState({ welcomeOpen: false, aboutOpen: true })}>
-            {t('What is new in version {version}', { version: VERSION })}
-          </button>
+          <span className="welcome-links">
+            <button className="text-button" onClick={() => useWindows.setState({ welcomeOpen: false, feedbackOpen: true })}>
+              <MessageSquarePlus size={13} />
+              {t('Report a bug or suggest an idea')}
+            </button>
+            <button className="text-button" onClick={() => useWindows.setState({ welcomeOpen: false, aboutOpen: true })}>
+              {t('What is new in version {version}', { version: VERSION })}
+            </button>
+          </span>
         </footer>
       </div>
     </div>

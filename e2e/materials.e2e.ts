@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { canvas, choose, drawing, drawWall, failOnErrors, librarySection, objectRows, openEditor, recordSaves, startWith } from './support'
+import { canvas, choose, drawing, drawWall, failOnErrors, librarySection, objectRows, openEditor, pickIn, recordSaves, startWith } from './support'
 
 /**
  * Materials, the walls made of them, and tables of quantities, as people use them
@@ -118,8 +118,8 @@ test('writes the numbers of a whole drawing as its settings say, the rooms and t
   await page.keyboard.type('Drawing settings')
   await page.keyboard.press('Enter')
   const window = page.getByRole('dialog', { name: 'Drawing settings' })
-  await window.locator('.pref-field', { hasText: 'Units' }).locator('select').selectOption('imperial')
-  await window.locator('.pref-field', { hasText: 'Decimal mark' }).locator('select').selectOption(',')
+  await pickIn(page, window.locator('.pref-field', { hasText: 'Units' }).locator('.select'), 'Imperial: ft², ft')
+  await pickIn(page, window.locator('.pref-field', { hasText: 'Decimal mark' }).locator('.select'), 'With a comma: 1,5')
   await window.locator('.pref-field', { hasText: 'Client' }).locator('input').fill('Dupont')
   await window.getByRole('button', { name: 'Done' }).click()
 

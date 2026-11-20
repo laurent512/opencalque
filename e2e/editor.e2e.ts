@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Locator } from '@playwright/test'
-import { canvas, choose, drawing, drawingOnScreen, drawWall, failOnErrors, librarySection, objectRows, openEditor, recordSaves, startWith } from './support'
+import { canvas, choose, drawing, drawingOnScreen, drawWall, failOnErrors, librarySection, objectRows, openEditor, pickIn, recordSaves, startWith } from './support'
 
 /**
  * The editor in a browser, as people use it. Each test starts from a fresh profile: no drawing, no
@@ -755,9 +755,9 @@ test('lists the furniture by room in the object library, the adjustable pieces w
   await page.getByTitle('Object library: stairs, furniture and every other object').click()
   const sections = await page.locator('.warehouse-sections .warehouse-section-name').allTextContents()
   expect(sections.filter((name) => ['Living room', 'Dining room', 'Bedroom', 'Office', 'Furniture'].includes(name))).toEqual(['Living room', 'Dining room', 'Bedroom', 'Office'])
-  // The library's double bed and dining table are gone: the adjustable bed and table draw them.
+  // The library's double bed and dining table are gone: the adjustable bed and table draw them. The banquette is one of the adjustable pieces.
   await librarySection(page, 'Dining room').click()
-  await expect(page.locator('.warehouse-card strong')).toHaveText(['Chair', 'Table with chairs'])
+  await expect(page.locator('.warehouse-card strong')).toHaveText(['Chair', 'Banquette', 'Table with chairs'])
   // The library's single bed and wardrobe too: the adjustable bed and wardrobe draw them, and the
   // bedroom's furniture is all adjustable now, drawn by its fronts in elevations.
   await librarySection(page, 'Bedroom').click()
@@ -1578,8 +1578,11 @@ test('shows the way into a group and a component in it, and goes back out to any
   // On the page with nothing selected, Esc lets go of them.
   await page.keyboard.press('Escape')
   await expect(page.locator('.breadcrumb')).toHaveCount(0)
-  // After that, leaving offers back only what was just left.
+  // After that, leaving offers back only what was just left. Gone into by a double-click, the group
+  // has what was double-clicked in it selected: Esc lets go of it, then leaves.
   await page.mouse.dblclick(box.x + 400, box.y + 350)
+  await expect(selected).toHaveText(/Component 1/)
+  await page.keyboard.press('Escape')
   await page.keyboard.press('Escape')
   await expect(left).toHaveText([/Group/])
 })
@@ -1647,7 +1650,7 @@ test('shows every value of a dimension style whole, in the narrow side panel', a
   // A colour defined by the style can be seen and chosen: its chooser was once hidden with the row's name.
   await expect(row('Color').locator('.color-now')).toBeVisible()
   // In a column of about 250 px the font goes under its name, with room for "Sans-serif" whole.
-  const font = row('Font').locator('select')
+  const font = row('Font').locator('.select')
   expect((await font.boundingBox())!.width).toBeGreaterThan(180)
 })
 
@@ -2018,7 +2021,7 @@ test('exports a page as a PNG picture of the size chosen', async ({ page }) => {
   await drawWall(page, [300, 300], [700, 300])
   await page.keyboard.press('Control+e')
   await page.getByRole('radio', { name: /PNG/ }).click()
-  await page.locator('.export-options .pref-field', { hasText: 'Size' }).locator('select').selectOption('2000')
+  await pickIn(page, page.locator('.export-options .pref-field', { hasText: 'Size' }).locator('.select'), '2000 pixels on its longer side')
   await page.getByRole('button', { name: 'Export…' }).click()
   await expect.poll(() => page.evaluate(() => (window as any).png?.name)).toMatch(/\.png$/)
   const bytes: number[] = await page.evaluate(() => (window as any).png.bytes)
@@ -2423,12 +2426,12 @@ test('sets up the floating toolbar by dragging in Preferences, opened by a right
   // Saved as "Mine", it is the toolbar in use; the one that comes is a choice away, and back again.
   await page.getByRole('textbox', { name: 'Name of the toolbar' }).fill('Mine')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
-  const inUse = page.locator('.pref-field', { hasText: 'Toolbar in use' }).locator('select')
-  await expect(inUse.locator('option:checked')).toHaveText('Mine')
-  await inUse.selectOption({ label: 'As it comes' })
+  const inUse = page.locator('.pref-field', { hasText: 'Toolbar in use' }).locator('.select')
+  await expect(inUse).toHaveText('Mine')
+  await pickIn(page, inUse, 'As it comes')
   await expect(button('Wall')).toHaveCount(1)
   await expect(button('Connect')).toHaveCount(0)
-  await inUse.selectOption({ label: 'Mine' })
+  await pickIn(page, inUse, 'Mine')
   await expect(button('Wall')).toHaveCount(0)
   await expect(button('Connect')).toHaveCount(1)
   // Kept for the next start.
@@ -2438,7 +2441,7 @@ test('sets up the floating toolbar by dragging in Preferences, opened by a right
   await page.keyboard.press('Control+k')
   await page.keyboard.type('Customise the toolbar')
   await page.keyboard.press('Enter')
-  await expect(inUse.locator('option:checked')).toHaveText('Mine')
+  await expect(inUse).toHaveText('Mine')
 })
 
 test('offers the table of what controls what among the tables of the object library', async ({ page }) => {

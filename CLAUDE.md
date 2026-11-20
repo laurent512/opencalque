@@ -18,6 +18,7 @@ pnpm schema       # regenerate schema/*.json after changing packages/core/src/sc
 pnpm rooms:gallery # draw the plans rooms are tested on, to look them over
 pnpm warehouse && pnpm warehouse:gallery # regenerate the bundled component libraries, then draw every symbol on one page
 pnpm package:npm  # the CLI and MCP server as the npm package `opencalque`, in packages/cli/npm (a version tag publishes it)
+pnpm evals        # requests run through the assistant and the MCP server against a real model, graded (ANTHROPIC_API_KEY; costs tokens; --list, --repeat, --surface both)
 ```
 
 Agent terminals have `ELECTRON_RUN_AS_NODE=1`, which breaks Electron. Prefix Electron commands with `env -u ELECTRON_RUN_AS_NODE`.
@@ -34,6 +35,7 @@ The owner works at the computer tests run on: no test may put a window in front 
 - The roadmap and feature inventory are in `docs/FEATURES.md`; update the status table there when a feature lands.
 - Every text the user sees goes through `t()` from `apps/web/src/i18n.ts` (or `msg()` in tables built at import), written in English, and gets an entry in each file under `apps/web/src/locales/`. `pnpm test` fails if a language is missing one.
 - To show or toggle a panel, import from `apps/web/src/dock.ts`, never from `Layout.tsx`.
+- Every list of choices is a `Select` (`apps/web/src/Select.tsx`), never a `<select>` of the system's (the owner's choice).
 - Anything only the desktop app can do goes through an optional capability on `Platform` and is checked for (`platform.claudeCli`), so the web build keeps working.
 - Every user-triggerable action is a command in `apps/web/src/commands.ts`. Do not add keyboard handling elsewhere (the canvas keeps only Escape, Enter and Space).
 - What a tool does on the canvas is a gesture in `apps/web/src/canvas/gestures/` (`PRESSES`, `MOVES`, `RELEASES` in `index.ts`); `CanvasView.tsx` only dispatches. The windows over the editor and the toast are `useWindows` (`windows.ts`), the extensions in use `registry` and `useExtensions` (`extensions.ts`); neither belongs in the store.
@@ -47,7 +49,7 @@ The owner works at the computer tests run on: no test may put a window in front 
 - Keep `applyOps` linear: no scan of every node inside one op. Per-drawing indexes (tree, walls, openings, rooms) are cached on `doc.nodes`, which every `applyOps` replaces.
 - Values that come from a file, an extension or the assistant (counts, repeats, steps) must be capped where they drive a loop.
 - The assistant gets the selection as context (`describeSelection` in `apps/web/src/ai/agent.ts`); keep what the composer's label says and what is sent the same.
-- What a model can do to a drawing is `DRAWING_TOOLS` and `runDrawingTool` (`packages/core/src/tools.ts`), shared by the assistant, the MCP server and the bridge to the desktop app; what it is told of the format is `drawingGuide`. A new tool goes there, so every agent has it. Outside the editor, apply operations with `applyEdit`, not `applyOps`, so that one list makes one drawing wherever it is applied.
+- What a model can do to a drawing is `DRAWING_TOOLS` and `runDrawingTool` (`packages/core/src/tools.ts`), shared by the assistant, the MCP server and the bridge to the desktop app; what it is told of the format is `drawingGuide`. A new tool goes there, so every agent has it. Outside the editor, apply operations with `applyEdit`, not `applyOps`, so that one list makes one drawing wherever it is applied. A change to what models are told or given is measured with `pnpm evals` (`packages/evals`), before and after; what models are newly asked to do gets a task there, with a reference that solves it.
 - `checkDrawing` (`packages/core/src/check.ts`) reports only what is nearly always a mistake, and must stay silent on plans that are right (`check.test.ts`). It explains what `roomAt` found; it never decides what a room is.
 - The door the desktop app opens for agents (`apps/desktop/src/main/bridge.ts`) stays off until the person turns it on, on 127.0.0.1, behind its token, and refuses anything with an `Origin`. The app's `--mcp` mode takes no script and no path, and is why `runAsNode` stays off in `after-pack.cjs`: never turn that fuse on for it. Test `--mcp` on the packaged app: stdio in Electron's main process behaves unlike Node's (ARCHITECTURE, "Agents").
 - The assistant's agent loop (`apps/web/src/ai/agent.ts`) must stay free of store and DOM imports so it remains unit-testable. Claude is called through the official `@anthropic-ai/sdk`; other providers go through `compatible.ts`.

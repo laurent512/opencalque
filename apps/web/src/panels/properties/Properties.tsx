@@ -19,6 +19,7 @@ import { ModifierStack } from './modifiers'
 import { PaperSheet } from './paper'
 import { CornerPanel, WallCurve, WallEnds, WallLine, WallMaterial, WallToolMaterial } from './walls'
 import { TableSettings } from './tables'
+import { Select } from '../../Select'
 
 /* The Properties panel: what is selected, or the tool in use when nothing is. */
 
@@ -228,14 +229,12 @@ function Selection({ nodes }: { nodes: Node[] }) {
           <>
             <label className="field">
               <span>{t('Insert')}</span>
-              <select value="" onChange={(e) => e.target.value && update((n) => ({ text: `${'text' in n ? n.text : ''}{${e.target.value}}` }))}>
-                <option value="">{t('A field…')}</option>
-                {TEXT_FIELDS.filter((field) => inTemplate || !SHEET_FIELDS.includes(field)).map((field) => (
-                  <option key={field} value={field}>
-                    {t(FIELD_NAMES[field])}
-                  </option>
-                ))}
-              </select>
+              <Select
+                value=""
+                placeholder={t('A field…')}
+                onChange={(field) => update((n) => ({ text: `${'text' in n ? n.text : ''}{${field}}` }))}
+                options={TEXT_FIELDS.filter((field) => inTemplate || !SHEET_FIELDS.includes(field)).map((field) => ({ value: field, label: t(FIELD_NAMES[field]) }))}
+              />
             </label>
             <p className="hint">{t('A field is filled in by the drawing: written {page} in the text, it shows the name of the page it is on.')}</p>
           </>

@@ -12,6 +12,12 @@ export interface ParamDef {
   options?: string[]
   /** Set on a number that is a length in mm, so editors can show and take it in the user's unit; or an angle, in degrees, so they can say so. */
   unit?: 'length' | 'angle'
+  /**
+   * Whether editors show the parameter, given every value of the object (defaults filled in): a
+   * door's open angle means nothing once it slides. Hidden, it keeps its value. Only kinds written
+   * in code have it; with none, it is always shown.
+   */
+  shown?: (props: Record<string, any>) => boolean
 }
 
 /**

@@ -3,7 +3,7 @@ import type { SecretStore } from './platform'
 import type { DeclarativeExtension, PaperSeries } from '@opencalque/core'
 import { msg } from './i18n'
 import type { Surroundings } from './surroundings'
-import type { ScrollPref } from './canvas/wheel'
+import { readScrollPref, type ScrollPref } from './canvas/wheel'
 import { TOOLBAR_DEFAULT, type SavedToolbar, type ToolbarLayout } from './toolbar'
 
 /**
@@ -49,9 +49,9 @@ export interface Prefs {
   /** In the Properties panel, a width or height typed changes the other in proportion. */
   keepProportions: boolean
   /**
-   * What scrolling over the drawing does, besides a pinch or Ctrl with the wheel, which zoom:
-   * 'auto' moves the view with a trackpad and zooms with a mouse wheel; 'zoom' and 'pan' do that
-   * whatever sends it (`canvas/wheel.ts`).
+   * What the person scrolls over the drawing with, a mouse (its wheel zooms) or a trackpad (two
+   * fingers move the view), or 'auto' to tell them apart by their events (`canvas/wheel.ts`). A
+   * pinch or Ctrl with the wheel zoom whichever it is. Stored as `scroll`, read by `readScrollPref`.
    */
   scroll: ScrollPref
   /** What the floating toolbar holds, from left to right (`toolbar.ts`): buttons, a tool or a list of tools each, and separators. */
@@ -149,7 +149,7 @@ function load(): Prefs {
     unitChosen = stored.unit !== undefined
     const ai = { ...DEFAULTS.ai, ...stored.ai }
     for (const key of PROVIDERS) ai[key] = { ...DEFAULTS.ai[key], ...ai[key] }
-    return { ...DEFAULTS, ...stored, ai, extensions: { ...DEFAULTS.extensions, ...stored.extensions } }
+    return { ...DEFAULTS, ...stored, ai, extensions: { ...DEFAULTS.extensions, ...stored.extensions }, scroll: readScrollPref(stored.scroll) }
   } catch {
     return DEFAULTS
   }

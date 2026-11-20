@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { About } from './About'
+import { Feedback } from './Feedback'
 import { DrawingSettingsWindow } from './DrawingSettingsWindow'
 import { startUp } from './actions'
 import { startAutosave } from './autosave'
@@ -119,6 +120,7 @@ export function App() {
       <ExportDialog />
       <DrawingSettingsWindow />
       <About />
+      <Feedback />
       <QuestionWindow />
       <DropTarget />
     </div>

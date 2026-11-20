@@ -41,3 +41,40 @@ describe('a radiator', () => {
     expect(() => radiator.build(registry.resolveProps(radiator, node.props), {})).not.toThrow()
   })
 })
+
+describe('a fireplace', () => {
+  const fireplace = registry.parametric.get('arch.fireplace')!
+  const props = (given: Record<string, unknown> = {}) => registry.resolveProps(fireplace, given)
+  const closed = (prims: Primitive[]) => prims.filter((p): p is Path => p.kind === 'path' && !!p.closed)
+  const ys = (p: Path) => p.points.map((q) => q.y)
+
+  it('stands against the wall by its back, under Heating, a cassette in a breast of 1 m by 50 cm to begin with', () => {
+    expect([fireplace.category, fireplace.mount?.on, props().style]).toEqual(['heating', 'floor', 'Cassette'])
+    const [breast, cassette] = closed(fireplace.build(props(), {}))
+    expect(breast.points).toEqual([{ x: 0, y: 0 }, { x: 1000, y: 0 }, { x: 1000, y: 500 }, { x: 0, y: 500 }])
+    // The cassette is in the breast, flush with its front.
+    expect(Math.max(...ys(cassette))).toBe(500)
+    expect(Math.min(...cassette.points.map((q) => q.x))).toBeGreaterThan(0)
+  })
+
+  it('has, as an open hearth, its firebox open to the room and its slab on the floor in front', () => {
+    const [masonry, slab] = closed(fireplace.build(props({ style: 'Open hearth' }), {}))
+    // The firebox goes into the breast from its front.
+    expect(Math.min(...ys(masonry).filter((y) => y > 0))).toBe(125)
+    expect([Math.min(...ys(slab)), Math.max(...ys(slab))]).toEqual([500, 900])
+    expect(closed(fireplace.build(props({ style: 'Open hearth', hearth: 0 }), {}))).toHaveLength(1)
+  })
+
+  it('asks for its hearth only when it is open', () => {
+    const shown = (style: string) => fireplace.params.filter((p) => p.shown?.(props({ style })) ?? true).map((p) => p.key)
+    expect(shown('Cassette')).not.toContain('hearth')
+    expect(shown('Open hearth')).toContain('hearth')
+  })
+
+  it('is drawn in elevations as high as its breast, the cassette above the floor, the open hearth under its mantel', () => {
+    const top = (prims: Primitive[]) => Math.min(...prims.flatMap((p) => (p.kind === 'path' ? ys(p) : [])))
+    expect(top(fireplace.front!(props()))).toBe(-2500)
+    expect(top(fireplace.front!(props({ style: 'Open hearth' })))).toBe(-2500)
+    expect(top(fireplace.side!(props({ style: 'Open hearth', height: 1000 })))).toBe(-1000)
+  })
+})

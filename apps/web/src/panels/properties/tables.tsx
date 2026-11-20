@@ -5,6 +5,7 @@ import { registry } from '../../extensions'
 import { t } from '../../i18n'
 import { apply, useStore } from '../../store'
 import { YesNo } from '../../ui'
+import { Select } from '../../Select'
 
 /*
  * What the Properties panel shows of a table of quantities, besides how it is written: what it
@@ -36,26 +37,21 @@ export function TableSettings({ node }: { node: NodeOf<'table'> }) {
     <>
       <label className="field">
         <span>{t('Counts')}</span>
-        <select value={node.schedule} onChange={(e) => schedule(e.target.value as Schedule)}>
-          {!(SCHEDULES as readonly string[]).includes(node.schedule) && <option value={node.schedule}>{node.schedule}</option>}
-          {SCHEDULES.map((one) => (
-            <option key={one} value={one}>
-              {t(SCHEDULE_NAMES[one])}
-            </option>
-          ))}
-        </select>
+        <Select
+          value={node.schedule}
+          placeholder={node.schedule}
+          onChange={(one) => schedule(one as Schedule)}
+          options={SCHEDULES.map((one) => ({ value: one, label: t(SCHEDULE_NAMES[one]) }))}
+        />
       </label>
       {pages.length > 1 && (
         <label className="field">
           <span>{t('On the page')}</span>
-          <select value={node.source && doc.nodes[node.source]?.type === 'page' ? node.source : ''} onChange={(e) => set({ source: e.target.value || null })}>
-            <option value="">{t('This page')}</option>
-            {pages.map((page) => (
-              <option key={page.id} value={page.id}>
-                {page.name ?? page.id}
-              </option>
-            ))}
-          </select>
+          <Select
+            value={node.source && doc.nodes[node.source]?.type === 'page' ? node.source : ''}
+            onChange={(source) => set({ source: source || null })}
+            options={[{ value: '', label: t('This page') }, ...pages.map((page) => ({ value: page.id, label: page.name ?? page.id }))]}
+          />
         </label>
       )}
       {fields.length > 0 && (

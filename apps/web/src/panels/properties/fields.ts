@@ -451,12 +451,13 @@ export function fieldsOf(node: Node, doc: Document): FieldSpec[] {
   // A door or a window has no height above the floor of its own: it is in its wall, and goes up and down by its sill.
   const z = kind?.opening ? [] : [aboveFloor(kind?.mount)]
   const shown = kind?.mount?.on === 'wall' ? [{ path: 'showHeight', label: msg('Height on plan'), type: 'boolean' as const, fallback: false }] : []
-  const keys = kind ? sizeKeys(kind, registry.resolveProps(kind, node.props)) : {}
+  const props = kind ? registry.resolveProps(kind, node.props) : {}
+  const keys = kind ? sizeKeys(kind, props) : {}
   const sized = (['W', 'D', 'H'] as const).flatMap((name) => {
     const param = params.find((p) => p.key === keys[name])
     return param ? [{ ...asField(param), row: SIZE(name) }] : []
   })
-  // The rest of its parameters, under its own name.
-  const own = params.filter((p) => !Object.values(keys).includes(p.key)).map((p): FieldSpec => ({ ...asField(p), section: kind!.label }))
+  // The rest of its parameters, under its own name, those that mean something with the values it has.
+  const own = params.filter((p) => !Object.values(keys).includes(p.key) && (p.shown?.(props) ?? true)).map((p): FieldSpec => ({ ...asField(p), section: kind!.label }))
   return [x, y, ...z, rotation, ...shown, ...sized, ...own, ...STYLE]
 }

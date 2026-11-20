@@ -10,6 +10,7 @@ import { type Tool } from './tools'
 import { WallToolMaterial } from './panels/properties/walls'
 import { JustifyPicker, scrub } from './ui'
 import { formatNumber, parseLength, parseNumber, unitSuffix } from './units'
+import { Select } from './Select'
 
 /** Where the clicked points can lie on a wall, as it is drawn: they are its corners, and the line it keeps. */
 const JUSTIFY = {
@@ -191,22 +192,17 @@ export function QuickBar() {
           </label>
         )}
         {tool === 'paper' && (
-          <select
+          <Select
             className="quick-select"
             aria-label={t('Sheet sizes')}
             title={t('The standard sheets a paper is drawn to: ISO (A4, A3…), or the ARCH and ANSI sizes used in the United States. Any of them can be given to a paper in its properties.')}
             value={paperSeries}
-            onChange={(e) => {
-              setPrefs({ paperSeries: e.target.value as PaperSeries })
+            onChange={(series) => {
+              setPrefs({ paperSeries: series as PaperSeries })
               drawing.refresh?.()
             }}
-          >
-            {PAPER_SERIES.map((series) => (
-              <option key={series} value={series}>
-                {series}
-              </option>
-            ))}
-          </select>
+            options={PAPER_SERIES.map((series) => ({ value: series, label: series }))}
+          />
         )}
       </div>
       <div className="quick-group" hidden={!INKED.includes(tool)}>

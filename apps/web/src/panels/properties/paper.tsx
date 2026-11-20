@@ -4,6 +4,7 @@ import { msg, t } from '../../i18n'
 import { apply, useStore } from '../../store'
 import { Field, YesNo } from '../../ui'
 import type { Update } from './FieldRow'
+import { Select } from '../../Select'
 
 /* A paper in the Properties panel: its format and scale, its title block, and what is on every sheet. */
 
@@ -113,25 +114,23 @@ export function PaperSheet({ node, update }: { node: Extract<Node, { type: 'pape
     <>
       <label className="field">
         <span>{t('Format')}</span>
-        <select value={format?.name ?? ''} onChange={(e) => resize(e.target.value, landscape, scale)}>
-          {!format && <option value="">{t('Custom')}</option>}
-          {PAPER_SERIES.map((series) => (
-            <optgroup key={series} label={series}>
-              {PAPER_FORMATS.filter((f) => f.series === series).map((f) => (
-                <option key={f.name} value={f.name}>
-                  {f.name}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        <Select
+          value={format?.name ?? ''}
+          placeholder={t('Custom')}
+          onChange={(name) => resize(name, landscape, scale)}
+          options={PAPER_SERIES.map((series) => ({ group: series, options: PAPER_FORMATS.filter((f) => f.series === series).map((f) => ({ value: f.name, label: f.name })) }))}
+        />
       </label>
       <label className="field">
         <span>{t('Direction')}</span>
-        <select value={landscape ? 'landscape' : 'portrait'} onChange={(e) => update(() => (e.target.value === 'landscape') === landscape ? {} : { width: node.height, height: node.width })}>
-          <option value="portrait">{t('Upright')}</option>
-          <option value="landscape">{t('Lying')}</option>
-        </select>
+        <Select
+          value={landscape ? 'landscape' : 'portrait'}
+          onChange={(way) => update(() => ((way === 'landscape') === landscape ? {} : { width: node.height, height: node.width }))}
+          options={[
+            { value: 'portrait', label: t('Upright') },
+            { value: 'landscape', label: t('Lying') },
+          ]}
+        />
       </label>
       {/* Changing the scale keeps the sheet the sheet it is, as pulling a corner does: it covers more or less of the drawing. */}
       <Field label={t('Scale 1:')} numeric min={1} value={scale} onCommit={(v) => v > 0 && update(() => paperRescaled(node, v))} />

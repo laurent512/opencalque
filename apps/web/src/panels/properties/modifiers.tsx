@@ -5,6 +5,7 @@ import { msg, t } from '../../i18n'
 import { registry, useExtensions } from '../../extensions'
 import { apply } from '../../store'
 import { Field, FieldPair, IconButton, Section, YesNo } from '../../ui'
+import { Select } from '../../Select'
 
 /* The Modifiers section: the modifiers of the selected object, in order, each with its parameters. */
 
@@ -45,14 +46,14 @@ export function ModifierStack({ node }: { node: Node }) {
     <Section
       title={t('Modifiers')}
       action={
-        <select className="section-add" aria-label={t('Add a modifier')} value="" onChange={(e) => e.target.value && addModifier(e.target.value)}>
-          <option value="">{t('Add…')}</option>
-          {modifierKinds(registry).map((kind) => (
-            <option key={kind.type} value={kind.type} title={kind.description && t(kind.description)}>
-              {t(kind.label)}
-            </option>
-          ))}
-        </select>
+        <Select
+          className="section-add"
+          aria-label={t('Add a modifier')}
+          value=""
+          placeholder={t('Add…')}
+          onChange={addModifier}
+          options={modifierKinds(registry).map((kind) => ({ value: kind.type, label: t(kind.label), title: kind.description && t(kind.description) }))}
+        />
       }
     >
       {list.length === 0 && <p className="hint">{t('A modifier changes how an object is drawn without changing the object: a crop shows only part of it. Add one from the list above.')}</p>}
@@ -100,13 +101,7 @@ export function ModifierStack({ node }: { node: Node }) {
                   ) : p.options ? (
                     <label key={p.key} className="field">
                       <span>{t(p.label)}</span>
-                      <select value={params[p.key]} onChange={(e) => change(index, { params: { ...modifier.params, [p.key]: e.target.value } })}>
-                        {p.options.map((option) => (
-                          <option key={option} value={option}>
-                            {t(option)}
-                          </option>
-                        ))}
-                      </select>
+                      <Select value={String(params[p.key])} onChange={(chosen) => change(index, { params: { ...modifier.params, [p.key]: chosen } })} options={p.options.map((option) => ({ value: option, label: t(option) }))} />
                     </label>
                   ) : p.type === 'boolean' ? (
                     <div key={p.key} className="field">

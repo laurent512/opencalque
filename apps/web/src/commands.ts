@@ -290,6 +290,7 @@ const STATIC: Command[] = [
   panel('assistant', ['Mod+J']),
   { id: 'view.resetLayout', title: msg('Reset the panel layout'), category: 'View', run: resetLayout },
   { id: 'help.welcome', title: msg('Welcome window…'), category: 'General', global: true, run: () => useWindows.setState({ welcomeOpen: true }) },
+  { id: 'help.feedback', title: msg('Report a bug or suggest an idea…'), category: 'General', keywords: 'feedback issue problem feature request', global: true, run: () => useWindows.setState({ feedbackOpen: true }) },
   { id: 'help.about', title: msg('About OpenCalque and what is new…'), category: 'General', global: true, run: () => useWindows.setState({ aboutOpen: true }) },
   { id: 'prefs.open', title: msg('Preferences…'), category: 'General', keys: ['Mod+,'], global: true, run: () => useWindows.setState({ preferencesOpen: true }) },
   { id: 'view.zoomOut', title: msg('Zoom out'), category: 'View', keys: ['-', 'Mod+-'], run: () => zoomBy(0.8) },
@@ -528,11 +529,12 @@ const SLIDER_KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 
 
 /**
  * Whether a key pressed in a field is for the field rather than a command: every key in a text
- * field or a list, the keys that move a slider, none on a checkbox. So Ctrl+Z still undoes right
+ * field or a list (the system's or the app's), the keys that move a slider, none on a checkbox. So Ctrl+Z still undoes right
  * after a slider was dragged or a box ticked.
  */
 function forTheField(e: KeyboardEvent): boolean {
-  const field = (e.target as HTMLElement).closest('input, textarea, select')
+  // The app's dropdown (`Select`) is a button, its keys its own as a list's are.
+  const field = (e.target as HTMLElement).closest('input, textarea, select, .select')
   if (!(field instanceof HTMLInputElement)) return field !== null
   if (field.type === 'checkbox' || field.type === 'radio' || field.type === 'button') return false
   return field.type !== 'range' || SLIDER_KEYS.includes(e.key)

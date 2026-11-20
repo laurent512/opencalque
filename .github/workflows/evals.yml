@@ -1,0 +1,54 @@
+# Runs the evals of the assistant and of agents (packages/evals) against a real model. They cost
+# tokens, so nothing starts them but a person, from the Actions tab. Needs the repository secret
+# ANTHROPIC_API_KEY. The summary shows on the run's page; what each run did, the drawing it left
+# and a picture of it are in the artifact.
+name: Evals
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: Model
+        default: claude-sonnet-5-5
+        required: true
+      surface:
+        description: assistant, outside (the MCP server) or both
+        default: both
+        required: true
+      repeat:
+        description: Runs of each task
+        default: '3'
+        required: true
+      tasks:
+        description: Some tasks only, separated by commas (empty for all)
+        default: ''
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # The inputs reach the command through the environment, never pasted into the script.
+      - run: pnpm --silent evals --model "$MODEL" --surface "$SURFACE" --repeat "$REPEAT" ${TASKS:+--tasks "$TASKS"} --out evals-results
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          MODEL: ${{ inputs.model }}
+          SURFACE: ${{ inputs.surface }}
+          REPEAT: ${{ inputs.repeat }}
+          TASKS: ${{ inputs.tasks }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evals-${{ inputs.model }}
+          path: evals-results

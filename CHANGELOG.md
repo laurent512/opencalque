@@ -4,6 +4,23 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### New
+- Report a bug or suggest an idea from inside the app, with no GitHub account: from the welcome window, the Preferences menu, About or the command list. The report is posted as a public issue on GitHub, where the answers are written, with the version, web or desktop, the system, language and screen size; you can also attach the open drawing (without its pictures), a picture of the drawing area and the errors the app ran into. Everything that is sent is shown before you send it.
+- A banquette among the dining furniture: a bench built along the wall, its back against it, as long as it is pulled, with a seat for about every 60 cm. Its back is of cushions, a panel or none (Back, and its Height); its base is closed, has a drawer under each place, or stands on legs (Base); a panel can close either end (End panels). Elevations draw all of it from in front and from the side.
+- A fireplace under Heating, against the wall by its back, in two styles: a cassette, a closed insert behind glass set in its chimney breast, or an open hearth, its firebox open to the room and its slab on the floor in front (Hearth). Elevations draw it from in front and from the side.
+- Preferences › Keyboard shortcuts › Mouse and trackpad says what you scroll with: a mouse, whose wheel zooms, or a trackpad, on which two fingers move the view. Automatic, as before, can take a mouse with a fine wheel for a trackpad and move the view instead of zooming; choose Mouse then. The setting it replaces, under Drawing, is read as Mouse if the wheel zoomed and Trackpad if it moved the view.
+- Three more sliding doors under Door › Type: a single one hung in front of the wall that slides along it, a double one whose two leaves part, and a pocket door that slides into the wall. On the plan, each is drawn shut with, dashed, where it slides to and an arrow; Slides to says which way the single one and the pocket door go, and Other side which face of the wall they are on.
+
+### Improved
+- Every list to choose from (in Preferences, the Properties panel, the drawing settings, exporting, the assistant) opens the app's own list, drawn as its menus are with what is chosen ticked, instead of the system's. Arrows, Enter, Escape and a first letter work in it as before.
+- The sliding door that was there, now called Sliding patio door, is drawn as one in an outside wall: its frame at each side and its leaves on two rails, each overlapping the next, two to four of them (Leaves). Drawings keep their doors, which look the new way.
+- A door shows only what means something for its type: Hinge for a single door, Open angle for a hinged door, neither for a sliding one.
+
+### Fixed
+- A door or a window can be selected by clicking anywhere in the gap it makes in its wall, so a door set to Opening only, drawn as nothing but the hole, is no longer nearly impossible to pick. Double-clicked through the group it is in, it is selected inside the group in one go.
+
 ## 1.12.0 — 2026-11-17
 
 ### New

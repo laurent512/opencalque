@@ -15,7 +15,6 @@ const HEADINGS: Record<string, string> = { New: msg('New'), Improved: msg('Impro
 const LINKS: [string, string][] = [
   [msg('Source code'), REPOSITORY],
   [msg('Downloads'), `${REPOSITORY}/releases`],
-  [msg('Report a problem'), `${REPOSITORY}/issues`],
 ]
 
 /**
@@ -55,6 +54,9 @@ export function About() {
                   {t(name)}
                 </a>
               ))}
+              <button className="link-button" onClick={() => useWindows.setState({ aboutOpen: false, feedbackOpen: true })}>
+                {t('Report a bug or suggest an idea')}
+              </button>
               <button className="link-button" onClick={() => setLicences(!licences)}>
                 {licences ? t('What is new') : t('Licences')}
               </button>

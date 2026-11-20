@@ -23,6 +23,7 @@ import { usePrefs } from '../prefs'
 import { useStore } from '../store'
 import { IconButton, labelOf } from '../ui'
 import { useWindows } from '../windows'
+import { Select } from '../Select'
 
 const EXAMPLES = [
   msg('Draw a 5 × 4 m room with a door on the bottom wall'),
@@ -171,14 +172,14 @@ export function AssistantPanel() {
   return (
     <div className="assistant-panel">
       <div className="assistant-head">
-        <select aria-label={t('Conversation')} title={t('Conversation')} value={current} disabled={busy} onChange={(e) => openConversation(e.target.value)}>
-          {!kept && <option value={current}>{t('New conversation')}</option>}
-          {conversations.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.title}
-            </option>
-          ))}
-        </select>
+        <Select
+          aria-label={t('Conversation')}
+          title={t('Conversation')}
+          value={current}
+          disabled={busy}
+          onChange={openConversation}
+          options={[...(kept ? [] : [{ value: current, label: t('New conversation') }]), ...conversations.map((c) => ({ value: c.id, label: c.title }))]}
+        />
         <IconButton title={t('New conversation')} onClick={newConversation} disabled={busy || entries.length === 0}>
           <Plus size={14} />
         </IconButton>
@@ -316,13 +317,15 @@ export function AssistantPanel() {
           <IconButton title={canSeePictures ? t('Attach a picture (or paste one)') : t('This provider cannot be shown pictures')} onClick={() => filePicker.current?.click()} disabled={!canSeePictures || attachments.length >= MAX_PICTURES}>
             <Paperclip size={14} />
           </IconButton>
-          <select className="assistant-model" aria-label={t('Model')} title={t('Model')} value={model} disabled={busy} onChange={(e) => setModel(e.target.value)}>
-            {(models.some(([id]) => id === model) ? models : [...models, [model, model] as ModelChoice]).map(([id, label]) => (
-              <option key={id} value={id}>
-                {label || t('Model')}
-              </option>
-            ))}
-          </select>
+          <Select
+            className="assistant-model"
+            aria-label={t('Model')}
+            title={t('Model')}
+            value={model}
+            disabled={busy}
+            onChange={setModel}
+            options={(models.some(([id]) => id === model) ? models : [...models, [model, model] as ModelChoice]).map(([id, label]) => ({ value: id, label: label || t('Model') }))}
+          />
           {busy ? (
             <IconButton title={t('Stop')} onClick={stop} active>
               <Square size={12} />

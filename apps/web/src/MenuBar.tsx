@@ -27,7 +27,7 @@ const MENUS: [string, (string | null)[]][] = [
   // and layers are added from their panels. Every command stays in the command list (Ctrl+K). The
   // Connect tool, used now and then, is in the Object menu and the right-click menu of a switch or
   // a light rather than in the toolbar.
-  [msg('Preferences'), ['prefs.open', null, 'palette.open', null, 'help.welcome', 'app.checkUpdate']],
+  [msg('Preferences'), ['prefs.open', null, 'palette.open', null, 'help.welcome', 'help.feedback', 'app.checkUpdate']],
 ]
 
 /** A newer version of the desktop app, once there is something to do about it: restart into it, or fetch it from its page. */

@@ -1,11 +1,51 @@
-// The web editor as a static site on Cloudflare: `pnpm build:web`, then `npx wrangler@4 deploy`.
-// The CI workflow does both on every push to main. There is no server code: only the files.
+// The web editor on Cloudflare: `pnpm build:web`, then `npx wrangler@4 deploy`. The CI workflow
+// does both on every push to main. Every address is a file of the editor except those under
+// /api/, which reach the worker in apps/web/worker (reports sent from the app, posted to GitHub,
+// their attached files kept in R2). The worker needs two secrets, set once with
+// `npx wrangler@4 secret put <name>`: GITHUB_APP_ID and GITHUB_APP_KEY, and the bucket below,
+// made once with `npx wrangler@4 r2 bucket create opencalque-feedback` (ARCHITECTURE, "Reports
+// from the app").
 {
-  "$schema": "https://unpkg.com/wrangler@4/config-schema.json",
-  "name": "opencalque",
-  "compatibility_date": "2026-10-01",
-  "routes": [{ "pattern": "opencalque.com", "custom_domain": true }],
-  "assets": {
-    "directory": "apps/web/dist"
-  }
+	"$schema": "https://unpkg.com/wrangler@4/config-schema.json",
+	"name": "opencalque",
+	"compatibility_date": "2026-10-01",
+	"routes": [
+		{
+			"pattern": "opencalque.com",
+			"custom_domain": true
+		}
+	],
+	"main": "apps/web/worker/index.ts",
+	"assets": {
+		"directory": "apps/web/dist",
+		"binding": "ASSETS",
+		"run_worker_first": [
+			"/api/*"
+		]
+	},
+	"vars": {
+		"FEEDBACK_REPO": "laurent512/opencalque"
+	},
+	"r2_buckets": [
+		{
+			"binding": "FEEDBACK_FILES",
+			"bucket_name": "opencalque-feedback"
+		},
+		{
+			"bucket_name": "opencalque-feedback",
+			"binding": "opencalque_feedback",
+			"remote": true
+		}
+	],
+	// Five reports a minute from one address.
+	"ratelimits": [
+		{
+			"name": "FEEDBACK_LIMIT",
+			"namespace_id": "1001",
+			"simple": {
+				"limit": 5,
+				"period": 60
+			}
+		}
+	]
 }

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { expect, test, type Page } from '@playwright/test'
-import { canvas, choose, drawing, drawingOnScreen, drawWall, failOnErrors, objectRows, openEditor, recordSaves, startWith } from './support'
+import { canvas, choose, drawing, drawingOnScreen, drawWall, failOnErrors, objectRows, openEditor, pickIn, recordSaves, startWith } from './support'
 
 /**
  * Each tool of the canvas, and each drag of the select tool, used as a person would, with what it
@@ -181,7 +181,7 @@ test('lays a US sheet once the ARCH sizes are chosen, and gives a paper an ANSI 
   const box = (await canvas(page).boundingBox())!
   await page.keyboard.press('f')
   // Only the ARCH sheets are offered once chosen; an ARCH B lying is 18 × 12 inches, 45720 × 30480 at 1:100.
-  await page.getByRole('combobox', { name: 'Sheet sizes' }).selectOption('ARCH')
+  await pickIn(page, page.getByRole('combobox', { name: 'Sheet sizes' }), 'ARCH')
   await page.mouse.click(box.x + 320, box.y + 220)
   const zoom = (0.5 * box.width) / 42000
   const corner = { x: box.x + 320 + 45720 * zoom, y: box.y + 220 + 30480 * zoom }
@@ -194,11 +194,13 @@ test('lays a US sheet once the ARCH sizes are chosen, and gives a paper an ANSI 
   // In its properties, the formats are listed by series, and an ANSI D keeps the sheet lying, about its middle.
   await page.keyboard.press('Escape')
   await objectRows(page).filter({ hasText: paper.name }).click()
-  const format = page.locator('.field', { has: page.locator('span:text-is("Format")') }).locator('select')
-  expect(await format.locator('optgroup').evaluateAll((groups) => groups.map((group) => group.getAttribute('label')))).toEqual(['ISO', 'ARCH', 'ANSI'])
-  expect(await format.locator('optgroup[label="ARCH"] option').allTextContents()).toEqual(['ARCH A', 'ARCH B', 'ARCH C', 'ARCH D', 'ARCH E1', 'ARCH E'])
-  await expect(format).toHaveValue('ARCH B')
-  await format.selectOption('ANSI D')
+  const format = page.locator('.field', { has: page.locator('span:text-is("Format")') }).locator('.select')
+  await expect(format).toHaveText('ARCH B')
+  await format.click()
+  const list = page.getByRole('listbox')
+  await expect(list.locator('.select-group')).toHaveText(['ISO', 'ARCH', 'ANSI'])
+  await expect(list.getByRole('group', { name: 'ARCH' }).getByRole('option')).toHaveText(['ARCH A', 'ARCH B', 'ARCH C', 'ARCH D', 'ARCH E1', 'ARCH E'])
+  await list.getByRole('option', { name: 'ANSI D', exact: true }).click()
   const resized = (await saved(page)).find((n) => n.type === 'paper')!
   expect([resized.width, resized.height].map(Math.round)).toEqual([86360, 55880])
 })
@@ -225,9 +227,9 @@ test('lays the title blocks of a drawing down the right edge from its settings, 
     return JSON.parse(await page.evaluate(() => (window as any).saves.at(-1))).settings
   }
   let dialog = await settings()
-  const layout = dialog.locator('.pref-field', { hasText: 'Title block' }).locator('select')
-  await expect(layout).toHaveValue('corner')
-  await layout.selectOption('strip')
+  const layout = dialog.locator('.pref-field', { hasText: 'Title block' }).locator('.select')
+  await expect(layout).toHaveText('In the bottom right corner')
+  await pickIn(page, layout, 'Down the right edge, with captions')
   await dialog.getByRole('button', { name: 'Done' }).click()
   // The captions are written with the drawing, in the language of the app; the sheet is left as it was.
   expect(await lastSettings()).toMatchObject({ titleBlock: { layout: 'strip', labels: { sheet: 'Sheet title', author: 'Drawn by', number: 'Sheet no.' } } })
@@ -239,7 +241,7 @@ test('lays the title blocks of a drawing down the right edge from its settings, 
   expect((await saved(page)).find((n) => n.type === 'paper')!.titleBlock).toEqual({ number: 'A-101', revisions: '1 | 2026-11-17 | Issued for permit' })
   // Back in the corner, the drawing goes without its captions, and the sheet keeps what was typed.
   dialog = await settings()
-  await dialog.locator('.pref-field', { hasText: 'Title block' }).locator('select').selectOption('corner')
+  await pickIn(page, dialog.locator('.pref-field', { hasText: 'Title block' }).locator('.select'), 'In the bottom right corner')
   await dialog.getByRole('button', { name: 'Done' }).click()
   expect(await lastSettings()).toBeUndefined()
   expect((await saved(page)).find((n) => n.type === 'paper')!.titleBlock).toEqual({ number: 'A-101', revisions: '1 | 2026-11-17 | Issued for permit' })
@@ -1140,9 +1142,9 @@ test('says which line a view is of, and makes it a view of another one picked fr
   await page.mouse.click(...at(3500, 2500))
   await page.mouse.click(...at(500, 3500))
   await objectRows(page).filter({ hasText: 'North' }).click()
-  const choice = page.locator('.field', { has: page.locator('span:text-is("View line")') }).locator('select')
-  await expect(choice.locator('option:checked')).toHaveText('Wall line')
-  await choice.selectOption({ label: 'View line 2' })
+  const choice = page.locator('.field', { has: page.locator('span:text-is("View line")') }).locator('.select')
+  await expect(choice).toHaveText('Wall line')
+  await pickIn(page, choice, 'View line 2')
   const nodes = await saved(page)
   const other = nodes.find((n) => n.type === 'viewline' && n.id !== 'l')
   expect(nodes.find((n) => n.id === 'e')).toMatchObject({ line: other.id })

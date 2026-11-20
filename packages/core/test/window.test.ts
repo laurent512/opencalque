@@ -20,6 +20,42 @@ const extent = (prims: ReturnType<NonNullable<typeof window.front>>) => {
   return { left: Math.min(...points.map((q) => q.x)), right: Math.max(...points.map((q) => q.x)), top: Math.min(...points.map((q) => q.y)), bottom: Math.max(...points.map((q) => q.y)) }
 }
 
+describe('a sliding door', () => {
+  const drawn = (props: Record<string, unknown>) => door.build(registry.resolveProps(door, { width: 800, ...props }), { wallThickness: 200 })
+  const boxes = (props: Record<string, unknown>) => drawn(props).filter((p) => p.kind === 'path' && p.closed)
+  const solid = (props: Record<string, unknown>) => boxes(props).filter((p) => p.kind === 'path' && !p.dash).map((p) => extent([p]))
+
+  it('hangs in front of the wall, over the opening, and shows dashed where it slides to', () => {
+    expect(solid({ type: 'Sliding on wall' })).toEqual([{ left: -50, right: 850, top: 110, bottom: 150 }])
+    const goes = (slide: string) => extent(boxes({ type: 'Sliding on wall', slide }).filter((p) => p.kind === 'path' && p.dash))
+    expect([goes('Right').left, goes('Left').right]).toEqual([750, 50])
+    // On the other side of the wall with the other side.
+    expect(solid({ type: 'Sliding on wall', flip: true })[0].bottom).toBe(-110)
+  })
+
+  it('parts in two when double, each leaf to its side', () => {
+    expect(solid({ type: 'Double sliding on wall' }).map((b) => [b.left, b.right])).toEqual([[-50, 400], [400, 850]])
+  })
+
+  it('goes into the wall when it is a pocket door', () => {
+    expect(solid({ type: 'Pocket' })).toEqual([{ left: 0, right: 800, top: -20, bottom: 20 }])
+  })
+
+  it('has its leaves on two rails in its frame when glazed, two to four of them', () => {
+    const leaves = (n: unknown) => solid({ type: 'Sliding', leaves: n })
+    expect([leaves(2).length, leaves(3).length, leaves(4).length, leaves(9).length, leaves(1).length]).toEqual([2, 3, 4, 4, 2])
+    expect(leaves(2).every((b) => b.left >= 50 && b.right <= 750 && b.top > -100 && b.bottom < 100)).toBe(true)
+  })
+
+  it('asks for what moves it: no hinge or angle, which way it slides, how many leaves', () => {
+    const shown = (type: string) => door.params.filter((p) => p.shown?.(registry.resolveProps(door, { type })) ?? true).map((p) => p.key)
+    expect(shown('Single')).toEqual(['width', 'height', 'type', 'hinge', 'angle', 'flip'])
+    expect(shown('Sliding on wall')).toEqual(['width', 'height', 'type', 'slide', 'flip'])
+    expect(shown('Double sliding on wall')).toEqual(['width', 'height', 'type', 'flip'])
+    expect(shown('Sliding')).toEqual(['width', 'height', 'type', 'leaves', 'flip'])
+  })
+})
+
 describe('doors and windows seen from in front', () => {
   it('a window stands on its sill height, 900 unless said, as high as it is', () => {
     expect(extent(window.front!(registry.resolveProps(window, {})))).toEqual({ left: 0, right: 1200, top: -2150, bottom: -900 })
@@ -33,6 +69,7 @@ describe('doors and windows seen from in front', () => {
     expect(extent(door.front!(registry.resolveProps(door, {})))).toEqual({ left: 0, right: 900, top: -2040, bottom: 0 })
     const middle = (type: string) => door.front!(registry.resolveProps(door, { type })).some((p) => p.kind === 'path' && p.points.every((q) => q.x === 450))
     expect([middle('Single'), middle('Double'), middle('Sliding'), middle('Opening only')]).toEqual([false, true, true, false])
+    expect([middle('Sliding on wall'), middle('Double sliding on wall'), middle('Pocket')]).toEqual([false, true, false])
   })
 
   it('a window with a sill height that is not a number stands at the usual one rather than failing', () => {

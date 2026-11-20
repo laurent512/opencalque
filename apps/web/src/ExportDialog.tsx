@@ -8,6 +8,7 @@ import { registry } from './extensions'
 import { apply, useStore } from './store'
 import { Field, labelOf } from './ui'
 import { useWindows } from './windows'
+import { Select } from './Select'
 
 const close = () => useWindows.setState({ exportOpen: false })
 
@@ -151,25 +152,13 @@ export function ExportDialog() {
           ) : (
             <label className="pref-field">
               <span>{t('Page')}</span>
-              <select value={from} onChange={(e) => setFrom(e.target.value)}>
-                {pages.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {labelOf(doc, p)}
-                  </option>
-                ))}
-              </select>
+              <Select value={from} onChange={setFrom} options={pages.map((p) => ({ value: p.id, label: labelOf(doc, p) }))} />
             </label>
           )}
           {format === 'png' && (
             <label className="pref-field">
               <span>{t('Size')}</span>
-              <select value={pixels} onChange={(e) => setPixels(Number(e.target.value))}>
-                {PNG_SIZES.map((size) => (
-                  <option key={size} value={size}>
-                    {t('{n} pixels on its longer side', { n: size })}
-                  </option>
-                ))}
-              </select>
+              <Select value={String(pixels)} onChange={(size) => setPixels(Number(size))} options={PNG_SIZES.map((size) => ({ value: String(size), label: t('{n} pixels on its longer side', { n: size }) }))} />
             </label>
           )}
           {format === 'dxf' && <p className="hint">{t('Fills, line weights and pictures are not carried over to a DXF.')}</p>}

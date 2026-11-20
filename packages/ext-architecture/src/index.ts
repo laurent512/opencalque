@@ -1,8 +1,8 @@
 import type { Extension, Op, ParametricKind } from '@opencalque/core'
 import { bathtub, showerHead, showerTray, toilet, wallHungToilet, washbasin } from './bathroom'
 import { compass } from './compass'
-import { chair, cornerSofa, desk, officeChair, sofa } from './furniture'
-import { gasBoiler, heatPump, radiator, RADIATOR_TOP, waterHeater } from './heating'
+import { banquette, chair, cornerSofa, desk, officeChair, sofa } from './furniture'
+import { fireplace, gasBoiler, heatPump, radiator, RADIATOR_TOP, waterHeater } from './heating'
 import { bedsideTable, chestOfDrawers, wardrobe } from './bedroom'
 import { baseUnit, dishwasher, fridge, hob, hood, sink, splashback, tallUnit, wallCabinet, washingMachine, worktop } from './kitchen'
 import { door, windowKind } from './openings'
@@ -14,7 +14,7 @@ import { translations } from './translations'
  * Bundled extension, and the reference for writing one: it depends only on @opencalque/core and
  * contributes doors, windows, stairs, washbasins, a bathtub, toilets, a shower tray and its
  * fittings, the kitchen (units, worktop, hob, sink, appliances, hood, splashback), bedroom
- * furniture, a corner sofa, heating (a radiator, a heat pump's outdoor unit, a gas boiler, a water heater), and one command.
+ * furniture, a corner sofa, a banquette, heating (a radiator, a heat pump's outdoor unit, a gas boiler, a water heater, a fireplace), and one command.
  * Furniture and appliances draw themselves in elevations, from in front and from the side
  * (`front`, `side`, in fronts.ts).
  *
@@ -48,9 +48,9 @@ export const architecture: Extension = {
     api.registerParametric(splashback)
     // Against two walls, which a snap to one cannot put it against.
     api.registerParametric(tall(cornerSofa, 850, false))
-    for (const kind of [sofa('arch.sofa', 'Sofa', 1600, 2), sofa('arch.armchair', 'Armchair', 850, 1), chair, desk, officeChair]) api.registerParametric(kind)
+    for (const kind of [sofa('arch.sofa', 'Sofa', 1600, 2), sofa('arch.armchair', 'Armchair', 850, 1), chair, banquette, desk, officeChair]) api.registerParametric(kind)
     api.registerParametric(tall(radiator, RADIATOR_TOP))
-    for (const kind of [heatPump, gasBoiler, waterHeater]) api.registerParametric(kind)
+    for (const kind of [heatPump, gasBoiler, waterHeater, fireplace]) api.registerParametric(kind)
     api.registerParametric(compass)
 
     api.registerCommand({

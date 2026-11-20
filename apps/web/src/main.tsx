@@ -12,10 +12,12 @@ import { loadDocument } from './store'
 import { startTheme } from './theme'
 import { startAgentBridge } from './ai/bridge'
 import { startUpdates } from './updates'
+import { noteUncaughtErrors } from './feedback/errors'
 import './styles.css'
 
 // The language is known only now, so the first empty drawing is made here, with its page and
 // layer named in it.
+noteUncaughtErrors()
 loadExtensions()
 setLanguage(usePrefs.getState().language, registry.translations)
 startTheme()

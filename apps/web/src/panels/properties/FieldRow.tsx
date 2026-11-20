@@ -15,6 +15,7 @@ import { DashPicker, Field, FieldPair, IconButton, OpacitySlider, ProportionLock
 import { formatAngle, formatLength } from '../../units'
 import { GEOMETRY, LOOK_SECTIONS, rowName, rowsOf, STROKE, type FieldSpec, type Option } from './fields'
 import { WallEdges } from './walls'
+import { Select } from '../../Select'
 
 /* One field of the Properties panel, for one object or several, and the sections fields are shown in. */
 
@@ -170,14 +171,12 @@ export function FieldRow({ node, nodes, field, update }: { node: Node; nodes: No
       )}
       {field.type === 'string' && (
         // A style that defines the plain font says so as "sans-serif", which is what no font means here.
-        <select value={mixed ? 'mixed' : value === 'sans-serif' && !field.options!.some((option) => option.value === value) ? '' : ((value as string | undefined) ?? '')} onChange={(e) => commit(e.target.value || undefined)}>
-          {mixed && <option value="mixed">{t('Mixed')}</option>}
-          {field.options!.map((option) => (
-            <option key={option.value} value={option.value}>
-              {t(option.label)}
-            </option>
-          ))}
-        </select>
+        <Select
+          value={mixed ? 'mixed' : value === 'sans-serif' && !field.options!.some((option) => option.value === value) ? '' : ((value as string | undefined) ?? '')}
+          placeholder={mixed ? t('Mixed') : undefined}
+          onChange={(chosen) => commit(chosen || undefined)}
+          options={field.options!.map((option) => ({ value: option.value, label: t(option.label) }))}
+        />
       )}
       {field.type === 'color' && (
         <ColorChoice

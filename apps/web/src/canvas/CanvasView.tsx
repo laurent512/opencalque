@@ -433,7 +433,13 @@ export function CanvasView() {
       const whole = run.every((id) => s.selection.includes(id)) && s.selection.length === run.length
       select(whole ? connectedWalls(s.doc, hit.node, true) : run)
     } else if (hit?.node.type === 'instance') editComponent(hit.node.component, hit.node)
-    else if (hit?.node.type === 'group') editComponent(hit.id)
+    else if (hit?.node.type === 'group') {
+      // Into the group, with what was double-clicked in it selected: a door seen through a group is
+      // picked up in one double-click, as a drawing program does.
+      editComponent(hit.id)
+      const inside = hitTest(buildScene(s.doc, hit.id, registry), toWorld(local(c, e), s.view), 5 / s.view.zoom)
+      if (inside) select([inside.id])
+    }
     else if (hit?.node.type === 'text' || hit?.node.type === 'annotation') useStore.setState({ editingText: { id: hit.id } })
     else if (hit?.node.type === 'gridline') {
       // Its label is typed in the bubble nearest where it was double-clicked; with no bubble it has nowhere to be typed.
@@ -471,7 +477,7 @@ export function CanvasView() {
   // it puts the drawing down and goes back to selecting, which is what usually follows.
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).closest('input, textarea, select')) return
+      if ((e.target as HTMLElement).closest('input, textarea, select, .select')) return
       if (e.ctrlKey || e.metaKey || e.altKey) return
       const s = get()
       // Space with Shift flips what is drawn or selected (a command, which can be given plain Space
@@ -506,7 +512,7 @@ export function CanvasView() {
       const tap = c.spaceTap
       c.spaceTap = null
       if (!tap || tap.used || performance.now() - tap.at > 300) return
-      if ((e.target as HTMLElement).closest('input, textarea, select')) return
+      if ((e.target as HTMLElement).closest('input, textarea, select, .select')) return
       // Not in the middle of dragging something: only a drawing being made is put down, as Esc does.
       const g = c.gesture
       if (g.kind === 'poly') finishPoly(c, g, false)

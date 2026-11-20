@@ -3,6 +3,7 @@ import { serializeDocument } from '@opencalque/core'
 import { t } from './i18n'
 import { platform } from './platform'
 import { hideSplash } from './splash'
+import { noteError } from './feedback/errors'
 import { forFile, useStore } from './store'
 
 /** Saves the drawing as it is, wherever the user says, whatever state the interface is in. */
@@ -32,6 +33,7 @@ export class Guard extends Component<{ children: ReactNode; area?: string }, { e
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error(error, info.componentStack)
+    noteError(error)
     // A fault while starting would otherwise stay hidden under the loading screen.
     hideSplash()
   }
