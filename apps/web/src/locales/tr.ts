@@ -1158,6 +1158,7 @@ export const tr: Record<string, string> = {
   "Drag over the part to show, or click to take all of it. Escape to cancel.": "Gösterilecek kısmın üzerinde sürükleyin ya da tümünü almak için tıklayın. İptal için Esc.",
   "Stopping…": "Durduruluyor…",
   "The app could not be captured: {reason}": "Uygulama yakalanamadı: {reason}",
+  "no picture of it arrived": "ondan hiçbir görüntü gelmedi",
   "That picture is too large to send.": "Bu resim gönderilemeyecek kadar büyük.",
   "That recording is too large to send.": "Bu kayıt gönderilemeyecek kadar büyük.",
   "What is attached is too large to send together: take something out.": "Ekler birlikte gönderilemeyecek kadar büyük: birini çıkarın.",

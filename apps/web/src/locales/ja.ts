@@ -1158,6 +1158,7 @@ export const ja: Record<string, string> = {
   "Drag over the part to show, or click to take all of it. Escape to cancel.": "見せたい部分をドラッグするか、クリックして全体を撮ります。Esc でキャンセル。",
   "Stopping…": "停止中…",
   "The app could not be captured: {reason}": "アプリをキャプチャできませんでした: {reason}",
+  "no picture of it arrived": "アプリの画像が届きませんでした",
   "That picture is too large to send.": "この画像は大きすぎて送信できません。",
   "That recording is too large to send.": "この録画は大きすぎて送信できません。",
   "What is attached is too large to send together: take something out.": "添付がまとめて送るには大きすぎます。いくつか外してください。",

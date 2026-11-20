@@ -1,3 +1,4 @@
+import { t } from '../i18n'
 import { LIMITS, type Recording, type RecordingType } from './report'
 
 /**
@@ -52,6 +53,33 @@ const frames = (count: number) =>
   })
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
+/** How long the first frame of the app may take: the window is out of the way meanwhile, and the person must not wait on nothing. */
+const FIRST_FRAME_MS = 4000
+
+/**
+ * Keeps the page repainting until the returned function is called: a pixel in its corner, nearly
+ * see-through, changes at every frame. A tab that does not change may send no frame at all
+ * (Chromium without a graphics card sends only what is painted again), and the stream would then
+ * never start.
+ */
+function keepPainting(): () => void {
+  const pixel = document.createElement('div')
+  pixel.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;background:#000;pointer-events:none;z-index:2147483647'
+  document.body.append(pixel)
+  let running = true
+  let tick = 0
+  const paint = () => {
+    if (!running) return
+    pixel.style.opacity = tick++ % 2 ? '0.01' : '0.02'
+    requestAnimationFrame(paint)
+  }
+  requestAnimationFrame(paint)
+  return () => {
+    running = false
+    pixel.remove()
+  }
+}
+
 /** Part of an image, scaled down to at most `maxWidth` × `maxHeight`. */
 function crop(image: CanvasImageSource, area: Area, maxWidth: number, maxHeight = maxWidth): HTMLCanvasElement {
   const scale = Math.min(1, maxWidth / area.width, maxHeight / area.height)
@@ -71,19 +99,25 @@ export async function openSource(): Promise<Source> {
   const options = { video: { frameRate: 30 }, audio: false, preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'exclude' }
   const stream = await navigator.mediaDevices.getDisplayMedia(options as DisplayMediaStreamOptions)
   const stop = () => stream.getTracks().forEach((track) => track.stop())
+  const painted = keepPainting()
   try {
     const video = document.createElement('video')
     video.muted = true
     video.playsInline = true
     video.srcObject = stream
-    await video.play()
+    let timer = 0
+    const late = new Promise<never>((_, reject) => (timer = window.setTimeout(() => reject(new Error(t('no picture of it arrived'))), FIRST_FRAME_MS)))
+    await Promise.race([video.play(), late]).finally(() => clearTimeout(timer))
     // The first frames, and the bar a browser puts above a shared tab, settle.
     await wait(300)
+    if (!video.videoWidth) throw new Error(t('no picture of it arrived'))
+    painted()
     const frame = crop(video, { x: 0, y: 0, width: video.videoWidth, height: video.videoHeight }, Infinity)
     const surface = (stream.getVideoTracks()[0]?.getSettings() as { displaySurface?: string } | undefined)?.displaySurface
     const isPage = surface !== 'monitor' && surface !== 'window' && Math.abs(frame.width / frame.height - innerWidth / innerHeight) < 0.03
     return { stream, video, frame, isPage, stop }
   } catch (error) {
+    painted()
     stop()
     throw error
   }

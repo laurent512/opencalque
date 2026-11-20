@@ -1158,6 +1158,7 @@ export const fr: Record<string, string> = {
   "Drag over the part to show, or click to take all of it. Escape to cancel.": "Faites glisser sur la partie à montrer, ou cliquez pour tout prendre. Échap pour annuler.",
   "Stopping…": "Arrêt…",
   "The app could not be captured: {reason}": "L’application n’a pas pu être capturée : {reason}",
+  "no picture of it arrived": "aucune image n’en est arrivée",
   "That picture is too large to send.": "Cette image est trop grande pour être envoyée.",
   "That recording is too large to send.": "Cet enregistrement est trop gros pour être envoyé.",
   "What is attached is too large to send together: take something out.": "Les pièces jointes sont trop lourdes pour être envoyées ensemble : retirez-en une.",

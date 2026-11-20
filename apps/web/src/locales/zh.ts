@@ -1158,6 +1158,7 @@ export const zh: Record<string, string> = {
   "Drag over the part to show, or click to take all of it. Escape to cancel.": "拖动选择要展示的部分，或点击截取全部。按 Esc 取消。",
   "Stopping…": "正在停止…",
   "The app could not be captured: {reason}": "无法截取应用：{reason}",
+  "no picture of it arrived": "没有收到应用的画面",
   "That picture is too large to send.": "这张图片太大，无法发送。",
   "That recording is too large to send.": "这段录像太大，无法发送。",
   "What is attached is too large to send together: take something out.": "附件合起来太大，无法一起发送：请移除一些。",

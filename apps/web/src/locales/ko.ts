@@ -1158,6 +1158,7 @@ export const ko: Record<string, string> = {
   "Drag over the part to show, or click to take all of it. Escape to cancel.": "보여줄 부분을 드래그하거나, 클릭해 전체를 찍으세요. Esc로 취소.",
   "Stopping…": "중지하는 중…",
   "The app could not be captured: {reason}": "앱을 캡처할 수 없습니다: {reason}",
+  "no picture of it arrived": "앱의 화면이 전달되지 않았습니다",
   "That picture is too large to send.": "이 이미지는 너무 커서 보낼 수 없습니다.",
   "That recording is too large to send.": "이 녹화는 너무 커서 보낼 수 없습니다.",
   "What is attached is too large to send together: take something out.": "첨부한 것이 함께 보내기에 너무 큽니다. 일부를 빼 주세요.",
