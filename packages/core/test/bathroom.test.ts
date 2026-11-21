@@ -68,3 +68,18 @@ describe('a bathtub', () => {
     expect(parts(place('arch.bathtub', { rim: 500 })).basin).toEqual([{ x: 350, y: 350 }, { x: 1350, y: 400 }])
   })
 })
+
+describe('a parametric object resized from a corner', () => {
+  it('keeps its proportions when asked, as a shape does, and only then', () => {
+    const desk = place('arch.desk', { width: 1200, depth: 600 })
+    const corner = { x: 1800, y: 700 }
+    const kept = resizePatch(desk, 2, corner, true, registry)!.props as { width: number; depth: number }
+    expect(kept.width).toBeGreaterThan(1200)
+    expect(kept.width / kept.depth).toBeCloseTo(2, 3)
+    const free = resizePatch(desk, 2, corner, false, registry)!.props as { width: number; depth: number }
+    expect(free.width / free.depth).not.toBeCloseTo(2, 3)
+    // A side changes one size only, kept or not.
+    const side = resizePatch(desk, 5, corner, true, registry)!.props as { width: number; depth: number }
+    expect(side.depth).toBe(600)
+  })
+})

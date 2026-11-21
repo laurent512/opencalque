@@ -7,7 +7,7 @@ import { registry } from '../../extensions'
 import { apply, selectCorner, useStore } from '../../store'
 import { ColorChoice } from '../../ColorChoice'
 import { WeightChoice } from '../../WeightChoice'
-import { DashPicker, Field, FieldPair, IconButton, JustifyPicker, Section, YesNo } from '../../ui'
+import { DashPicker, Field, FieldPair, IconButton, JustifyPicker, PictureRow, Section, YesNo } from '../../ui'
 import { formatLength } from '../../units'
 import { MaterialChoice, type MaterialOption } from '../../MaterialChoice'
 import { unfilledPatch } from '../../materials'
@@ -149,25 +149,27 @@ const JOINT_PICTURES: Record<JointChoice, { name: string; own?: string; lines: s
 /** A row of small pictures of joints to pick one from, like the ends of a line. */
 function JointPicker(props: { choices: JointChoice[]; value: JointChoice | undefined; names?: Partial<Record<JointChoice, string>>; cuts?: boolean; onPick: (value: JointChoice) => void }) {
   return (
-    <div className="end-picker joint-picker" role="radiogroup">
-      {props.choices.map((choice) => {
-        const name = t(props.names?.[choice] ?? JOINT_PICTURES[choice].name)
-        return (
-          <button key={choice} type="button" role="radio" aria-checked={choice === props.value} className={choice === props.value ? 'active' : ''} title={name} aria-label={name} onClick={() => props.onPick(choice)}>
-            <svg width="28" height="20" viewBox="0 0 28 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round">
-              {JOINT_PICTURES[choice].own && <path d={JOINT_PICTURES[choice].own} fill="currentColor" fillOpacity="0.22" stroke="none" />}
-              {/* Automatic is drawn as what it gives here and now, sharp or cut off, with an "A" to say it chose. */}
-              <path d={choice === 'auto' && props.cuts ? JOINT_PICTURES.bevel.lines : JOINT_PICTURES[choice].lines} />
-              {choice === 'auto' && (
-                <text x="20.5" y="19" fontSize="8" fontWeight="700" fill="currentColor" stroke="none" textAnchor="middle">
-                  A
-                </text>
-              )}
-            </svg>
-          </button>
-        )
-      })}
-    </div>
+    <PictureRow
+      className="joint-picker"
+      value={props.value}
+      onPick={props.onPick}
+      choices={props.choices.map((choice) => ({
+        value: choice,
+        name: t(props.names?.[choice] ?? JOINT_PICTURES[choice].name),
+        picture: (
+          <svg width="28" height="20" viewBox="0 0 28 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeLinecap="round">
+            {JOINT_PICTURES[choice].own && <path d={JOINT_PICTURES[choice].own} fill="currentColor" fillOpacity="0.22" stroke="none" />}
+            {/* Automatic is drawn as what it gives here and now, sharp or cut off, with an "A" to say it chose. */}
+            <path d={choice === 'auto' && props.cuts ? JOINT_PICTURES.bevel.lines : JOINT_PICTURES[choice].lines} />
+            {choice === 'auto' && (
+              <text x="20.5" y="19" fontSize="8" fontWeight="700" fill="currentColor" stroke="none" textAnchor="middle">
+                A
+              </text>
+            )}
+          </svg>
+        ),
+      }))}
+    />
   )
 }
 

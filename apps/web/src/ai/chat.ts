@@ -116,8 +116,6 @@ export function isConfigured(ai: Prefs['ai'] = usePrefs.getState().ai): boolean 
   }
 }
 
-/** Whether pictures attached to a message reach the chosen provider's model. */
-export const takesPictures = (ai: Prefs['ai']) => ai.provider !== 'claude-cli'
 
 /** The desktop app makes the request itself, so a local model server need not allow this app's origin. */
 const http: Http = async (url, init, signal) => {

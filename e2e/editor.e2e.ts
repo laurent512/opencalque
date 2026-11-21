@@ -321,7 +321,7 @@ test('gives a colour an opacity, on a shape and on a shared colour', async ({ pa
 
   // A shared colour is set in the same window, opacity included, and not linked to anything else.
   await page.keyboard.press('Escape')
-  await page.locator('.dv-tab', { hasText: 'Colours' }).click()
+  await page.locator('.dv-tab:has(.rail-tab[title="Colours"])').click()
   await page.locator('button[title="Add a shared colour"]').click()
   await page.locator('[data-panel="colors"] .row .color-now').first().click()
   await expect(page.locator('.color-menu .color-alpha')).toBeVisible()
@@ -1000,7 +1000,7 @@ test('takes a component of its own from the object library each time, placed as 
   await page.mouse.click(box.x + 300, box.y + 300)
   await page.mouse.click(box.x + 500, box.y + 300)
   await page.keyboard.press('Escape')
-  await page.locator('.dv-tab', { hasText: 'Components' }).click()
+  await page.locator('.dv-tab:has(.rail-tab[title="Components"])').click()
   const panel = page.locator('[data-panel="components"]')
   await expect(panel.locator('.row .editable')).toHaveText(['Coffee table, round'])
   await expect(panel.locator('.row .uses')).toHaveText(['2'])
@@ -1216,7 +1216,7 @@ test('goes through the instances of a component one by one, on every page and in
     c4: placed('c4', 'page_2', 'a0', 0, 0),
   }
   await choose(page, () => page.keyboard.press('Control+o'), 'chairs.opencalque', drawing(nodes, { version: 2 }))
-  await page.locator('.dv-tab', { hasText: 'Components' }).click()
+  await page.locator('.dv-tab:has(.rail-tab[title="Components"])').click()
   await page.locator('[data-panel="components"] .row').first().hover()
   await page.getByRole('button', { name: 'Go through its instances one by one' }).click()
   const bar = page.locator('.instance-bar')
@@ -1267,7 +1267,7 @@ test('makes the instances of one component instances of another from the Compone
     i4: placed('i4', 'lamp', 'a4', 3000),
   }
   await choose(page, () => page.keyboard.press('Control+o'), 'sockets.opencalque', drawing(nodes, { version: 2 }))
-  await page.locator('.dv-tab', { hasText: 'Components' }).click()
+  await page.locator('.dv-tab:has(.rail-tab[title="Components"])').click()
   const row = (name: string) => page.locator('[data-panel="components"] .row', { has: page.locator(`.component-name :text-is("${name}")`) })
   await row('Socket 2').hover()
   await row('Socket 2').getByRole('button', { name: 'Replace its instances with another component' }).click()
@@ -1296,7 +1296,7 @@ test('lists the objects placed with the same settings as one entry beside the co
     c1: { id: 'c1', type: 'instance', parent: 'page_1', layer: 'layer_1', order: 'a4', component: 'chair', x: 0, y: 2000 },
   }
   await choose(page, () => page.keyboard.press('Control+o'), 'heating.opencalque', drawing(nodes, { version: 2 }))
-  await page.locator('.dv-tab', { hasText: 'Components' }).click()
+  await page.locator('.dv-tab:has(.rail-tab[title="Components"])').click()
   const rows = page.locator('[data-panel="components"] .row')
   // By name, the two lengths of radiator apart, each with how many there are.
   await expect(rows.locator('.component-name > span:first-child')).toHaveText(['Chair', 'Radiator 800', 'Radiator 1200'])
@@ -1330,7 +1330,7 @@ test('lists the components of the drawing in their own panel, and places one fro
   await page.keyboard.press('v')
   await objectRows(page).first().click()
   await page.keyboard.press('Control+Alt+k')
-  await page.locator('.dv-tab', { hasText: 'Components' }).click()
+  await page.locator('.dv-tab:has(.rail-tab[title="Components"])').click()
   const rows = page.locator('[data-panel="components"] .row')
   const count = rows.first().locator('.uses')
   await expect(rows).toHaveCount(1)
@@ -1374,7 +1374,7 @@ test('shows the components as pictures too, faint when placed nowhere, and delet
   await page.mouse.move(box.x + 500, box.y + 300)
   await page.mouse.move(box.x + 520, box.y + 320)
   await page.keyboard.press('Escape')
-  await page.locator('.dv-tab', { hasText: 'Components' }).click()
+  await page.locator('.dv-tab:has(.rail-tab[title="Components"])').click()
   const panel = page.locator('[data-panel="components"]')
   await expect(panel.locator('.row')).toHaveCount(0)
   // Two of the drawing's own; the placement of the second deleted, it is placed nowhere.
@@ -1421,7 +1421,7 @@ test('opens a component from its row filling the view, and comes back to the vie
   await page.keyboard.press('Control+Alt+k')
   const zoom = page.locator('.view-bar .zoom-scale')
   const seen = await zoom.innerText()
-  await page.locator('.dv-tab', { hasText: 'Components' }).click()
+  await page.locator('.dv-tab:has(.rail-tab[title="Components"])').click()
   await page.locator('[data-panel="components"] .row').first().getByRole('button', { name: 'Edit component' }).click()
   // Inside it, its rectangle of 300 × 200 mm in the middle of the view, at 2 px a millimetre: its
   // left side 300 px left of the middle.
@@ -1522,7 +1522,7 @@ test('shows in the Structure list what is picked on the drawing, however far dow
   }
   for (let i = 1; i <= 400; i++) nodes[`s${i}`] = { id: `s${i}`, type: 'rect', parent: 'page_1', order: key(i), x: 50000 + i * 10, y: 50000, width: 5, height: 5 }
   await choose(page, () => page.keyboard.press('Control+o'), 'many.opencalque', drawing(nodes))
-  await page.locator('.dv-tab', { hasText: 'Structure' }).click()
+  await page.locator('.dv-tab:has(.rail-tab[title="Structure"])').click()
   expect(await objectRows(page).count()).toBeLessThan(100)
   const box = (await canvas(page).boundingBox())!
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
@@ -1541,7 +1541,7 @@ test('changes the stacking order by dragging a row of the Structure list, and li
     inside: { id: 'inside', type: 'rect', name: 'Inside', parent: 'set', order: 'a0', x: 4000, y: 0, width: 500, height: 500 },
   }
   await choose(page, () => page.keyboard.press('Control+o'), 'order.opencalque', drawing(nodes))
-  await page.locator('.dv-tab', { hasText: 'Structure' }).click()
+  await page.locator('.dv-tab:has(.rail-tab[title="Structure"])').click()
   await expect(objectRows(page)).toHaveText(['Set', 'Over', 'Under'])
   await objectRows(page).filter({ hasText: 'Set' }).getByTitle('Show what is inside').click()
   await expect(objectRows(page)).toHaveText(['Set', 'Inside', 'Over', 'Under'])
@@ -1561,18 +1561,20 @@ test('puts an object in a group by dropping its row on the group, and takes one 
     inside: { id: 'inside', type: 'rect', name: 'Inside', parent: 'set', order: 'a0', x: 4000, y: 0, width: 500, height: 500 },
   }
   await choose(page, () => page.keyboard.press('Control+o'), 'groups.opencalque', drawing(nodes))
-  await page.locator('.dv-tab', { hasText: 'Structure' }).click()
+  await page.locator('.dv-tab:has(.rail-tab[title="Structure"])').click()
   await expect(objectRows(page)).toHaveText(['Set', 'Over', 'Under'])
   // Dropped on the middle of the group's row: it goes in, on top of what the group holds, and the group opens to show it.
   const row = (name: string) => objectRows(page).filter({ hasText: new RegExp(`^${name}$`) })
   const height = (await row('Set').boundingBox())!.height
   await row('Over').dragTo(row('Set'), { targetPosition: { x: 60, y: height / 2 } })
   await expect(objectRows(page)).toHaveText(['Set', 'Over', 'Inside', 'Under'])
-  await expect(row('Over')).toHaveCSS('padding-left', '22px')
+  // One step in from the group's own row.
+  const indent = async (name: string) => parseFloat(await row(name).evaluate((element) => getComputedStyle(element).paddingLeft))
+  expect((await indent('Over')) - (await indent('Set'))).toBe(14)
   // A row inside the group, dropped below one on the page, comes out of it.
   await row('Inside').dragTo(row('Under'), { targetPosition: { x: 60, y: height - 3 } })
   await expect(objectRows(page)).toHaveText(['Set', 'Over', 'Under', 'Inside'])
-  await expect(row('Inside')).toHaveCSS('padding-left', '8px')
+  expect(await indent('Inside')).toBe(await indent('Set'))
 })
 
 test('with Shift, a dimension keeps level and stops on the line it crosses', async ({ page }) => {
@@ -1732,7 +1734,7 @@ test('measures and dimensions between the points clicked, not the grid points ne
   await expect(x('X1')).toHaveValue('-200')
 })
 
-test('shows every value of a dimension style whole, in the narrow side panel', async ({ page }) => {
+test('keeps every row of a dimension style on one line in the narrow side panel, with cut words shown whole under the pointer', async ({ page }) => {
   await startWith(page)
   await openEditor(page)
   await page.keyboard.press('Control+k')
@@ -1748,65 +1750,65 @@ test('shows every value of a dimension style whole, in the narrow side panel', a
   }
   // A colour defined by the style can be seen and chosen: its chooser was once hidden with the row's name.
   await expect(row('Color').locator('.color-now')).toBeVisible()
-  // In a column of about 250 px the font goes under its name, with room for "Sans-serif" whole.
-  const font = row('Font').locator('.select')
-  expect((await font.boundingBox())!.width).toBeGreaterThan(180)
+  // In a column of about 250 px every row is one line: the font stays beside its name.
+  for (const name of ['Font', 'Color', 'Size']) expect((await row(name).boundingBox())!.height, name).toBeLessThanOrEqual(32)
+  // What is left to each dimension is said in a few words, cut if need be and shown whole under the pointer.
+  const left = text.locator('em').first()
+  await left.hover()
+  if (await left.evaluate((element) => element.scrollWidth > element.clientWidth + 1)) await expect(left).toHaveAttribute('title', 'each dimension its own')
 })
 
-test('leaves out whole the tabs a narrow column has no room for, lists them behind a "···", and brings one chosen there into the row', async ({ page }) => {
+test('shows the panels of a group as icons in a rail, the name of the one in front above it once, one alone under its name, and reorders them by dragging', async ({ page }) => {
   await startWith(page)
   await openEditor(page)
-  const all = ['Structure', 'Colours', 'Materials', 'Dimension styles']
-  const header = page.locator('.dv-tabs-and-actions-container', { has: page.locator('.dv-tab', { hasText: 'Structure' }) })
-  const row = header.locator('.dv-tabs-container')
-  const shown = row.locator('.dv-tab:visible')
-  const more = header.getByRole('button', { name: 'More tabs' })
-  await expect(row.locator('.dv-tab')).toHaveText(all)
-  // In a column of about 300 px, some of the five tabs are left out; those shown are whole.
-  await expect(more).toBeVisible()
-  const names = await shown.allInnerTexts()
-  expect(names.length).toBeLessThan(all.length)
-  expect(names).toContain('Structure')
-  const edge = (await row.boundingBox())!
-  for (const tab of await shown.all()) {
-    const box = (await tab.boundingBox())!
-    expect(box.x + box.width).toBeLessThanOrEqual(edge.x + edge.width + 0.5)
-  }
-  expect(await row.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(0)
+  const rail = page.locator('.dv-tabs-container-vertical', { has: page.locator('.rail-tab[title="Colours"]') })
+  expect(await rail.locator('.rail-tab').evaluateAll((icons) => icons.map((icon) => icon.getAttribute('title')))).toEqual(['Layers', 'Pages', 'Components', 'Colours', 'Materials', 'Dimension styles'])
+  // Structure is alone in its group: no rail, its name and its cross in the row at the top.
+  const structure = page.locator('.dv-groupview', { has: page.locator('[data-panel="objects"]') })
+  await expect(structure.locator('.dv-groupview-header-vertical')).toHaveCount(0)
+  await expect(structure.locator('.dv-tab')).toHaveText('Structure')
+  await expect(structure.getByRole('button', { name: 'Close' })).toHaveCount(1)
+  await expect(structure.locator('.panel-head')).toHaveCount(0)
+  // The name is in the row at the top of the panel, and nowhere else in it.
+  await rail.locator('.rail-tab[title="Dimension styles"]').click()
+  const frame = page.locator('[data-panel="dimensionStyles"]')
+  await expect(frame.locator('.panel-head .panel-title')).toHaveText('Dimension styles')
+  await expect(frame.getByRole('button', { name: 'Add a dimension style' })).toBeVisible()
+  await expect(frame.locator('.section h3', { hasText: 'Dimension styles' })).toHaveCount(0)
 
-  // The "···" lists exactly those left out; the last, chosen, comes in front and into the row.
-  await more.click()
-  const items = page.getByRole('menu').getByRole('menuitem')
-  const left = all.filter((name) => !names.includes(name))
-  await expect(items).toHaveText(left)
-  await items.last().click()
-  await expect(page.getByRole('menu')).toHaveCount(0)
-  await expect(row.locator('.dv-tab.dv-active-tab')).toHaveText(left[left.length - 1])
-  await expect(shown.filter({ hasText: left[left.length - 1] })).toBeVisible()
-  await expect(page.locator('[data-panel="dimensionStyles"]')).toBeVisible()
-
-  // Tabs are dragged into another order, a bar showing where one would land; none where it would stay.
-  const top = page.locator('.dv-tabs-and-actions-container', { has: page.locator('.dv-tab', { hasText: 'Pages' }) })
-  const pages = top.locator('.dv-tab')
+  // Icons are dragged into another order, a bar showing where one would land; none where it would stay.
+  const top = page.locator('.dv-tabs-container', { has: page.locator('.rail-tab[title="Pages"]') })
+  const icons = top.locator('.rail-tab')
   const marks = top.locator('.dv-drop-target-selection')
-  const a = (await pages.nth(0).boundingBox())!
-  const b = (await pages.nth(1).boundingBox())!
-  const y = a.y + a.height / 2
-  await page.mouse.move(a.x + a.width / 2, y)
+  const a = (await icons.nth(0).boundingBox())!
+  const b = (await icons.nth(1).boundingBox())!
+  const x = a.x + a.width / 2
+  await page.mouse.move(x, a.y + a.height / 2)
   await page.mouse.down()
-  await page.mouse.move(a.x + a.width / 2 + 10, y, { steps: 2 })
-  await page.mouse.move(b.x + 8, y, { steps: 6 })
+  await page.mouse.move(x, a.y + a.height / 2 + 6, { steps: 2 })
+  await page.mouse.move(x, b.y + 5, { steps: 6 })
   await expect(marks).toHaveCount(0)
-  await page.mouse.move(b.x + b.width - 8, y, { steps: 4 })
+  await page.mouse.move(x, b.y + b.height - 3, { steps: 4 })
   await expect(marks).toHaveCount(1)
   await page.mouse.up()
-  await expect(pages).toHaveText(['Pages', 'Layers', 'Components'])
+  expect(await icons.evaluateAll((all) => all.map((icon) => icon.getAttribute('title')))).toEqual(['Pages', 'Layers', 'Components', 'Colours', 'Materials', 'Dimension styles'])
+
+  // Dragged by its name into the rail, Structure joins it; the rail's last icon dragged out stands alone under its name.
+  const name = (await structure.locator('.dv-tab').boundingBox())!
+  const last = (await icons.last().boundingBox())!
+  await page.mouse.move(name.x + name.width / 2, name.y + name.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(name.x + name.width / 2 + 10, name.y + name.height / 2, { steps: 2 })
+  await page.mouse.move(last.x + last.width / 2, last.y + last.height - 3, { steps: 8 })
+  await page.mouse.up()
+  await expect(icons).toHaveCount(7)
+  await expect(page.locator('[data-panel="objects"] .panel-head .panel-title')).toHaveText('Structure')
 })
 
 test('resizes a column by its line away from the drawing: the columns between keep their width, the drawing takes the difference', async ({ page }) => {
   await startWith(page)
   await openEditor(page)
-  const group = (tab: string) => page.locator('.dv-groupview', { has: page.locator('.dv-tab', { hasText: tab }) })
+  const group = (tab: string) => page.locator('.dv-groupview', { has: page.locator(`.rail-tab[title="${tab}"]`) })
   const stage = page.locator('.dv-groupview', { has: page.locator('.stage') })
   const columns = { layers: group('Layers'), components: group('Components'), stage, assistant: group('Assistant'), properties: group('Properties') }
   const widths = async () => Object.fromEntries(await Promise.all(Object.entries(columns).map(async ([name, column]) => [name, (await column.count()) ? (await column.boundingBox())!.width : 0]))) as Record<keyof typeof columns, number>
@@ -1815,7 +1817,7 @@ test('resizes a column by its line away from the drawing: the columns between ke
     for (const name of Object.keys(columns) as (keyof typeof columns)[]) expect(Math.abs(after[name] - before[name] - (by[name] ?? 0)), name).toBeLessThanOrEqual(1)
   }
   const dropBeside = async (tab: string, x: (area: { x: number; width: number }) => number) => {
-    const from = (await page.locator('.dv-tab', { hasText: tab }).boundingBox())!
+    const from = (await page.locator(`.dv-tab:has(.rail-tab[title="${tab}"])`).boundingBox())!
     const area = (await stage.boundingBox())!
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
     await page.mouse.down()
@@ -1832,8 +1834,8 @@ test('resizes a column by its line away from the drawing: the columns between ke
   }
 
   // Two columns on each side of the drawing.
-  await dropBeside('Components', (area) => area.x + 30)
-  await dropBeside('Assistant', (area) => area.x + area.width - 30)
+  await dropBeside('Components', (area) => area.x + 12)
+  await dropBeside('Assistant', (area) => area.x + area.width - 12)
   let before = await widths()
   for (const name of Object.keys(columns) as (keyof typeof columns)[]) expect(before[name], name).toBeGreaterThan(100)
   const edge = async (column: keyof typeof columns) => (await columns[column].boundingBox())!.x
@@ -1852,8 +1854,8 @@ test('resizes a column by its line away from the drawing: the columns between ke
 
   // A column closed leaves its room to the drawing.
   before = await widths()
-  await page.locator('.dv-tab', { hasText: 'Components' }).hover()
-  await page.locator('.dv-tab', { hasText: 'Components' }).locator('.dv-default-tab-action').click()
+  // Alone in its column, its cross is in the row at the top of the group.
+  await columns.components.getByRole('button', { name: 'Close' }).click()
   await expect(columns.components).toHaveCount(0)
   const after = await widths()
   expect(after.stage).toBeGreaterThan(before.stage + before.components - 10)
@@ -1878,8 +1880,8 @@ test('imports a DXF of twenty thousand lines in a few seconds', async ({ page })
   expect(Date.now() - start).toBeLessThan(15000)
   // The structure lays out only the rows in sight, in a list as long as all twenty thousand:
   // laying them all out took seconds after every change.
-  await page.locator('.dv-tab', { hasText: 'Structure' }).click()
-  const panel = page.locator('.dock-panel[data-panel="objects"]')
+  await page.locator('.dv-tab:has(.rail-tab[title="Structure"])').click()
+  const panel = page.locator('[data-panel="objects"] .dock-panel')
   expect(await objectRows(page).count()).toBeLessThan(100)
   expect(await panel.evaluate((element) => element.scrollHeight)).toBeGreaterThan(20000 * 28)
   await panel.evaluate((element) => (element.scrollTop = element.scrollHeight))
@@ -1960,7 +1962,7 @@ test('tells the assistant what is selected, and applies what it answers', async 
   await openEditor(page)
   await drawWall(page, [300, 300], [700, 300])
   await objectRows(page).first().click()
-  await page.locator('.dv-tab', { hasText: 'Assistant' }).click()
+  await page.locator('.dv-tab:has(.rail-tab[title="Assistant"])').click()
   await expect(page.locator('.assistant-context')).toContainText('Wall')
   await page.locator('.assistant-composer textarea').fill('make this thicker')
   await page.keyboard.press('Enter')
@@ -2020,11 +2022,14 @@ test('shows which ends of a wall are joined, sets one loose, and brings an end t
   expect((await saved()).nodes.side.b).toEqual({ x: 4000, y: 3004 })
   await expect(endOf('At its end')).not.toContainText('Nearly')
 
-  // Set loose at its start by the picture of walls apart, it is joined to the top wall no more, and can be joined again.
-  const apart = (label: string) => endOf(label).getByRole('radio', { name: /^Not joined/ })
-  await apart('At its start').click()
+  // Set loose at its start, it is joined to the top wall no more, and can be joined again. In the
+  // side panel the pictures of joints have no room beside their name: they are a list.
+  const joint = (label: string) => endOf(label).locator('.picture-row > .select')
+  const NOT_JOINED = 'Not joined: the walls that end here do not follow it, nor it them'
+  await pickIn(page, joint('At its start'), NOT_JOINED)
   expect((await saved()).nodes.side.joins).toEqual({ a: 'free' })
-  await expect(apart('At its start')).toHaveAttribute('aria-checked', 'true')
+  // The joint chosen is drawn on the list's button, named when the pointer rests on it.
+  await expect(joint('At its start').locator('.select-value')).toHaveAttribute('title', NOT_JOINED)
 
   // Dragged by that end, the selected wall moves, and the wall it was set loose from stays.
   const onScreen = await drawingOnScreen(page)
@@ -2042,9 +2047,9 @@ test('shows which ends of a wall are joined, sets one loose, and brings an end t
   await page.keyboard.press('Control+z')
 
   // A joint picked joins it again, with that joint.
-  await endOf('At its start').getByRole('radio', { name: 'Rounded' }).click()
+  await pickIn(page, joint('At its start'), 'Rounded')
   expect((await saved()).nodes.side.joins).toEqual({ a: 'round' })
-  await expect(apart('At its start')).toHaveAttribute('aria-checked', 'false')
+  await expect(joint('At its start').locator('.select-value')).toHaveAttribute('title', 'Rounded')
 })
 
 test('brings the end of a wall level with its other end exactly, whatever decimals that one has, and says nothing of a hair off', async ({ page }) => {

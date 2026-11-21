@@ -11,7 +11,7 @@ import { MaterialChoice, type MaterialOption } from '../../MaterialChoice'
 import { unfilledPatch } from '../../materials'
 import { showPanel } from '../../dock'
 import { WeightChoice } from '../../WeightChoice'
-import { DashPicker, Field, FieldPair, IconButton, OpacitySlider, ProportionLock, Section, YesNo } from '../../ui'
+import { DashPicker, Field, FieldPair, IconButton, OpacitySlider, PictureRow, ProportionLock, Section, YesNo } from '../../ui'
 import { formatAngle, formatLength } from '../../units'
 import { GEOMETRY, LOOK_SECTIONS, rowName, rowsOf, STROKE, type FieldSpec, type Option } from './fields'
 import { WallEdges } from './walls'
@@ -297,25 +297,21 @@ const END_SHAPES: Record<string, React.ReactNode> = {
  */
 function EndPicker(props: { side: 'start' | 'end'; options: Option[]; value: string | undefined; onPick: (value: string) => void }) {
   return (
-    <div className="end-picker" role="radiogroup">
-      {props.options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          role="radio"
-          aria-checked={option.value === props.value}
-          className={option.value === props.value ? 'active' : ''}
-          title={t(option.label)}
-          aria-label={t(option.label)}
-          onClick={() => props.onPick(option.value)}
-        >
+    <PictureRow
+      className="line-end-picker"
+      value={props.value}
+      onPick={props.onPick}
+      choices={props.options.map((option) => ({
+        value: option.value,
+        name: t(option.label),
+        picture: (
           <svg width="26" height="18" viewBox="0 0 26 18" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={props.side === 'start' ? { transform: 'scaleX(-1)' } : undefined}>
             <path d={option.value === 'arrow' ? 'M3 9h12' : option.value === 'dot' ? 'M3 9h14' : 'M3 9h19'} />
             {END_SHAPES[option.value]}
           </svg>
-        </button>
-      ))}
-    </div>
+        ),
+      }))}
+    />
   )
 }
 

@@ -5,8 +5,9 @@ import { t, tn } from '../i18n'
 import { addCommon } from '../materials'
 import { MoreMenu } from '../MoreMenu'
 import { apply, useStore } from '../store'
-import { EditableText, IconButton, Section } from '../ui'
+import { EditableText, IconButton } from '../ui'
 import { ask } from '../windows'
+import { PanelActions } from '../panelHead'
 
 /*
  * The drawing's materials: what its walls and floors are made of. Walls and the
@@ -108,11 +109,12 @@ export function Materials() {
     </span>
   )
   return (
-    <Section title={t('Materials')} action={actions}>
+    <section className="section untitled">
+      <PanelActions>{actions}</PanelActions>
       <DefaultRow />
       {materials.length === 0 && (
         <>
-          <p className="hint">{t('A material is what a wall or a floor is made of: concrete, brick, insulation, plaster, parquet. Walls and floors are drawn in its colour and pattern, and the tables of quantities count them under its name.')}</p>
+          <p className="hint">{t('No materials yet')}</p>
           <button className="text-button" onClick={addCommon}>
             {t('Add common materials')}
           </button>
@@ -121,6 +123,6 @@ export function Materials() {
       {materials.map((material) => (
         <MaterialRow key={material.id} material={material} />
       ))}
-    </Section>
+    </section>
   )
 }

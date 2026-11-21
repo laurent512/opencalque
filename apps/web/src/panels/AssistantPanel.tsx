@@ -1,6 +1,6 @@
 import { searchable } from '../search'
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, MousePointer2, Paperclip, Plus, Square, Trash2, X } from 'lucide-react'
+import { ArrowUp, MousePointer2, Paperclip, Plus, Square, X } from 'lucide-react'
 import {
   currentModel,
   deleteConversation,
@@ -12,7 +12,6 @@ import {
   sendMessage,
   setModel,
   stop,
-  takesPictures,
   useChat,
   type Attachment,
   type ModelChoice,
@@ -24,6 +23,7 @@ import { useStore } from '../store'
 import { IconButton, labelOf } from '../ui'
 import { useWindows } from '../windows'
 import { Select } from '../Select'
+import { ScrollThumb } from '../ScrollThumb'
 
 const EXAMPLES = [
   msg('Draw a 5 × 4 m room with a door on the bottom wall'),
@@ -86,6 +86,8 @@ export function AssistantPanel() {
   const selectionKey = useStore((s) => (s.corner ? `${s.corner.x},${s.corner.y}` : s.selection.join(',')))
   useEffect(() => setWithSelection(true), [selectionKey])
   const end = useRef<HTMLDivElement>(null)
+  // The conversation scrolls under a thumb of the app's, as the panels do (`ScrollThumb`).
+  const [log, setLog] = useState<HTMLDivElement | null>(null)
   const filePicker = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -157,7 +159,7 @@ export function AssistantPanel() {
     return (
       <div className="assistant-panel">
         <div className="assistant-log">
-          <p className="hint">{t('The assistant changes the drawing for you from a description. It needs an AI provider and, for most, an API key.')}</p>
+          <p className="hint">{t('No AI provider set up')}</p>
           <button className="text-button" onClick={() => useWindows.setState({ preferencesOpen: true })}>
             {t('Set it up in Preferences')}
           </button>
@@ -167,7 +169,6 @@ export function AssistantPanel() {
   }
 
   const kept = conversations.some((c) => c.id === current)
-  const canSeePictures = takesPictures(ai)
 
   return (
     <div className="assistant-panel">
@@ -180,34 +181,26 @@ export function AssistantPanel() {
           onChange={openConversation}
           options={[...(kept ? [] : [{ value: current, label: t('New conversation') }]), ...conversations.map((c) => ({ value: c.id, label: c.title }))]}
         />
-        <IconButton title={t('New conversation')} onClick={newConversation} disabled={busy || entries.length === 0}>
-          <Plus size={14} />
-        </IconButton>
-        <IconButton title={t('Delete this conversation')} onClick={deleteConversation} disabled={busy || entries.length === 0}>
-          <Trash2 size={14} />
-        </IconButton>
       </div>
 
-      <div className="assistant-log">
-        {entries.length === 0 && (
-          <>
-            <p className="hint">{t('Describe what you want drawn or changed. Each request can be undone with one undo.')}</p>
-            {EXAMPLES.map((example) => (
+      <div className="panel-scroll">
+        <div ref={setLog} className="assistant-log">
+          {entries.length === 0 &&
+            EXAMPLES.map((example) => (
               <button key={example} className="assistant-example" onClick={() => send(t(example))}>
                 {t(example)}
               </button>
             ))}
-            <p className="hint">{t('You can paste or attach a picture, and type / for commands such as /resume.')}</p>
-          </>
-        )}
-        {entries.map((entry, i) => (
-          <div key={i} className={`assistant-entry ${entry.role}`}>
-            {entry.pictures?.map((src, n) => <img key={n} src={src} alt="" />)}
-            {entry.text}
-          </div>
-        ))}
-        {busy && <div className="assistant-entry activity">{t('Working…')}</div>}
-        <div ref={end} />
+          {entries.map((entry, i) => (
+            <div key={i} className={`assistant-entry ${entry.role}`}>
+              {entry.pictures?.map((src, n) => <img key={n} src={src} alt="" />)}
+              {entry.text}
+            </div>
+          ))}
+          {busy && <div className="assistant-entry activity">{t('Working…')}</div>}
+          <div ref={end} />
+        </div>
+        <ScrollThumb of={log} />
       </div>
 
       <form
@@ -216,10 +209,10 @@ export function AssistantPanel() {
           e.preventDefault()
           send()
         }}
-        onDragOver={(e) => canSeePictures && e.preventDefault()}
+        onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           const files = pictureFiles(e.dataTransfer)
-          if (!canSeePictures || files.length === 0) return
+          if (files.length === 0) return
           e.preventDefault()
           attach(files)
         }}
@@ -274,7 +267,7 @@ export function AssistantPanel() {
           }}
           onPaste={(e) => {
             const files = pictureFiles(e.clipboardData)
-            if (!canSeePictures || files.length === 0) return
+            if (files.length === 0) return
             e.preventDefault()
             attach(files)
           }}
@@ -314,7 +307,7 @@ export function AssistantPanel() {
               e.target.value = ''
             }}
           />
-          <IconButton title={canSeePictures ? t('Attach a picture (or paste one)') : t('This provider cannot be shown pictures')} onClick={() => filePicker.current?.click()} disabled={!canSeePictures || attachments.length >= MAX_PICTURES}>
+          <IconButton title={t('Attach a picture (or paste one)')} onClick={() => filePicker.current?.click()} disabled={attachments.length >= MAX_PICTURES}>
             <Paperclip size={14} />
           </IconButton>
           <Select

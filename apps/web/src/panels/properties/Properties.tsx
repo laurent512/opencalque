@@ -359,12 +359,9 @@ export function Properties() {
             <p className="hint">{t('Click two points to read the distance between them. Nothing is added to the drawing. Use the Dimension tool to annotate.')}</p>
           </Section>
         ) : (
-          <Section title={t('Properties')}>
-            <p className="hint">{t('Select an object to edit it. Lengths are in {unit}; the unit is set in Preferences.', { unit: unit() })}</p>
-            <p className="hint">
-              {t('Scroll to zoom, drag with the middle button or hold Space to pan; a tap on Space goes back to selecting. Shift constrains angles, Alt turns snapping off, Esc finishes.')}
-            </p>
-          </Section>
+          <section className="section untitled">
+            <p className="hint">{t('Nothing selected')}</p>
+          </section>
         )}
       </FoldingSections.Provider>
     </div>

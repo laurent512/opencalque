@@ -124,15 +124,34 @@ async function mayReach(url: URL, win: BrowserWindow | null): Promise<boolean> {
   return true
 }
 
+/** The kinds of picture the CLI is given, how many at most with one message, and how large each, in characters of base64. */
+const PICTURE_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+const MAX_CLI_PICTURES = 8
+const MAX_PICTURE_LENGTH = 10 * 1024 * 1024
+
+/** The pictures of a message, as the window sends them: only those of a known kind, in base64, within the limits. */
+function cliPictures(pictures: unknown): { mime: string; data: string }[] {
+  if (!Array.isArray(pictures)) return []
+  return pictures
+    .filter((p): p is { mime: string; data: string } => typeof p?.mime === 'string' && PICTURE_TYPES.includes(p.mime) && typeof p.data === 'string' && p.data.length <= MAX_PICTURE_LENGTH && /^[A-Za-z0-9+/]+=*$/.test(p.data))
+    .slice(0, MAX_CLI_PICTURES)
+}
+
 /**
  * Sends one prompt to the Claude Code CLI and resolves with its reply. The CLI runs in an empty
  * folder of its own in restricted mode, without MCP servers or skills: it is used here as a model,
  * not as an agent, so it gets nothing to act on. Every argument is fixed or validated, and the
  * prompt goes through stdin, so nothing the user typed reaches a command line. The folder is the
  * same every time, because the CLI keeps its conversations by folder: `--resume` finds one only there.
+ *
+ * A message with pictures goes as the CLI's JSON messages instead of plain text (`stream-json`, one
+ * user message with the text and each picture), and its reply is read from the `result` event that
+ * ends its stream. Without pictures it goes as before.
  */
-async function runClaude(input: { prompt: string; session?: string; model?: string }): Promise<{ text: string; session: string }> {
-  const args = ['-p', '--output-format', 'json', '--restricted', '--strict-mcp-config', '--disable-slash-commands']
+async function runClaude(input: { prompt: string; session?: string; model?: string; pictures?: unknown }): Promise<{ text: string; session: string }> {
+  const pictures = cliPictures(input.pictures)
+  const streamed = pictures.length > 0
+  const args = ['-p', ...(streamed ? ['--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose'] : ['--output-format', 'json']), '--restricted', '--strict-mcp-config', '--disable-slash-commands']
   if (input.session && /^[\w-]+$/.test(input.session)) args.push('--resume', input.session)
   if (input.model && /^[\w.[\]-]+$/.test(input.model)) args.push('--model', input.model)
   const cwd = join(app.getPath('userData'), 'assistant')
@@ -149,7 +168,16 @@ async function runClaude(input: { prompt: string; session?: string; model?: stri
     child.on('close', (code) => {
       claude = null
       try {
-        const reply = JSON.parse(stdout)
+        // Streamed, the reply is the last event, of type `result`, among one event per line.
+        const reply = streamed
+          ? stdout
+              .split('\n')
+              .filter((line) => line.trim())
+              .map((line) => JSON.parse(line))
+              .reverse()
+              .find((event) => event?.type === 'result')
+          : JSON.parse(stdout)
+        if (!reply) throw new Error('no result')
         if (reply.is_error) return fail(new Error(String(reply.result ?? 'The CLI reported an error.')))
         done({ text: String(reply.result ?? ''), session: String(reply.session_id ?? '') })
       } catch {
@@ -157,7 +185,10 @@ async function runClaude(input: { prompt: string; session?: string; model?: stri
         fail(new Error(missing ? 'The "claude" program was not found. Install Claude Code and sign in first.' : stderr.trim().slice(0, 300) || `The CLI stopped with code ${code}.`))
       }
     })
-    child.stdin.end(input.prompt)
+    if (streamed) {
+      const content = [{ type: 'text', text: input.prompt }, ...pictures.map((picture) => ({ type: 'image', source: { type: 'base64', media_type: picture.mime, data: picture.data } }))]
+      child.stdin.end(`${JSON.stringify({ type: 'user', message: { role: 'user', content } })}\n`)
+    } else child.stdin.end(input.prompt)
   })
 }
 
@@ -462,7 +493,7 @@ app.whenReady().then(() => {
   ipcMain.handle('secret:get', (_, name: string) => secret(name))
   ipcMain.handle('secret:set', (_, name: string, value: string) => keepSecret(name, value))
 
-  ipcMain.handle('claude:run', (_, input: { prompt: string; session?: string; model?: string }) => runClaude(input))
+  ipcMain.handle('claude:run', (_, input: { prompt: string; session?: string; model?: string; pictures?: unknown }) => runClaude(input))
   ipcMain.on('claude:cancel', () => claude?.kill())
 
   // Agents on this computer, while the person lets them (bridge.ts): what they ask runs in the window.

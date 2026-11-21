@@ -35,7 +35,7 @@ export interface Platform {
   /** Desktop only: an HTTP request made outside the page, so a local model server need not allow this app's origin. */
   request?(url: string, init: { method: string; headers: Record<string, string>; body: string }): Promise<{ status: number; body: string }>
   /** Desktop only: sends a prompt to the Claude Code CLI installed on this computer. */
-  claudeCli?(input: { prompt: string; session?: string; model?: string }): Promise<{ text: string; session: string }>
+  claudeCli?(input: { prompt: string; session?: string; model?: string; pictures?: { mime: string; data: string }[] }): Promise<{ text: string; session: string }>
   /** Desktop only: stops the CLI request in progress. */
   cancelClaudeCli?(): void
   /** Desktop only: lets agents on this computer work on the open drawing (`opencalque mcp --live`). */

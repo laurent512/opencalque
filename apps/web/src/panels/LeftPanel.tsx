@@ -14,8 +14,9 @@ import { MoreMenu } from '../MoreMenu'
 import { editComponent, showPage } from '../navigation'
 import { setPrefs, usePrefs } from '../prefs'
 import { apply, select, setTool, useStore } from '../store'
-import { EditableText, IconButton, labelOf, Section, TypeIcon } from '../ui'
+import { EditableText, IconButton, labelOf, TypeIcon } from '../ui'
 import { useWindows } from '../windows'
+import { PanelActions } from '../panelHead'
 
 const rename = (id: string) => (name: string) => apply([{ op: 'update_node', id, patch: { name } }])
 /**
@@ -28,8 +29,13 @@ export function Colors() {
   const update = (id: string, patch: Record<string, unknown>) => apply([{ op: 'update_color', id, patch }])
   const add = () => apply([{ op: 'add_color', color: { name: t('Colour {n}', { n: colors.length + 1 }), value: '#0d99ff' } }])
   return (
-    <Section title={t('Shared colours')} action={<IconButton title={t('Add a shared colour')} onClick={add}><Plus size={14} /></IconButton>}>
-      {colors.length === 0 && <p className="hint">{t('A shared colour is used by reference: link objects to it from any colour in their properties, then change it here and they all follow.')}</p>}
+    <section className="section untitled">
+      <PanelActions>
+        <IconButton title={t('Add a shared colour')} onClick={add}>
+          <Plus size={14} />
+        </IconButton>
+      </PanelActions>
+      {colors.length === 0 && <p className="hint">{t('No shared colours yet')}</p>}
       {colors.map((color) => {
         const uses = colorUses(doc, color.id)
         return (
@@ -46,7 +52,7 @@ export function Colors() {
           </div>
         )
       })}
-    </Section>
+    </section>
   )
 }
 
@@ -116,7 +122,7 @@ function PageRow({ id, count }: { id: string; count: number }) {
   // The first page comes first: dropped above a page, a page goes before it.
   const { drop, handlers } = useRowDrag('pages', id, count > 1, () => [id], (ids, at) => moveInOrder(ids, id, at === 'below'))
   return (
-    <div className={`row${id === scope ? ' selected' : ''}${drop ? ` drop-${drop}` : ''}`} onClick={() => showPage(id)} {...handlers}>
+    <div className={`row clickable${id === scope ? ' selected' : ''}${drop ? ` drop-${drop}` : ''}`} onClick={() => showPage(id)} {...handlers}>
       <EditableText value={labelOf(doc, page)} onChange={rename(id)} />
       <IconButton title={t('Duplicate this page, with what is on it')} onClick={() => duplicatePage(id)}>
         <Copy size={13} />
@@ -135,11 +141,16 @@ export function Pages() {
   const pages = pagesOf(doc)
   const add = () => apply([{ op: 'add_node', node: { type: 'page', name: t('Page {n}', { n: pages.length + 1 }) } }])
   return (
-    <Section title={t('Pages')} action={<IconButton title={t('Add page')} onClick={add}><Plus size={14} /></IconButton>}>
+    <section className="section untitled">
+      <PanelActions>
+        <IconButton title={t('Add page')} onClick={add}>
+          <Plus size={14} />
+        </IconButton>
+      </PanelActions>
       {pages.map((page) => (
         <PageRow key={page.id} id={page.id} count={pages.length} />
       ))}
-    </Section>
+    </section>
   )
 }
 
@@ -150,11 +161,16 @@ export function Layers() {
   const update = (id: string, patch: Record<string, unknown>) => apply([{ op: 'update_layer', id, patch }])
   const add = () => apply([{ op: 'add_layer', layer: { name: t('Layer {n}', { n: layers.length + 1 }) } }])
   return (
-    <Section title={t('Layers')} action={<IconButton title={t('Add layer')} onClick={add}><Plus size={14} /></IconButton>}>
+    <section className="section untitled">
+      <PanelActions>
+        <IconButton title={t('Add layer')} onClick={add}>
+          <Plus size={14} />
+        </IconButton>
+      </PanelActions>
       {layers.map((layer) => (
         <div
           key={layer.id}
-          className={`row${layer.id === active ? ' current' : ''}`}
+          className={`row clickable${layer.id === active ? ' current' : ''}`}
           title={t('New objects go on the highlighted layer')}
           onClick={() => useStore.setState({ activeLayer: layer.id })}
         >
@@ -172,15 +188,15 @@ export function Layers() {
               <Trash2 size={13} />
             </IconButton>
           )}
-          <IconButton title={layer.locked ? t('Unlock layer') : t('Lock layer')} onClick={() => update(layer.id, { locked: !layer.locked })}>
-            {layer.locked ? <Lock size={13} /> : <LockOpen size={13} className="faint" />}
+          <IconButton title={layer.locked ? t('Unlock layer') : t('Lock layer')} on={layer.locked} onClick={() => update(layer.id, { locked: !layer.locked })}>
+            {layer.locked ? <Lock size={13} /> : <LockOpen size={13} />}
           </IconButton>
-          <IconButton title={layer.visible === false ? t('Show layer') : t('Hide layer')} onClick={() => update(layer.id, { visible: layer.visible === false })}>
-            {layer.visible === false ? <EyeOff size={13} /> : <Eye size={13} className="faint" />}
+          <IconButton title={layer.visible === false ? t('Show layer') : t('Hide layer')} on={layer.visible === false} onClick={() => update(layer.id, { visible: layer.visible === false })}>
+            {layer.visible === false ? <EyeOff size={13} /> : <Eye size={13} />}
           </IconButton>
         </div>
       ))}
-    </Section>
+    </section>
   )
 }
 
@@ -258,7 +274,7 @@ export function Components() {
     return (
       <div
         key={id}
-        className={`${view === 'list' ? 'row' : 'component-tile'}${chosen.has(id) ? ' selected' : ''}${count === 0 ? ' unused' : ''}`}
+        className={`${view === 'list' ? 'row clickable' : 'component-tile'}${chosen.has(id) ? ' selected' : ''}${count === 0 ? ' unused' : ''}`}
         title={count === 0 ? `${t('Placed nowhere in the drawing')}\n\n${place}` : place}
         onClick={() => put()}
         // The first click of the double-click that renames it has put it on the pointer: it is taken off.
@@ -306,8 +322,9 @@ export function Components() {
   }
   const any = components.length + models.length > 0
   return (
-    <Section title={t('Components')} action={action}>
-      {!any && <p className="hint">{t('This drawing has no component yet. Select objects and choose Object › Make into a component.')}</p>}
+    <section className="section untitled">
+      <PanelActions>{action}</PanelActions>
+      {!any && <p className="hint">{t('No components yet')}</p>}
       {any && (
         <input
           className="panel-search"
@@ -321,7 +338,7 @@ export function Components() {
       )}
       {any && listed.length === 0 && <p className="hint">{t('Nothing matches.')}</p>}
       {view === 'list' ? listed.map(row) : <div className="component-grid">{listed.map(row)}</div>}
-    </Section>
+    </section>
   )
 }
 
@@ -364,7 +381,11 @@ function linesOf(doc: Document, container: string, open: ReadonlySet<string>): L
  * the middle of a group's row it goes inside it, above or below a row it goes next to it, in
  * whatever holds that row.
  */
-function ObjectRow({ node, depth, open, toggle, show }: { node: Node; depth: number; open: boolean; toggle: () => void; show: () => void }) {
+/**
+ * `twists` says whether the list holds a group, whose row has an arrow to open it: only then do
+ * the rows keep a column for it, so that a list without groups starts where the panel's title does.
+ */
+function ObjectRow({ node, depth, open, toggle, show, twists }: { node: Node; depth: number; open: boolean; toggle: () => void; show: () => void; twists: boolean }) {
   const doc = useStore((s) => s.doc)
   const scope = useStore((s) => s.scope)
   const selection = useStore((s) => s.selection)
@@ -427,8 +448,8 @@ function ObjectRow({ node, depth, open, toggle, show }: { node: Node; depth: num
 
   return (
     <div
-      className={`row${selected ? ' selected' : ''}${drop ? ` drop-${drop}` : ''}`}
-      style={{ paddingLeft: 8 + depth * 14 }}
+      className={`row clickable${selected ? ' selected' : ''}${drop ? ` drop-${drop}` : ''}`}
+      style={{ paddingLeft: (twists ? 6 : 18) + depth * 14 }}
       onClick={(e) => pick(e)}
       onContextMenu={(e) => {
         e.preventDefault()
@@ -442,22 +463,24 @@ function ObjectRow({ node, depth, open, toggle, show }: { node: Node; depth: num
           {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         </IconButton>
       ) : (
-        <i className="twist" />
+        twists && <i className="twist" />
       )}
       <TypeIcon node={node} />
       <EditableText value={labelOf(doc, node)} onChange={rename(node.id)} />
       {/* Locked by its layer, it shows so, faintly: nothing else on the row says why it cannot be picked on the drawing. */}
       <IconButton
         title={node.locked ? t('Unlock') : layerLock ? t('Locked with its layer “{layer}”: unlock it in the Layers panel', { layer: layerLock }) : t('Lock so it cannot be selected or moved on the drawing')}
+        on={node.locked === true}
         onClick={() => apply([{ op: 'update_node', id: node.id, patch: { locked: node.locked ? null : true } }])}
       >
-        {node.locked ? <Lock size={13} /> : layerLock ? <Lock size={13} className="faint" /> : <LockOpen size={13} className="faint" />}
+        {node.locked || layerLock ? <Lock size={13} /> : <LockOpen size={13} />}
       </IconButton>
       <IconButton
         title={node.visible === false ? t('Show') : t('Hide')}
+        on={node.visible === false}
         onClick={() => apply([{ op: 'update_node', id: node.id, patch: { visible: node.visible === false } }])}
       >
-        {node.visible === false ? <EyeOff size={13} /> : <Eye size={13} className="faint" />}
+        {node.visible === false ? <EyeOff size={13} /> : <Eye size={13} />}
       </IconButton>
     </div>
   )
@@ -475,6 +498,7 @@ export function Objects() {
   const selection = useStore((s) => s.selection)
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set())
   const lines = useMemo(() => linesOf(doc, scope, open), [doc, scope, open])
+  const twists = useMemo(() => lines.some((line) => line.node.type === 'group'), [lines])
   const latest = useRef(lines)
   latest.current = lines
   const list = useRef<HTMLDivElement>(null)
@@ -529,13 +553,12 @@ export function Objects() {
     })
   return (
     <section className="section untitled">
-      {lines.length === 0 && <p className="hint">{t('Nothing here yet. Pick a tool below the drawing and draw.')}</p>}
+      {lines.length === 0 && <p className="hint">{t('Nothing drawn yet')}</p>}
       <div ref={list} style={{ height: lines.length * ROW_HEIGHT, paddingTop: from * ROW_HEIGHT, boxSizing: 'border-box' }}>
         {lines.slice(from, to).map((line) => (
-          <ObjectRow key={line.node.id} node={line.node} depth={line.depth} open={open.has(line.node.id)} toggle={toggle(line.node.id)} show={() => setOpen((was) => new Set([...was, line.node.id]))} />
+          <ObjectRow key={line.node.id} node={line.node} depth={line.depth} open={open.has(line.node.id)} toggle={toggle(line.node.id)} show={() => setOpen((was) => new Set([...was, line.node.id]))} twists={twists} />
         ))}
       </div>
-      {lines.length > 1 && <p className="hint">{t('Topmost first. Drag a row to change what is drawn over what, or onto a group to put it in.')}</p>}
     </section>
   )
 }

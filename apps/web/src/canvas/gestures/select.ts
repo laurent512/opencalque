@@ -391,10 +391,12 @@ export const cropMove: Move<'crop'> = (c, g, e, _at, world, out) => {
 
 export const resizeMove: Move<'resize'> = (c, g, e, _at, world, out) => {
   const s = get()
-  // The grip follows the pointer, snapped as a point would be; Shift keeps the proportions from a corner.
+  // The grip follows the pointer, snapped as a point would be. From a corner the proportions are
+  // kept as the Properties panel keeps them (`keepProportions`), and Shift does the other.
   const target = snap(c, world, { altKey: e.altKey, shiftKey: false }, [g.node.id])
   out.marker = target.marker
-  const patch = resizePatch(g.node, g.grip, target.p, e.shiftKey, registry, s.base ?? s.doc)
+  const keep = e.shiftKey !== usePrefs.getState().keepProportions
+  const patch = resizePatch(g.node, g.grip, target.p, keep, registry, s.base ?? s.doc)
   if (patch) {
     out.previewed = preview([{ op: 'update_node', id: g.node.id, patch }])
     // The box as it now is, rounded as the object rounds it (a stair to whole steps).

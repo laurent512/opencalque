@@ -1,7 +1,7 @@
 import type { Provider, ToolCall, ToolSpec, TurnInput } from './types'
 
 /** Runs one prompt through the Claude Code CLI and returns its reply and conversation id. */
-export type RunClaudeCli = (input: { prompt: string; session?: string; model?: string }) => Promise<{ text: string; session: string }>
+export type RunClaudeCli = (input: { prompt: string; session?: string; model?: string; pictures?: { mime: string; data: string }[] }) => Promise<{ text: string; session: string }>
 
 const BLOCK = /<opencalque-tool>([\s\S]*?)<\/opencalque-tool>/g
 
@@ -43,8 +43,8 @@ export function parseReply(reply: string): { text: string; calls: ToolCall[] } {
  */
 export function claudeCliProvider(config: { model: string }, run: RunClaudeCli, describe: (error: unknown) => string): Provider {
   return {
-    // The CLI takes its prompt as text.
-    pictures: false,
+    // A message with pictures is handed to the CLI as its JSON messages by the desktop app (`runClaude`).
+    pictures: true,
     createSession({ system, tools, history }) {
       // The CLI keeps conversations itself; all there is to remember is which one this is.
       let session = (history as { session?: string } | undefined)?.session
@@ -52,14 +52,16 @@ export function claudeCliProvider(config: { model: string }, run: RunClaudeCli, 
       return {
         async send(input: TurnInput, onText, signal) {
           let prompt: string
+          // The pictures go with the message: those attached, or those of the results that have one, in their order.
+          const pictures = ('results' in input ? input.results.flatMap((r) => (r.image ? [r.image] : [])) : (input.images ?? [])).slice(0, 8)
           if ('results' in input) {
-            const results = input.results.map((r) => ({ id: r.id, ok: !r.isError, result: r.image ? `${r.content} (The picture itself cannot be shown through this provider.)` : r.content }))
+            const results = input.results.map((r) => ({ id: r.id, ok: !r.isError, result: r.image ? `${r.content} (Its picture is attached.)` : r.content }))
             prompt = `Tool results:\n${JSON.stringify(results)}`
           } else {
             // The CLI keeps the conversation, so the instructions go in once, with the first message.
             prompt = session ? input.text : `${system}\n\n${protocol(tools)}\n\n${input.text}`
           }
-          const reply = await run({ prompt, session, model: config.model || undefined })
+          const reply = await run({ prompt, session, model: config.model || undefined, pictures: pictures.length > 0 ? pictures : undefined })
           if (signal.aborted) throw new DOMException('Stopped', 'AbortError')
           session = reply.session
           const { text, calls } = parseReply(reply.text)

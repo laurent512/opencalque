@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { BrickWall, Cable, ChevronDown, MoveHorizontal, ScanEye, Circle, Hexagon, Component, File, Group, Image, Lock, LockOpen, MessageSquare, Minus, RulerDimensionLine, Shapes, SeparatorVertical, Spline, Square, SquareDashed, StickyNote, Table, Type, type LucideIcon } from 'lucide-react'
+import { createContext, useContext, useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
+import { BrickWall, Cable, ChevronDown, Link2, Link2Off, MoveHorizontal, ScanEye, Circle, Hexagon, Component, File, Group, Image, Lock, LockOpen, MessageSquare, Minus, RulerDimensionLine, Shapes, SeparatorVertical, Spline, Square, SquareDashed, StickyNote, Table, Type, type LucideIcon } from 'lucide-react'
 import type { Document, Node } from '@opencalque/core'
 import { GridLine } from './icons'
 import { msg, t } from './i18n'
@@ -8,6 +8,7 @@ import { setPrefs, usePrefs } from './prefs'
 import { collapseHistory, useStore } from './store'
 import { dashIndex, DASHES } from './strokes'
 import { formatNumber, parseLength, parseNumber, unitSuffix } from './units'
+import { Select } from './Select'
 
 const TYPE_LABELS: Record<Node['type'], string> = {
   page: msg('Page'),
@@ -88,10 +89,15 @@ export function labelOf(doc: Document, node: Node): string {
   return t(TYPE_LABELS[node.type])
 }
 
-export function IconButton(props: { title: string; onClick: () => void; active?: boolean; pressed?: boolean; disabled?: boolean; children: ReactNode }) {
+/**
+ * A button that is an icon. `active` and `pressed` light it in the accent colour, as a tool in use;
+ * `on` marks a setting of a row that is switched on (locked, hidden), which keeps its icon dark
+ * where the row's other icons are light until the pointer comes over them.
+ */
+export function IconButton(props: { title: string; onClick: () => void; active?: boolean; pressed?: boolean; on?: boolean; disabled?: boolean; children: ReactNode }) {
   return (
     <button
-      className={`icon-button${props.active || props.pressed ? ' active' : ''}`}
+      className={`icon-button${props.active || props.pressed ? ' active' : ''}${props.on ? ' on' : ''}`}
       title={props.title}
       aria-label={props.title}
       aria-pressed={props.pressed}
@@ -301,8 +307,8 @@ export function FieldPair(props: { label: string; lock?: ReactNode; three?: bool
 export function ProportionLock() {
   const kept = usePrefs((prefs) => prefs.keepProportions)
   return (
-    <IconButton pressed={kept} title={kept ? t('Proportions kept: click to set width and height apart') : t('Keep the proportions: width and height change together')} onClick={() => setPrefs({ keepProportions: !kept })}>
-      {kept ? <Lock size={12} /> : <LockOpen size={12} className="faint" />}
+    <IconButton on={kept} title={kept ? t('Proportions kept: click to set width and height apart') : t('Keep the proportions: width and height change together')} onClick={() => setPrefs({ keepProportions: !kept })}>
+      {kept ? <Link2 size={13} /> : <Link2Off size={13} />}
     </IconButton>
   )
 }
@@ -371,6 +377,65 @@ const JUSTIFY_LINES: ['left' | 'center' | 'right', number][] = [
   ['right', 13],
 ]
 
+/** The least room a picture of a row of choices needs, in pixels: with less, the row is a dropdown. */
+const PICTURE_ROOM = 30
+
+/**
+ * A row of small pictures to pick one from (the ends of a line, its dashes, the joint of a wall),
+ * each named when the pointer rests on it. Where the row has no room for them all, in a narrow
+ * panel, it is a dropdown of them instead, the chosen one drawn on it and each drawn beside its
+ * name in its list, which stays on its row rather than going under its label. None is lit when
+ * `value` is none of them (several objects that differ). The row takes the width it is given
+ * (`align-self: stretch` in a column), never its content's, and goes back to pictures only with a
+ * few pixels to spare, so that it cannot go back and forth between the two.
+ */
+export function PictureRow<T extends string>(props: {
+  className: string
+  label?: string
+  value: T | undefined
+  choices: { value: T; name: string; picture: ReactNode }[]
+  onPick: (value: T) => void
+  onHover?: (value: T | null) => void
+}) {
+  const [box, setBox] = useState<HTMLDivElement | null>(null)
+  const [narrow, setNarrow] = useState(false)
+  const count = props.choices.length
+  useLayoutEffect(() => {
+    if (!box) return
+    const need = count * PICTURE_ROOM + 4
+    const fit = () => setNarrow((was) => box.clientWidth > 0 && box.clientWidth < (was ? need + 8 : need))
+    fit()
+    const resized = new ResizeObserver(fit)
+    resized.observe(box)
+    return () => resized.disconnect()
+  }, [box, count])
+  return (
+    <div ref={setBox} className="picture-row">
+      {narrow ? (
+        <Select value={props.value ?? ''} placeholder="—" aria-label={props.label} className={`picture-select ${props.className}`} options={props.choices.map((choice) => ({ value: choice.value, label: choice.name, picture: choice.picture }))} onChange={(value) => props.onPick(value as T)} />
+      ) : (
+        <div className={`end-picker ${props.className}`} role="radiogroup" aria-label={props.label} onMouseLeave={() => props.onHover?.(null)}>
+          {props.choices.map((choice) => (
+            <button
+              key={choice.value}
+              type="button"
+              role="radio"
+              aria-checked={choice.value === props.value}
+              className={choice.value === props.value ? 'active' : ''}
+              title={choice.name}
+              aria-label={choice.name}
+              onClick={() => props.onPick(choice.value)}
+              onMouseEnter={() => props.onHover?.(choice.value)}
+            >
+              {choice.picture}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /**
  * Three pictures to choose the line of a wall by: its left face, its middle, its right face, as
  * the wall runs. None is lit when `value` is undefined (several walls that differ). `onHover` is
@@ -384,54 +449,61 @@ export function JustifyPicker(props: {
   onHover?: (value: 'left' | 'center' | 'right' | null) => void
 }) {
   return (
-    <div className="end-picker justify-picker" role="radiogroup" aria-label={props.label} onMouseLeave={() => props.onHover?.(null)}>
-      {JUSTIFY_LINES.map(([value, y]) => (
-        <button
-          key={value}
-          type="button"
-          role="radio"
-          aria-checked={value === props.value}
-          className={value === props.value ? 'active' : ''}
-          title={props.names[value]}
-          aria-label={props.names[value]}
-          onClick={() => props.onPick(value)}
-          onMouseEnter={() => props.onHover?.(value)}
-        >
-          {/* The wall as a band, and its line as a dashed line with its two corners. */}
+    <PictureRow
+      className="justify-picker"
+      label={props.label}
+      value={props.value}
+      onPick={props.onPick}
+      onHover={props.onHover}
+      choices={JUSTIFY_LINES.map(([value, y]) => ({
+        value,
+        name: props.names[value],
+        // The wall as a band, and its line as a dashed line with its two corners.
+        picture: (
           <svg width="28" height="18" viewBox="0 0 28 18" fill="none" stroke="currentColor" strokeWidth="1.2">
             <rect x="3" y="5" width="22" height="8" fill="currentColor" fillOpacity="0.18" />
             <path d={`M3 ${y}h22`} strokeWidth="1.6" strokeDasharray="3 2" />
             <circle cx="3" cy={y} r="1.8" fill="currentColor" stroke="none" />
             <circle cx="25" cy={y} r="1.8" fill="currentColor" stroke="none" />
           </svg>
-        </button>
-      ))}
-    </div>
+        ),
+      }))}
+    />
   )
 }
 
 export function DashPicker(props: { value: unknown; none?: boolean; label?: string; onPick: (pattern: number[] | null) => void; hidden?: { chosen: boolean; onPick: () => void }; faint?: boolean }) {
   // With `hidden`, the line can also be no line at all, the last choice; `faint` shows the choice as one that is inherited.
   const current = props.none || props.hidden?.chosen ? -1 : dashIndex(props.value)
+  const choices = DASHES.map(([name, pattern], i) => ({
+    value: String(i),
+    name: t(name),
+    picture: (
+      <svg width="28" height="18" viewBox="0 0 28 18" fill="none" stroke="currentColor" strokeWidth="1.6">
+        {/* The patterns are in screen pixels of a drawn line; here they are shown a little tighter to fit a few repeats. */}
+        <path d="M2 9h24" strokeDasharray={pattern?.map((length) => length * 0.6).join(' ')} />
+      </svg>
+    ),
+  }))
+  if (props.hidden)
+    choices.push({
+      value: 'none',
+      name: t('No line'),
+      picture: (
+        <svg width="28" height="18" viewBox="0 0 28 18" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.5">
+          <path d="M2 9h24" strokeDasharray="1 2.5" />
+          <path d="M10 4l8 10" strokeWidth="1.3" />
+        </svg>
+      ),
+    })
   return (
-    <div className={`end-picker dash-picker${props.faint ? ' faint-choice' : ''}`} role="radiogroup" aria-label={props.label}>
-      {DASHES.map(([name, pattern], i) => (
-        <button key={name} type="button" role="radio" aria-checked={i === current} className={i === current ? 'active' : ''} title={t(name)} aria-label={t(name)} onClick={() => props.onPick(pattern)}>
-          <svg width="28" height="18" viewBox="0 0 28 18" fill="none" stroke="currentColor" strokeWidth="1.6">
-            {/* The patterns are in screen pixels of a drawn line; here they are shown a little tighter to fit a few repeats. */}
-            <path d="M2 9h24" strokeDasharray={pattern?.map((length) => length * 0.6).join(' ')} />
-          </svg>
-        </button>
-      ))}
-      {props.hidden && (
-        <button type="button" role="radio" aria-checked={props.hidden.chosen} className={props.hidden.chosen ? 'active' : ''} title={t('No line')} aria-label={t('No line')} onClick={props.hidden.onPick}>
-          <svg width="28" height="18" viewBox="0 0 28 18" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.5">
-            <path d="M2 9h24" strokeDasharray="1 2.5" />
-            <path d="M10 4l8 10" strokeWidth="1.3" />
-          </svg>
-        </button>
-      )}
-    </div>
+    <PictureRow
+      className={`dash-picker${props.faint ? ' faint-choice' : ''}`}
+      label={props.label}
+      value={props.hidden?.chosen ? 'none' : current >= 0 ? String(current) : undefined}
+      choices={choices}
+      onPick={(value) => (value === 'none' ? props.hidden?.onPick() : props.onPick(DASHES[Number(value)][1]))}
+    />
   )
 }
 

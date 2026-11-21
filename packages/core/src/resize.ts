@@ -129,7 +129,7 @@ export function resizePatch(node: Node, grip: number, p: Vec2, proportional = fa
   const placed = placedOf(node, registry, doc)
   if (placed) return placedResize(placed, grip, p, proportional)
   const parametric = boxOf(node, registry)
-  if (parametric) return parametricResize(parametric, grip, p)
+  if (parametric) return parametricResize(parametric, grip, p, proportional)
   const frame = resizeFrame(node)
   const moves = MOVES[grip]
   if (!frame || !moves) return null
@@ -162,17 +162,24 @@ export function resizePatch(node: Node, grip: number, p: Vec2, proportional = fa
  * A parametric object resized by a grip of its frame: the width or height the pointer gives, made
  * into parameters by its kind (which rounds them to what the object can be), then the object placed
  * so that the side or corner opposite the grip stays where it was. It never turns inside out: a
- * size is at least a millimetre.
+ * size is at least a millimetre. A corner with `proportional` keeps the object's proportions, the
+ * larger of the two changes setting both, as for a shape.
  */
-function parametricResize(parametric: NonNullable<ReturnType<typeof boxOf>>, grip: number, p: Vec2): Record<string, unknown> | null {
+function parametricResize(parametric: NonNullable<ReturnType<typeof boxOf>>, grip: number, p: Vec2, proportional = false): Record<string, unknown> | null {
   const { node, box, props, bounds: b } = parametric as typeof parametric & { node: NodeOf<'parametric'> }
   const seen = MOVES[grip]
   if (!seen) return null
   // In its own terms, a mirrored object's left is the right of what is seen.
   const moves = node.flipX ? { ...seen, left: seen.right, right: seen.left } : seen
   const local = inverseTransform(p, node)
-  const width = moves.left || moves.right ? Math.max(1, moves.left ? b.right - local.x : local.x - b.left) : undefined
-  const height = moves.top || moves.bottom ? Math.max(1, moves.top ? b.bottom - local.y : local.y - b.top) : undefined
+  let width = moves.left || moves.right ? Math.max(1, moves.left ? b.right - local.x : local.x - b.left) : undefined
+  let height = moves.top || moves.bottom ? Math.max(1, moves.top ? b.bottom - local.y : local.y - b.top) : undefined
+  const [w, h] = [b.right - b.left, b.bottom - b.top]
+  if (proportional && !isSideGrip(grip) && width !== undefined && height !== undefined && w > 0 && h > 0) {
+    const k = Math.max(width / w, height / h)
+    width = Math.max(1, w * k)
+    height = Math.max(1, h * k)
+  }
   const changed = box.resize(props, { width, height })
   const next = box.bounds({ ...props, ...changed })
   // The side held keeps its place: the far one when the near one moves, else the near one. Along

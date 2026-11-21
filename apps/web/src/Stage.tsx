@@ -298,6 +298,8 @@ function Hints() {
   // A rectangle or an ellipse alone is resized by the frame around it (resize.ts).
   // A placed component is stretched by such a frame too, Shift keeping its proportions.
   const boxed = useStore((s) => s.tool === 'select' && s.selection.length === 1 && ['rect', 'ellipse', 'instance'].includes(s.doc.nodes[s.selection[0]]?.type ?? ''))
+  // Kept as the Properties panel keeps them, Shift setting them apart; else Shift keeps them.
+  const keepProportions = usePrefs((p) => p.keepProportions)
   // A stair is resized by such a frame too, but rounds what it is given (to whole steps), and has no proportions to keep.
   const stretchy = useStore((s) => {
     const node = s.tool === 'select' && s.selection.length === 1 ? s.doc.nodes[s.selection[0]] : undefined
@@ -319,9 +321,9 @@ function Hints() {
   else if (face === 'hover' && !dragging) hints = [['', t('Drag the face to make the wall thicker or thinner on this side')], [formatKey('Mod'), t('both sides at once')]]
   else if (face === 'end drag') hints = [['', t('The wall keeps its direction, its other end where it is')], ['Alt', t('ignores the grid and snapping')]]
   else if (face === 'end hover' && !dragging) hints = [['', t('Drag the end to make the wall longer or shorter')], ['', t('the point at the end moves it anywhere')]]
-  else if (dragging && stretchy) hints = [['', t('The side opposite stays where it is')], ['Alt', t('ignores the grid and snapping')]]
+  else if (dragging && stretchy) hints = [['', t('The side opposite stays where it is')], ['Shift', keepProportions ? t('changes width and height apart') : t('keeps its proportions, from a corner')], ['Alt', t('ignores the grid and snapping')]]
   else if (stretchy) hints = [['', t('Drag a side to make it longer or wider, a corner for both')], ['', t('the knob above turns it')]]
-  else if (dragging && boxed) hints = [['Shift', t('keeps its proportions, from a corner')], ['Alt', t('ignores the grid and snapping')]]
+  else if (dragging && boxed) hints = [['Shift', keepProportions ? t('changes width and height apart') : t('keeps its proportions, from a corner')], ['Alt', t('ignores the grid and snapping')]]
   else if (boxed) hints = [['', t('Drag the middle of a side to change one size, a corner to change both')], ['', t('the knob above turns it')]]
   else if (dragging) hints = walls ? [['', t('Joined walls stretch to stay joined')], ['↑ ←', t('holds it upright or level')], ['Alt', t('moves it alone, off the grid')]] : [['Shift', t('keeps an end on its own line, or level, upright or at 45° with its other end')], ['↑ ←', t('holds it upright or level')], ['Alt', t('ignores the grid and snapping')]]
   else hints = hintsFor(tool, step, opening, selected, flips, mounted, view)

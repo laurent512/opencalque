@@ -1,5 +1,5 @@
 import { Check, ChevronDown } from 'lucide-react'
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { FLOATING, useFloating } from './floating'
 
@@ -16,6 +16,11 @@ export interface SelectOption {
   disabled?: boolean
   /** Said when the pointer rests on it. */
   title?: string
+  /**
+   * A small drawing of it (the end of a line, a kind of dashes): shown before its name in the list,
+   * and alone on the button when it is the one chosen, its name said when the pointer rests there.
+   */
+  picture?: ReactNode
 }
 
 /** Options under a heading of their own. */
@@ -123,6 +128,7 @@ export function Select(props: {
         onClick={() => choose(i)}
       >
         <span className="select-tick">{on && <Check size={12} />}</span>
+        {option.picture && <span className="select-picture">{option.picture}</span>}
         <span className="select-label">{option.label}</span>
       </div>
     )
@@ -150,7 +156,13 @@ export function Select(props: {
         }}
         onKeyDown={onKeyDown}
       >
-        <span className={`select-value${chosen < 0 ? ' faint' : ''}`}>{chosen >= 0 ? all[chosen].label : (props.placeholder ?? '')}</span>
+        {chosen >= 0 && all[chosen].picture ? (
+          <span className="select-value select-picture" title={all[chosen].label}>
+            {all[chosen].picture}
+          </span>
+        ) : (
+          <span className={`select-value${chosen < 0 ? ' faint' : ''}`}>{chosen >= 0 ? all[chosen].label : (props.placeholder ?? '')}</span>
+        )}
         <ChevronDown className="select-chevron" size={12} aria-hidden />
       </button>
       {open &&

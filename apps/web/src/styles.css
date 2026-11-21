@@ -74,6 +74,13 @@ select {
   color: inherit;
 }
 
+/* What can be clicked shows the hand (the owner's choice), as a rule that any style of its own
+   overrides (`:where` weighs nothing): a disabled button, a row a click does nothing to, keep the
+   arrow. Where a thing is both clicked and dragged, the click's hand wins over a hand to grab it. */
+:where(button:not(:disabled), input[type='checkbox']:not(:disabled), input[type='radio']:not(:disabled), [role='button'], [role='tab'], [role='menuitem'], [role='menuitemradio'], [role='option']:not([aria-disabled='true'])) {
+  cursor: pointer;
+}
+
 /* The app's dropdown (Select.tsx): what is chosen, a chevron at its end, and the list it opens,
    drawn as the menus are. Where it sits says its size and its box (.field, .pref-field…). */
 .select {
@@ -201,109 +208,158 @@ select {
   --dv-active-sash-color: var(--accent);
 }
 
-/* Tabs: the names of the panels in a row above them, the one in front on a soft rounded
-   background. A tab takes the whole height of the row, to be easy to grab, and the background is
-   drawn on what is inside it. A row never scrolls: the tabs that do not fit are left out whole and
-   listed behind the "···" after the others (`MoreTabs.tsx`). */
+/* The header of a group of panels (`RailTab`, `GroupHead` and `fitHeaders` in Layout.tsx). A group
+   of several is a rail of their icons down its left side, the one in front on a soft rounded
+   background, and each panel has its name in a row of its own at its top (`PanelFrame`). A group of
+   one is a row at the top with the panel's name, its buttons and its cross. Either way the panel is
+   dragged by its icon or its name to another group, or out to stand alone. No line runs under a
+   panel's name: the row and what the panel shows are one surface. */
 
 .dock {
-  --dv-tabs-and-actions-container-height: 34px;
+  /* The rail's width, and the row's height: the library sizes a header across its tabs. */
+  --dv-tabs-and-actions-container-height: 36px;
   --dv-activegroup-visiblepanel-tab-background-color: transparent;
   --dv-activegroup-hiddenpanel-tab-background-color: transparent;
   --dv-inactivegroup-visiblepanel-tab-background-color: transparent;
   --dv-inactivegroup-hiddenpanel-tab-background-color: transparent;
 }
 
-/* The line under the row is drawn inside it, and the first tab takes the room before it: every
-   point of the row belongs to a tab or to its empty part, where a dragged tab can be dropped, so
-   that the cursor never turns to "not allowed" on the way. */
-.dock .dv-tabs-and-actions-container {
-  box-shadow: inset 0 -1px 0 var(--border);
+.dock .dv-groupview-header-vertical {
+  box-shadow: inset -1px 0 0 var(--border);
 }
 
-/* Nothing to clip: the tabs that do not fit are left out whole, and the bar marking a drop after the
-   last one goes past its edge. */
 .dock .dv-tabs-container {
   gap: 0;
-  padding: 0;
-  overflow: visible;
-}
-
-.dock .dv-tabs-container > .dv-tab:first-child {
-  padding-left: 4px;
 }
 
 .dock .dv-tabs-container .dv-tab {
   display: flex;
   align-items: center;
-  height: 100%;
   margin: 0;
-  padding: 0 1px;
   color: var(--muted);
-  font-weight: 500;
 }
 
-/* Left out for want of room, by `MoreTabs`. */
-.dock .dv-tabs-container .dv-tab.tab-hidden {
-  display: none;
+/* The library wraps what a tab draws in an element of its own, a block. */
+.dock .dv-tab > .dv-react-part {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
 }
 
-/* Alone in a row too narrow even for it, the tab in front gives up the end of its name. While
-   `MoreTabs` measures the row, every tab is at its full width. */
-.dock .dv-tabs-container .dv-tab.dv-active-tab {
-  flex-shrink: 1;
+.rail-tab {
+  display: flex;
+  align-items: center;
   min-width: 0;
 }
 
-.dock .dv-tabs-container.tabs-measuring .dv-tab {
-  flex-shrink: 0;
+/* A header never shows a scrollbar. A rail too short for its icons scrolls with the wheel (its
+   own scrollbar, with arrows, came up while an icon was dragged to its corner); the row of a panel
+   alone fits its name to its width (below). */
+.dock .dv-tabs-and-actions-container,
+.dock .dv-tabs-and-actions-container * {
+  scrollbar-width: none;
 }
 
-.dock .dv-tabs-container .dv-tab .dv-default-tab {
+/* The row at the top of a panel alone: its name takes the room its buttons leave, cut with "…",
+   and in a column too narrow for it, only its icon is shown. The buttons never give way. */
+.dock .dv-tabs-and-actions-container:not(.dv-groupview-header-vertical) > .dv-tabs-container {
+  flex: 1 1 auto;
   min-width: 0;
-  height: 24px;
-  padding: 0 4px 0 10px;
+  overflow: hidden;
+}
+
+.dock .dv-tabs-and-actions-container:not(.dv-groupview-header-vertical) > .dv-tabs-container > .dv-tab {
+  flex: 1 1 auto;
+  min-width: 0;
+  container-type: inline-size;
+}
+
+.dock .dv-tabs-and-actions-container:not(.dv-groupview-header-vertical) > .dv-void-container {
+  flex: 0 0 0;
+}
+
+.dock .dv-tabs-and-actions-container:not(.dv-groupview-header-vertical) > .dv-right-actions-container {
+  flex: none;
+}
+
+@container (max-width: 72px) {
+  .dock .dv-tab .rail-name {
+    display: none;
+  }
+}
+
+/* In a rail: the icon alone. Nothing between the last icon and the empty part of the rail, so that
+   a drop after the last one is marked at one place, from either. */
+.dock .dv-tabs-container-vertical {
+  padding: 4px 0 0;
+}
+
+.dock .dv-tabs-container-vertical .dv-tab {
+  justify-content: center;
+  padding: 2px 0;
+}
+
+.dock .dv-tabs-container-vertical .rail-tab {
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
 }
 
-.dock .dv-tabs-container .dv-tab.dv-inactive-tab:hover {
+.dock .dv-tabs-container-vertical .rail-name {
+  display: none;
+}
+
+.dock .dv-tabs-container-vertical .dv-tab.dv-inactive-tab:hover {
   color: var(--text);
 }
 
-.dock .dv-tabs-container .dv-tab.dv-inactive-tab:hover .dv-default-tab {
+.dock .dv-tabs-container-vertical .dv-tab.dv-inactive-tab:hover .rail-tab {
   background-color: var(--tab-hover);
 }
 
-.dock .dv-tabs-container .dv-tab.dv-active-tab {
+.dock .dv-tabs-container-vertical .dv-tab.dv-active-tab {
   color: var(--text);
 }
 
-.dock .dv-tabs-container .dv-tab.dv-active-tab .dv-default-tab {
+.dock .dv-tabs-container-vertical .dv-tab.dv-active-tab .rail-tab {
   background-color: var(--tab-front);
 }
 
-.dock .dv-tabs-container .dv-default-tab .dv-default-tab-content {
+/* In a row: its icon and its name, as the title of the panel, as in the row of a panel under a rail. */
+.dock .dv-tabs-container:not(.dv-tabs-container-vertical) .dv-tab {
   min-width: 0;
-  margin-right: 2px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  height: 100%;
+  padding: 0 4px 0 12px;
+  color: var(--text);
 }
 
-/* The close cross shows on the tab under the pointer, in room of its own on every tab, so that
-   nothing moves when it shows and it never covers the name. */
-.dock .dv-tabs-container .dv-default-tab .dv-default-tab-action {
+.dock .dv-tabs-container:not(.dv-tabs-container-vertical) .rail-tab {
+  gap: 8px;
+}
+
+.dock .dv-tabs-container:not(.dv-tabs-container-vertical) .rail-tab > svg {
   flex: none;
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  border-radius: 4px;
   color: var(--muted);
-  visibility: hidden;
 }
 
-.dock .dv-tabs-container .dv-tab:hover .dv-default-tab .dv-default-tab-action {
-  visibility: visible;
+.dock .dv-tabs-container:not(.dv-tabs-container-vertical) .rail-name {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 100%;
+  padding-right: 6px;
+}
+
 
 /* While a panel is dragged (`dock-dragging`, set in Layout.tsx), the pointer is placing, not
    pointing: one cursor over everything, which no element changes on the way, and no hover. */
@@ -312,139 +368,223 @@ html.dock-dragging * {
   cursor: grabbing !important;
 }
 
-html.dock-dragging .dock .dv-tabs-container .dv-tab:hover .dv-default-tab .dv-default-tab-action {
-  visibility: hidden;
+/* What the panels and the drawing show does not answer the pointer either: no row lit up under it,
+   no tooltip, no outline on the drawing. The library finds where a drop goes from its own
+   containers around them, which still do. */
+html.dock-dragging .dock .dv-content-container * {
+  pointer-events: none !important;
 }
 
-html.dock-dragging .dock .dv-tabs-container .dv-tab.dv-inactive-tab:hover {
+html.dock-dragging .dock .dv-tabs-container-vertical .dv-tab.dv-inactive-tab:hover {
   color: var(--muted);
 }
 
-html.dock-dragging .dock .dv-tabs-container .dv-tab.dv-inactive-tab:hover .dv-default-tab {
+html.dock-dragging .dock .dv-tabs-container-vertical .dv-tab.dv-inactive-tab:hover .rail-tab {
   background-color: transparent;
 }
 
-.dock .dv-tabs-container .dv-default-tab .dv-default-tab-action:hover {
-  border-radius: 4px;
-  background-color: var(--pressed);
-  color: var(--text);
-}
-
-.dock .dv-default-tab-action svg {
-  width: 8px;
-  height: 8px;
-}
-
-/* Where a dragged tab will land: a short bar between two tabs, or after the last one when it is
-   over the empty part of the row, rather than a tinted box. Said with the weight of the library's
-   rules for the edges of a drop area, which would draw a line the whole height of the row. The bar
-   is drawn at the left of the library's mark, 4 px wide, which is moved so that the bar lies across
-   the boundary between two tabs, at the same place whichever of the two the pointer is on. */
+/* Where a dragged panel will land in a header: a short bar between two icons of a rail, or after
+   the last one over the empty part of the rail, or beside the name in a row, rather than a tinted
+   box. */
 .dock .dv-tabs-container .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-selection-line,
 .dock .dv-void-container.dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-center {
   border: 0;
-  background: linear-gradient(var(--accent), var(--accent)) left center / 2px 24px no-repeat;
-  /* The library slides its mark from where it was: from one tab to the next, it swept across. */
+  background: linear-gradient(var(--accent), var(--accent)) left center / 2px 20px no-repeat;
+  /* The library slides its mark from where it was: from one icon to the next, it swept across. */
   transition: none;
 }
 
-/* At the right edge of a tab: its mark starts 4 px before it. */
 .dock .dv-tabs-container .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-selection-line.dv-drop-target-right {
-  margin-left: 3px;
+  background-position: right center;
 }
 
-.dock .dv-tabs-container .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-selection-line.dv-drop-target-left {
-  margin-left: -1px;
+.dock .dv-tabs-container-vertical .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-selection-line,
+.dock .dv-groupview-header-vertical .dv-void-container.dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-center {
+  background-position: center top;
+  background-size: 24px 2px;
 }
 
-/* Before the first tab, inside the room it takes. */
-.dock .dv-tabs-container > .dv-tab:first-child > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-selection-line.dv-drop-target-left {
-  margin-left: 2px;
+/* A bar between two icons lies across the line between them, 1 px on each side, whichever of the
+   two the pointer is on (the lower half of the one above or the upper half of the one below), and
+   so does the bar after the last icon, from that icon or from the empty part of the rail under it:
+   one drop, one place. */
+.dock .dv-tabs-container-vertical .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-selection-line.dv-drop-target-top {
+  margin-top: -1px;
 }
 
-/* The empty part of the row starts where the last tab ends. */
-.dock .dv-void-container.dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-center {
-  margin-left: -1px;
+.dock .dv-tabs-container-vertical .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-selection-line.dv-drop-target-bottom {
+  margin-top: 1px;
 }
 
-/* The tab that follows the pointer while it is dragged: a copy the library makes of it, in <body>,
-   outside the panels, so it is styled here as the tab in front looks, lifted, without its cross. */
-body > .dv-tab-ghost-drag .dv-default-tab {
+.dock .dv-groupview-header-vertical .dv-void-container.dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-center {
+  margin-top: -1px;
+}
+
+.dock .dv-tabs-container-vertical .dv-drop-target > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-selection-line.dv-drop-target-bottom {
+  background-position: center bottom;
+}
+
+/* Where a dragged panel will go beside a group, above, below or to one side of it: a line along the
+   edge, drawn by `dropLine` in Layout.tsx over the panels and centred on the edge. The library's own
+   mark for it, a box over half the group, is not shown. */
+.dock .dv-content-container > .dv-drop-target-dropzone > .dv-drop-target-selection:is(.dv-drop-target-top, .dv-drop-target-bottom, .dv-drop-target-left, .dv-drop-target-right) {
+  border: 0;
+  background: none;
+}
+
+.drop-line {
+  position: fixed;
+  z-index: 10000;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+/* At the left or right edge of the window, the line down that edge says where the panel goes: the
+   library's marks for the group under the pointer are not shown meanwhile. */
+.dock.edge-drop .dv-drop-target-selection {
+  visibility: hidden;
+}
+
+/* The empty part of a rail, or of the row at the top of a panel alone, drags nothing
+   (`stopGroupDrags` in Layout.tsx): no hand there. */
+.dock .dv-tabs-and-actions-container .dv-void-container.dv-draggable {
+  cursor: default;
+}
+
+/* Dropped in the middle of a group, a panel joins it: the whole group is outlined, its row or its
+   rail with what it shows, since they are what the panel will share. */
+.dock .dv-groupview:not(.drawing-group) > .dv-content-container > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-center {
+  border: 0;
+  background: none;
+}
+
+.dock .dv-groupview:not(.drawing-group) > .dv-content-container > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-center::after {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: var(--dv-drag-over-border);
+  background-color: var(--dv-drag-over-background-color);
+  content: '';
+}
+
+.dock .dv-groupview-header-top:not(.drawing-group) > .dv-content-container > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-center::after {
+  top: calc(-1 * var(--dv-tabs-and-actions-container-height));
+}
+
+.dock .dv-groupview-header-left:not(.drawing-group) > .dv-content-container > .dv-drop-target-dropzone > .dv-drop-target-selection.dv-drop-target-center::after {
+  left: calc(-1 * var(--dv-tabs-and-actions-container-height));
+}
+
+/* What follows the pointer while a panel is dragged: a copy the library makes of its icon or name,
+   in <body>, outside the panels, so it is styled here, lifted. */
+body > .dv-tab-ghost-drag .rail-tab {
   display: flex;
   align-items: center;
-  height: 24px;
-  padding: 0 10px;
+  justify-content: center;
+  gap: 6px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
   border-radius: 6px;
   background-color: var(--tab-front);
   box-shadow: 0 2px 8px rgb(0 0 0 / 16%), 0 0 0 1px var(--ring);
   color: var(--text);
 }
 
-body > .dv-tab.dv-tab-ghost-drag .dv-default-tab .dv-default-tab-action,
+body > .dv-tab-ghost-drag .rail-name {
+  display: none;
+}
+
 body > .dv-tab-ghost-drag::after {
   display: none;
 }
 
-/* The "···" when some tabs are left out, at the right end of the row, and the list of them it
-   opens. It lies over the end of the empty part of the row (the header's right actions are taken
-   out of its flow), and lets a drag through to it. Its width and margin are in MORE_WIDTH in
-   MoreTabs.tsx. */
-.dock .dv-tabs-and-actions-container {
-  position: relative;
-}
-
-.dock .dv-tabs-and-actions-container > .dv-right-actions-container {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-}
-
-.tab-more-anchor {
+/* The row at the top of a panel under a rail: its name, its buttons, the cross that closes it.
+   What the panel shows scrolls under it. */
+.panel-frame {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   height: 100%;
 }
 
-.tab-more {
+.panel-head {
   display: flex;
   flex: none;
   align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin-right: 6px;
-  padding: 0;
-  border: 0;
-  border-radius: 6px;
-  background: none;
-  color: var(--muted);
-  cursor: pointer;
-  pointer-events: auto;
+  gap: 2px;
+  height: 36px;
+  padding: 0 6px 0 12px;
 }
 
-html.dock-dragging .tab-more {
-  pointer-events: none;
+.panel-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.tab-more:hover,
-.tab-more[aria-expanded='true'] {
-  background-color: var(--tab-hover);
-  color: var(--text);
+.panel-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
-.context-menu.tab-menu {
-  width: auto;
-  min-width: 160px;
-  max-width: 280px;
+
+.panel-fill {
+  flex: 1;
+  min-height: 0;
+}
+
+/* What a panel shows scrolls under a thumb laid over its right edge (`ScrollThumb`), not the
+   system's scrollbar, which kept a strip of the panel for itself; nothing moves sideways when the
+   panel grows short enough to scroll. */
+.panel-scroll {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .dock-panel {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  /* The room of a scrollbar is kept, so that one appearing as the panel grows short moves nothing. */
-  scrollbar-gutter: stable;
+  scrollbar-width: none;
+}
+
+/* The Properties panel's own box scrolls nothing: the panel does. */
+.dock-panel .panel-body {
+  overflow: visible;
+  scrollbar-gutter: auto;
+}
+
+.scroll-thumb {
+  position: absolute;
+  right: 2px;
+  z-index: 2;
+  width: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text) 30%, transparent);
+  opacity: 0;
+  transition: opacity 0.2s, width 0.1s;
+  pointer-events: none;
+}
+
+.scroll-thumb.awake {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.scroll-thumb:hover,
+.scroll-thumb.dragging {
+  width: 8px;
+  background: color-mix(in srgb, var(--text) 45%, transparent);
 }
 
 /* Top bar */
@@ -625,7 +765,7 @@ html.dock-dragging .tab-more {
   align-items: center;
   gap: 4px;
   height: 28px;
-  padding: 0 8px 0 16px;
+  padding: 0 8px 0 18px;
   cursor: default;
 }
 
@@ -678,7 +818,16 @@ html.dock-dragging .tab-more {
 
 /* Controls */
 
+/*
+ * Every button that is an icon looks one way, set here once (the owner's choice): rounded by
+ * 6 px whatever its size, light at rest so that what it acts on stands out, dark on a tint of the
+ * text's colour under the pointer (a tint, so that it shows on a selected row as on any other), dark
+ * without the tint while what it switches is on (`on`: a lock, the link of a width to a height), and in
+ * the accent colour while it is in use (`active`: a tool, sending). Where they sit sets only their
+ * size; the tools of the bar under the drawing, the main controls, are dark at rest.
+ */
 .icon-button {
+  --icon-tint: color-mix(in srgb, var(--text) 9%, transparent);
   display: inline-flex;
   flex: none;
   align-items: center;
@@ -687,13 +836,21 @@ html.dock-dragging .tab-more {
   height: 28px;
   padding: 0;
   border: 0;
-  border-radius: 5px;
+  border-radius: 6px;
   background: none;
+  color: var(--faint);
   cursor: pointer;
 }
 
-.icon-button:hover:not(:disabled) {
-  background: var(--hover);
+.icon-button:hover:not(:disabled),
+.icon-button[aria-expanded='true'] {
+  background: var(--icon-tint);
+  color: var(--text);
+}
+
+/* Switched on: dark, on no background of its own, which would read as the pointer being there. */
+.icon-button.on {
+  color: var(--text);
 }
 
 .icon-button:disabled {
@@ -749,10 +906,21 @@ html.dock-dragging .tab-more {
   color: var(--muted);
 }
 
+/* The name of a field gives way in a narrow panel, cut with "…", rather than its value. A row
+   without a name may start with a colour chooser, a span too, which is its value. */
+.field > span:first-child:not(.color-choice) {
+  flex: 0 1 72px;
+  width: auto;
+  min-width: 32px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .field > input:not([type]),
 .field > .select {
   flex: 1;
-  min-width: 0;
+  min-width: 48px;
   height: 24px;
   padding: 0 6px;
   border: 1px solid transparent;
@@ -773,7 +941,19 @@ html.dock-dragging .tab-more {
 }
 
 .field.with-unit > input:not([type]) {
+  min-width: 44px;
   padding-right: 28px;
+}
+
+/* In a very narrow panel a number goes without its unit, which would not fit in its box. */
+@container (max-width: 220px) {
+  .field > span.field-unit {
+    display: none;
+  }
+
+  .field.with-unit > input:not([type]) {
+    padding-right: 6px;
+  }
 }
 
 .field > span.field-unit {
@@ -818,9 +998,20 @@ html.dock-dragging .tab-more {
   flex: none;
   align-items: center;
   justify-content: space-between;
-  width: 74px;
+  /* With the gap after it, as far in as the value of a row of one field (`.field`: 72 px and a gap
+     of 8), so that X, Y, Z, a rotation and W, D all start at one place. */
+  width: 72px;
+  margin-right: 2px;
   color: var(--muted);
 }
+
+/* Whether a width and a depth change together: a link, light while they do not, dark while they
+   do, never in the accent colour of a tool in use. */
+.field-pair-name > .icon-button {
+  width: 22px;
+  height: 22px;
+}
+
 
 .field-pair > .field,
 .field-pair > .typed-row {
@@ -851,7 +1042,7 @@ html.dock-dragging .tab-more {
 }
 
 .field-pair.three > .field-pair-name {
-  width: 64px;
+  margin-right: 4px;
   white-space: nowrap;
 }
 
@@ -1194,7 +1385,11 @@ body.scrubbing .quick-field input[title] {
 .toolbar .icon-button {
   width: 32px;
   height: 32px;
-  border-radius: 7px;
+}
+
+/* The tools are the main controls: dark at rest. The one in use keeps its white on the accent. */
+.toolbar .icon-button:not(.active) {
+  color: var(--text);
 }
 
 .toolbar hr {
@@ -1280,7 +1475,6 @@ body.scrubbing .quick-field input[title] {
 .view-more .icon-button {
   width: 28px;
   height: 28px;
-  border-radius: 7px;
 }
 
 /* A setting that is on: lit, but quieter than the tool in use. */
@@ -1542,7 +1736,7 @@ button.crumb.ahead:hover {
   height: 32px;
   padding: 0 6px 0 10px;
   border-radius: 6px;
-  cursor: default;
+  cursor: pointer;
 }
 
 .palette-row.active {
@@ -1660,6 +1854,9 @@ button.crumb.ahead:hover {
   height: min(600px, 84vh);
   max-height: none;
   overflow: hidden;
+  /* Its pages scroll inside it, each keeping its own room (`.prefs-content`); the window kept an
+     empty strip down each side, where the grey of the menu stopped short of its edge. */
+  scrollbar-gutter: auto;
 }
 
 .prefs-nav {
@@ -2299,9 +2496,10 @@ button.feedback-thumb:focus-visible {
 
 .assistant-log {
   flex: 1;
+  min-height: 0;
   padding: 8px 12px;
   overflow-y: auto;
-  scrollbar-gutter: stable;
+  scrollbar-width: none;
   user-select: text;
 }
 
@@ -2536,8 +2734,8 @@ button.feedback-thumb:focus-visible {
 .assistant-actions .icon-button {
   width: 26px;
   height: 26px;
-  border-radius: 50%;
 }
+
 
 /* Object list */
 
@@ -2552,13 +2750,17 @@ button.feedback-thumb:focus-visible {
   color: var(--special);
 }
 
+/* The room of the arrow that opens a group, as wide as its button, on the rows that have none. */
 .twist {
   flex: none;
-  width: 22px;
+  width: 28px;
 }
 
-.row[draggable='true'] {
-  cursor: grab;
+/* A row a click does something to (selects it, shows its page, makes its layer current, puts it
+   on the pointer) shows the hand; dragged as well (in Structure, Pages), it still does, not a hand
+   to grab it: the click's wins. */
+.row.clickable {
+  cursor: pointer;
 }
 
 .row.drop-above {
@@ -3396,12 +3598,53 @@ button.feedback-thumb:focus-visible {
   padding: 4px 8px;
 }
 
-/* A panel whose tab already says what it is: no heading, just a little room above the rows. */
+/* A panel whose name is in the row above it: no heading, and its rows start just under it. */
 .section.untitled {
-  padding-top: 8px;
+  padding-top: 2px;
 }
 
 /* The symbols of a line's end, side by side, to pick one from */
+
+/* A row of pictures to pick from, or, without room for them all, a dropdown (`PictureRow`). */
+.picture-row {
+  display: flex;
+  flex: 1;
+  align-self: stretch;
+  min-width: 0;
+}
+
+.picture-row > .select {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: var(--hover);
+}
+
+/* A small drawing in a dropdown: on its button for the one chosen, before each name in its list. */
+.select-picture {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--text);
+}
+
+.select-value.select-picture {
+  flex: 1;
+  min-width: 0;
+}
+
+.select-option > .select-picture {
+  width: 30px;
+  margin-right: 6px;
+}
+
+.select-picture svg {
+  max-width: 28px;
+  height: auto;
+}
 
 .end-picker {
   display: flex;
@@ -4083,14 +4326,21 @@ button.feedback-thumb:focus-visible {
 }
 
 .type-prop > span {
-  flex: none;
-  width: 84px;
+  flex: 0 1 84px;
+  min-width: 36px;
+  overflow: hidden;
   color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .type-prop > em {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
   font-style: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .type-prop > .select {
@@ -4104,10 +4354,11 @@ button.feedback-thumb:focus-visible {
   font: inherit;
 }
 
-/* The value is a field without a name of its own: the row already says what it is. */
+/* The value is a field without a name of its own: the row already says what it is. It keeps room
+   enough to be read and used, the name beside it giving way first. */
 .type-prop > .field {
   flex: 1;
-  min-width: 0;
+  min-width: 72px;
   min-height: 0;
   padding: 0;
 }
@@ -4118,31 +4369,15 @@ button.feedback-thumb:focus-visible {
 }
 
 /*
- * In a narrow column (the panels at the side are about 250 px wide), a value next to its name
- * would be cut to a few letters ("Sans empatt…"): it goes under the name instead, with the whole
- * width. A tick box stays where it is, beside its name.
+ * Every row stays one line, however narrow the panel (the owner's choice): a name or a value too
+ * long for it is cut with "…", and shown whole when the pointer rests on it (`fullTextOnHover` in
+ * Layout.tsx); a row of pictures becomes a dropdown (`PictureRow`). Going under the name, as rows
+ * did, made the panel twice as long.
  */
 .dock-panel {
   container-type: inline-size;
 }
 
-@container (max-width: 320px) {
-  .type-prop {
-    flex-wrap: wrap;
-    row-gap: 2px;
-  }
-
-  /* With its value under it, the name is as wide as it needs, up to the whole row. */
-  .type-prop > span {
-    flex: 0 1 auto;
-    width: auto;
-  }
-
-  .type-prop > :nth-child(n + 3):not(.field:has(> input[type='checkbox'])) {
-    flex: 1 0 calc(100% - 21px);
-    margin-left: 21px;
-  }
-}
 
 .type-prop.off > span {
   opacity: 0.6;
@@ -4230,7 +4465,7 @@ button.feedback-thumb:focus-visible {
 }
 
 /* Seven pictures in a narrow column: they shrink to share its width rather than run past it. */
-.wall-end > .joint-picker {
+.wall-end > .picture-row {
   align-self: stretch;
 }
 
@@ -4800,9 +5035,6 @@ button.feedback-thumb:focus-visible {
 }
 
 /* A panel's "···" and the list it opens (`MoreMenu`). */
-.icon-button[aria-expanded='true'] {
-  background: var(--hover);
-}
 
 .context-menu.more-menu {
   width: auto;
@@ -4889,7 +5121,7 @@ button.feedback-thumb:focus-visible {
   padding: 6px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  cursor: default;
+  cursor: pointer;
 }
 
 .component-tile:hover {
