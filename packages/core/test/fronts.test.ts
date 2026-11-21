@@ -216,3 +216,15 @@ describe('seats, desks and the bathroom in elevations', () => {
     for (const type of ['Column', 'Slide rail', 'Fixed head']) expect(box(side('arch.shower', { type })).minX, type).toBe(0)
   })
 })
+
+describe('a door seen from in front', () => {
+  it('stands on the floor, or on its sill when it is raised, the whole door and its handle going up with it', () => {
+    expect(box(front('arch.door', { width: 900, height: 2040 }))).toEqual({ minX: 0, maxX: 900, minY: -2040, maxY: 0 })
+    const raised = front('arch.door', { width: 900, height: 2040, sillHeight: 100 })
+    expect(box(raised)).toEqual({ minX: 0, maxX: 900, minY: -2140, maxY: -100 })
+    // The handle is a metre above the sill, not above the floor.
+    const handle = raised.find((p) => p.kind === 'path' && p.strokeWidth === 2 && p.points[0].y === p.points[1].y)
+    expect(handle && handle.kind === 'path' && handle.points[0].y).toBe(-1100)
+    expect(kindOf('arch.door').sill).toBe('sillHeight')
+  })
+})

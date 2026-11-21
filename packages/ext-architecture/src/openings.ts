@@ -38,6 +38,8 @@ export const door: ParametricKind = {
   params: [
     WIDTH,
     HEIGHT(2040),
+    // A door can start above the floor, as a window does: a raised threshold, room left under it for a floor's finish.
+    { key: 'sillHeight', label: 'Sill height', type: 'number', default: 0, unit: 'length' },
     { key: 'type', label: 'Type', type: 'string', default: 'Single', options: ['Single', 'Double', ...ON_WALL, 'Pocket', 'Sliding', 'Opening only'] },
     { key: 'hinge', label: 'Hinge', type: 'string', default: 'Left', options: ['Left', 'Right'], shown: ({ type }) => type === 'Single' },
     { key: 'angle', label: 'Open angle', type: 'number', default: 90, unit: 'angle', shown: ({ type }) => HINGED.includes(type) },
@@ -47,6 +49,7 @@ export const door: ParametricKind = {
   ],
   opening: ({ width }) => ({ from: 0, to: atLeast(1, width) }),
   size: { x: 'width' },
+  sill: 'sillHeight',
   build({ width, type, hinge, angle, slide, leaves, flip }, env) {
     const w = atLeast(1, width)
     const h = (env.wallThickness ?? LOOSE_WALL) / 2
@@ -96,21 +99,23 @@ export const door: ParametricKind = {
     if (ONE_WAY.includes(type) && slide === 'Left') prims = mirrorAlong(prims, w)
     return flip ? mirrorAcross(prims) : prims
   },
-  // Seen from in front: its frame from the floor to its height, the leaves, and a handle on the side that opens.
-  front({ width, height, type, hinge, slide, leaves }) {
+  // Seen from in front: its frame from its sill (the floor, unless it is raised) to its height, the
+  // leaves, and a handle on the side that opens, at the height of a handle above the sill.
+  front({ width, height, type, hinge, slide, leaves, sillHeight }) {
     const w = atLeast(1, width)
-    const top = -atLeast(1, height)
-    let prims: Primitive[] = [outline([pt(0, 0), pt(w, 0), pt(w, top), pt(0, top)])]
-    const handle = (x: number, toward: 1 | -1) => line([pt(x, -1000), pt(x + toward * 100, -1000)], HEAVY)
+    const bottom = -Math.max(0, Number(sillHeight) || 0) || 0
+    const top = bottom - atLeast(1, height)
+    let prims: Primitive[] = [outline([pt(0, bottom), pt(w, bottom), pt(w, top), pt(0, top)])]
+    const handle = (x: number, toward: 1 | -1) => line([pt(x, bottom - 1000), pt(x + toward * 100, bottom - 1000)], HEAVY)
     // A sliding leaf is pulled by an upright grip.
-    const grip = (x: number) => line([pt(x, -900), pt(x, -1150)], HEAVY)
+    const grip = (x: number) => line([pt(x, bottom - 900), pt(x, bottom - 1150)], HEAVY)
     if (type === 'Single') prims.push(hinge === 'Right' ? handle(80, 1) : handle(w - 80, -1))
-    else if (type === 'Double') prims.push(line([pt(w / 2, 0), pt(w / 2, top)], THIN), handle(w / 2 - 80, -1), handle(w / 2 + 80, 1))
-    else if (type === 'Double sliding on wall') prims.push(line([pt(w / 2, 0), pt(w / 2, top)], THIN), grip(w / 2 - 80), grip(w / 2 + 80))
+    else if (type === 'Double') prims.push(line([pt(w / 2, bottom), pt(w / 2, top)], THIN), handle(w / 2 - 80, -1), handle(w / 2 + 80, 1))
+    else if (type === 'Double sliding on wall') prims.push(line([pt(w / 2, bottom), pt(w / 2, top)], THIN), grip(w / 2 - 80), grip(w / 2 + 80))
     else if (ONE_WAY.includes(type)) prims.push(grip(80))
     else if (type === 'Sliding') {
       const n = clamp(Math.round(Number(leaves) || LEAVES.min), LEAVES.min, LEAVES.max)
-      for (let i = 1; i < n; i++) prims.push(line([pt((w * i) / n, 0), pt((w * i) / n, top)], THIN))
+      for (let i = 1; i < n; i++) prims.push(line([pt((w * i) / n, bottom), pt((w * i) / n, top)], THIN))
     }
     if (ONE_WAY.includes(type) && slide === 'Left') prims = mirrorAlong(prims, w)
     return prims

@@ -49,10 +49,10 @@ describe('a sliding door', () => {
 
   it('asks for what moves it: no hinge or angle, which way it slides, how many leaves', () => {
     const shown = (type: string) => door.params.filter((p) => p.shown?.(registry.resolveProps(door, { type })) ?? true).map((p) => p.key)
-    expect(shown('Single')).toEqual(['width', 'height', 'type', 'hinge', 'angle', 'flip'])
-    expect(shown('Sliding on wall')).toEqual(['width', 'height', 'type', 'slide', 'flip'])
-    expect(shown('Double sliding on wall')).toEqual(['width', 'height', 'type', 'flip'])
-    expect(shown('Sliding')).toEqual(['width', 'height', 'type', 'leaves', 'flip'])
+    expect(shown('Single')).toEqual(['width', 'height', 'sillHeight', 'type', 'hinge', 'angle', 'flip'])
+    expect(shown('Sliding on wall')).toEqual(['width', 'height', 'sillHeight', 'type', 'slide', 'flip'])
+    expect(shown('Double sliding on wall')).toEqual(['width', 'height', 'sillHeight', 'type', 'flip'])
+    expect(shown('Sliding')).toEqual(['width', 'height', 'sillHeight', 'type', 'leaves', 'flip'])
   })
 })
 

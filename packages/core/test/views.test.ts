@@ -84,13 +84,14 @@ describe('a check of a socket beside a wall', () => {
 })
 
 describe('a window dragged up and down in an elevation', () => {
-  it('goes up by its sill height; a door does not', () => {
+  it('goes up by its sill height, and a door too, never below the floor', () => {
     const doc = add(room(), { type: 'parametric', id: 'win', kind: 'arch.window', props: {}, x: 2000, y: 0 }, { type: 'parametric', id: 'door', kind: 'arch.door', props: {}, x: 500, y: 0 }, north)
     const view = doc.nodes.vv as NodeOf<'elevation'>
     expect(elevationItemAt(view, doc, registry, { x: 2600, y: 10000 - 1500 })).toMatchObject({ role: 'opening', raises: true, node: { id: 'win' } })
     expect(elevationMovePatch(view, doc, registry, doc.nodes.win as NodeOf<'parametric'>, 0, 200)).toEqual({ x: 2000, y: 0, props: { sillHeight: 1100 } })
     expect(elevationMovePatch(view, doc, registry, doc.nodes.win as NodeOf<'parametric'>, 0, -2000)).toEqual({ x: 2000, y: 0, props: { sillHeight: 0 } })
-    expect(elevationMovePatch(view, doc, registry, doc.nodes.door as NodeOf<'parametric'>, 0, 200)).toEqual({ x: 500, y: 0 })
+    expect(elevationMovePatch(view, doc, registry, doc.nodes.door as NodeOf<'parametric'>, 0, 200)).toEqual({ x: 500, y: 0, props: { sillHeight: 200 } })
+    expect(elevationMovePatch(view, doc, registry, doc.nodes.door as NodeOf<'parametric'>, 0, -200)).toEqual({ x: 500, y: 0, props: { sillHeight: 0 } })
   })
 })
 
