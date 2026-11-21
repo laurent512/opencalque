@@ -16,8 +16,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest, ubuntu-latest]
+        # ubuntu-24.04-arm builds the AppImage for ARM Linux (a Raspberry Pi 4 or 5 on a 64-bit
+        # system), on GitHub's own ARM runners.
+        os: [windows-latest, macos-latest, ubuntu-latest, ubuntu-24.04-arm]
     runs-on: ${{ matrix.os }}
+    # The ARM build is the newest: should it fail, the release still goes out with the others.
+    continue-on-error: ${{ matrix.os == 'ubuntu-24.04-arm' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

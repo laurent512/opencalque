@@ -49,7 +49,7 @@ Installers for each version are on the [releases page](https://github.com/lauren
 | --- | --- |
 | Windows | `OpenCalque-…-windows-setup.exe` to install, or `…-windows-portable.exe` to run without installing |
 | macOS | `OpenCalque-…-mac-arm64.dmg` (Apple silicon) or `…-mac-x64.dmg` (Intel) |
-| Linux | `OpenCalque-…-linux-….AppImage` |
+| Linux | `OpenCalque-…-linux-x86_64.AppImage`, or `…-linux-arm64.AppImage` for ARM (a Raspberry Pi 4 or 5 on a 64-bit system) |
 
 The builds are not signed, so the system asks before running them the first time:
 

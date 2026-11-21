@@ -8,6 +8,7 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 
 ### New
 - A door can start above the floor, as a window does: its Sill height (in its properties, 0 by default) raises it, for a threshold or the room a floor's finish needs under it. Elevations and sections draw it from there, and dragging it up or down in them sets it.
+- An AppImage for Linux on ARM, such as a Raspberry Pi 4 or 5 on a 64-bit system, beside the one for Intel and AMD processors. It updates itself as the other does.
 
 ### Improved
 - The panels sharing a place are icons in a column down its left side instead of a row of named tabs: the name of a panel shows when the pointer rests on its icon, and once in the row at the top of the panel, with its buttons (add a layer, a page, a material) and its cross. A panel alone in its place has no column, only that row, with its icon before its name. In a column too narrow for its name, that row shows the icon alone, never a scrollbar. The rows of a panel start closer to its left edge and to its title, and Structure keeps room for the arrow of a group only when it holds one. A panel no longer says its name twice, and none is hidden behind a "···" for want of room. Panels are still dragged, by their icon or their name, to another side, out of a place or into another. By default Structure stands alone at the bottom left, under the drawing's other panels; View › Reset the panel layout brings an arrangement saved before to it.
