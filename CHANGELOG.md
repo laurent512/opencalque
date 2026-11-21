@@ -4,6 +4,11 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### Fixed
+- A door or a window put where another wall meets its wall slides along it to the nearest place clear of that wall, rather than opening onto it with the wall standing in its doorway.
+
 ## 2.0.0 — 2026-11-21
 
 ### New

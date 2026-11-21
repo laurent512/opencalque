@@ -173,3 +173,23 @@ describe('a wall drawn by one of its faces', () => {
     expect(right.every((p) => Math.abs(p.y - 200) < 1e-6)).toBe(true)
   })
 })
+
+describe('a door put on a wall another meets', () => {
+  // An outside wall along y = 0, 4 m long and 250 thick, and a partition meeting it at x = 2000, 100 thick.
+  const doc = () => applyOps(createDocument(), [wall('out', 0, 0, 4000, 0, { thickness: 250 }), wall('in', 2000, 0, 2000, 3000, { thickness: 100 })])
+  const left = (p: { x: number; y: number }) => {
+    const at = snapOpeningToWall(doc(), 'page_1', registry, { kind: 'arch.door', props: { width: 900 } }, p, 200, 10)!
+    // Not turned, the door's opening runs from its insertion point 900 along +X; turned round, 900 along -X.
+    return at.rotation === 0 ? at.x : at.x - 900
+  }
+  it('slides off the meeting wall to the side of the pointer, rather than opening onto it', () => {
+    // Its opening ends at the partition's face, or starts at it: never across it.
+    expect(left({ x: 1950, y: -200 })).toBeCloseTo(1050)
+    expect(left({ x: 2050, y: -200 })).toBeCloseTo(2050)
+    expect(left({ x: 2400, y: -200 })).toBeCloseTo(2050)
+  })
+  it('goes where it is put when it is clear of the meeting wall', () => {
+    expect(left({ x: 800, y: -200 })).toBeCloseTo(350)
+    expect(left({ x: 3300, y: -200 })).toBeCloseTo(2850)
+  })
+})
