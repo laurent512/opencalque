@@ -1,3 +1,4 @@
+import type { MouseEvent } from 'react'
 import { Plus, Sparkles, Trash2 } from 'lucide-react'
 import { DEFAULT_MATERIAL, newId, WALL_FILL, type Document, type Material } from '@opencalque/core'
 import { FillChoice } from '../FillChoice'
@@ -47,13 +48,23 @@ function remove(doc: Document, material: Material): void {
   })
 }
 
-/** A material, on one row: how it is drawn, as a swatch that a click changes, then its name and how many things are made of it. */
+/**
+ * A click anywhere on a material's row opens the window of its fill and pattern, under its
+ * swatch: they are what there is to change in a material, and the swatch alone is a small target.
+ * Its buttons, and its name while it is renamed, keep their clicks.
+ */
+function opensFill(e: MouseEvent<HTMLDivElement>): void {
+  if (e.target instanceof Element && e.target.closest('button, input')) return
+  e.currentTarget.querySelector<HTMLButtonElement>('.fill-now')?.click()
+}
+
+/** A material, on one row: how it is drawn, as a swatch, then its name and how many things are made of it. A click on the row changes how it is drawn, a double-click on its name renames it. */
 function MaterialRow({ material }: { material: Material }) {
   const doc = useStore((s) => s.doc)
   const set = (patch: Record<string, unknown>) => apply([{ op: 'update_material', id: material.id, patch }])
   const { walls, floors } = usesOf(doc, material.id)
   return (
-    <div className="row material">
+    <div className="row material" onClick={opensFill}>
       <FillChoice
         compact
         fill={material.fill}
@@ -88,7 +99,7 @@ function DefaultRow() {
         : { op: 'add_material', material: { id: DEFAULT_MATERIAL, name: 'Default', ...Object.fromEntries(Object.entries(change).filter(([, value]) => value !== undefined)) } },
     ])
   return (
-    <div className="row material" title={t('What walls are made of until they are given a material. It cannot be deleted.')}>
+    <div className="row material" title={t('What walls are made of until they are given a material. It cannot be deleted.')} onClick={opensFill}>
       <FillChoice compact fill={material?.fill} pattern={material?.pattern} fallback={WALL_FILL} filled title={t('Fill')} commit={set} />
       <span className="editable">{t('Default')}</span>
       <em className="faint uses">{t('walls of no material')}</em>

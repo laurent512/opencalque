@@ -4187,9 +4187,10 @@ button.feedback-thumb:focus-visible {
   outline: 0;
 }
 
-/* A material: its swatch, which a click changes, its name, how many things are made of it */
+/* A material: its swatch, its name, how many things are made of it. A click on the row changes how it is drawn. */
 .row.material {
   gap: 8px;
+  cursor: pointer;
 }
 
 .row.material .uses {

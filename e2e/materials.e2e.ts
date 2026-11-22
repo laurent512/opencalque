@@ -55,6 +55,15 @@ test('gives walls a material picked from the list of those of the drawing, each 
   const rows = page.locator('[data-panel="materials"] .row.material')
   await expect(rows).toHaveCount(2)
   await expect(rows.first()).toContainText('Default')
+  // A click anywhere on a material's row opens how it is drawn, not only one on its swatch; another closes it.
+  const fill = page.getByRole('dialog', { name: 'Fill' })
+  await rows.nth(1).locator('.uses').click()
+  await expect(fill).toBeVisible()
+  await rows.nth(1).locator('.uses').click()
+  await expect(fill).toHaveCount(0)
+  // Its name is renamed by a double-click, as before.
+  await rows.nth(1).locator('.editable').dblclick()
+  await expect(rows.nth(1).locator('input.inline-input')).toBeFocused()
 })
 
 test('gives a floor a material, and places a table of quantities that counts the floors and follows the drawing', async ({ page }) => {

@@ -9,6 +9,9 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 ### New
 - A grid of the drawing's own: in File › Drawing settings, set Grid › Spacing to Always the same, then give how far apart its main lines are and into how many parts finer lines divide them (910 mm divided into 2 for the Japanese module, with lines every 455 mm). Drawing, moving and snapping go by the finer lines at every zoom; zoomed far out, only the main lines show. The grid is saved with the drawing, and Changes with the zoom brings back the usual one.
 
+### Improved
+- In the Materials panel, a click anywhere on a material opens its fill and pattern, not only a click on its small swatch. A double-click on its name still renames it.
+
 ## 2.0.1 — 2026-11-22
 
 ### Fixed
