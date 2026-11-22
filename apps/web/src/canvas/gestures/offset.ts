@@ -61,10 +61,10 @@ export function offsetHover(c: Canvas, world: Vec2, out: Shown): void {
 
 /** How far the copy goes for a pointer at `world`, and where it is held: a typed distance, a point it passes through, else whole steps of the grid. */
 function aimed(c: Canvas, g: GestureOf<'parallel'>, world: Vec2, e: Keys) {
-  const { drawLocks, view } = get()
+  const { drawLocks, view, doc } = get()
   const target = snap(c, world, e, g.copy ? [g.copy] : [])
   const beside = besideNode(g.node, target.marker ? target.p : world)
-  const step = gridStep(view.zoom)
+  const step = gridStep(view.zoom, doc.settings?.grid)
   const free = target.marker !== null || e.altKey
   const length = drawLocks.a ?? (free ? Math.abs(beside) : Math.round(Math.abs(beside) / step) * step)
   return { marker: target.marker, length, distance: beside < 0 ? -length : length }

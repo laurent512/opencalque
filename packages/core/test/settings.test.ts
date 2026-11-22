@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyOps, buildScene, dimensionLabel, drawingSettingsOps, roomArea, settingsOf, tableContent, unitless, type Document, type NodeOf, type Op } from '../src'
+import { applyOps, buildScene, dimensionLabel, drawingSettingsOps, parseDocument, roomArea, settingsOf, tableContent, unitless, type Document, type NodeOf, type Op } from '../src'
 import { houseDoc, registry, wall } from './support/house'
 
 /** One room of 4.67 × 3.67 m between faces, a table of its rooms worded in French, and a dimension. */
@@ -120,5 +120,24 @@ describe('the layout of the title blocks', () => {
     expect(set(house, drawingSettingsOps(house, { titleBlock: { layout: 'corner' } })).settings).toBeUndefined()
     // The units change without it.
     expect(set(strip, drawingSettingsOps(strip, { system: 'imperial' })).settings).toEqual({ system: 'imperial', titleBlock: { layout: 'strip', labels } })
+  })
+})
+
+describe('the grid of the drawing', () => {
+  it('is kept with the drawing, a whole square left undivided, and taken out with null', () => {
+    const module = set(house, [{ op: 'set_document', settings: { grid: { spacing: 910, divisions: 2 } } }])
+    expect(module.settings).toEqual({ grid: { spacing: 910, divisions: 2 } })
+    expect(set(house, [{ op: 'set_document', settings: { grid: { spacing: 1000, divisions: 1 } } }]).settings).toEqual({ grid: { spacing: 1000 } })
+    // The other settings leave it as it is, and it leaves them.
+    expect(set(module, drawingSettingsOps(module, { decimal: ',' })).settings).toEqual({ decimal: ',', grid: { spacing: 910, divisions: 2 } })
+    expect(set(module, [{ op: 'set_document', settings: { grid: null } }]).settings).toBeUndefined()
+    // Saved and read again, it is the same.
+    expect(parseDocument(JSON.parse(JSON.stringify(module))).settings).toEqual(module.settings)
+  })
+
+  it('refuses a spacing that is no length and divisions that are no count', () => {
+    for (const grid of [{ spacing: 0 }, { spacing: -910 }, { spacing: Infinity }, { spacing: '910' }, { spacing: 910, divisions: 0 }, { spacing: 910, divisions: 2.5 }, { spacing: 910, divisions: 101 }, { spacing: 910, origin: 0 }, 910]) {
+      expect(() => set(house, [{ op: 'set_document', settings: { grid: grid as never } }])).toThrow(/grid/)
+    }
   })
 })

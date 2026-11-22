@@ -7,6 +7,7 @@ import {
   AssetSchema,
   DEFAULT_MATERIAL,
   DimensionStyleSchema,
+  GRID_DIVISIONS,
   type DimensionStyle,
   LayerSchema,
   MaterialSchema,
@@ -62,7 +63,7 @@ export type Op =
   | { op: 'update_material'; id: string; patch: Record<string, unknown> }
   | { op: 'remove_material'; id: string }
   | { op: 'add_asset'; asset: Omit<Asset, 'id'> & { id?: string } }
-  | { op: 'set_document'; name?: string; info?: Record<string, string | null>; settings?: { system?: 'metric' | 'imperial' | null; decimal?: '.' | ',' | null; titleBlock?: { layout?: 'corner' | 'strip'; labels?: Record<string, string> } | null } }
+  | { op: 'set_document'; name?: string; info?: Record<string, string | null>; settings?: { system?: 'metric' | 'imperial' | null; decimal?: '.' | ',' | null; titleBlock?: { layout?: 'corner' | 'strip'; labels?: Record<string, string> } | null; grid?: { spacing: number; divisions?: number } | null } }
 
 const patch = z
   .record(z.string(), z.unknown())
@@ -117,11 +118,12 @@ export const OpSchema = z.discriminatedUnion('op', [
           system: z.enum(['metric', 'imperial']).nullable().optional(),
           decimal: z.enum(['.', ',']).nullable().optional(),
           titleBlock: z.object({ layout: z.enum(['corner', 'strip']).optional(), labels: z.record(z.string(), z.string()).optional() }).nullable().optional(),
+          grid: z.object({ spacing: z.number(), divisions: z.number().int().optional() }).nullable().optional(),
         })
         .optional(),
     })
     .describe(
-      'Renames the document and/or changes what it says about itself ("info": project, client, address, author), shown in title blocks, and/or how it writes its numbers and lays out its title blocks ("settings": system, decimal, titleBlock). In "info" and "settings" each key replaces that entry and a null or empty value removes it.',
+      'Renames the document and/or changes what it says about itself ("info": project, client, address, author), shown in title blocks, and/or how it writes its numbers and lays out its title blocks ("settings": system, decimal, titleBlock) and the grid the editor shows ("grid": spacing of its main lines in mm, and the divisions of each square). In "info" and "settings" each key replaces that entry and a null or empty value removes it.',
     ),
 ])
 
@@ -137,6 +139,18 @@ function titleLayout(value: unknown): { layout?: 'corner' | 'strip'; labels?: Re
   if (labels !== undefined && (typeof labels !== 'object' || labels === null || Array.isArray(labels) || Object.values(labels).some((text) => typeof text !== 'string')))
     throw new OpError('The title block\'s labels are texts by entry, such as { "project": "Project" }.')
   return { ...(layout !== undefined ? { layout } : {}), ...(labels !== undefined ? { labels: labels as Record<string, string> } : {}) }
+}
+
+/** The drawing's grid as an operation gives it, checked: main lines a positive number of mm apart, each square divided into 1 to `GRID_DIVISIONS` parts, 1 left out. */
+function gridSetting(value: unknown): { spacing: number; divisions?: number } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new OpError('The setting "grid" is an object with "spacing" (in mm) and "divisions".')
+  const { spacing, divisions, ...rest } = value as Record<string, unknown>
+  const unknown = Object.keys(rest)[0]
+  if (unknown !== undefined) throw new OpError(`Unknown grid setting "${unknown}". Use spacing or divisions.`)
+  if (typeof spacing !== 'number' || !Number.isFinite(spacing) || spacing <= 0) throw new OpError(`The grid's spacing is a length in mm greater than 0, not ${JSON.stringify(spacing)}.`)
+  if (divisions !== undefined && (typeof divisions !== 'number' || !Number.isInteger(divisions) || divisions < 1 || divisions > GRID_DIVISIONS))
+    throw new OpError(`The grid's divisions are a whole number from 1 to ${GRID_DIVISIONS}, not ${JSON.stringify(divisions)}.`)
+  return { spacing, ...(divisions !== undefined && divisions > 1 ? { divisions } : {}) }
 }
 
 /** Validates untrusted JSON into a list of operations. */
@@ -511,8 +525,13 @@ function applyOp(d: Document, op: Op, batch: Batch): void {
             else delete settings[key]
             continue
           }
+          if (key === 'grid') {
+            if (value === null || value === undefined) delete settings[key]
+            else settings[key] = gridSetting(value)
+            continue
+          }
           const allowed = key === 'system' ? ['metric', 'imperial'] : key === 'decimal' ? ['.', ','] : null
-          if (!allowed) throw new OpError(`Unknown drawing setting "${key}". Use system, decimal or titleBlock.`)
+          if (!allowed) throw new OpError(`Unknown drawing setting "${key}". Use system, decimal, titleBlock or grid.`)
           if (value === null || value === undefined) delete settings[key]
           else if (typeof value !== 'string' || !allowed.includes(value)) throw new OpError(`The setting "${key}" is ${allowed.map((one) => `"${one}"`).join(' or ')}, not "${String(value)}".`)
           else settings[key] = value

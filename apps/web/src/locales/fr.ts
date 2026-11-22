@@ -1178,4 +1178,12 @@ export const fr: Record<string, string> = {
   "No dimension styles yet": "Aucun style de cote pour l’instant",
   "No AI provider set up": "Aucun fournisseur d’IA configuré",
   "changes width and height apart": "change la largeur et la hauteur séparément",
+  "Grid": "Grille",
+  "Changes with the zoom": "Suit le zoom",
+  "Always the same": "Toujours le même",
+  "Main lines every": "Lignes principales tous les",
+  "Divided into": "Divisé en",
+  "Finer lines every {length}. Drawing, moving and snapping go by them; zoomed out, only the main lines show.": "Lignes fines tous les {length}. Le dessin, les déplacements et l’accrochage les suivent ; en dézoomant, seules les lignes principales restent.",
+  "Drawing, moving and snapping go by the main lines.": "Le dessin, les déplacements et l’accrochage suivent les lignes principales.",
+  "The lines get finer as you zoom in, every tenth one darker.": "Les lignes s’affinent à mesure que l’on zoome, une sur dix plus foncée.",
 }

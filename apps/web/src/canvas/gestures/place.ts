@@ -106,11 +106,11 @@ export const sectionMove: Move<'section'> = (c, g, e, _at, world, out) => {
  * its start (Alt: exactly under the pointer).
  */
 function splitAim(c: Canvas, world: Vec2, e: Keys) {
-  const { view } = get()
+  const { view, doc } = get()
   const hit = c.scene.filter((item) => canSplit(item.node)).find((item) => item === hitTest(c.scene.filter((other) => canSplit(other.node)), world, 6 / view.zoom))
   if (!hit) return null
   const snapped = e.altKey ? null : snap(c, world, e, [hit.id])
-  const place = snapped?.marker ? splitPlace(hit.node, snapped.p) : splitPlace(hit.node, world, e.altKey ? undefined : gridStep(view.zoom))
+  const place = snapped?.marker ? splitPlace(hit.node, snapped.p) : splitPlace(hit.node, world, e.altKey ? undefined : gridStep(view.zoom, doc.settings?.grid))
   return place && { node: hit.node, place, marker: snapped?.marker ?? null }
 }
 
@@ -180,8 +180,8 @@ export const toolHover: Move<'idle'> = (c, _g, e, _at, world, out) => {
     const placed = s.placing.type === 'parametric' ? { kind: s.placing.kind, props: s.placing.props ?? {} } : null
     const onWall =
       placed && !e.altKey
-        ? (snapOpeningToWall(s.base ?? s.doc, s.scope, registry, placed, world, 10 / s.view.zoom, gridStep(s.view.zoom)) ??
-          snapMountToWall(s.base ?? s.doc, s.scope, registry, placed, world, MOUNT_REACH / s.view.zoom, gridStep(s.view.zoom)))
+        ? (snapOpeningToWall(s.base ?? s.doc, s.scope, registry, placed, world, 10 / s.view.zoom, gridStep(s.view.zoom, s.doc.settings?.grid)) ??
+          snapMountToWall(s.base ?? s.doc, s.scope, registry, placed, world, MOUNT_REACH / s.view.zoom, gridStep(s.view.zoom, s.doc.settings?.grid)))
         : null
     if (onWall) out.marker = null
     // A library's component comes in with its first placement, in the same step.

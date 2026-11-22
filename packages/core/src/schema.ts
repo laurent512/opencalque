@@ -136,6 +136,8 @@ const markerSize = z.number().positive().optional().describe('Length of the end 
 export const LEADER_SHAPES = ['curve', 'straight', 'elbow'] as const
 /** Which ends of a grid line carry its bubble. */
 export const GRIDLINE_BUBBLES = ['start', 'end', 'both', 'none'] as const
+/** The most parts the drawing's grid divides its main squares into (`settings.grid.divisions`). */
+export const GRID_DIVISIONS = 100
 /**
  * What a link says of the two objects it joins: 'control', that the first controls the second (a
  * switch and the light it turns on, however the order reaches it: a wire, a radio, a bus); 'run',
@@ -547,6 +549,13 @@ export const DrawingSettingsSchema = z.object({
     })
     .optional()
     .describe('How the title blocks of every sheet are laid out, the same throughout the set. Left out, in the corner. What each sheet shows is its own ("titleBlock" of a paper).'),
+  grid: z
+    .object({
+      spacing: z.number().positive().describe('How far apart the main lines of the grid are, in mm: 910 for the Japanese module.'),
+      divisions: z.number().int().min(1).max(GRID_DIVISIONS).optional().describe('Into how many parts the finer lines divide each square of the main ones: 2 gives lines every 455 mm between those every 910 mm. Defaults to 1, no finer lines.'),
+    })
+    .optional()
+    .describe('The grid the editor shows and snaps to, from the origin. Left out, the grid changes with the zoom (1, 5, 10, 50, 100 mm…), every tenth line darker. It is never printed or exported.'),
 })
 
 export const DocumentSchema = z

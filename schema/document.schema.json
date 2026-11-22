@@ -5706,6 +5706,27 @@
             }
           },
           "additionalProperties": false
+        },
+        "grid": {
+          "description": "The grid the editor shows and snaps to, from the origin. Left out, the grid changes with the zoom (1, 5, 10, 50, 100 mm…), every tenth line darker. It is never printed or exported.",
+          "type": "object",
+          "properties": {
+            "spacing": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "description": "How far apart the main lines of the grid are, in mm: 910 for the Japanese module."
+            },
+            "divisions": {
+              "description": "Into how many parts the finer lines divide each square of the main ones: 2 gives lines every 455 mm between those every 910 mm. Defaults to 1, no finer lines.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          "required": [
+            "spacing"
+          ],
+          "additionalProperties": false
         }
       },
       "additionalProperties": false

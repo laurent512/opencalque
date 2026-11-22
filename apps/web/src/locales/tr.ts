@@ -1178,4 +1178,12 @@ export const tr: Record<string, string> = {
   "No dimension styles yet": "Henüz ölçü stili yok",
   "No AI provider set up": "Ayarlanmış bir yapay zekâ sağlayıcısı yok",
   "changes width and height apart": "genişliği ve yüksekliği ayrı ayrı değiştirir",
+  "Grid": "Izgara",
+  "Changes with the zoom": "Yakınlaştırmaya göre değişir",
+  "Always the same": "Hep aynı",
+  "Main lines every": "Ana çizgiler arası",
+  "Divided into": "Bölme sayısı",
+  "Finer lines every {length}. Drawing, moving and snapping go by them; zoomed out, only the main lines show.": "İnce çizgiler {length} arayla. Çizim, taşıma ve yakalama bunlara göre yapılır; uzaklaştırınca yalnızca ana çizgiler görünür.",
+  "Drawing, moving and snapping go by the main lines.": "Çizim, taşıma ve yakalama ana çizgilere göre yapılır.",
+  "The lines get finer as you zoom in, every tenth one darker.": "Yakınlaştırdıkça çizgiler sıklaşır, her onuncusu daha koyu.",
 }

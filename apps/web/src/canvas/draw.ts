@@ -1,4 +1,4 @@
-import { gridStep } from '../view'
+import { gridLevels, type GridSetting } from '../view'
 import { boundsFrame, frameGrips, paintOrder, primitiveBounds, rotate, sceneBounds, type Bounds, type MoveGuides, type PaintStep, type Primitive, type ResizeFrame, type SceneItem, type Snap, type Vec2 } from '@opencalque/core'
 
 // Pictures decode asynchronously. Until one is ready it is simply not drawn, and the canvas is
@@ -454,18 +454,19 @@ function paintWhole(ctx: CanvasRenderingContext2D, { prim, stroke, fill, widthSc
   }
 }
 
-function drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number, view: View, palette: CanvasPalette): void {
-  const minor = gridStep(view.zoom)
-  // Translucent, so the grid reads the same over the desk and over a sheet of paper.
-  for (const [step, color] of [[minor, palette.grid[0]], [minor * 10, palette.grid[1]]] as const) {
+function drawGrid(ctx: CanvasRenderingContext2D, width: number, height: number, view: View, palette: CanvasPalette, grid: GridSetting | undefined): void {
+  const { minor, major } = gridLevels(view.zoom, grid)
+  // Translucent, so the grid reads the same over the desk and over a sheet of paper. Each line is
+  // counted from the origin rather than added up, so that one every 455 mm does not drift.
+  for (const [step, color] of [[minor, palette.grid[0]], [major, palette.grid[1]]] as const) {
     ctx.beginPath()
-    for (let x = Math.ceil(-view.x / view.zoom / step) * step; x * view.zoom + view.x < width; x += step) {
-      const sx = Math.round(x * view.zoom + view.x) + 0.5
+    for (let i = Math.ceil(-view.x / view.zoom / step); i * step * view.zoom + view.x < width; i++) {
+      const sx = Math.round(i * step * view.zoom + view.x) + 0.5
       ctx.moveTo(sx, 0)
       ctx.lineTo(sx, height)
     }
-    for (let y = Math.ceil(-view.y / view.zoom / step) * step; y * view.zoom + view.y < height; y += step) {
-      const sy = Math.round(y * view.zoom + view.y) + 0.5
+    for (let i = Math.ceil(-view.y / view.zoom / step); i * step * view.zoom + view.y < height; i++) {
+      const sy = Math.round(i * step * view.zoom + view.y) + 0.5
       ctx.moveTo(0, sy)
       ctx.lineTo(width, sy)
     }
@@ -542,6 +543,7 @@ function paintBase(
   around: SceneItem[],
   showGrid: boolean,
   palette: CanvasPalette,
+  grid: GridSetting | undefined,
   rect: Rect = { x: 0, y: 0, w: width, h: height },
 ): HTMLCanvasElement {
   const canvas = into ?? document.createElement('canvas')
@@ -566,7 +568,7 @@ function paintBase(
   world()
   paintSteps(ctx, sheets, view.zoom, palette.ink, area)
   screen()
-  if (showGrid) drawGrid(ctx, width, height, view, palette)
+  if (showGrid) drawGrid(ctx, width, height, view, palette, grid)
   if (outside) {
     // The rest of the drawing, around a group or a component being edited: painted apart, then laid
     // down faded as a whole, so that where its shapes overlap it is no darker than elsewhere.
@@ -599,7 +601,7 @@ function paintBase(
  * moved, and only the strips that come into sight are painted, so that what lies outside shows as
  * it comes in. False when the view moved too far for anything to be kept.
  */
-function panBase(kept: NonNullable<typeof base>, size: { width: number; height: number; dpr: number }, view: View, scene: SceneItem[], around: SceneItem[], showGrid: boolean, palette: CanvasPalette): boolean {
+function panBase(kept: NonNullable<typeof base>, size: { width: number; height: number; dpr: number }, view: View, scene: SceneItem[], around: SceneItem[], showGrid: boolean, palette: CanvasPalette, grid: GridSetting | undefined): boolean {
   const { width, height, dpr } = size
   // Moved by whole pixels of the canvas only: moved by a fraction, it would be blurred a little at
   // each step, more and more. It is then kept for a view a fraction of a pixel from the one shown,
@@ -624,7 +626,7 @@ function panBase(kept: NonNullable<typeof base>, size: { width: number; height: 
     if (dx < 0) strips.push({ x: Math.floor(width + dx) - 1, y: 0, w: Math.ceil(-dx) + 2, h: height })
     if (dy > 0) strips.push({ x: 0, y: 0, w: width, h: Math.ceil(dy) + 1 })
     if (dy < 0) strips.push({ x: 0, y: Math.floor(height + dy) - 1, w: width, h: Math.ceil(-dy) + 2 })
-    for (const strip of strips) paintBase(kept.canvas, kept.canvas, size, at, scene, around, showGrid, palette, strip)
+    for (const strip of strips) paintBase(kept.canvas, kept.canvas, size, at, scene, around, showGrid, palette, grid, strip)
   }
   kept.view = at
   kept.sharp = at.x === view.x && at.y === view.y
@@ -642,6 +644,7 @@ export function drawScene(
   showGrid: boolean,
   palette: CanvasPalette = LIGHT_CANVAS,
   around: SceneItem[] = [],
+  grid?: GridSetting,
 ): void {
   const { width, height, dpr } = size
   const toScreen = (p: Vec2) => ({ x: p.x * view.zoom + view.x, y: p.y * view.zoom + view.y })
@@ -655,18 +658,18 @@ export function drawScene(
   // each step, sharp all the way: scaling the old one up and painting it sharp once the view had
   // stopped made it blur and come back into focus, which read as the plan loading again. What is
   // laid over it is always painted as it is.
-  const key = [scene, around, width, height, dpr, showGrid, palette, arrived]
+  const key = [scene, around, width, height, dpr, showGrid, grid, palette, arrived]
   const same = !!base && base.key.every((value, i) => value === key[i])
   const moving = lastView !== null && (lastView.zoom !== view.zoom || lastView.x !== view.x || lastView.y !== view.y)
   lastView = view
   clearTimeout(settling)
-  const whole = () => (base = { canvas: paintBase(base?.canvas, ctx.canvas, size, view, scene, around, showGrid, palette), key, view, sharp: true })
+  const whole = () => (base = { canvas: paintBase(base?.canvas, ctx.canvas, size, view, scene, around, showGrid, palette, grid), key, view, sharp: true })
   if (!base || !same || base.view.zoom !== view.zoom) whole()
   else {
     const off = base.view.x !== view.x || base.view.y !== view.y
     // Still, it is painted again where it is not exactly what the view shows.
     if (off && moving) {
-      if (!panBase(base, size, view, scene, around, showGrid, palette)) whole()
+      if (!panBase(base, size, view, scene, around, showGrid, palette, grid)) whole()
     } else if (off || !base.sharp) whole()
   }
   // Kept for a view a fraction of a pixel off: painted exactly once the view has been still a moment.

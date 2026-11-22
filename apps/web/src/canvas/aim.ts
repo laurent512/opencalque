@@ -100,7 +100,7 @@ export function snap(c: Canvas, world: Vec2, e: Keys, exclude: string[], from?: 
   // point near a corner would give a length that is not the drawing's, with nothing to show it.
   const measuring = MEASURING.includes(get().tool)
   const onGrid = snapToGrid && !measuring
-  const step = gridStep(zoom)
+  const step = gridStep(zoom, get().doc.settings?.grid)
   // Shift holds the way from one point; of several, the first.
   const start = Array.isArray(from) ? from[0] : from
   if (e.shiftKey && start) {
@@ -185,7 +185,7 @@ function heldMeasure(c: Canvas, world: Vec2, from: Vec2, angle: number, exclude:
 export function alongLine(c: Canvas, world: Vec2, from: Vec2, angle: number, exclude: string[], forward = false): Target {
   const { zoom } = get().view
   const { snapToGrid, snapToObjects } = usePrefs.getState()
-  const step = gridStep(zoom)
+  const step = gridStep(zoom, get().doc.settings?.grid)
   const dir = { x: Math.cos(angle), y: Math.sin(angle) }
   const pointed = (world.x - from.x) * dir.x + (world.y - from.y) * dir.y
   let length = snapToGrid ? Math.round(pointed / step) * step : pointed

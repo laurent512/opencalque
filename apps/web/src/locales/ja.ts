@@ -1178,4 +1178,12 @@ export const ja: Record<string, string> = {
   "No dimension styles yet": "寸法スタイルはまだありません",
   "No AI provider set up": "AI プロバイダーが設定されていません",
   "changes width and height apart": "幅と高さを別々に変えます",
+  "Grid": "グリッド",
+  "Changes with the zoom": "ズームに合わせる",
+  "Always the same": "常に同じ",
+  "Main lines every": "主線の間隔",
+  "Divided into": "分割数",
+  "Finer lines every {length}. Drawing, moving and snapping go by them; zoomed out, only the main lines show.": "補助線は {length} ごと。作図・移動・スナップは補助線に従います。縮小すると主線だけが表示されます。",
+  "Drawing, moving and snapping go by the main lines.": "作図・移動・スナップは主線に従います。",
+  "The lines get finer as you zoom in, every tenth one darker.": "拡大するほど線が細かくなり、10 本ごとに濃く表示されます。",
 }

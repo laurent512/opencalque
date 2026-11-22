@@ -247,6 +247,49 @@ test('lays the title blocks of a drawing down the right edge from its settings, 
   expect((await saved(page)).find((n) => n.type === 'paper')!.titleBlock).toEqual({ number: 'A-101', revisions: '1 | 2026-11-17 | Issued for permit' })
 })
 
+test('draws on the grid set in the drawing settings, every 455 mm for the Japanese module, and back on the one that follows the zoom', async ({ page }) => {
+  const at = await blank(page)
+  const settings = async () => {
+    await page.keyboard.press('Control+k')
+    await page.getByPlaceholder('Type a command…').fill('Drawing settings')
+    await page.keyboard.press('Enter')
+    return page.getByRole('dialog', { name: 'Drawing settings' })
+  }
+  const lastSettings = async () => {
+    await saved(page)
+    return JSON.parse(await page.evaluate(() => (window as any).saves.at(-1))).settings
+  }
+  let dialog = await settings()
+  const spacing = dialog.locator('.pref-field', { hasText: 'Spacing' }).locator('.select')
+  await expect(spacing).toHaveText('Changes with the zoom')
+  await pickIn(page, spacing, 'Always the same')
+  const main = dialog.locator('.pref-field', { hasText: 'Main lines every' }).locator('input')
+  await main.fill('910')
+  await main.press('Enter')
+  const parts = dialog.locator('.pref-field', { hasText: 'Divided into' }).locator('input')
+  await parts.fill('2')
+  await parts.press('Enter')
+  await expect(dialog.locator('.hint', { hasText: 'Finer lines every 455 mm' })).toBeVisible()
+  // Neither a length of nothing nor a count of none is taken.
+  await main.fill('0')
+  await main.press('Enter')
+  await expect(main).toHaveValue('910 mm')
+  await dialog.getByRole('button', { name: 'Done' }).click()
+  expect(await lastSettings()).toEqual({ grid: { spacing: 910, divisions: 2 } })
+  // A line ends on the nearest line of the grid: 910 mm along, not the 1000 mm pointed at.
+  await page.keyboard.press('l')
+  await click(page, at(0, 0))
+  await click(page, at(1000, 30))
+  await page.keyboard.press('Escape')
+  expect((await saved(page)).find((n) => n.type === 'line')).toMatchObject({ a: { x: 0, y: 0 }, b: { x: 910, y: 0 } })
+  // Following the zoom again, the drawing keeps nothing of it.
+  dialog = await settings()
+  await pickIn(page, dialog.locator('.pref-field', { hasText: 'Spacing' }).locator('.select'), 'Changes with the zoom')
+  await expect(dialog.locator('.pref-field', { hasText: 'Main lines every' })).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Done' }).click()
+  expect(await lastSettings()).toBeUndefined()
+})
+
 test('names the rooms that closed walls make, and splits one with a divider', async ({ page }) => {
   const at = await blank(page)
   await page.keyboard.press('w')

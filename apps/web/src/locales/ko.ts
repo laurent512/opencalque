@@ -1178,4 +1178,12 @@ export const ko: Record<string, string> = {
   "No dimension styles yet": "아직 치수 스타일이 없습니다",
   "No AI provider set up": "설정된 AI 제공자가 없습니다",
   "changes width and height apart": "너비와 높이를 따로 바꿉니다",
+  "Grid": "그리드",
+  "Changes with the zoom": "확대/축소에 맞춤",
+  "Always the same": "항상 같음",
+  "Main lines every": "주선 간격",
+  "Divided into": "분할 수",
+  "Finer lines every {length}. Drawing, moving and snapping go by them; zoomed out, only the main lines show.": "보조선은 {length}마다. 그리기, 이동, 스냅은 보조선을 따릅니다. 축소하면 주선만 보입니다.",
+  "Drawing, moving and snapping go by the main lines.": "그리기, 이동, 스냅은 주선을 따릅니다.",
+  "The lines get finer as you zoom in, every tenth one darker.": "확대할수록 선이 촘촘해지고, 열 번째 선마다 진하게 표시됩니다.",
 }

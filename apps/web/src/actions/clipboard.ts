@@ -116,7 +116,7 @@ export const paste = (inPlace = false) => {
     const { doc, scope, activeLayer, view, viewport } = get()
     const visible = visibleArea(view, viewport)
     // A step that shows at any zoom (two grid steps are at least 16 pixels) and keeps the grid.
-    const offset = inPlace ? { x: 0, y: 0 } : pasteOffset(doc, clip, scope, registry, { visible, step: 2 * gridStep(view.zoom), at })
+    const offset = inPlace ? { x: 0, y: 0 } : pasteOffset(doc, clip, scope, registry, { visible, step: 2 * gridStep(view.zoom, doc.settings?.grid), at })
     const result = pasteNodes(doc, clip, scope, offset, activeLayer)
     if (apply(result.ops)) select(result.ids)
   })

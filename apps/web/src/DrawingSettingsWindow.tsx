@@ -1,6 +1,9 @@
-import { drawingSettingsOps, settingsOf, TITLE_FIELDS, type DrawingSettings, type TitleField } from '@opencalque/core'
+import { drawingSettingsOps, GRID_DIVISIONS, settingsOf, TITLE_FIELDS, type DrawingSettings, type TitleField } from '@opencalque/core'
 import { msg, t } from './i18n'
+import { usePrefs } from './prefs'
 import { apply, useStore } from './store'
+import { formatLength, imperialUnit, parseLength, parseNumber } from './units'
+import type { GridSetting } from './view'
 import { useWindows } from './windows'
 import { Select } from './Select'
 
@@ -32,10 +35,81 @@ const STRIP_CAPTIONS: Record<TitleField, string> = {
 /** The captions the strip is given when it is chosen, in the language in use: the drawing keeps them, as a table keeps its words. */
 const stripLabels = (): Record<string, string> => Object.fromEntries(TITLE_FIELDS.map((field) => [field, t(STRIP_CAPTIONS[field])]))
 
+/** The grid a drawing is given when its spacing is first fixed: a metre in tenths, or a foot in inches. */
+const firstGrid = (): GridSetting => (imperialUnit() ? { spacing: 304.8, divisions: 12 } : { spacing: 1000, divisions: 10 })
+
+/** Sets the drawing's grid, or with null gives it back to the zoom. */
+const setGrid = (grid: GridSetting | null) => apply([{ op: 'set_document', settings: { grid } }])
+
+/**
+ * The grid the drawing is shown and snapped on: changing with the zoom (stored as nothing), or main
+ * lines a length apart, each square divided into a number of finer ones, as a module of 910 mm
+ * halved is drawn on. A length or a count that cannot be one is put back as it was.
+ */
+function GridSettings({ grid }: { grid: GridSetting | undefined }) {
+  usePrefs((prefs) => prefs.unit)
+  const divisions = grid?.divisions ?? 1
+  return (
+    <section>
+      <h3>{t('Grid')}</h3>
+      <label className="pref-field">
+        <span>{t('Spacing')}</span>
+        <Select
+          value={grid ? 'fixed' : 'zoom'}
+          onChange={(value) => setGrid(value === 'fixed' ? firstGrid() : null)}
+          options={[
+            { value: 'zoom', label: t('Changes with the zoom') },
+            { value: 'fixed', label: t('Always the same') },
+          ]}
+        />
+      </label>
+      {grid && (
+        <>
+          <label className="pref-field">
+            <span>{t('Main lines every')}</span>
+            <input
+              key={`spacing ${grid.spacing} ${formatLength(grid.spacing)}`}
+              defaultValue={formatLength(grid.spacing)}
+              onBlur={(e) => {
+                const spacing = parseLength(e.target.value)
+                if (spacing !== null && Number.isFinite(spacing) && spacing > 0 && spacing !== grid.spacing) setGrid({ ...grid, spacing })
+                else e.target.value = formatLength(grid.spacing)
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+            />
+          </label>
+          <label className="pref-field">
+            <span>{t('Divided into')}</span>
+            <input
+              key={`divisions ${divisions}`}
+              inputMode="numeric"
+              defaultValue={String(divisions)}
+              onBlur={(e) => {
+                const count = Math.round(parseNumber(e.target.value))
+                if (Number.isFinite(count) && count >= 1 && count <= GRID_DIVISIONS && count !== divisions) setGrid({ spacing: grid.spacing, ...(count > 1 ? { divisions: count } : {}) })
+                else e.target.value = String(divisions)
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+            />
+          </label>
+        </>
+      )}
+      <p className="hint">
+        {grid && divisions > 1
+          ? t('Finer lines every {length}. Drawing, moving and snapping go by them; zoomed out, only the main lines show.', { length: formatLength(grid.spacing / divisions) })
+          : grid
+            ? t('Drawing, moving and snapping go by the main lines.')
+            : t('The lines get finer as you zoom in, every tenth one darker.')}
+      </p>
+    </section>
+  )
+}
+
 /**
  * What belongs to the drawing rather than to one object or to the user: how it writes its numbers
  * (the areas of its rooms, its tables of quantities, its dimensions and the CSV export), what it
- * says about itself in title blocks, and how the title blocks of all its sheets are laid out. A setting changed here is taken by everything in the drawing,
+ * says about itself in title blocks, how the title blocks of all its sheets are laid out, and the
+ * grid it is drawn on. A setting changed here is taken by everything in the drawing,
  * which stops writing its numbers its own way (`drawingSettingsOps`), in one step to undo.
  */
 export function DrawingSettingsWindow() {
@@ -112,6 +186,7 @@ export function DrawingSettingsWindow() {
           </label>
           <p className="hint">{t('Shown in the title block of every sheet, and where a text says {project}, {client}, {address} or {author}.')}</p>
         </section>
+        <GridSettings key={doc.id} grid={doc.settings?.grid} />
       </div>
     </div>
   )

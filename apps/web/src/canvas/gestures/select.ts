@@ -203,7 +203,7 @@ export const pressMove: Move<'press'> = (c, g, _e, at) => {
 
 export const moveMove: Move<'move'> = (_c, g, e, _at, world, out) => {
   const s = get()
-  const step = e.altKey || !usePrefs.getState().snapToGrid ? 0.001 : gridStep(s.view.zoom)
+  const step = e.altKey || !usePrefs.getState().snapToGrid ? 0.001 : gridStep(s.view.zoom, s.doc.settings?.grid)
   let d = { x: Math.round((world.x - g.start.x) / step) * step, y: Math.round((world.y - g.start.y) / step) * step }
   // A single door or window slides along walls instead of moving freely.
   const only = g.nodes.length === 1 ? g.nodes[0] : null
@@ -286,7 +286,7 @@ export const handleMove: Move<'handle'> = (c, g, e, _at, world, out) => {
   // and may be brought level with something pointed at elsewhere.
   const was = s.axisLock ? kindOf(g.node).handles?.(g.node, registry, s.base ?? s.doc)[g.index] : undefined
   // Taken by an arrow away from its point, it goes by the grid (Alt: exactly where the pointer says).
-  const step = e.altKey || !usePrefs.getState().snapToGrid ? 0 : gridStep(s.view.zoom)
+  const step = e.altKey || !usePrefs.getState().snapToGrid ? 0 : gridStep(s.view.zoom, s.doc.settings?.grid)
   const grabbed = g.grab && sub(world, g.grab)
   const target: Target = grabbed
     ? { p: step > 0 ? { x: Math.round(grabbed.x / step) * step, y: Math.round(grabbed.y / step) * step } : grabbed, marker: null }
@@ -368,7 +368,7 @@ export const endMove: Move<'end'> = (c, g, e, _at, world, out) => {
   const hit = !e.altKey && usePrefs.getState().snapToObjects ? snapTo(c.snappable, world, SNAP_REACH / s.view.zoom, { exclude: [g.wall.id, ...g.joined.map((other) => other.id)] }) : null
   const target = hit ? hit.p : world
   const raw = (target.x - fixed.x) * along.x + (target.y - fixed.y) * along.y
-  const step = gridStep(s.view.zoom)
+  const step = gridStep(s.view.zoom, s.doc.settings?.grid)
   const length = Math.max(1, hit || e.altKey ? round(raw) : Math.round(raw / step) * step)
   const p = { x: fixed.x + along.x * length, y: fixed.y + along.y * length }
   if (hit) out.marker = { p: hit.p, kind: hit.kind }

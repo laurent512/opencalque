@@ -248,7 +248,7 @@ export function selectAlike(by: Likeness): void {
 /** Moves the selection by whole steps of the grid as it is shown; `dx` and `dy` count steps. */
 export function nudgeSelection(dx: number, dy: number): void {
   const { doc, selection, view } = get()
-  const step = gridStep(view.zoom)
+  const step = gridStep(view.zoom, doc.settings?.grid)
   const d = { x: dx * step, y: dy * step }
   const nodes = selection.map((id) => doc.nodes[id])
   apply([...nodes.flatMap((node) => moveOps(doc, node, d)), ...wallFollowOps(doc, nodes, d, registry)])

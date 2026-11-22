@@ -1178,4 +1178,12 @@ export const es: Record<string, string> = {
   "No dimension styles yet": "Aún no hay estilos de cota",
   "No AI provider set up": "No hay ningún proveedor de IA configurado",
   "changes width and height apart": "cambia el ancho y el alto por separado",
+  "Grid": "Cuadrícula",
+  "Changes with the zoom": "Cambia con el zoom",
+  "Always the same": "Siempre la misma",
+  "Main lines every": "Líneas principales cada",
+  "Divided into": "Dividida en",
+  "Finer lines every {length}. Drawing, moving and snapping go by them; zoomed out, only the main lines show.": "Líneas finas cada {length}. El dibujo, los movimientos y el ajuste las siguen; al alejar el zoom, solo se ven las líneas principales.",
+  "Drawing, moving and snapping go by the main lines.": "El dibujo, los movimientos y el ajuste siguen las líneas principales.",
+  "The lines get finer as you zoom in, every tenth one darker.": "Las líneas se hacen más finas al acercar el zoom, una de cada diez más oscura.",
 }

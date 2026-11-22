@@ -1178,4 +1178,12 @@ export const zh: Record<string, string> = {
   "No dimension styles yet": "尚无标注样式",
   "No AI provider set up": "尚未设置 AI 服务提供方",
   "changes width and height apart": "分别改变宽度和高度",
+  "Grid": "网格",
+  "Changes with the zoom": "随缩放变化",
+  "Always the same": "始终相同",
+  "Main lines every": "主线间距",
+  "Divided into": "细分为",
+  "Finer lines every {length}. Drawing, moving and snapping go by them; zoomed out, only the main lines show.": "细线每 {length} 一条。绘制、移动和捕捉都按细线进行；缩小时只显示主线。",
+  "Drawing, moving and snapping go by the main lines.": "绘制、移动和捕捉都按主线进行。",
+  "The lines get finer as you zoom in, every tenth one darker.": "放大时线条变密，每第十条颜色较深。",
 }
