@@ -1,5 +1,6 @@
 import { applyOps, dimensionChainOps, extendWallOps, flipWallOps, newId, splitWallOps, trimWallOps, wallContains, wallEndsAt, wallMiddle, type Node, type Op } from '@opencalque/core'
 import { drawing } from '../canvas/drawing'
+import { flipPatch } from '../canvas/flips'
 import { registry } from '../extensions'
 import { t } from '../i18n'
 import { apply, selectCorner, useStore } from '../store'
@@ -66,6 +67,39 @@ export function fitWalls(how: 'extend' | 'trim'): void {
     const moved = get().doc.nodes[walls[0].id]
     if (moved?.type === 'wall') selectCorner(moved[end])
   }
+}
+
+/** The selected doors and windows that open to one side of their wall (a boolean `flip`). */
+function sided(): Node[] {
+  const { doc, selection, tool } = get()
+  if (tool !== 'select') return []
+  return selection.flatMap((id) => {
+    const node = doc.nodes[id]
+    const kind = node?.type === 'parametric' ? registry.parametric.get(node.kind) : undefined
+    return kind?.opening && kind.params.some((p) => p.key === 'flip' && p.type === 'boolean') ? [node] : []
+  })
+}
+
+export const canOpenOtherSide = () => sided().length > 0
+
+/** Opens the selected doors and windows to the other side of their walls (`flip`), hinge kept: one step of undo. */
+export function openOtherSide(): void {
+  const ops: Op[] = sided().flatMap((node) => {
+    const props = flipPatch(node, 'side', registry)
+    return props ? [{ op: 'update_node' as const, id: node.id, patch: { props } }] : []
+  })
+  if (ops.length > 0) apply(ops)
+}
+
+/**
+ * What a click on a flip control of the selected door or window does (`flipArrows`): `side` opens
+ * it to the other side of its wall, `hinge` hangs it on its other hinge. One step of undo.
+ */
+export function flipOpening(what: 'side' | 'hinge'): void {
+  const { doc, selection } = get()
+  const node = selection.length === 1 ? doc.nodes[selection[0]] : undefined
+  const props = node && flipPatch(node, what, registry)
+  if (node && props) apply([{ op: 'update_node', id: node.id, patch: { props } }])
 }
 
 /** The other of the two values a parameter of a parametric kind offers (a door's hinge), or null when it does not offer exactly two. */

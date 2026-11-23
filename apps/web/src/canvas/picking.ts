@@ -2,6 +2,7 @@ import { type ElevationItem, type ElevationSide, alignables, boundsFrame, dist, 
 import { registry } from '../extensions'
 import { toWorld, visibleArea } from '../view'
 import { boxGrips, viewArrow } from './draw'
+import { flipArrowAt, flipArrows, type FlipArrow } from './flips'
 import { END_POINT, FACE_MIN } from './gesture'
 import { get, type BoxFrame, type Canvas } from './runtime'
 import { faceOf, resizeCursor, roomsOnly } from './shapes'
@@ -264,4 +265,11 @@ export function handleAt(c: Canvas, at: Vec2): number {
     return viewEdgeAt(c, at)?.index ?? -1
   }
   return c.handles.findIndex((h) => dist(toScreen(h), at) < 7)
+}
+
+/** The flip control of the one selected door or window under a point of the canvas (`flipArrows`), or null. */
+export function flipAt(at: Vec2): FlipArrow['what'] | null {
+  const { doc, selection, tool } = get()
+  if (tool !== 'select' || selection.length !== 1 || lockedAmong(doc, selection)) return null
+  return flipArrowAt(flipArrows(doc, doc.nodes[selection[0]], registry, onScreen), at)
 }

@@ -182,6 +182,8 @@ export interface Overlay {
   frames?: { outline: Vec2[]; handles: boolean }[]
   /** The selected wall corner: a point, drawn as a filled dot so it reads as a thing that is selected. */
   corner?: Vec2 | null
+  /** The flip controls of the one selected door or window (`flipArrows`), in screen pixels: double-headed arrows, clicked to turn it over. */
+  flips?: { from: Vec2; to: Vec2 }[]
   /** Whether the box around the selection gets its grips: corners to scale by, a knob to turn by. */
   grips?: boolean
   /**
@@ -795,6 +797,37 @@ export function drawScene(
     ctx.fill()
     ctx.stroke()
   }
+  // The flip controls of a selected door or window: a double-headed arrow each, its heads filled,
+  // outlined in white so that it reads on a dark plan as on a light one.
+  for (const { from, to } of overlay.flips ?? []) {
+    const length = Math.hypot(to.x - from.x, to.y - from.y)
+    if (length < 1) continue
+    const [ux, uy] = [(to.x - from.x) / length, (to.y - from.y) / length]
+    const head = (tip: Vec2, s: number) => {
+      ctx.beginPath()
+      ctx.moveTo(tip.x, tip.y)
+      ctx.lineTo(tip.x - s * (ux * 8 + uy * 5), tip.y - s * (uy * 8 - ux * 5))
+      ctx.lineTo(tip.x - s * (ux * 8 - uy * 5), tip.y - s * (uy * 8 + ux * 5))
+      ctx.closePath()
+    }
+    ctx.setLineDash([])
+    for (const [colour, width] of [['#ffffff', 4.5], [ACCENT, 2]] as const) {
+      ctx.strokeStyle = colour
+      ctx.fillStyle = colour
+      ctx.lineWidth = width
+      ctx.beginPath()
+      ctx.moveTo(from.x + ux * 6, from.y + uy * 6)
+      ctx.lineTo(to.x - ux * 6, to.y - uy * 6)
+      ctx.stroke()
+      for (const [tip, s] of [[to, 1], [from, -1]] as const) {
+        head(tip, s)
+        ctx.fill()
+        if (colour === '#ffffff') ctx.stroke()
+      }
+    }
+  }
+  ctx.strokeStyle = ACCENT
+  ctx.lineWidth = 1.5
   // The ends of the selected walls, over their handles: filled where joined to another wall, struck
   // through where touching one without being joined, and in orange, tied by a dotted line to the
   // end it nearly meets, where they are a few millimetres apart. A free end keeps its plain handle.
