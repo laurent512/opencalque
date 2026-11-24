@@ -52,6 +52,7 @@ import {
   type Op,
   type Vec2,
 } from '@opencalque/core'
+import { flipOpening } from '../../actions/walls'
 import { registry } from '../../extensions'
 import { msg, t } from '../../i18n'
 import { usePrefs } from '../../prefs'
@@ -60,7 +61,7 @@ import { gridStep } from '../../view'
 import { formatLength, formatNumber } from '../../units'
 import { heldNearest, lineEnd, snap, squareFrom, type Target } from '../aim'
 import { ALIGN_REACH, MOUNT_REACH, SNAP_REACH, TOUCH_REACH, type ElevationEdges, type GestureOf } from '../gesture'
-import { clearanceAt, cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, inViewGripAt, inViewSplitAt, lineUp, pointedAt, titleAt, viewEdgeAt, viewLineHandleAt } from '../picking'
+import { clearanceAt, cornerAt, endAt, faceAt, flipAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, inViewGripAt, inViewSplitAt, lineUp, pointedAt, titleAt, viewEdgeAt, viewLineHandleAt } from '../picking'
 import { get, type Canvas, type Move, type Press, type Release } from '../runtime'
 import { logMoveEnd, logMoveStart, logMoveStep } from '../snapLog'
 import { faceAcross, faceOf, paperLabel, resizeCursor, round, sizes, thicknessLabel, thicknessStep, wallNormal } from '../shapes'
@@ -86,6 +87,12 @@ export const selectDown: Press = (c, e, at, world) => {
   const measuring = clearanceAt(c, at)
   if (measuring !== null) {
     useStore.setState({ measuring })
+    return
+  }
+  // A click on a flip control of the selected door or window turns it over (`flipArrows`).
+  const flip = flipAt(at)
+  if (flip) {
+    flipOpening(flip)
     return
   }
   const cropped = frameCornerAt(c, at)
@@ -646,7 +653,10 @@ export const hover: Move<'idle'> = (c, _g, _e, at, world, out) => {
   // On the length of a temporary dimension, a press opens it to type another (`clearanceAt` is asked first).
   const measuring = s.tool === 'select' ? clearanceAt(c, at) : null
   if (measuring !== null) out.clearanceHover = measuring
-  const shown = measuring !== null ? 'pointer' : (pointer ?? (faced ? resizeCursor(wallNormal(faced.wall, world)) : null))
+  // On a flip control of the selected door or window, a click turns it over: the status bar says how.
+  const flipping = s.tool === 'select' && measuring === null ? flipAt(at) : null
+  if (flipping) out.status = flipping === 'side' ? t('Click to open it to the other side of its wall') : t('Click to hang it on its other hinge')
+  const shown = measuring !== null || flipping ? 'pointer' : (pointer ?? (faced ? resizeCursor(wallNormal(faced.wall, world)) : null))
   if (shown !== c.gripCursor) c.setGripCursor(shown)
   const over = ending ? 'end hover' : faced ? 'hover' : null
   if (s.wallFace !== over) useStore.setState({ wallFace: over })

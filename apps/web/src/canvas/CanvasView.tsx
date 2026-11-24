@@ -24,6 +24,7 @@ import { finishOffset } from './gestures/offset'
 import { finishMove } from './gestures/move'
 import { finishTurn } from './gestures/turn'
 import { shownClearances, useClearances, type ScreenBox } from './clearances'
+import { flipArrows } from './flips'
 import { lockedAmong, pointedAt, titleAt } from './picking'
 import { get, local, reset, syncStep, type Canvas, type Move, type Release, type Shown } from './runtime'
 import { wheelMove, type WheelStream } from './wheel'
@@ -104,6 +105,12 @@ export function CanvasView() {
     const elsewhere = (node?.type === 'elevation' || node?.type === 'camera') && lookedAt(doc, node) !== rootOf(doc, scope)?.id
     return node && !elsewhere && !lockedAmong(doc, selection) ? (kindOf(node).handles?.(node, registry, doc) ?? []) : []
   }, [doc, selection, scope])
+
+  // The flip controls of the one selected door or window, clicked by the select tool (`flipArrowAt`).
+  const flips = useMemo(() => {
+    if (tool !== 'select' || selection.length !== 1 || lockedAmong(doc, selection)) return []
+    return flipArrows(doc, doc.nodes[selection[0]], registry, (p) => ({ x: p.x * view.zoom + view.x, y: p.y * view.zoom + view.y }))
+  }, [doc, selection, tool, view, extensionsVersion])
 
   /**
    * What the ends of the selected walls are joined to, shown on them: a corner is a place where
@@ -326,8 +333,8 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), inViewSplits: inViewGrips.flatMap(({ item, splits }) => splits.map((y) => ({ box: item.box, y }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette, around, grid)
-  }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, grid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines, inViews, inViewGrips, viewLines, drawnHandles])
+    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), inViewSplits: inViewGrips.flatMap(({ item, splits }) => splits.map((y) => ({ box: item.box, y }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines, flips }, showGrid, palette, around, grid)
+  }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, grid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines, flips, inViews, inViewGrips, viewLines, drawnHandles])
 
   // Lets the quick bar finish the shape in progress with the sizes typed there.
   useEffect(() => {
