@@ -1,5 +1,5 @@
 import { nodeJsonSchema } from './jsonschema'
-import type { ParametricKind, Registry } from './registry'
+import { MOST_ROWS, type ParamDef, type ParametricKind, type Registry } from './registry'
 
 /*
  * How drawings are stored and edited, written for a model. It is the part of what the assistant is
@@ -12,6 +12,12 @@ const CHECKING = `# Checking your work
 The result of apply_operations lists under "problems" what the edit got wrong that the drawing can tell: a room whose walls do not close and the wall end that may be why, walls drawn over each other, a door or window outside its wall. Put right those you caused. check_drawing lists every such problem of a page, those that were there before you included.
 
 A room's area is not stored: it comes from the walls each time. Use measure_drawing for floor areas, wall lengths and counts rather than working them out, and to confirm what you report.`
+
+/** A parameter as the guide says it: its type or its options, its unit, its default; a list, the fields of its rows. */
+function paramSaid(p: ParamDef): string {
+  if (p.type === 'list') return `list of up to ${p.most ?? MOST_ROWS} {${(p.items ?? []).map((item) => `${item.key}: ${paramSaid(item)}`).join(', ')}}`
+  return `${p.options ? `one of ${p.options.join(' | ')}` : p.type}${p.unit === 'length' ? ' in mm' : p.unit === 'angle' ? ' in degrees' : ''} (default ${p.default})`
+}
 
 /** The ports a kind has with its defaults, as the guide lists them; none when it has none. */
 function portsOfKind(kind: ParametricKind) {
@@ -50,7 +56,7 @@ export function drawingGuide(registry: Registry, { pictures = true, schema = tru
   const kinds = [...registry.parametric.values()].map((k) => ({
     kind: k.kind,
     what: k.description ? `${k.label}. ${k.description}` : k.label,
-    props: Object.fromEntries(k.params.map((p) => [p.key, `${p.options ? `one of ${p.options.join(' | ')}` : p.type}${p.unit === 'length' ? ' in mm' : p.unit === 'angle' ? ' in degrees' : ''} (default ${p.default})`])),
+    props: Object.fromEntries(k.params.map((p) => [p.key, paramSaid(p)])),
     // Only what is not the usual, so that sixty kinds stay well within what a client takes from a tool.
     cutsWalls: k.opening ? true : undefined,
     fixedOnWall: k.mount?.on === 'wall' ? { back: k.mount.back || undefined, out: k.mount.out === 'up' ? 'up' : undefined, height: k.mount.height } : undefined,
@@ -101,7 +107,7 @@ A "room" names the space enclosed by the walls around its point (x, y): add one 
 
 A "link" joins two objects of the same page by their ids, "from" and "to", through the "ports" their kinds list: a control link (the default "role") says that "from" controls "to", a switch and the light it turns on, a dimmer and its spotlights, a push button and a switched socket, whatever carries the order (a wire, a radio, a bus). It goes from a port that gives control ("way": "out") to one that takes it ("in"); "fromPort" names which, as the second button of a double switch ("out2"), and is left out for the first. A switch that controls three lights has three links; a light controlled from two places (two-way switches) has a link from each. A link has no position: it is drawn as a dashed curve between the two objects and follows them, and removing either removes it. Put it on the page, on the layer of the objects. read_controls says what controls what on a page, and which lights nothing controls.
 
-An elevation or a section is two nodes: a "viewline" on the plan (a to b, and depth), which says what is seen, and an "elevation" that refers to it by "line" and says where its view is drawn (x, y, on any page). For an elevation of a wall's face, put the viewline 1000 in front of the face, with depth 1000, running so that the face is on its left (seen from its right); add the viewline before its view. Removing a viewline removes its views.
+An elevation or a section is one "elevation" node: its line on the plan (a to b, and depth) says what is seen, and (x, y) where the view is drawn, beside the plan. For an elevation of a wall's face, put its line 1000 in front of the face, with depth 1000, running so that the face is on its left (seen from its right). Drawn on another page than the plan it looks at, it says that page by "page". What is drawn on it (dimensions, texts, notes, lines) goes inside it, its children, in its own coordinates: x along its line from a, y up from its floor (negative), in mm. The dimensions it works out by itself from the plan are one child of type "autodimensions" (with "fixed", "pieces", "overall", "heights" false to leave a row out, and "dimensionStyle"): add one to an elevation you create, as the editor does, unless asked for none.
 
 A "paper" is a sheet laid over the drawing that frames what goes on one printed page. Its width and height are in drawing millimetres: the sheet's real size times its "scale" (an A3 lying at 1:100 is 42000 × 29700; an ARCH D, 24 × 36 inches, lying at 1:48 is 43891.2 × 29260.8). It has no children; whatever lies inside its rectangle is on it. Give it "titleBlock": {} (optionally with "project", "author", "date", "number") for a border and a title block in its bottom right corner. The drawing's settings put the block of every sheet down its right edge instead, with captions, as on US sheets: set_document with "settings": { "titleBlock": { "layout": "strip" } }; each sheet then lists its own "revisions" in its "titleBlock", one per line as "mark | date | description". The person exports papers to PDF at their true scale from the File menu.
 

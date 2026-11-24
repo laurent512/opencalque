@@ -462,6 +462,22 @@ describe('dxf', () => {
     expect(dxf).toContain('\n20\n-800\n')
     expect(dxf.trimEnd().endsWith('EOF')).toBe(true)
   })
+
+  it('exports only the objects given, in SVG and DXF, framed alone', () => {
+    const doc = applyOps(createDocument(), [
+      { op: 'add_node', node: { type: 'ellipse', id: 'near', parent: 'page_1', cx: 500, cy: 500, rx: 100, ry: 100 } },
+      { op: 'add_node', node: { type: 'text', id: 'far', parent: 'page_1', x: 90000, y: 800, text: 'Far away', size: 150 } },
+    ])
+    const svg = toSVG(doc, 'page_1', registry, { only: ['near'] })
+    expect(svg).toContain('<ellipse')
+    expect(svg).not.toContain('Far away')
+    // Framed around the circle alone, not around the text 90 m away.
+    const [, , width] = /viewBox="([-\d.]+) ([-\d.]+) ([-\d.]+)/.exec(svg)!.slice(1).map(Number)
+    expect(width).toBeLessThan(1000)
+    const dxf = toDXF(doc, 'page_1', registry, { only: ['far'] })
+    expect(dxf).toContain('Far away')
+    expect(dxf).not.toContain('CIRCLE')
+  })
 })
 
 describe('images', () => {

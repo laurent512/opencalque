@@ -121,6 +121,98 @@ test('a drawing saved under a name of its own takes that name, which exports the
   await expect.poll(() => page.evaluate(() => (window as any).saves.at(-1).name)).toBe('Cabin.svg')
 })
 
+test('keeps the icon of the tool in use white on its blue under the pointer', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  const tool = page.locator('.toolbar .icon-button.active').first()
+  const colour = () => tool.evaluate((button) => getComputedStyle(button).color)
+  const resting = await colour()
+  await tool.hover()
+  await expect.poll(colour).toBe(resting)
+})
+
+test('exports what is selected from its right-click menu: papers as their sheets in a PDF, anything else alone in a picture', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  const plan = drawing({
+    first: { id: 'first', type: 'paper', parent: 'page_1', layer: 'layer_1', order: 'a1', name: 'Plan sheet', x: 0, y: 0, width: 42000, height: 29700, scale: 100 },
+    second: { id: 'second', type: 'paper', parent: 'page_1', layer: 'layer_1', order: 'a2', name: 'Other sheet', x: 50000, y: 0, width: 42000, height: 29700, scale: 100 },
+    box: { id: 'box', type: 'rect', parent: 'page_1', layer: 'layer_1', order: 'a3', name: 'Box', x: 1000, y: 1000, width: 2000, height: 1000 },
+    round: { id: 'round', type: 'ellipse', parent: 'page_1', layer: 'layer_1', order: 'a4', name: 'Round', cx: 6000, cy: 1500, rx: 500, ry: 500 },
+  })
+  await choose(page, () => page.keyboard.press('Control+o'), 'sheets.opencalque', plan)
+  const dialog = page.locator('.dialog.export')
+  const exportFrom = async (row: string) => {
+    await objectRows(page).filter({ hasText: new RegExp(`^${row}$`) }).click({ button: 'right' })
+    await page.locator('.context-menu').getByText('Export the selection…').click()
+    await expect(dialog).toBeVisible()
+  }
+  // A paper: its sheet alone, in a PDF.
+  await exportFrom('Plan sheet')
+  await expect(dialog.getByRole('radio', { name: /PDF/ })).toHaveAttribute('aria-checked', 'true')
+  await expect(dialog.locator('.pref-row', { hasText: 'Plan sheet' }).getByRole('checkbox')).toBeChecked()
+  await expect(dialog.locator('.pref-row', { hasText: 'Other sheet' }).getByRole('checkbox')).not.toBeChecked()
+  // What goes in it, then how, each under its heading.
+  await expect(dialog.locator('h3')).toContainText(['Sheets', 'Options'])
+  await page.keyboard.press('Escape')
+  // Anything else: a picture of it alone, the page still to be chosen instead.
+  await exportFrom('Box')
+  await expect(dialog.getByRole('radio', { name: /PNG/ })).toHaveAttribute('aria-checked', 'true')
+  await expect(dialog.locator('h3')).toContainText(['What is exported', 'Options'])
+  await expect(dialog.getByRole('tab', { name: 'The selection (1 object)' })).toHaveAttribute('aria-selected', 'true')
+  await dialog.getByRole('radio', { name: /SVG/ }).click()
+  await expect(dialog.getByRole('tab', { name: 'The selection (1 object)' })).toHaveAttribute('aria-selected', 'true')
+  const count: number = await page.evaluate(() => (window as any).saves.length)
+  await dialog.locator('footer button').click()
+  await expect.poll(() => page.evaluate(() => (window as any).saves.length)).toBe(count + 1)
+  const svg: string = await page.evaluate(() => (window as any).saves.at(-1))
+  expect(svg).toContain('<path')
+  expect(svg).not.toContain('<ellipse')
+  // Opened as usual, it is of a page, the selection to be chosen.
+  await page.keyboard.press('Control+e')
+  await dialog.getByRole('radio', { name: /SVG/ }).click()
+  await expect(dialog.getByRole('tab', { name: 'A page' })).toHaveAttribute('aria-selected', 'true')
+})
+
+test('sets a paper in sections: where it lies and its sheet under Geometry, then its title block, then what is on every sheet', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  const plan = drawing({ first: { id: 'first', type: 'paper', parent: 'page_1', layer: 'layer_1', order: 'a1', name: 'Plan sheet', x: 0, y: 0, width: 42000, height: 29700, scale: 100 } })
+  await choose(page, () => page.keyboard.press('Control+o'), 'sheets.opencalque', plan)
+  await objectRows(page).filter({ hasText: /^Plan sheet$/ }).click()
+  const properties = page.locator('[data-panel="properties"]')
+  await expect(properties.locator('h3')).toContainText(['Geometry', 'Title block', 'On every sheet'])
+  const geometry = properties.locator('section.section', { has: page.locator('h3', { hasText: /^Geometry$/ }) })
+  await expect(geometry).toContainText('Position')
+  await expect(geometry).toContainText('Format')
+  await expect(geometry.locator('.field', { has: page.locator('span:text-is("Scale")') }).locator('input')).toHaveValue('100')
+  await expect(geometry.locator('.field-prefix')).toHaveText('1:')
+  // No paragraphs of explanation in its sections: said when the pointer rests on what they explain.
+  for (const title of ['Geometry', 'Title block', 'On every sheet']) await expect(properties.locator('section.section', { has: page.locator('h3', { hasText: new RegExp(`^${title}$`) }) }).locator('.hint')).toHaveCount(0)
+  // Its title block, turned on here: what it says.
+  const block = properties.locator('section.section', { has: page.locator('h3', { hasText: /^Title block$/ }) })
+  await block.getByRole('radio', { name: 'Yes' }).click()
+  await expect(block).toContainText('For the whole drawing')
+  await expect(block).toContainText('For this sheet')
+})
+
+test('offers the papers in groups in the PDF export window, with the others', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  const plan = drawing({
+    loose: { id: 'loose', type: 'paper', parent: 'page_1', layer: 'layer_1', order: 'a1', name: 'Loose sheet', x: 0, y: 0, width: 42000, height: 29700, scale: 100 },
+    sheets: { id: 'sheets', type: 'group', parent: 'page_1', layer: 'layer_1', order: 'a2' },
+    held: { id: 'held', type: 'paper', parent: 'sheets', layer: 'layer_1', order: 'a1', name: 'Grouped sheet', x: 50000, y: 0, width: 42000, height: 29700, scale: 100 },
+  })
+  await choose(page, () => page.keyboard.press('Control+o'), 'sheets.opencalque', plan)
+  await page.keyboard.press('Control+e')
+  await page.getByRole('radio', { name: /PDF/ }).click()
+  const listed = page.locator('.dialog.export .pref-row')
+  await expect(listed.filter({ hasText: 'Grouped sheet' }).getByRole('checkbox')).toBeChecked()
+  await expect(listed.filter({ hasText: 'Loose sheet' }).getByRole('checkbox')).toBeChecked()
+})
+
 test('opens a drawing that needs repairs, and says so; refuses one from a newer version', async ({ page }) => {
   await startWith(page)
   // "Discard unsaved changes?" before opening the second file.
@@ -187,6 +279,17 @@ test('pastes a picture copied in another program as it is, rather than what was 
   await page.keyboard.press('v')
   await objectRows(page).first().click()
   await page.keyboard.press('Control+c')
+  // A copy leaves a picture, which is all a chat or a document sees, and the drawing in a format of its own.
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const [item] = await navigator.clipboard.read()
+        const own = 'web application/x-opencalque'
+        const text = item?.types.includes(own) ? await (await item.getType(own)).text() : ''
+        return [...(item?.types ?? [])].sort().join(' | ') + (text.includes('"format":"opencalque"') ? ' | drawing' : '')
+      }),
+    )
+    .toBe('image/png | web application/x-opencalque | drawing')
   // What "Copy image" in a browser leaves on the clipboard: a PNG and some HTML, no plain text.
   await page.evaluate(async () => {
     const picture = document.createElement('canvas')
@@ -856,7 +959,7 @@ test('lists the furniture by room in the object library, the adjustable pieces w
   expect(sections.filter((name) => ['Living room', 'Dining room', 'Bedroom', 'Office', 'Furniture'].includes(name))).toEqual(['Living room', 'Dining room', 'Bedroom', 'Office'])
   // The library's double bed and dining table are gone: the adjustable bed and table draw them. The banquette is one of the adjustable pieces.
   await librarySection(page, 'Dining room').click()
-  await expect(page.locator('.warehouse-card strong')).toHaveText(['Chair', 'Banquette', 'Table with chairs'])
+  await expect(page.locator('.warehouse-card strong')).toHaveText(['Chair', 'High chair', 'Banquette', 'Table with chairs'])
   // The library's single bed and wardrobe too: the adjustable bed and wardrobe draw them, and the
   // bedroom's furniture is all adjustable now, drawn by its fronts in elevations.
   await librarySection(page, 'Bedroom').click()
@@ -2554,4 +2657,39 @@ test('offers the table of what controls what among the tables of the object libr
   await page.getByTitle('Object library: stairs, furniture and every other object').click()
   await page.getByPlaceholder(/Search/).fill('controls')
   await expect(page.locator('.warehouse-card strong', { hasText: /^What controls what$/ })).toHaveCount(1)
+})
+
+test('a percentage is set with a slider or typed, and stays between 0 and 100', async ({ page }) => {
+  await startWith(page)
+  await openEditor(page)
+  const plan = drawing({ c: { id: 'c', type: 'parametric', parent: 'page_1', layer: 'layer_1', order: 'a1', kind: 'furn.curtain', props: {}, x: 0, y: 0 } })
+  await choose(page, () => page.keyboard.press('Control+o'), 'curtain.opencalque', plan)
+  await objectRows(page).first().click()
+  const row = page.locator('.percent-field', { has: page.locator('span:text-is("Opened")') })
+  const typed = row.locator('input:not([type])')
+  const slider = row.locator('input[type="range"]')
+  // A curtain is drawn open unless said.
+  await expect(typed).toHaveValue('100')
+  const type = async (text: string) => {
+    await typed.fill(text)
+    await typed.press('Enter')
+  }
+  await type('40')
+  await expect(slider).toHaveValue('40')
+  await type('150')
+  await expect(typed).toHaveValue('100')
+  await type('-20')
+  await expect(typed).toHaveValue('0')
+  // Slid from its start to three quarters of the way: one step to undo, back to shut.
+  const box = (await slider.boundingBox())!
+  await page.mouse.move(box.x + 7, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height / 2, { steps: 5 })
+  await page.mouse.move(box.x + box.width * 0.75, box.y + box.height / 2, { steps: 5 })
+  await page.mouse.up()
+  const slid = Number(await typed.inputValue())
+  expect(slid).toBeGreaterThan(60)
+  expect(slid).toBeLessThan(90)
+  await page.keyboard.press('Control+z')
+  await expect(typed).toHaveValue('0')
 })

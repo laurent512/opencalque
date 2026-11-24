@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "id": "opencalque.furniture",
   "name": "Adjustable furniture",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "author": "OpenCalque",
   "description": "Tables, beds and shelving whose size and number of seats or bays you set.",
   "translations": {
@@ -18,7 +18,12 @@
       "Width": "Largeur",
       "Depth": "Profondeur",
       "Seats": "Places",
-      "Bays": "Travées"
+      "Bays": "Travées",
+      "Curtain": "Rideau",
+      "Two panels": "Deux pans",
+      "Opened": "Ouverture",
+      "Rail height": "Hauteur du rail",
+      "Distance from wall": "Distance au mur"
     },
     "es": {
       "Adjustable furniture": "Mobiliario ajustable",
@@ -31,7 +36,12 @@
       "Width": "Ancho",
       "Depth": "Fondo",
       "Seats": "Plazas",
-      "Bays": "Módulos"
+      "Bays": "Módulos",
+      "Curtain": "Cortina",
+      "Two panels": "Dos paños",
+      "Opened": "Apertura",
+      "Rail height": "Altura del riel",
+      "Distance from wall": "Distancia a la pared"
     },
     "de": {
       "Adjustable furniture": "Anpassbare Möbel",
@@ -44,7 +54,12 @@
       "Width": "Breite",
       "Depth": "Tiefe",
       "Seats": "Plätze",
-      "Bays": "Felder"
+      "Bays": "Felder",
+      "Curtain": "Vorhang",
+      "Two panels": "Zweiteilig",
+      "Opened": "Öffnung",
+      "Rail height": "Schienenhöhe",
+      "Distance from wall": "Wandabstand"
     },
     "zh": {
       "Adjustable furniture": "可调家具",
@@ -57,7 +72,12 @@
       "Width": "宽度",
       "Depth": "深度",
       "Seats": "座位数",
-      "Bays": "格数"
+      "Bays": "格数",
+      "Curtain": "窗帘",
+      "Two panels": "双开",
+      "Opened": "开启",
+      "Rail height": "轨道高度",
+      "Distance from wall": "离墙距离"
     },
     "ja": {
       "Adjustable furniture": "サイズ可変の家具",
@@ -70,7 +90,12 @@
       "Width": "幅",
       "Depth": "奥行き",
       "Seats": "席数",
-      "Bays": "棚の数"
+      "Bays": "棚の数",
+      "Curtain": "カーテン",
+      "Two panels": "両開き",
+      "Opened": "開き",
+      "Rail height": "レールの高さ",
+      "Distance from wall": "壁からの距離"
     },
     "ko": {
       "Adjustable furniture": "크기 조절 가구",
@@ -83,7 +108,12 @@
       "Width": "너비",
       "Depth": "깊이",
       "Seats": "좌석 수",
-      "Bays": "칸 수"
+      "Bays": "칸 수",
+      "Curtain": "커튼",
+      "Two panels": "양개",
+      "Opened": "열림",
+      "Rail height": "레일 높이",
+      "Distance from wall": "벽과의 거리"
     },
     "tr": {
       "Adjustable furniture": "Ayarlanabilir mobilya",
@@ -96,7 +126,12 @@
       "Width": "Genişlik",
       "Depth": "Derinlik",
       "Seats": "Oturma yerleri",
-      "Bays": "Bölmeler"
+      "Bays": "Bölmeler",
+      "Curtain": "Perde",
+      "Two panels": "İki kanat",
+      "Opened": "Açıklık",
+      "Rail height": "Ray yüksekliği",
+      "Distance from wall": "Duvara uzaklık"
     }
   },
   "objects": [
@@ -177,6 +212,25 @@
             ["(i + 0.5) * length / max(1, floor(seats / 2)) - 180.7", "width + 459"]
           ]
         }
+      ],
+      "solids": [
+        {"path": [[0, 0], ["length", 0], ["length", "width"], [0, "width"]], "bottom": 720, "top": 750},
+        {"path": [[40, 40], [100, 40], [100, 100], [40, 100]], "bottom": 0, "top": 720},
+        {"path": [[40, "width - 100"], [100, "width - 100"], [100, "width - 40"], [40, "width - 40"]], "bottom": 0, "top": 720},
+        {"path": [["length - 100", 40], ["length - 40", 40], ["length - 40", 100], ["length - 100", 100]], "bottom": 0, "top": 720},
+        {"path": [["length - 100", "width - 100"], ["length - 40", "width - 100"], ["length - 40", "width - 40"], ["length - 100", "width - 40"]], "bottom": 0, "top": 720},
+        {"repeat": {"count": "max(1, floor(seats / 2))"}, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) - 200", -500], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 170", -500], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 170", -470], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 200", -470]], "bottom": 0, "top": 410},
+        {"repeat": {"count": "max(1, floor(seats / 2))"}, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) - 200", -100], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 170", -100], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 170", -70], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 200", -70]], "bottom": 0, "top": 410},
+        {"repeat": {"count": "max(1, floor(seats / 2))"}, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) + 170", -500], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 200", -500], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 200", -470], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 170", -470]], "bottom": 0, "top": 410},
+        {"repeat": {"count": "max(1, floor(seats / 2))"}, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) + 170", -100], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 200", -100], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 200", -70], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 170", -70]], "bottom": 0, "top": 410},
+        {"repeat": {"count": "max(1, floor(seats / 2))"}, "radius": 50, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) - 225", -454], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 225", -454], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 225", -50], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 225", -50]], "bottom": 410, "top": 450},
+        {"repeat": {"count": "max(1, floor(seats / 2))"}, "radius": 22, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) - 193.6", -501.1], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 130.1", -517.1], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 65.4", -526.8], ["(i + 0.5) * length / max(1, floor(seats / 2))", -530], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 65.4", -526.8], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 130.1", -517.1], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 193.6", -501.1], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 180.7", -459], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 121.4", -474], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 61.1", -483], ["(i + 0.5) * length / max(1, floor(seats / 2))", -486], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 61.1", -483], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 121.4", -474], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 180.7", -459]], "bottom": 450, "top": 880},
+        {"repeat": {"count": "max(1, floor(seats / 2))"}, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) - 200", "width + 500"], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 170", "width + 500"], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 170", "width + 470"], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 200", "width + 470"]], "bottom": 0, "top": 410},
+        {"repeat": {"count": "max(1, floor(seats / 2))"}, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) - 200", "width + 100"], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 170", "width + 100"], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 170", "width + 70"], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 200", "width + 70"]], "bottom": 0, "top": 410},
+        {"repeat": {"count": "max(1, floor(seats / 2))"}, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) + 170", "width + 500"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 200", "width + 500"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 200", "width + 470"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 170", "width + 470"]], "bottom": 0, "top": 410},
+        {"repeat": {"count": "max(1, floor(seats / 2))"}, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) + 170", "width + 100"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 200", "width + 100"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 200", "width + 70"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 170", "width + 70"]], "bottom": 0, "top": 410},
+        {"repeat": {"count": "max(1, floor(seats / 2))"}, "radius": 50, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) - 225", "width + 454"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 225", "width + 454"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 225", "width + 50"], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 225", "width + 50"]], "bottom": 410, "top": 450},
+        {"repeat": {"count": "max(1, floor(seats / 2))"}, "radius": 22, "path": [["(i + 0.5) * length / max(1, floor(seats / 2)) - 193.6", "width + 501.1"], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 130.1", "width + 517.1"], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 65.4", "width + 526.8"], ["(i + 0.5) * length / max(1, floor(seats / 2))", "width + 530"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 65.4", "width + 526.8"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 130.1", "width + 517.1"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 193.6", "width + 501.1"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 180.7", "width + 459"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 121.4", "width + 474"], ["(i + 0.5) * length / max(1, floor(seats / 2)) + 61.1", "width + 483"], ["(i + 0.5) * length / max(1, floor(seats / 2))", "width + 486"], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 61.1", "width + 483"], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 121.4", "width + 474"], ["(i + 0.5) * length / max(1, floor(seats / 2)) - 180.7", "width + 459"]], "bottom": 450, "top": 880}
       ],
       "front": [
         { "closed": true, "path": [[0, -720], ["length", -720], ["length", -750], [0, -750]] },
@@ -331,6 +385,49 @@
       "side": [
         { "closed": true, "path": [[0, 0], ["depth", 0], ["depth", -2000], [0, -2000]] },
         { "repeat": { "count": 5 }, "path": [[0, "-(i + 1) * 2000 / 6"], ["depth", "-(i + 1) * 2000 / 6"]] }
+      ]
+    },
+    {
+      "kind": "furn.curtain",
+      "mount": {"on": "floor"},
+      "height": "railHeight",
+      "category": "living",
+      "label": "Curtain",
+      "params": [
+        {"key": "length", "label": "Length", "type": "number", "default": 2000, "unit": "length"},
+        {"key": "double", "label": "Two panels", "type": "boolean", "default": true},
+        {"key": "opened", "label": "Opened", "type": "number", "default": 100, "unit": "percent"},
+        {"key": "railHeight", "label": "Rail height", "type": "number", "default": 2500, "unit": "length"},
+        {"key": "gap", "label": "Distance from wall", "type": "number", "default": 120, "unit": "length"}
+      ],
+      "size": {"x": "length"},
+      "draw": [
+        {"path": [[0, "gap"],["length", "gap"]]},
+        {"path": [[60,0],[60, "gap"]]},
+        {"path": [["length - 60",0],["length - 60", "gap"]]},
+        {"ellipse": {"cx": 0, "cy": "gap", "rx": 15, "ry": 15}},
+        {"ellipse": {"cx": "length", "cy": "gap", "rx": 15, "ry": 15}},
+        {"repeat": {"count": "max(2, round((double ? length / 2 : length) / 100))"}, "path": [["i * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap"],["(i + 0.1667) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - 0.5 * (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4)) * cos(180 * i)"],["(i + 0.3333) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - 0.866 * (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4)) * cos(180 * i)"],["(i + 0.5) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - 1 * (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4)) * cos(180 * i)"],["(i + 0.6667) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - 0.866 * (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4)) * cos(180 * i)"],["(i + 0.8333) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - 0.5 * (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4)) * cos(180 * i)"],["(i + 1) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap"]]},
+        {"when": "double", "repeat": {"count": "max(2, round((double ? length / 2 : length) / 100))"}, "path": [["length - i * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap"],["length - (i + 0.1667) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - 0.5 * (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4)) * cos(180 * i)"],["length - (i + 0.3333) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - 0.866 * (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4)) * cos(180 * i)"],["length - (i + 0.5) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - 1 * (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4)) * cos(180 * i)"],["length - (i + 0.6667) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - 0.866 * (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4)) * cos(180 * i)"],["length - (i + 0.8333) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - 0.5 * (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4)) * cos(180 * i)"],["length - (i + 1) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap"]]}
+      ],
+      "front": [
+        {"closed": true, "path": [[-15, "-railHeight - 10"],["length + 15", "-railHeight - 10"],["length + 15", "-railHeight + 10"],[-15, "-railHeight + 10"]]},
+        {"closed": true, "path": [[0, "-railHeight + 10"],["(double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)", "-railHeight + 10"],["(double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)",-10],[0,-10]]},
+        {"repeat": {"count": "floor(max(2, round((double ? length / 2 : length) / 100)) / 2)"}, "path": [["(2 * i + 1) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "-railHeight + 10"],["(2 * i + 1) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))",-10]]},
+        {"when": "double", "closed": true, "path": [["length - (double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)", "-railHeight + 10"],["length", "-railHeight + 10"],["length",-10],["length - (double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)",-10]]},
+        {"when": "double", "repeat": {"count": "floor(max(2, round((double ? length / 2 : length) / 100)) / 2)"}, "path": [["length - (2 * i + 1) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "-railHeight + 10"],["length - (2 * i + 1) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))",-10]]}
+      ],
+      "side": [
+        {"path": [[0, "-railHeight"],["gap", "-railHeight"]]},
+        {"ellipse": {"cx": "gap", "cy": "-railHeight", "rx": 10, "ry": 10}},
+        {"closed": true, "path": [["gap - (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4))", "-railHeight + 10"],["gap + (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4))", "-railHeight + 10"],["gap + (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4))",-10],["gap - (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4))",-10]]}
+      ],
+      "solids": [
+        {"path": [[-15, "gap - 10"],["length + 15", "gap - 10"],["length + 15", "gap + 10"],[-15, "gap + 10"]], "bottom": "railHeight - 10", "top": "railHeight + 10", "finish": "metal"},
+        {"path": [[50,0],[70,0],[70, "gap"],[50, "gap"]], "bottom": "railHeight + 10", "top": "railHeight + 25", "finish": "metal"},
+        {"path": [["length - 70",0],["length - 50",0],["length - 50", "gap"],["length - 70", "gap"]], "bottom": "railHeight + 10", "top": "railHeight + 25", "finish": "metal"},
+        {"repeat": {"count": "max(2, round((double ? length / 2 : length) / 100))"}, "path": [["i * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap"],["(i + 0.5) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4)) * cos(180 * i)"],["(i + 1) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap"],["(i + 0.5) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4) - 10) * cos(180 * i)"]], "bottom": 10, "top": "railHeight - 15"},
+        {"when": "double", "repeat": {"count": "max(2, round((double ? length / 2 : length) / 100))"}, "path": [["length - i * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap"],["length - (i + 0.5) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4)) * cos(180 * i)"],["length - (i + 1) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap"],["length - (i + 0.5) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100)))", "gap - (sqrt(((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) * ((double ? length / 2 : length) / max(2, round((double ? length / 2 : length) / 100))) / 4 + 900 - (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) * (((double ? length / 2 : length) * (1 - 0.85 * min(100, max(0, opened)) / 100)) / max(2, round((double ? length / 2 : length) / 100))) / 4) - 10) * cos(180 * i)"]], "bottom": 10, "top": "railHeight - 15"}
       ]
     }
   ]

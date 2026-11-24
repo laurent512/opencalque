@@ -6,7 +6,7 @@ import { Field, YesNo } from '../../ui'
 import type { Update } from './FieldRow'
 import { Select } from '../../Select'
 
-/* A paper in the Properties panel: its format and scale, its title block, and what is on every sheet. */
+/* A paper in the Properties panel: its format and scale (under Geometry), its title block, and what is on every sheet, each in its section. */
 
 /** What each entry of a title block is called. */
 const TITLE_NAMES: Record<TitleField, string> = {
@@ -65,12 +65,13 @@ function TitleBlockEntries({ node }: { node: Extract<Node, { type: 'paper' }> })
       <span>{t(TITLE_NAMES[field])}</span>
       {typed(field) ? (
         field === 'address' || field === 'revisions' ? (
-          <textarea key={`${node.id} ${written(field)}`} rows={2} defaultValue={written(field)} onBlur={(e) => e.target.value.trim() !== written(field) && write(field, e.target.value)} />
+          <textarea key={`${node.id} ${written(field)}`} rows={2} title={field === 'revisions' ? t('One revision per line: its mark, its date and what changed, separated by |.') : undefined} defaultValue={written(field)} onBlur={(e) => e.target.value.trim() !== written(field) && write(field, e.target.value)} />
         ) : (
           <input
             key={`${node.id} ${written(field)}`}
             defaultValue={written(field)}
             placeholder={placeholder[field]}
+            title={field === 'date' || field === 'number' ? t('An entry left empty takes no room in the block. Write {date} for the day’s date, {page-number} and {pages} for the page and how many there are.') : undefined}
             onBlur={(e) => e.target.value.trim() !== written(field) && write(field, e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
           />
@@ -86,22 +87,15 @@ function TitleBlockEntries({ node }: { node: Extract<Node, { type: 'paper' }> })
       {DRAWING_ENTRIES.map(row)}
       <h4 className="title-heading">{t('For this sheet')}</h4>
       {SHEET_ENTRIES.filter((field) => strip || field !== 'revisions').map(row)}
-      {strip && <p className="hint">{t('One revision per line: its mark, its date and what changed, separated by |.')}</p>}
-      <p className="hint">{t('An entry left empty takes no room in the block. Write {date} for the day’s date, {page-number} and {pages} for the page and how many there are.')}</p>
     </>
   )
 }
 
-/** The sheet a paper stands for: a standard format or a custom size, which way up, and at what drawing scale. Shown under Sheet. */
-export function PaperSheet({ node, update }: { node: Extract<Node, { type: 'paper' }>; update: Update }) {
-  const doc = useStore((s) => s.doc)
-  const common = sheetContentOf(doc)
-  // What is on every sheet starts empty, on a sheet the size of this one, and is opened to be drawn.
-  const start = () => {
-    const at = node.scale ?? DEFAULT_PAPER_SCALE
-    const { ops, id } = sheetContentOps({ width: node.width / at, height: node.height / at }, t('On every sheet'))
-    if (apply(ops)) openComponent(id)
-  }
+/**
+ * The sheet a paper stands for, under Geometry after where it lies: a standard format or a custom
+ * size, which way up, and at what drawing scale (the N of 1:N, dragged with Alt as any number).
+ */
+export function PaperFormat({ node, update }: { node: Extract<Node, { type: 'paper' }>; update: Update }) {
   const scale = node.scale ?? DEFAULT_PAPER_SCALE
   const format = paperFormat(node)
   const landscape = node.width > node.height
@@ -133,30 +127,48 @@ export function PaperSheet({ node, update }: { node: Extract<Node, { type: 'pape
         />
       </label>
       {/* Changing the scale keeps the sheet the sheet it is, as pulling a corner does: it covers more or less of the drawing. */}
-      <Field label={t('Scale 1:')} numeric min={1} value={scale} onCommit={(v) => v > 0 && update(() => paperRescaled(node, v))} />
-      <p className="hint">{t('A paper moves on its own, over the drawing: put it where it frames what to print. Pulling a corner changes its scale, or its size with Alt. Copying or duplicating it takes along what lies on it.')}</p>
+      <Field label={t('Scale')} numeric prefix="1:" min={1} value={scale} note={t('Pulling a corner of the paper changes its scale too, or its size with Alt.')} onCommit={(v) => v > 0 && update(() => paperRescaled(node, v))} />
+    </>
+  )
+}
+
+/** Whether this sheet has a title block, and what it says: its own section. */
+export function PaperTitleBlock({ node, update }: { node: Extract<Node, { type: 'paper' }>; update: Update }) {
+  return (
+    <>
       <div className="field">
-        <span>{t('Title block')}</span>
+        <span>{t('On this sheet')}</span>
         <YesNo value={node.titleBlock !== undefined} label={t('Title block')} onChange={(on) => update(() => ({ titleBlock: on ? {} : null }))} />
       </div>
       {node.titleBlock && <TitleBlockEntries node={node} />}
-      <h4 className="title-heading">{t('On every sheet')}</h4>
-      {common ? (
-        <>
-          <div className="field">
-            <span>{t('Show it here')}</span>
-            <YesNo value={!node.plain} label={t('Show it here')} onChange={(on) => update(() => ({ plain: on ? null : true }))} />
-          </div>
-          <button className="text-button" onClick={() => openComponent(common.id)}>
-            {t('Edit what is on every sheet…')}
-          </button>
-        </>
-      ) : (
-        <button className="text-button" onClick={start}>
-          {t('Draw something for every sheet…')}
-        </button>
-      )}
-      <p className="hint">{t('What is drawn there shows on every sheet of the drawing: a title, a logo, a north arrow. It is drawn once, in millimetres of paper, and each sheet shows it at its own scale, each thing in the corner of the sheet it was drawn nearest to. In its texts, fields such as {sheet}, {scale} or {page} say each sheet’s own.')}</p>
     </>
+  )
+}
+
+/** What shows on every sheet of the drawing (a title, a logo, a north arrow): whether this one shows it, and where it is drawn. */
+export function EverySheet({ node, update }: { node: Extract<Node, { type: 'paper' }>; update: Update }) {
+  const doc = useStore((s) => s.doc)
+  const common = sheetContentOf(doc)
+  const about = t('What is drawn there shows on every sheet of the drawing: a title, a logo, a north arrow. It is drawn once, in millimetres of paper, and each sheet shows it at its own scale, each thing in the corner of the sheet it was drawn nearest to. In its texts, fields such as {sheet}, {scale} or {page} say each sheet’s own.')
+  // What is on every sheet starts empty, on a sheet the size of this one, and is opened to be drawn.
+  const start = () => {
+    const at = node.scale ?? DEFAULT_PAPER_SCALE
+    const { ops, id } = sheetContentOps({ width: node.width / at, height: node.height / at }, t('On every sheet'))
+    if (apply(ops)) openComponent(id)
+  }
+  return common ? (
+    <>
+      <div className="field">
+        <span>{t('On this sheet')}</span>
+        <YesNo value={!node.plain} label={t('Show it here')} onChange={(on) => update(() => ({ plain: on ? null : true }))} />
+      </div>
+      <button className="text-button" title={about} onClick={() => openComponent(common.id)}>
+        {t('Edit what is on every sheet…')}
+      </button>
+    </>
+  ) : (
+    <button className="text-button" title={about} onClick={start}>
+      {t('Draw something for every sheet…')}
+    </button>
   )
 }

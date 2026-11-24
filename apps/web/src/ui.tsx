@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
-import { BrickWall, Cable, ChevronDown, Link2, Link2Off, MoveHorizontal, ScanEye, Circle, Hexagon, Component, File, Group, Image, Lock, LockOpen, MessageSquare, Minus, RulerDimensionLine, Shapes, SeparatorVertical, Spline, Square, SquareDashed, StickyNote, Table, Type, type LucideIcon } from 'lucide-react'
+import { BrickWall, Cable, Camera, ChevronDown, Link2, Link2Off, ScanEye, Circle, Hexagon, Component, File, Group, Image, Lock, LockOpen, MessageSquare, Minus, RulerDimensionLine, Shapes, SeparatorVertical, Spline, Square, SquareDashed, StickyNote, Table, Type, type LucideIcon } from 'lucide-react'
 import type { Document, Node } from '@opencalque/core'
 import { GridLine } from './icons'
 import { msg, t } from './i18n'
@@ -23,7 +23,8 @@ const TYPE_LABELS: Record<Node['type'], string> = {
   room: msg('Room'),
   divider: msg('Room divider'),
   elevation: msg('Elevation'),
-  viewline: msg('View line'),
+  autodimensions: msg('Automatic dimensions'),
+  camera: msg('Viewpoint'),
   link: msg('Link'),
   table: msg('Table of quantities'),
   ellipse: msg('Ellipse'),
@@ -48,7 +49,8 @@ const TYPE_ICONS: Record<Node['type'], LucideIcon> = {
   room: SquareDashed,
   divider: SeparatorVertical,
   elevation: ScanEye,
-  viewline: MoveHorizontal,
+  autodimensions: RulerDimensionLine,
+  camera: Camera,
   link: Cable,
   table: Table,
   ellipse: Circle,
@@ -213,6 +215,68 @@ export function OpacitySlider({ value, onChange }: { value: number | undefined; 
   )
 }
 
+/** A percentage as it may be set: a whole number from 0 to 100. */
+const asPercent = (value: number) => Math.min(100, Math.max(0, Math.round(value)))
+
+/**
+ * The row of a percentage (a parameter with `unit: 'percent'`): its name, a slider, and the number,
+ * typed or dragged with Alt. Whichever way it is set, it stays between 0 and 100; a value outside,
+ * from a file, is shown as the bound it is drawn at. A slide is one step to undo.
+ */
+export function PercentField({ label, value, onChange }: { label: string; value: number | undefined; onChange: (value: number) => void }) {
+  const percent = value === undefined || !Number.isFinite(value) ? undefined : asPercent(value)
+  const shown = percent === undefined ? '' : String(percent)
+  const [text, setText] = useState(shown)
+  useEffect(() => {
+    setText(shown)
+  }, [shown])
+  const set = (next: number) => {
+    if (asPercent(next) !== percent) onChange(asPercent(next))
+  }
+  const commit = () => {
+    if (text === shown) return
+    const typed = parseNumber(text)
+    if (typed === null || !Number.isFinite(typed)) return setText(shown)
+    set(typed)
+    // 150 typed where it is already 100: nothing changes, and the box says 100 again.
+    setText(String(asPercent(typed)))
+  }
+  return (
+    <div className="field with-unit percent-field">
+      <span>{label}</span>
+      <input
+        className="percent-range"
+        type="range"
+        min={0}
+        max={100}
+        step={1}
+        value={percent ?? 0}
+        aria-label={label}
+        style={{ '--filled': `${percent ?? 0}%` } as React.CSSProperties}
+        onPointerDown={() => {
+          const mark = useStore.getState().past.length
+          // Let go wherever the pointer is: over the slider or not.
+          window.addEventListener('pointerup', () => collapseHistory(mark), { once: true })
+        }}
+        onChange={(e) => set(Number(e.target.value))}
+      />
+      <input
+        value={text}
+        placeholder={percent === undefined ? t('Mixed') : undefined}
+        aria-label={label}
+        title={t('Hold Alt and drag sideways to change the value')}
+        {...scrub(() => percent ?? null, set, 1, 0)}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+      />
+      <span className="field-unit" aria-hidden="true">
+        %
+      </span>
+    </div>
+  )
+}
+
 /**
  * While Alt is held, number fields show a sideways arrow to say they can be dragged. Returns a
  * function that stops it.
@@ -236,7 +300,7 @@ export function watchScrubKey(): () => void {
 }
 
 /** `from`: where dragging the number with Alt starts while the field is empty; `note`: said when the pointer rests on it. */
-export function Field(props: { label: string; value: string | number; from?: number; note?: string; numeric?: boolean; length?: boolean; optional?: boolean; step?: number; min?: number; snap?: number; decimals?: number; placeholder?: string; multiline?: boolean; lead?: ReactNode; suffix?: string; onCommit: (value: any) => void }) {
+export function Field(props: { label: string; value: string | number; from?: number; note?: string; numeric?: boolean; length?: boolean; optional?: boolean; step?: number; min?: number; snap?: number; decimals?: number; placeholder?: string; multiline?: boolean; lead?: ReactNode; prefix?: string; suffix?: string; readOnly?: boolean; onCommit: (value: any) => void }) {
   // What the number is counted in, written faint inside the box after it and not part of what is
   // typed: the user's unit for a length (none for feet and inches, which carry their marks), or `suffix`.
   usePrefs((prefs) => prefs.unit)
@@ -252,7 +316,9 @@ export function Field(props: { label: string; value: string | number; from?: num
     if (text === shown) return
     // Emptying an optional field unsets the property.
     if (props.optional && text.trim() === '') return props.onCommit(undefined)
-    const value = props.length ? parseLength(text) : props.numeric ? parseNumber(text) : text
+    // What is written faint before the number ("1:" of a scale) may be typed too.
+    const typed = props.prefix && text.trimStart().startsWith(props.prefix) ? text.trimStart().slice(props.prefix.length) : text
+    const value = props.length ? parseLength(typed) : props.numeric ? parseNumber(typed) : typed
     if (props.numeric && (value === null || !Number.isFinite(value))) return setText(shown)
     props.onCommit(value)
   }
@@ -266,14 +332,20 @@ export function Field(props: { label: string; value: string | number; from?: num
     )
   }
   return (
-    <label className={`field${props.numeric ? ' numeric' : ''}${props.lead ? ' with-lead' : ''}${suffix ? ' with-unit' : ''}`}>
+    <label className={`field${props.numeric ? ' numeric' : ''}${props.lead ? ' with-lead' : ''}${props.prefix ? ' with-prefix' : ''}${suffix ? ' with-unit' : ''}`}>
       <span>{props.label}</span>
       {props.lead}
+      {props.prefix && (
+        <span className="field-prefix" aria-hidden="true">
+          {props.prefix}
+        </span>
+      )}
       <input
         value={text}
         placeholder={props.placeholder}
         title={[props.note, props.numeric ? t('Hold Alt and drag sideways to change the value') : undefined].filter(Boolean).join('\n') || undefined}
-        {...(props.numeric ? scrub(() => (typeof props.value === 'number' ? props.value : (props.from ?? null)), props.onCommit, props.step ?? (props.length ? LENGTH_STEP : 1), props.min, props.snap) : {})}
+        readOnly={props.readOnly}
+        {...(props.numeric && !props.readOnly ? scrub(() => (typeof props.value === 'number' ? props.value : (props.from ?? null)), props.onCommit, props.step ?? (props.length ? LENGTH_STEP : 1), props.min, props.snap) : {})}
         onChange={(e) => setText(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
@@ -335,16 +407,30 @@ export function YesNo(props: { value: boolean | undefined; onChange: (value: boo
 export const FoldingSections = createContext(false)
 
 /**
+ * Provided while a panel opens on some of its sections (`keep`, by their titles as shown): the
+ * others are folded, whatever is remembered of them, until a heading is clicked (`release`), when
+ * each is again as remembered, the one clicked opened or folded as asked.
+ */
+export const FocusedSections = createContext<{ keep: string[]; release: () => void } | null>(null)
+
+/**
  * A heading and what is under it. In a panel that says so (`FoldingSections`) a click on the heading
  * folds it, and it stays folded for whatever is selected next, known by its title. `count` is shown
  * after the title and is no part of it, so that a section stays folded whatever it counts.
  */
 export function Section(props: { title: string; count?: number; action?: ReactNode; children: ReactNode }) {
   const folding = useContext(FoldingSections)
-  const folded = usePrefs((prefs) => folding && prefs.foldedSections.includes(props.title))
+  const focus = useContext(FocusedSections)
+  const remembered = usePrefs((prefs) => folding && prefs.foldedSections.includes(props.title))
+  // Folded while the panel opens on other sections.
+  const held = folding && focus !== null && !focus.keep.includes(props.title)
+  const folded = held || remembered
   const heading = props.count === undefined ? props.title : `${props.title} (${props.count})`
   const toggle = () => {
     const list = usePrefs.getState().foldedSections
+    focus?.release()
+    // Held folded, a click opens it: as remembered, it may have been open already.
+    if (held && !remembered) return
     setPrefs({ foldedSections: folded ? list.filter((title) => title !== props.title) : [...list, props.title] })
   }
   return (

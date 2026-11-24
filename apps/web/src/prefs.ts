@@ -48,6 +48,15 @@ export interface Prefs {
   foldedSections: string[]
   /** In the Properties panel, a width or height typed changes the other in proportion. */
   keepProportions: boolean
+  /** Whether exports and prints carry the marks drawn on the plan to work with (the eyes of viewpoints, the lines of views): the export window's Viewpoints and view lines. */
+  exportMarks: boolean
+  /**
+   * Viewpoints (`panels/properties/viewpoint.tsx`): how their views are drawn (lines on white,
+   * shaded, or a depth map), and what the description given with a picture asks of the photograph
+   * (the shape of the picture is its frame's): a style among those offered (`preset`, an id of
+   * `perspective/wishes.ts`, '' for none), the person's own words (`style`), and a light (`light`).
+   */
+  perspective: { look: 'lines' | 'clay' | 'depth'; preset: string; style: string; light: string }
   /**
    * What the person scrolls over the drawing with, a mouse (its wheel zooms) or a trackpad (two
    * fingers move the view), or 'auto' to tell them apart by their events (`canvas/wheel.ts`). A
@@ -118,6 +127,8 @@ const DEFAULTS: Prefs = {
   componentsView: 'list',
   foldedSections: [],
   keepProportions: false,
+  exportMarks: false,
+  perspective: { look: 'lines', preset: '', style: '', light: '' },
   scroll: 'auto',
   toolbar: TOOLBAR_DEFAULT,
   savedToolbars: [],
@@ -149,7 +160,7 @@ function load(): Prefs {
     unitChosen = stored.unit !== undefined
     const ai = { ...DEFAULTS.ai, ...stored.ai }
     for (const key of PROVIDERS) ai[key] = { ...DEFAULTS.ai[key], ...ai[key] }
-    return { ...DEFAULTS, ...stored, ai, extensions: { ...DEFAULTS.extensions, ...stored.extensions }, scroll: readScrollPref(stored.scroll) }
+    return { ...DEFAULTS, ...stored, ai, extensions: { ...DEFAULTS.extensions, ...stored.extensions }, perspective: { ...DEFAULTS.perspective, ...stored.perspective }, scroll: readScrollPref(stored.scroll) }
   } catch {
     return DEFAULTS
   }

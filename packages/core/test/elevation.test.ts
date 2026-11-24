@@ -61,7 +61,7 @@ const boxes = (prims: Primitive[]) =>
     return [[Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]]
   })
 const line = (doc: Document) => {
-  const { a, b } = doc.nodes.e as NodeOf<'viewline'>
+  const { a, b } = doc.nodes.ev as NodeOf<'elevation'>
   return [a, b].map((p) => [Math.round(p.x), Math.round(p.y)])
 }
 const edited = (doc: Document, ops: Op[]) => applyEdit(doc, ops, registry).doc
@@ -113,17 +113,17 @@ describe('elevations', () => {
       { op: 'update_node', id: 'page_1', patch: { wallHeight: 2700 } },
       { op: 'update_node', id: 'side', patch: { height: 3000 } },
       // The line taken into the wall across its start, to its middle, so that the view cuts it.
-      { op: 'update_node', id: 'e', patch: { a: { x: 0, y: 1100 } } },
+      { op: 'update_node', id: 'ev', patch: { a: { x: 0, y: 1100 } } },
     ])
     expect(boxes(view(doc))).toContainEqual([200, 7300, 6100, 10000])
     expect(boxes(view(doc))).toContainEqual([100, 7000, 200, 10000])
   })
 
   it('show nothing of the other face, and nothing of a wall away from the line', () => {
-    const doc = applyOps(plan(), [{ op: 'update_node', id: 'e', patch: { a: { x: 6000, y: -1100 }, b: { x: 0, y: -1100 } } }])
+    const doc = applyOps(plan(), [{ op: 'update_node', id: 'ev', patch: { a: { x: 6000, y: -1100 }, b: { x: 0, y: -1100 } } }])
     // Seen from above the wall: the door and window go through it, the socket is on the other face.
     expect(boxes(view(doc))).toHaveLength(3)
-    const away = applyOps(plan(), [{ op: 'update_node', id: 'e', patch: { a: { x: 0, y: 3500 }, b: { x: 6000, y: 3500 } } }])
+    const away = applyOps(plan(), [{ op: 'update_node', id: 'ev', patch: { a: { x: 0, y: 3500 }, b: { x: 6000, y: 3500 } } }])
     // The wall across, which it starts in the middle of: from its start to 100 mm after.
     expect(boxes(view(away))).toEqual([[100, 7500, 200, 10000]])
   })
@@ -138,25 +138,25 @@ describe('elevations', () => {
     expect(line(edited(doc, [{ op: 'update_node', id: 'w', patch: { b: { x: 8000, y: 0 } } }]))).toEqual([[100, 1100], [8000, 1100]])
     expect(line(edited(doc, [{ op: 'update_node', id: 'w', patch: { b: { x: 4000, y: 0 } } }]))).toEqual([[100, 1100], [4000, 1100]])
     const split = splitWallOps(doc.nodes.w as never, { x: 3000, y: 0 }, 'w2')!
-    expect(edited(doc, split.ops).nodes.e).toBe(doc.nodes.e)
+    expect(edited(doc, split.ops).nodes.ev).toBe(doc.nodes.ev)
     // Turned round, the wall's faces are where they were: the view has not moved.
-    expect(edited(doc, [{ op: 'update_node', id: 'w', patch: { a: { x: 6000, y: 0 }, b: { x: 0, y: 0 } } }]).nodes.e).toBe(doc.nodes.e)
+    expect(edited(doc, [{ op: 'update_node', id: 'w', patch: { a: { x: 6000, y: 0 }, b: { x: 0, y: 0 } } }]).nodes.ev).toBe(doc.nodes.ev)
   })
 
-  it('make a drawing of version 3, which says version 2 while it has none, for the versions before them', () => {
-    expect(JSON.parse(serializeDocument(plan())).version).toBe(3)
-    const without = applyOps(plan(), [{ op: 'remove_node', id: 'e' }])
+  it('make a drawing of version 6 (their line in them), which says version 2 while it has none, for the versions before them', () => {
+    expect(JSON.parse(serializeDocument(plan())).version).toBe(6)
+    const without = applyOps(plan(), [{ op: 'remove_node', id: 'ev' }])
     expect(JSON.parse(serializeDocument(without)).version).toBe(2)
     // Read, it is of the version this one writes.
     expect(parseDocument(JSON.parse(serializeDocument(without))).version).toBe(FORMAT_VERSION)
-    expect(parseDocument(JSON.parse(serializeDocument(plan()))).nodes.e).toEqual(plan().nodes.e)
+    expect(parseDocument(JSON.parse(serializeDocument(plan()))).nodes.ev).toEqual(plan().nodes.ev)
   })
 })
 
 const elevation = (doc: Document) => doc.nodes.ev as NodeOf<'elevation'>
 const socket = (doc: Document) => doc.nodes.socket as NodeOf<'parametric'>
 /** The elevation of `doc` looking from another line, drawn at the same place. */
-const looking = (doc: Document, a: [number, number], b: [number, number]) => applyOps(doc, [{ op: 'update_node', id: 'e', patch: { a: { x: a[0], y: a[1] }, b: { x: b[0], y: b[1] } } }])
+const looking = (doc: Document, a: [number, number], b: [number, number]) => applyOps(doc, [{ op: 'update_node', id: 'ev', patch: { a: { x: a[0], y: a[1] }, b: { x: b[0], y: b[1] } } }])
 
 describe('what an elevation shows is the plan', () => {
   it('finds the object under a point of the view, what is fixed on the face before the door around it', () => {
@@ -305,7 +305,7 @@ describe('elevations of every kind of wall', () => {
     const doc = applyOps(plan(), [
       { op: 'add_material', material: { id: 'brick', name: 'Brick', fill: '#efc7b4', pattern: { kind: 'Lines', spacing: 60 } } },
       { op: 'update_node', id: 'side', patch: { material: 'brick' } },
-      { op: 'update_node', id: 'e', patch: { a: { x: 0, y: 1100 } } },
+      { op: 'update_node', id: 'ev', patch: { a: { x: 0, y: 1100 } } },
     ])
     const prims = view(doc)
     expect(prims).toContainEqual(expect.objectContaining({ kind: 'path', fill: '#e8ecf1', closed: true }))
@@ -314,12 +314,12 @@ describe('elevations of every kind of wall', () => {
 
   it('keep their face where it is when given another depth, their line moving; a section keeps its line', () => {
     const doc = plan()
-    const line = doc.nodes.e as NodeOf<'viewline'>
+    const line = doc.nodes.ev as NodeOf<'elevation'>
     expect(depthPatch(doc, line, 500)).toEqual({ depth: 500, a: { x: 100, y: 600 }, b: { x: 6000, y: 600 } })
     // Back to the default depth, 6 m in front of the face.
     expect(depthPatch(doc, line, undefined)).toEqual({ depth: null, a: { x: 100, y: 6100 }, b: { x: 6000, y: 6100 } })
     const section = looking(doc, [0, 3500], [6000, 3500])
-    expect(depthPatch(section, section.nodes.e as NodeOf<'viewline'>, 500)).toEqual({ depth: 500 })
+    expect(depthPatch(section, section.nodes.ev as NodeOf<'elevation'>, 500)).toEqual({ depth: 500 })
   })
 
   it('show nothing of a curved wall, and nothing at all for a line of no length', () => {
@@ -340,7 +340,7 @@ describe('elevations of every kind of wall', () => {
 describe('elevations follow every edit of their wall', () => {
   it('keep a view of part of a face where it is on a wall made longer, and take it along on a wall moved', () => {
     const part = looking(plan(), [1000, 1100], [4000, 1100])
-    expect(edited(part, [{ op: 'update_node', id: 'w', patch: { b: { x: 9000, y: 0 } } }]).nodes.e).toBe(part.nodes.e)
+    expect(edited(part, [{ op: 'update_node', id: 'w', patch: { b: { x: 9000, y: 0 } } }]).nodes.ev).toBe(part.nodes.ev)
     expect(line(edited(part, [{ op: 'update_node', id: 'w', patch: { a: { x: 0, y: 500 }, b: { x: 6000, y: 500 } } }]))).toEqual([[1000, 1600], [4000, 1600]])
   })
 
@@ -357,18 +357,19 @@ describe('elevations follow every edit of their wall', () => {
     const doc = plan()
     const moved = edited(doc, [
       { op: 'update_node', id: 'w', patch: { thickness: 300 } },
-      { op: 'update_node', id: 'e', patch: { depth: 1000 } },
+      { op: 'update_node', id: 'ev', patch: { depth: 1000 } },
     ])
     expect(line(moved)).toEqual([[100, 1100], [6000, 1100]])
-    expect(edited(doc, [{ op: 'remove_node', id: 'w' }]).nodes.e).toBe(doc.nodes.e)
+    expect(edited(doc, [{ op: 'remove_node', id: 'w' }]).nodes.ev).toBe(doc.nodes.ev)
   })
 
   it('stay upright and keep looking at the plan when the drawing is turned round them', () => {
     const doc = plan()
     const ops = transformOps(doc, [doc.nodes.ev], { pivot: { x: 100, y: 10000 }, rotation: 90 }, registry)
     const turned = applyOps(doc, ops)
-    expect(elevation(turned)).toMatchObject({ x: 100, y: 10000 })
-    expect(turned.nodes.e).toBe(doc.nodes.e)
+    // Turned alone, it looks where it did.
+    const { a, b } = doc.nodes.ev as NodeOf<'elevation'>
+    expect(elevation(turned)).toMatchObject({ x: 100, y: 10000, a, b })
     expect(boxes(view(turned))[0]).toEqual([100, 7500, 6000, 10000])
   })
 })
@@ -378,7 +379,7 @@ describe('drawings with elevations from other versions', () => {
     const json = JSON.parse(serializeDocument(plan()))
     expect(() => parseDocument({ ...json, version: FORMAT_VERSION + 1 })).toThrow(NewerFormatError)
     // A drawing of version 2 with no elevation opens, and is of the latest version once read.
-    const old = JSON.parse(serializeDocument(applyOps(plan(), [{ op: 'remove_node', id: 'e' }])))
+    const old = JSON.parse(serializeDocument(applyOps(plan(), [{ op: 'remove_node', id: 'ev' }])))
     expect(old.version).toBe(2)
     expect(parseDocument(old).nodes.door).toBeDefined()
   })

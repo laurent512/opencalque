@@ -1,8 +1,11 @@
 import { childrenOf, newId, ordersAt, pagesOf } from './document'
+import { viewPlacement } from './elevation'
 import type { Vec2 } from './geometry'
-import { kindOf, movePatch } from './kinds'
+import { kindOf, moveOps, movePatch } from './kinds'
 import { applyOps, OpError, type NodeInput, type Op } from './ops'
-import type { Document } from './schema'
+import type { Registry } from './registry'
+import type { Document, Node, NodeOf } from './schema'
+import { transformOps } from './transform'
 
 /**
  * Puts nodes that share a parent into a new group, which takes the place of the topmost of them
@@ -73,11 +76,13 @@ export function duplicatePageOps(doc: Document, pageId: string, name: string): {
  * The operations that put nodes in `parent` (a page, a component or a group), next to `target`,
  * one of what it holds, just before or just after it in the stacking order, or on top of what it
  * holds when there is no target. They may come from anywhere in the same page or component; they
- * keep their order among themselves, and their coordinates (a group has no geometry of its own).
+ * keep their order among themselves, and their coordinates (a group has no geometry of its own);
+ * but into or out of a view (an elevation, a section), whose contents are in its own coordinates,
+ * they are brought into them or out of them (with `registry`), so that they stay where they are seen.
  * A node that `parent` is inside of, or `parent` itself, is left where it is: a group cannot go
  * inside itself. Nothing is done when they would end up where they are.
  */
-export function placeInOps(doc: Document, ids: string[], parent: string, target?: { id: string; after: boolean }): Op[] {
+export function placeInOps(doc: Document, ids: string[], parent: string, target?: { id: string; after: boolean }, registry?: Registry): Op[] {
   const above = new Set<string>()
   for (let up: string | null = parent; up !== null; up = doc.nodes[up]?.parent ?? null) above.add(up)
   const moving = ids.map((id) => doc.nodes[id]).filter((n): n is NonNullable<typeof n> => !!n && n.parent !== null && !above.has(n.id))
@@ -92,7 +97,44 @@ export function placeInOps(doc: Document, ids: string[], parent: string, target?
   const result = [...rest.slice(0, at), ...moving, ...rest.slice(at)]
   if (result.length === siblings.length && result.every((n, i) => n === siblings[i])) return []
   const orders = ordersAt(rest, at, moving.length, target && !target.after ? 'above' : 'below')
-  return moving.map((n, i): Op => ({ op: 'update_node', id: n.id, patch: { ...(n.parent === parent ? {} : { parent }), order: orders[i] } }))
+  const placed = moving.map((n, i): Op => ({ op: 'update_node', id: n.id, patch: { ...(n.parent === parent ? {} : { parent }), order: orders[i] } }))
+  // Out of a view, through where it draws them; into one, back into its coordinates.
+  const to = viewAbove(doc, parent)
+  const carried: Op[] = []
+  let work = doc
+  for (const n of moving) {
+    const from = viewAbove(doc, n.parent)
+    if (!registry || from?.id === to?.id) continue
+    const steps: Op[][] = []
+    const step = (make: (node: Node) => Op[]) => {
+      const ops = make(work.nodes[n.id])
+      work = applyOps(work, ops)
+      steps.push(ops)
+    }
+    if (from) {
+      const { x, y, scale } = viewPlacement(from)
+      step((node) => transformOps(work, [node], { pivot: { x: 0, y: 0 }, scale }, registry))
+      step((node) => moveOps(work, node, { x, y }))
+    }
+    if (to) {
+      const { x, y, scale } = viewPlacement(to)
+      step((node) => moveOps(work, node, { x: -x, y: -y }))
+      step((node) => transformOps(work, [node], { pivot: { x: 0, y: 0 }, scale: 1 / scale }, registry))
+    }
+    carried.push(...steps.flat())
+  }
+  return [...carried, ...placed]
+}
+
+/** The view (an elevation, a section) that `id` is, or is inside of: what its contents' coordinates are of. */
+function viewAbove(doc: Document, id: string | null): NodeOf<'elevation'> | null {
+  for (let at = id, depth = 0; at !== null && depth < 64; depth++) {
+    const node: Node | undefined = doc.nodes[at]
+    if (!node) return null
+    if (node.type === 'elevation') return node
+    at = node.parent
+  }
+  return null
 }
 
 /**

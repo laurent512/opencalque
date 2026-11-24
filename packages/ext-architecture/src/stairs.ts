@@ -1,8 +1,21 @@
-import { add, arcPoints, norm, perp, scale, sub, transformPrimitive, type ParametricKind, type Primitive, type Vec2 } from '@opencalque/core'
-import { atLeast, clamp, count, line, mirrorAlong, outline, pt, STEPS, TREAD, TURN, WIDTH } from './shared'
+import { add, arcPoints, norm, perp, scale, sub, transformPrimitive, type ParamDef, type ParametricKind, type Primitive, type Vec2 } from '@opencalque/core'
+import { atLeast, clamp, count, HEIGHT, line, mirrorAlong, outline, pt, STEPS, TREAD, TURN, WIDTH } from './shared'
 
 /** The narrowest a stair is made by pulling its side, in mm. */
 const MIN_FLIGHT = 300
+/**
+ * How high a stair climbs, from the floor it starts on to the floor above (a ceiling of 2.50 m and
+ * its floor): its steps share it, one rise more than there are treads, the last onto that floor.
+ * Only the 3D view uses it.
+ */
+const RISE = HEIGHT(2700)
+/**
+ * Which way a stair goes from the floor it is drawn on, as plans say it: 'Up' (Monte), from here to
+ * the floor above, its foot here; or 'Down' (Descend), from the floor below, which its foot is on,
+ * arriving here at its top. Drawn alike on the plan, its arrow to its top; in 3D, it goes through
+ * the ceiling or through the floor (`stairwell`).
+ */
+const GOES: ParamDef = { key: 'goes', label: 'Goes', type: 'string', default: 'Up', options: ['Up', 'Down'] }
 
 /** The walking line of a stair: a dot where it starts and an arrow pointing up the flight. */
 function walkLine(points: Vec2[], size: number): Primitive[] {
@@ -21,7 +34,7 @@ export const straightStair: ParametricKind = {
   category: 'architecture',
   label: 'Stair, straight',
   description: 'Starts at the insertion point and climbs upward on the sheet.',
-  params: [WIDTH, STEPS(12), TREAD],
+  params: [WIDTH, STEPS(12), TREAD, RISE, GOES],
   // Up and down, it gains or loses whole steps; across, it is as wide as it is pulled.
   box: {
     bounds: ({ width, steps, tread }) => ({ left: 0, top: -count(steps) * atLeast(1, tread), right: atLeast(1, width), bottom: 0 }),
@@ -37,6 +50,22 @@ export const straightStair: ParametricKind = {
     const prims: Primitive[] = [outline([pt(0, 0), pt(w, 0), pt(w, -n * t), pt(0, -n * t)])]
     for (let i = 1; i < n; i++) prims.push(line([pt(0, -i * t), pt(w, -i * t)]))
     return [...prims, ...walkLine([pt(w / 2, -t / 2), pt(w / 2, -n * t + t / 2)], Math.min(w, t) * 0.35)]
+  },
+  // Solid, in layers one rise thick, each from its step to the top of the flight: the floor at the
+  // top is one rise over the top step. Each reaches a little down into the one under it: where they
+  // only touched, along an edge longer on one than on the other, the view showed specks through the
+  // join. Going down, the same flight a height lower: its top arrives at this floor.
+  solids({ width, steps, tread, height, goes }) {
+    const [w, t, n, h] = [atLeast(1, width), atLeast(1, tread), count(steps), atLeast(1, height)]
+    const rise = h / (n + 1)
+    const into = Math.min(10, rise / 4)
+    const foot = goes === 'Down' ? -h : 0
+    return Array.from({ length: n }, (_, k) => ({ outline: [pt(0, -k * t), pt(w, -k * t), pt(w, -n * t), pt(0, -n * t)], bottom: foot + Math.max(0, k * rise - into), top: foot + (k + 1) * rise }))
+  },
+  stairwell: ({ width, steps, tread, height, goes }) => {
+    const [w, l] = [atLeast(1, width), count(steps) * atLeast(1, tread)]
+    const outline = [pt(0, 0), pt(w, 0), pt(w, -l), pt(0, -l)]
+    return goes === 'Down' ? { outline, way: 'down', depth: atLeast(1, height) } : { outline, way: 'up' }
   },
 }
 

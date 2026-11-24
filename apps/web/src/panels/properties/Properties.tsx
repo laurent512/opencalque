@@ -1,4 +1,4 @@
-import { type Bounds, type NodeOf, applyOps, controlSide, linksAt, boundsOf, dist, mountedOn, mountOf, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, rootOf, type Node, type Op, roomAt, regionPerimeter, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
+import { type Bounds, type NodeOf, applyOps, lookedAt, pagesOf, controlSide, linksAt, boundsOf, dist, mountedOn, mountOf, stretchOps, wallAxesBounds, childrenOf, nodePrimitives, rootOf, type Node, type Op, roomAt, regionPerimeter, wallEndsAt, TEXT_FIELDS } from '@opencalque/core'
 import { executeById } from '../../commands'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Eye, EyeOff, Lock, LockOpen } from 'lucide-react'
@@ -10,15 +10,16 @@ import { usePrefs } from '../../prefs'
 import { registry } from '../../extensions'
 import { apply, select, useStore } from '../../store'
 import { toast } from '../../windows'
-import { Field, FieldPair, FoldingSections, labelOf, ProportionLock, Section, TypeIcon, YesNo } from '../../ui'
+import { Field, FieldPair, FocusedSections, FoldingSections, labelOf, ProportionLock, Section, TypeIcon, YesNo } from '../../ui'
 import { formatArea, formatLength, parseLength, unit, unitSuffix } from '../../units'
 import { Sections, type SectionExtra, type Update } from './FieldRow'
 import { AnnotationTool, DimensionTool, GridlineTool, SelectedDimensionStyle } from './dimensions'
-import { commonFields, FIELD_NAMES, fieldsOf, FLOOR, GEOMETRY, SHEET_FIELDS } from './fields'
+import { CAMERA, commonFields, FIELD_NAMES, fieldsOf, FLOOR, GEOMETRY, REPRESENTATION, SHEET_FIELDS, VIEW_SEES } from './fields'
 import { ModifierStack } from './modifiers'
-import { PaperSheet } from './paper'
+import { EverySheet, PaperFormat, PaperTitleBlock } from './paper'
 import { CornerPanel, WallCurve, WallEnds, WallLine, WallMaterial, WallToolMaterial } from './walls'
 import { TableSettings } from './tables'
+import { ViewCamera, ViewDescription, ViewPicture } from './viewpoint'
 import { Select } from '../../Select'
 
 /* The Properties panel: what is selected, or the tool in use when nothing is. */
@@ -65,6 +66,25 @@ function Controls({ node }: { node: Node }) {
           {gives ? t('Connect lights…') : t('Connect a switch…')}
         </button>
       </div>
+    </div>
+  )
+}
+
+/**
+ * The page whose plan a view looks at (a 3D view, an elevation, a section), which may be another
+ * than the one it is shown on: picked among the drawing's pages. Its own page leaves `page` out.
+ */
+function LooksAt({ node }: { node: NodeOf<'camera'> | NodeOf<'elevation'> }) {
+  const doc = useStore((s) => s.doc)
+  const own = rootOf(doc, node.parent)?.id
+  return (
+    <div className="field">
+      <span>{t('Plan on page')}</span>
+      <Select
+        value={lookedAt(doc, node) ?? ''}
+        options={pagesOf(doc).map((page) => ({ value: page.id, label: labelOf(doc, page) }))}
+        onChange={(page) => apply([{ op: 'update_node', id: node.id, patch: { page: page === own ? null : page } }])}
+      />
     </div>
   )
 }
@@ -176,6 +196,8 @@ function Selection({ nodes }: { nodes: Node[] }) {
         <p className="hint">{t('Click two points on the picture whose real distance you know, then type that distance. The picture is resized to match.')}</p>
       </Fragment>
     ),
+    // A paper's sheet, after where it lies: its format, which way up, its scale.
+    single && node.type === 'paper' && <PaperFormat key="format" node={node} update={update} />,
     single && mountOf(node, registry)?.on === 'wall' && !mountedOn(doc, node, registry) && <p key="mount" className="hint">{t('It is on no wall, so it does not follow one nor show in its elevations. Drag it onto a wall to fix it there.')}</p>,
   ].filter(Boolean)
   const extras: (SectionExtra | false | null)[] = [
@@ -184,8 +206,15 @@ function Selection({ nodes }: { nodes: Node[] }) {
     single && node.type === 'wall' && { title: msg('Ends'), before: <WallEnds wall={node} /> },
     nodes.every((n) => n.type === 'dimension') && { title: msg('Dimension style'), before: <SelectedDimensionStyle dimensions={nodes as NodeOf<'dimension'>[]} /> },
     single && node.type === 'table' && { title: msg('Table of quantities'), before: <TableSettings node={node} /> },
-    single && node.type === 'paper' && { title: msg('Sheet'), before: <PaperSheet node={node} update={update} /> },
+    single && node.type === 'paper' && { title: msg('Title block'), before: <PaperTitleBlock node={node} update={update} /> },
+    single && node.type === 'paper' && { title: msg('On every sheet'), before: <EverySheet node={node} update={update} /> },
     single && node.type === 'room' && { title: FLOOR, before: <RoomFacts node={node} /> },
+    // A view's page is part of what it looks at.
+    single && node.type === 'elevation' && pagesOf(doc).length > 1 && { title: VIEW_SEES, before: <LooksAt node={node} /> },
+    // A viewpoint is its view: its representation (its frame, how it is drawn), its camera, and what to say of it to an image model.
+    single && node.type === 'camera' && { title: REPRESENTATION, after: <ViewPicture camera={node} /> },
+    single && node.type === 'camera' && { title: CAMERA, ...(pagesOf(doc).length > 1 ? { before: <LooksAt node={node} /> } : {}), after: <ViewCamera camera={node} /> },
+    single && node.type === 'camera' && { title: msg('Description'), before: <ViewDescription camera={node} /> },
     single &&
       node.type === 'group' && {
         title: msg('Group'),
@@ -241,8 +270,11 @@ function Selection({ nodes }: { nodes: Node[] }) {
         ),
       },
   ]
+  // A view picked by one of its parts opens on that part: its camera or its line of view, or its representation.
+  const part = useStore((s) => s.viewPart)
+  const focused = single && part !== null && (node.type === 'camera' || node.type === 'elevation') ? { keep: [t('Selection'), t(part === 'view' ? REPRESENTATION : node.type === 'camera' ? CAMERA : VIEW_SEES)], release: () => useStore.setState({ viewPart: null }) } : null
   return (
-    <>
+    <FocusedSections.Provider value={focused}>
       {/* Counted only when there is more than one: "Selection (1)" says nothing. */}
       <Section title={t('Selection')} count={single ? undefined : nodes.length}>
         {/* What it says when it has no name of its own is what it is. Emptied, it goes back to that. */}
@@ -261,7 +293,7 @@ function Selection({ nodes }: { nodes: Node[] }) {
       </Section>
       <Sections node={node} nodes={nodes} fields={single ? fieldsOf(node, doc) : commonFields(nodes, doc)} update={update} pick extras={extras.filter((extra): extra is SectionExtra => !!extra)} />
       {single && <ModifierStack node={node} />}
-    </>
+    </FocusedSections.Provider>
   )
 }
 

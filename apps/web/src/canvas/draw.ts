@@ -19,7 +19,23 @@ export function onRepaint(listener: () => void): void {
   repaint = listener
 }
 
-function pictureFor(href: string): HTMLImageElement | null {
+/**
+ * The pictures of the 3D views on the plan, by their viewpoint (`view:<id>` as the href of the
+ * picture a viewpoint's item paints): painted with the plan, where the viewpoint is in its order,
+ * so that what is stacked over it shows over it. The view draws into its canvas; `viewPainted` has
+ * the plan painted again with it.
+ */
+export const viewPictures = new Map<string, HTMLCanvasElement>()
+export function viewPainted(): void {
+  arrived++
+  pictureReady()
+}
+
+function pictureFor(href: string): CanvasImageSource | null {
+  if (href.startsWith('view:')) {
+    const view = viewPictures.get(href.slice(5))
+    return view && view.width > 0 ? view : null
+  }
   let picture = pictures.get(href)
   if (!picture) {
     picture = new Image()
@@ -140,6 +156,8 @@ export interface Overlay {
   inViews?: Bounds[]
   /** The sides of those boxes that can be dragged, by the box and the side: a grip in the middle of each. */
   inViewGrips?: { box: Bounds; side: 'left' | 'right' | 'top' | 'bottom' }[]
+  /** The lines across it that can be dragged up and down there (a tall unit's between its sections): a grip in the middle of each, at `y` in the drawing. */
+  inViewSplits?: { box: Bounds; y: number }[]
   /**
    * The lines on the plan that the selected elevations and sections look at, each seen from its
    * right, the area each sees up to its depth (its back, written with `depth`), and where its left
@@ -207,6 +225,9 @@ export interface Overlay {
   /** What the ends of the selected walls are joined to, and the walls joined to them (`WallLinks`). */
   wallLinks?: WallLinks | null
 }
+
+/** A box as a closed line in the accent colour, as what is selected is lit. */
+const outlineOf = (b: Bounds): Primitive => ({ kind: 'path', points: [{ x: b.minX, y: b.minY }, { x: b.maxX, y: b.minY }, { x: b.maxX, y: b.maxY }, { x: b.minX, y: b.maxY }], closed: true, stroke: ACCENT, strokeWidth: 1.5 })
 
 /** How long, in screen pixels, the arrow at each end of a selected view's line is: what is dragged to move that end. */
 export const VIEW_ARROW = 34
@@ -698,6 +719,13 @@ export function drawScene(
 
   const selected = scene.filter((item) => selection.includes(item.id))
   for (const item of scene.filter((item) => selection.includes(item.id) || item.id === overlay.lit)) {
+    // An elevation is lit by the outline of what it draws, and by its line on the plan: what it draws
+    // is the plan's, lit only once picked in it (the owner's choice), as a group's contents are not.
+    if (item.node.type === 'elevation') {
+      for (const prim of item.prims) if (prim.screen && prim.kind !== 'text') paint(ctx, { prim: { ...prim, stroke: ACCENT, strokeWidth: 1.5, dash: undefined }, stroke: true, fill: false, widthScale: 1, widthExtra: 0, seam: 0 }, view.zoom)
+      if (item.bounds) paint(ctx, { prim: outlineOf(item.bounds), stroke: true, fill: false, widthScale: 1, widthExtra: 0, seam: 0 }, view.zoom)
+      continue
+    }
     for (const prim of item.prims) {
       // The lines of a pattern are a surface, not an outline: lit up, they would hide the shape and what is under it.
       if (prim.kind === 'text' || prim.kind === 'image' || prim.texture) continue
@@ -710,7 +738,7 @@ export function drawScene(
   // a text or a picture, which have none.
   const thing = overlay.hovered && !selection.includes(overlay.hovered.thing.id) ? overlay.hovered.thing : undefined
   const outlined = thing?.prims.filter((prim) => prim.kind !== 'text' && prim.kind !== 'image' && !prim.texture) ?? []
-  const boxed = thing && (thing.node.type === 'instance' || outlined.length === 0) ? thing.bounds : null
+  const boxed = thing && (thing.node.type === 'instance' || thing.node.type === 'elevation' || outlined.length === 0) ? thing.bounds : null
   if (thing && !boxed) {
     for (const prim of outlined) paint(ctx, { prim: { ...prim, stroke: ACCENT, strokeWidth: 1, dash: undefined }, stroke: true, fill: false, widthScale: 1, widthExtra: 0, seam: 0 }, view.zoom)
   }
@@ -1124,6 +1152,12 @@ export function drawScene(
       const at = side === 'left' ? { x: p.x - 3, y: (p.y + q.y) / 2 } : side === 'right' ? { x: q.x + 3, y: (p.y + q.y) / 2 } : { x: (p.x + q.x) / 2, y: side === 'top' ? p.y - 3 : q.y + 3 }
       ctx.fillRect(Math.round(at.x) - 3.5, Math.round(at.y) - 3.5, 7, 7)
       ctx.strokeRect(Math.round(at.x) - 3.5, Math.round(at.y) - 3.5, 7, 7)
+    }
+    // A line across it, a grip wider than high in its middle, as it is dragged up and down.
+    for (const { box, y } of overlay.inViewSplits ?? []) {
+      const at = toScreen({ x: (box.minX + box.maxX) / 2, y })
+      ctx.fillRect(Math.round(at.x) - 7.5, Math.round(at.y) - 2.5, 15, 5)
+      ctx.strokeRect(Math.round(at.x) - 7.5, Math.round(at.y) - 2.5, 15, 5)
     }
   }
   if (overlay.face) {

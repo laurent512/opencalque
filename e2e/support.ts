@@ -42,7 +42,7 @@ export async function recordSaves(page: Page) {
   })
 }
 
-export const canvas = (page: Page) => page.locator('.stage canvas')
+export const canvas = (page: Page) => page.locator('.stage canvas.canvas')
 
 /** Chooses `label` in one of the app's dropdowns (`Select`, found with `.select`): opens its list and clicks it there. */
 export async function pickIn(page: Page, select: Locator, label: string) {

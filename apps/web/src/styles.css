@@ -773,6 +773,43 @@ body > .dv-tab-ghost-drag::after {
   background: var(--hover);
 }
 
+/* A part of a view, under its row (its camera or line, its picture): what it is, not an object of its own. */
+.row.view-part {
+  color: var(--muted);
+}
+
+.row.view-part > .view-part-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A view of another page looking at this one: the same object, faint, with the name of its page. */
+.row.foreign-view > :not(.view-part-page):not(.icon-button) {
+  opacity: 0.6;
+}
+
+.row.foreign-view > .view-part-page {
+  margin-left: auto;
+  padding-left: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Its line on the plan of another page: faint, with that page's name at the end of the row. */
+.row.view-part.elsewhere > :not(.view-part-page) {
+  opacity: 0.55;
+}
+
+.row.view-part > .view-part-page {
+  margin-left: auto;
+  padding-left: 8px;
+  font-size: 11px;
+  white-space: nowrap;
+  opacity: 0.8;
+}
+
 .row.selected {
   background: var(--accent-soft);
 }
@@ -866,6 +903,7 @@ body > .dv-tab-ghost-drag::after {
 /* The tool in use stays in its colour under the pointer, a shade darker; the plain hover would leave a white icon on a pale button. */
 .icon-button.active:hover:not(:disabled) {
   background: var(--accent);
+  color: var(--on-accent);
   filter: brightness(0.92);
 }
 
@@ -880,6 +918,146 @@ body > .dv-tab-ghost-drag::after {
 
 .field .text-button {
   margin: 0;
+}
+
+/* A list parameter (`ListField`): a line for each row, its fields side by side under their names, a grip to drag it by. */
+.list-field {
+  padding: 4px 0;
+}
+
+.list-head,
+.list-row {
+  display: grid;
+  align-items: center;
+  gap: 4px;
+  margin: 0 8px 0 10px;
+}
+
+.list-head {
+  color: var(--faint);
+  font-size: 11px;
+}
+
+.list-head > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.list-row {
+  position: relative;
+  min-height: 28px;
+  border-radius: 4px;
+}
+
+.list-row.dragged {
+  opacity: 0.5;
+}
+
+/* Where the row dragged would go: a line before this one, or after the last. */
+.list-row.drop-before::before,
+.list-row.drop-after::after {
+  position: absolute;
+  right: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  content: '';
+}
+
+.list-row.drop-before::before {
+  top: -1px;
+}
+
+.list-row.drop-after::after {
+  bottom: -1px;
+}
+
+.list-grip {
+  display: flex;
+  align-self: stretch;
+  align-items: center;
+  color: var(--faint);
+  cursor: grab;
+}
+
+.list-row .select {
+  width: 100%;
+}
+
+/* A number in a row: its box alone, named by the heading over it (its own name kept for screen readers). */
+.list-row .field {
+  min-height: 0;
+  padding: 0;
+}
+
+.list-row .field > span:first-child:not(.color-choice) {
+  position: absolute;
+  width: 1px;
+  min-width: 0;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.list-row .field > input:not([type]) {
+  width: 100%;
+  min-width: 0;
+}
+
+.list-row .field.with-unit > input:not([type]) {
+  min-width: 0;
+  padding-right: 26px;
+}
+
+.list-row .field > span.field-unit {
+  right: 6px;
+}
+
+/* The switch that puts in and takes out a row of its own (a tall unit's filler), over the list. */
+/* What a list puts in by a click (a tall unit's filler): a link under its rows. */
+.list-add-link {
+  align-self: flex-start;
+  margin: 4px 12px 2px 16px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.list-add-link:hover {
+  text-decoration: underline;
+}
+
+/* A number shown, not typed: a tall unit's height, which its sections make. */
+.field > input[readonly] {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* What the switch made a row: said where its choice would be. */
+.list-fixed {
+  padding: 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A value worked out (a filler's height): shown where its box would be, faint, not to be typed. */
+.list-auto {
+  padding: 0 6px;
+  color: var(--muted);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.list-head .icon-button,
+.list-row .icon-button {
+  width: 20px;
+  height: 20px;
 }
 
 .inline-input {
@@ -982,6 +1160,24 @@ body > .dv-tab-ghost-drag::after {
 
 .field.with-lead > input:not([type]) {
   padding-left: 25px;
+}
+
+/* What is written faint before a number, as the "1:" of a scale: shown, not typed. */
+.field.with-prefix {
+  position: relative;
+}
+
+.field > span.field-prefix {
+  position: absolute;
+  left: 103px;
+  width: auto;
+  color: var(--muted);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.field.with-prefix > input:not([type]) {
+  padding-left: 22px;
 }
 
 /* Two values on one row: the names of their boxes are for screen readers, the row's says it for both. */
@@ -2785,6 +2981,24 @@ button.feedback-thumb:focus-visible {
   width: 240px;
 }
 
+/* An entry that opens a list beside it, lit while that list is open. */
+.context-menu button[aria-haspopup] {
+  align-items: center;
+}
+
+.context-menu button[aria-haspopup].open {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* The list opened beside an entry: as wide as its names need, within reason. */
+.context-menu.submenu {
+  z-index: 31;
+  width: auto;
+  min-width: 140px;
+  max-width: 280px;
+}
+
 /* Warehouse */
 
 .dialog.warehouse {
@@ -4005,6 +4219,17 @@ button.feedback-thumb:focus-visible {
   margin: 4px 0;
 }
 
+/* What goes in the file, then how: each under its heading, a line between them. */
+.export-section + .export-section {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.export-section > .segments {
+  margin: 4px 0 6px;
+}
+
 .export-options .pref-row .faint {
   margin-left: auto;
   font-size: 12px;
@@ -4880,6 +5105,52 @@ button.feedback-thumb:focus-visible {
   min-width: 0;
 }
 
+/* A percentage (`PercentField`): a thin line, filled up to a round knob, then the number in a
+   small box. */
+.percent-field > .percent-range {
+  flex: 1;
+  min-width: 40px;
+  height: 4px;
+  margin: 0 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--accent) var(--filled, 0%), color-mix(in srgb, var(--muted) 40%, transparent) var(--filled, 0%));
+  appearance: none;
+  cursor: pointer;
+}
+
+.percent-range::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 30%),
+    0 1px 2px rgb(0 0 0 / 25%);
+  appearance: none;
+}
+
+.percent-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 30%),
+    0 1px 2px rgb(0 0 0 / 25%);
+}
+
+.percent-range:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.field.percent-field > input:not([type]) {
+  flex: none;
+  width: 56px;
+  min-width: 0;
+}
+
 /* Drawn as the colour window's opacity slider is: from see-through to the colour of the ink. */
 .opacity-slider input {
   border: 0;
@@ -5336,4 +5607,189 @@ button.feedback-thumb:focus-visible {
   display: flex;
   gap: 16px;
   padding: 4px 14px 10px;
+}
+
+/* A viewpoint's view, in its frame on the plan: placed in the drawing, drawn by the editor only. */
+.view-frame {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+}
+
+.view-frame.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 2px 8px rgb(0 0 0 / 18%);
+}
+
+/* Its picture is painted with the plan, in the order of Structure (`viewPictures`): the canvas it is drawn in only takes the pointer. */
+.view-frame > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  /* A click selects what it shows, as on the plan: the arrow. The hand only while a drag takes the view along. */
+  cursor: default;
+  touch-action: none;
+}
+
+.view-frame > canvas.dragging {
+  cursor: grabbing;
+}
+
+.view-frame > canvas.moving,
+.view-frame > canvas.carried {
+  cursor: move;
+}
+
+/* Locked, it is neither moved nor sized. */
+.view-frame.locked > .view-frame-grip {
+  display: none;
+}
+
+.view-frame.locked > .view-frame-name {
+  cursor: pointer;
+}
+
+/* While a drawing tool is in hand, the plan has the pointer, under the frames too. */
+.view-frame.passive {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Its name, above it: what selects it and moves it, with a padlock while it is locked. */
+.view-frame-name {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  bottom: 100%;
+  left: -1px;
+  max-width: 100%;
+  margin-bottom: 2px;
+  padding: 1px 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: move;
+  user-select: none;
+}
+
+.view-frame.active > .view-frame-name {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* An elevation's or a section's label, as a 3D view's: its name above what it draws, and its corners while it is selected. Only they take the pointer: what it draws is the plan's. */
+.view-label {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.view-label > .view-frame-name,
+.view-label > .view-frame-grip {
+  pointer-events: auto;
+}
+
+.view-label > .view-frame-grip {
+  opacity: 1;
+}
+
+.view-label.active > .view-frame-name {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.view-label.locked > .view-frame-name {
+  cursor: pointer;
+}
+
+.view-label.passive {
+  display: none;
+}
+
+/* Something stacked over the view hides it, and so its frame, and where its name is, its name: a press there is for what covers it. */
+.view-label.covered > .view-frame-name,
+.view-frame.name-covered > .view-frame-name {
+  visibility: hidden;
+}
+
+.view-frame.covered {
+  border-color: transparent;
+}
+
+/* Its corners and the middles of its sides, what it is sized by, as a rectangle on the plan. */
+.view-frame-grip {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  box-sizing: border-box;
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  background: #ffffff;
+  opacity: 0;
+}
+
+.view-frame-grip.nw { left: 0; top: 0; cursor: nwse-resize; }
+.view-frame-grip.n { left: 50%; top: 0; cursor: ns-resize; }
+.view-frame-grip.ne { left: 100%; top: 0; cursor: nesw-resize; }
+.view-frame-grip.e { left: 100%; top: 50%; cursor: ew-resize; }
+.view-frame-grip.se { left: 100%; top: 100%; cursor: nwse-resize; }
+.view-frame-grip.s { left: 50%; top: 100%; cursor: ns-resize; }
+.view-frame-grip.sw { left: 0; top: 100%; cursor: nesw-resize; }
+.view-frame-grip.w { left: 0; top: 50%; cursor: ew-resize; }
+
+.view-frame:hover > .view-frame-grip,
+.view-frame.active > .view-frame-grip {
+  opacity: 1;
+}
+
+/* The description, under its settings, as wide as the fields' boxes and their names. */
+.perspective-prompt {
+  padding: 4px 12px 4px 16px;
+}
+
+.perspective-prompt textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  outline: 0;
+  background: var(--hover);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.perspective-prompt textarea:focus {
+  border-color: var(--accent);
+}
+
+/* Copying the description, the reason it is there: a button of its own under it, not only the small icon in the section's head. */
+.perspective-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.perspective-copy:hover {
+  background: var(--hover);
 }

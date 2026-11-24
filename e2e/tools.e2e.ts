@@ -826,16 +826,20 @@ test('draws an elevation of the face of a wall beside the pointer, put down wher
   await expect(page.locator('.hint-bar')).toContainText('Click where the view goes')
   await click(page, at(0, 3000))
   const nodes = await saved(page)
-  // Its line 1 m in front of the face, its far side on it, on the plan; the view where it was put down.
-  const line = nodes.find((n) => n.type === 'viewline')
-  expect(line).toMatchObject({ a: { x: 0, y: 1100 }, b: { x: 4000, y: 1100 }, depth: 1000, name: 'View line 1' })
-  expect(nodes.find((n) => n.type === 'elevation')).toMatchObject({ line: line.id, x: 0, y: 3000, name: 'Elevation 1' })
+  // One view, holding its line 1 m in front of the face, its far side on it; drawn where it was put down.
+  expect(nodes.filter((n) => n.type === 'elevation')).toMatchObject([{ a: { x: 0, y: 1100 }, b: { x: 4000, y: 1100 }, depth: 1000, x: 0, y: 3000, name: 'Elevation 1' }])
   // Put down once and selected, the tool back to selecting.
   await expect(objectRows(page).filter({ hasText: 'Elevation 1' })).toHaveClass(/selected/)
+  // Dimensioned by itself: what it holds, of its own layer.
+  const view = nodes.find((n) => n.type === 'elevation')!
+  expect(nodes.filter((n) => n.type === 'autodimensions')).toMatchObject([{ parent: view.id, layer: view.layer }])
 })
 
 
 /** A wall 4 m long along y = 0 with a socket on its lower face, 2 m along, and an elevation of that face (its line 1 m in front of it) drawn with its floor at y = 6000. */
+/** Selects the elevation by its name, so that a click in it then takes what it shows. */
+const openView = (page: Page) => page.locator('.view-label .view-frame-name').click()
+
 async function planWithElevation(page: Page) {
   const electrical = JSON.parse(readFileSync('packages/warehouse/extensions/electrical.json', 'utf8'))
   await startWith(page, { extensions: { installed: { [electrical.id]: electrical }, disabled: [] } })
@@ -854,12 +858,29 @@ async function planWithElevation(page: Page) {
   return drawingOnScreen(page)
 }
 
-const field = (page: Page, name: string) => page.locator('.field', { has: page.locator(`span:text-is("${name}")`) }).locator('input')
+/** A field of the object by its name: not one of the rows of a list (a tall unit's sections), which have fields of the same names. */
+const field = (page: Page, name: string) => page.locator('.field:not(.list-row .field)', { has: page.locator(`span:text-is("${name}")`) }).locator('input')
 
-test('selects the socket of the plan by clicking it in an elevation, and moves it there along the wall and up', async ({ page }) => {
+test('selects the socket of the plan by clicking it in an elevation once the view is selected, and moves it there along the wall and up', async ({ page }) => {
   const at = await planWithElevation(page)
   // 300 above the floor at y = 6000, 2 m along: (2000, 5700) in the view.
   const [x, y] = at(2000, 5700)
+  // With nothing selected, a drag there moves the view, as any object pressed and dragged; the socket stays.
+  const elevation = () => saved(page).then((all) => all.find((n) => n.type === 'elevation')!)
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(...at(2300, 5900), { steps: 8 })
+  await page.mouse.up()
+  const moved = await elevation()
+  expect(moved.x).toBeGreaterThan(200)
+  expect(moved.y).toBeGreaterThan(6100)
+  expect((await saved(page)).find((n) => n.type === 'parametric')).toMatchObject({ x: 2000, y: 100 })
+  await page.keyboard.press('Control+z')
+  expect(await elevation()).toMatchObject({ x: 0, y: 6000 })
+  // The first click takes the view; the next, what it shows.
+  await page.keyboard.press('Escape')
+  await page.mouse.click(x, y)
+  await expect(page.locator('[data-panel="objects"] .row.selected')).toHaveText(/North/)
   await page.mouse.click(x, y)
   await expect(page.locator('[data-panel="objects"] .row.selected')).toHaveText(/Socket/)
   await expect(field(page, 'Height above floor')).toHaveValue('300')
@@ -894,6 +915,7 @@ test('keeps a unit picked in an elevation selected, inside its group, while its 
   await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
   const at = await drawingOnScreen(page)
   // A base unit inside a group, 900 high, picked where the elevation shows it, from 1500 to 2100 along it.
+  await openView(page)
   await page.mouse.click(...at(1800, 5500))
   const height = field(page, 'Height')
   await expect(height).toHaveValue('900')
@@ -938,6 +960,7 @@ test('raises a unit standing on the floor by dragging it up in an elevation, and
   await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
   const at = await drawingOnScreen(page)
   // On the floor: its height above it is empty, and says so.
+  await openView(page)
   await page.mouse.click(...at(1800, 5500))
   const above = field(page, 'Height above floor')
   await expect(above).toHaveValue('')
@@ -978,6 +1001,7 @@ test('widens a unit by its side in an elevation up against the next one, and mov
   const at = await drawingOnScreen(page)
   const units = async () => Object.fromEntries((await saved(page)).filter((n) => n.type === 'parametric').map((n) => [n.id, n]))
   // The first picked in the view; its right side, at 2100, dragged to 2530: it goes against the next one, at 2537.
+  await openView(page)
   await page.mouse.click(...at(1800, 5500))
   const [x, y] = at(2100, 5500)
   await page.mouse.move(x + 3, y)
@@ -1038,6 +1062,7 @@ test('shows every placed object by X, Y and Z, then W, D and H, then what is its
 test('keeps a socket dragged in an elevation to one way with Shift, on the wall and above the floor', async ({ page }) => {
   const at = await planWithElevation(page)
   const [x, y] = at(2000, 5700)
+  await openView(page)
   await page.mouse.move(x, y)
   await page.mouse.down()
   await page.keyboard.down('Shift')
@@ -1105,53 +1130,53 @@ test('draws a section by its line and puts its view down on the side it is seen 
   // Put down above the line: seen from above, so the line runs from right to left, its right being up.
   await click(page, at(0, -1500))
   const nodes = await saved(page)
-  expect(nodes.find((n) => n.type === 'viewline')).toMatchObject({ a: { x: 4000, y: 0 }, b: { x: 0, y: 0 } })
+  expect(nodes.find((n) => n.type === 'elevation')).toMatchObject({ a: { x: 4000, y: 0 }, b: { x: 0, y: 0 } })
   expect(nodes.find((n) => n.type === 'elevation')).toMatchObject({ x: 0, y: -1500, name: 'Section 1' })
 })
 
 
-test('shows on the plan what a view line sees, and sets its depth by the handle at its far side', async ({ page }) => {
+test('shows on the plan what a view sees, and sets its depth by the handle at its far side', async ({ page }) => {
   const at = await planWithElevation(page)
-  await objectRows(page).filter({ hasText: 'Wall line' }).click()
+  await objectRows(page).filter({ hasText: 'North' }).click()
   // Its line 1 m in front of the lower face, at y = 1100, what it sees up to the face: the handle on the face at (2000, 100).
   await page.mouse.move(...at(2000, 100))
   await page.mouse.down()
   await page.mouse.move(...at(2000, 600), { steps: 8 })
   await page.mouse.up()
-  expect((await saved(page)).find((n) => n.type === 'viewline')).toMatchObject({ depth: 500 })
+  expect((await saved(page)).find((n) => n.type === 'elevation')).toMatchObject({ depth: 500 })
   await expect(field(page, 'Depth')).toHaveValue('500')
 })
 
 test('keeps an elevation on its face when its depth is typed: its line moves', async ({ page }) => {
   await planWithElevation(page)
-  await objectRows(page).filter({ hasText: 'Wall line' }).click()
+  await objectRows(page).filter({ hasText: 'North' }).click()
   const depth = field(page, 'Depth')
   await depth.fill('600')
   await depth.press('Enter')
   // Its far side stays on the face at y = 100: the line comes from 1100 to 700.
-  expect((await saved(page)).find((n) => n.type === 'viewline')).toMatchObject({ a: { x: 0, y: 700 }, b: { x: 4000, y: 700 }, depth: 600 })
+  expect((await saved(page)).find((n) => n.type === 'elevation')).toMatchObject({ a: { x: 0, y: 700 }, b: { x: 4000, y: 700 }, depth: 600 })
 })
 
-test('drags an edge of what a view line sees across, as a wall’s face, taken anywhere along it', async ({ page }) => {
+test('drags an edge of what a view sees across, as a wall’s face, taken anywhere along it', async ({ page }) => {
   const at = await planWithElevation(page)
-  await objectRows(page).filter({ hasText: 'Wall line' }).click()
+  await objectRows(page).filter({ hasText: 'North' }).click()
   // The line itself, at y = 1100, taken 1 m from its start and brought 400 nearer the face: the far side stays on it.
   await page.mouse.move(...at(1000, 1100))
   await page.mouse.down()
   await page.mouse.move(...at(1300, 700), { steps: 8 })
   await page.mouse.up()
-  expect((await saved(page)).find((n) => n.type === 'viewline')).toMatchObject({ a: { x: 0, y: 700 }, b: { x: 4000, y: 700 }, depth: 600 })
+  expect((await saved(page)).find((n) => n.type === 'elevation')).toMatchObject({ a: { x: 0, y: 700 }, b: { x: 4000, y: 700 }, depth: 600 })
   // The side at its end, from x = 4000 to 3000: the views show less of the face.
   await page.mouse.move(...at(4000, 400))
   await page.mouse.down()
   await page.mouse.move(...at(3000, 500), { steps: 8 })
   await page.mouse.up()
-  expect((await saved(page)).find((n) => n.type === 'viewline')).toMatchObject({ a: { x: 0, y: 700 }, b: { x: 3000, y: 700 } })
+  expect((await saved(page)).find((n) => n.type === 'elevation')).toMatchObject({ a: { x: 0, y: 700 }, b: { x: 3000, y: 700 } })
 })
 
-test('takes a corner of what a view line sees before the edges meeting there and the corner of the walls beside it', async ({ page }) => {
+test('takes a corner of what a view sees before the edges meeting there and the corner of the walls beside it', async ({ page }) => {
   const at = await planWithElevation(page)
-  await objectRows(page).filter({ hasText: 'Wall line' }).click()
+  await objectRows(page).filter({ hasText: 'North' }).click()
   // Its far corner at the end is on the face at (4000, 100), beside the end of the wall: pressed a few
   // pixels along the far edge from it, it is the corner that is dragged, turning the area about its start.
   const [x, y] = at(4000, 100)
@@ -1160,14 +1185,14 @@ test('takes a corner of what a view line sees before the edges meeting there and
   await page.mouse.move(...at(4000, -900), { steps: 8 })
   await page.mouse.up()
   const nodes = await saved(page)
-  const line = nodes.find((n) => n.type === 'viewline')
+  const line = nodes.find((n) => n.type === 'elevation')
   expect(line).toMatchObject({ a: { x: 0, y: 1100 }, depth: 1000 })
   expect(line.b.y).toBeLessThan(1000)
   // The wall did not move.
   expect(nodes.find((n) => n.type === 'wall')).toMatchObject({ a: { x: 0, y: 0 }, b: { x: 4000, y: 0 } })
 })
 
-test('copies a view as another view of the same line, which stays on the plan', async ({ page }) => {
+test('copies a view alone as another view looking where it did, with no line left apart on the plan', async ({ page }) => {
   await planWithElevation(page)
   await objectRows(page).filter({ hasText: 'North' }).click()
   await page.keyboard.press('Control+c')
@@ -1175,24 +1200,23 @@ test('copies a view as another view of the same line, which stays on the plan', 
   // A paste reads the clipboard first, which takes a moment: what is saved before it lands has one view.
   await expect.poll(async () => (await saved(page)).filter((n) => n.type === 'elevation').length).toBe(2)
   const nodes = await saved(page)
-  expect(nodes.filter((n) => n.type === 'viewline')).toMatchObject([{ id: 'l', a: { x: 0, y: 1100 }, b: { x: 4000, y: 1100 } }])
-  expect(nodes.filter((n) => n.type === 'elevation').map((n) => n.line)).toEqual(['l', 'l'])
+  // Opened from version 3, its line went into it: there is no line node, and both views hold the same line.
+  expect(nodes.some((n) => ['viewline'].includes(n.type))).toBe(false)
+  expect(nodes.filter((n) => n.type === 'elevation').map((n) => [n.a, n.b])).toEqual([
+    [{ x: 0, y: 1100 }, { x: 4000, y: 1100 }],
+    [{ x: 0, y: 1100 }, { x: 4000, y: 1100 }],
+  ])
 })
 
-test('says which line a view is of, and makes it a view of another one picked from the list', async ({ page }) => {
+test('selects a view by its line on the plan, and moves the line across by dragging it there, the view staying where it is drawn', async ({ page }) => {
   const at = await planWithElevation(page)
-  // A second line, drawn with the tool away from the wall: a section across the plan, its view put down below.
-  await page.keyboard.press('Shift+W')
-  await page.mouse.click(...at(500, 2500))
-  await page.mouse.click(...at(3500, 2500))
-  await page.mouse.click(...at(500, 3500))
-  await objectRows(page).filter({ hasText: 'North' }).click()
-  const choice = page.locator('.field', { has: page.locator('span:text-is("View line")') }).locator('.select')
-  await expect(choice).toHaveText('Wall line')
-  await pickIn(page, choice, 'View line 2')
-  const nodes = await saved(page)
-  const other = nodes.find((n) => n.type === 'viewline' && n.id !== 'l')
-  expect(nodes.find((n) => n.id === 'e')).toMatchObject({ line: other.id })
+  // Nothing selected: the line, at y = 1100, pressed 1 m from its start and dragged 300 nearer the face.
+  await page.mouse.move(...at(1000, 1100))
+  await page.mouse.down()
+  await page.mouse.move(...at(1000, 800), { steps: 8 })
+  await page.mouse.up()
+  await expect(objectRows(page).filter({ hasText: 'North' })).toHaveClass(/selected/)
+  expect((await saved(page)).find((n) => n.type === 'elevation')).toMatchObject({ a: { x: 0, y: 800 }, b: { x: 4000, y: 800 }, x: 0, y: 6000 })
 })
 
 test('puts a hob against the wall beside the pointer, its back on the face and its middle under the pointer', async ({ page }) => {
@@ -1247,7 +1271,7 @@ test('makes an elevation look at part of the face by dragging its end along the 
   )
   await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
   const at = await drawingOnScreen(page)
-  await objectRows(page).filter({ hasText: 'Wall line' }).click()
+  await objectRows(page).filter({ hasText: 'North' }).click()
   // Its end at x = 5000, taken by its arrow (20 pixels from the end, where the corner's point is not),
   // dragged back to 3000, a little off the line: it stays on its line, the view still of the face.
   const [ex, ey] = at(5000, 1100)
@@ -1256,7 +1280,7 @@ test('makes an elevation look at part of the face by dragging its end along the 
   const [tx, ty] = at(3000, 1150)
   await page.mouse.move(tx, ty + 20, { steps: 8 })
   await page.mouse.up()
-  expect((await saved(page)).find((n) => n.type === 'viewline')).toMatchObject({ a: { x: 1000, y: 1100 }, b: { x: 3000, y: 1100 } })
+  expect((await saved(page)).find((n) => n.type === 'elevation')).toMatchObject({ a: { x: 1000, y: 1100 }, b: { x: 3000, y: 1100 } })
 })
 
 test('drags an end of a view by its arrow, not only by its point', async ({ page }) => {
@@ -1273,7 +1297,7 @@ test('drags an end of a view by its arrow, not only by its point', async ({ page
   )
   await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
   const at = await drawingOnScreen(page)
-  await objectRows(page).filter({ hasText: 'Wall line' }).click()
+  await objectRows(page).filter({ hasText: 'North' }).click()
   // The arrow at its start stands below the line, in the room it looks from, pointing up at the
   // wall: pressed 20 pixels down it.
   const [x, y] = at(1000, 1100)
@@ -1284,7 +1308,7 @@ test('drags an end of a view by its arrow, not only by its point', async ({ page
   await page.mouse.up()
   // Its view drawn as much further right: what it still shows stays where it was.
   const nodes = await saved(page)
-  expect(nodes.find((n) => n.type === 'viewline')).toMatchObject({ a: { x: 2000, y: 1100 }, b: { x: 5000, y: 1100 } })
+  expect(nodes.find((n) => n.type === 'elevation')).toMatchObject({ a: { x: 2000, y: 1100 }, b: { x: 5000, y: 1100 } })
   expect(nodes.find((n) => n.type === 'elevation')).toMatchObject({ x: 2000 })
 })
 
@@ -1303,7 +1327,7 @@ test('resizes what an elevation sees by a corner of it, a rectangle still', asyn
   )
   await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
   const at = await drawingOnScreen(page)
-  await objectRows(page).filter({ hasText: 'Wall line' }).click()
+  await objectRows(page).filter({ hasText: 'North' }).click()
   // Its far corner at the end, on the face at (5000, 100), dragged with Shift to (4000, 400): it keeps its way, shorter, and seeing 700 deep.
   await page.mouse.move(...at(5000, 100))
   await page.mouse.down()
@@ -1311,13 +1335,13 @@ test('resizes what an elevation sees by a corner of it, a rectangle still', asyn
   await page.mouse.move(...at(4000, 400), { steps: 8 })
   await page.mouse.up()
   await page.keyboard.up('Shift')
-  expect((await saved(page)).find((n) => n.type === 'viewline')).toMatchObject({ a: { x: 1000, y: 1100 }, b: { x: 4000, y: 1100 }, depth: 700 })
+  expect((await saved(page)).find((n) => n.type === 'elevation')).toMatchObject({ a: { x: 1000, y: 1100 }, b: { x: 4000, y: 1100 }, depth: 700 })
   // Without Shift, the same corner dragged 1.5 m further up turns the area about its start, 700 deep still.
   await page.mouse.move(...at(4000, 400))
   await page.mouse.down()
   await page.mouse.move(...at(4000, -1100), { steps: 8 })
   await page.mouse.up()
-  const turned = (await saved(page)).find((n) => n.type === 'viewline')!
+  const turned = (await saved(page)).find((n) => n.type === 'elevation')!
   expect(turned).toMatchObject({ a: { x: 1000, y: 1100 }, depth: 700 })
   expect(turned.b.y).toBeLessThan(1000)
 })
@@ -1365,4 +1389,306 @@ test('links a switch to the lights and the socket it controls by clicking them, 
   // Removing the socket removes the link to it.
   await page.keyboard.press('Delete')
   expect(links(await saved(page))).toEqual([])
+})
+
+test('labels an elevation as a 3D view is: selected and moved by its name, made larger by a corner, with the menu of a view', async ({ page }) => {
+  await planWithElevation(page)
+  const elevation = () => saved(page).then((all) => all.find((n) => n.type === 'elevation')!)
+  const label = page.locator('.view-label .view-frame-name')
+  await expect(label).toHaveText('North')
+  // Its name selects it.
+  await label.click()
+  await expect(objectRows(page).filter({ hasText: 'North' })).toHaveClass(/selected/)
+  // Dragged by its name, it is drawn elsewhere; its line stays on the plan.
+  const before = await elevation()
+  const at = (await label.boundingBox())!
+  await page.mouse.move(at.x + 10, at.y + at.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(at.x + 70, at.y + at.height / 2 + 20, { steps: 6 })
+  await page.mouse.up()
+  const moved = await elevation()
+  expect(moved.x).toBeGreaterThan(before.x)
+  expect(moved.y).toBeGreaterThan(before.y)
+  expect(moved.a).toEqual(before.a)
+  // By its corner, larger, as a share of the plan: the corner across where it was. (Its top
+  // right: its bottom is under the toolbar.)
+  const box = (await page.locator('.view-label').boundingBox())!
+  const corner = (await page.locator('.view-label .view-frame-grip.ne').boundingBox())!
+  await page.mouse.move(corner.x + 5, corner.y + 5)
+  await page.mouse.down()
+  await page.mouse.move(corner.x + 5 + box.width / 2, corner.y + 5 - box.height / 2, { steps: 8 })
+  await page.mouse.up()
+  const larger = await elevation()
+  expect(larger.scale).toBeGreaterThan(1.3)
+  const grown = (await page.locator('.view-label').boundingBox())!
+  expect(grown.x).toBeCloseTo(box.x, -1)
+  expect(grown.y + grown.height).toBeCloseTo(box.y + box.height, -1)
+  expect(grown.width).toBeGreaterThan(box.width * 1.3)
+  // On no sheet, read against 1:100.
+  await expect(field(page, 'Scale')).toHaveValue(String(Math.round(100 / larger.scale)))
+  // By the middle of its right side, it shows more of what it looks at: its line longer at its end,
+  // the view drawn where it was; by its left side, its line starts further back, and so it is drawn.
+  const side = async (grip: 'w' | 'e', dx: number) => {
+    const at = (await page.locator(`.view-label .view-frame-grip.${grip}`).boundingBox())!
+    await page.mouse.move(at.x + 5, at.y + 5)
+    await page.mouse.down()
+    await page.mouse.move(at.x + 5 + dx, at.y + 5, { steps: 6 })
+    await page.mouse.up()
+  }
+  // (Brought into view first: larger, it has gone under the panels.)
+  await label.click()
+  await page.keyboard.press('Shift+1')
+  await side('e', 40)
+  const longer = await elevation()
+  expect(longer.b.x).toBeGreaterThan(larger.b.x)
+  expect(longer.b.y).toBe(larger.b.y)
+  expect(longer).toMatchObject({ a: larger.a, x: larger.x, y: larger.y, scale: larger.scale })
+  await side('w', -40)
+  const wider = await elevation()
+  expect(wider.a.x).toBeLessThan(longer.a.x)
+  expect(wider.b).toEqual(longer.b)
+  // Drawn further left by as much as its line grew at its start, at its scale.
+  expect(wider.x - longer.x).toBeCloseTo((wider.a.x - longer.a.x) * longer.scale, 0)
+  // Its menu, from its name: to where it looks from, to itself, to another page.
+  await label.click({ button: 'right' })
+  const menu = page.locator('.context-menu:not(.submenu)')
+  await expect(menu.getByRole('menuitem', { name: 'Zoom to its line' })).toBeVisible()
+  await expect(menu.getByRole('menuitem', { name: 'Zoom to the view' })).toBeVisible()
+})
+
+test('holds the dimensions drawn on an elevation, in its own coordinates: listed under it, carried and made larger with it', async ({ page }) => {
+  await planWithElevation(page)
+  const box = (await page.locator('.view-label').boundingBox())!
+  // Across the elevation, inside what it draws, from the page: the dimension goes in it.
+  const [y, x0, x1] = [box.y + box.height * 0.3, box.x + box.width * 0.1, box.x + box.width * 0.6]
+  await page.keyboard.press('d')
+  await page.mouse.click(x0, y)
+  await page.mouse.click(x1, y)
+  await page.mouse.click(x1, y + 30)
+  await page.keyboard.press('v')
+  const dimension = () => saved(page).then((all) => all.find((n) => n.type === 'dimension')!)
+  const drawn = await dimension()
+  expect(drawn.parent).toBe('e')
+  // In its coordinates: along its line from its start, up from its floor (negative), in millimetres of the plan.
+  expect(drawn.a.y).toBeLessThan(0)
+  expect(drawn.b.y).toBe(drawn.a.y)
+  // Listed under it, which opens as a group does.
+  const row = objectRows(page).filter({ hasText: 'North' })
+  await row.getByTitle('Show what is inside').click()
+  await expect(objectRows(page).filter({ hasText: /^Dimension$/ })).toHaveCount(1)
+  // Made larger by a corner, the view carries it: the dimension itself does not change.
+  await page.locator('.view-label .view-frame-name').click()
+  const corner = (await page.locator('.view-label .view-frame-grip.ne').boundingBox())!
+  await page.mouse.move(corner.x + 5, corner.y + 5)
+  await page.mouse.down()
+  await page.mouse.move(corner.x + 5 + box.width / 2, corner.y + 5 - box.height / 2, { steps: 8 })
+  await page.mouse.up()
+  expect((await saved(page)).find((n) => n.type === 'elevation')!.scale).toBeGreaterThan(1.3)
+  expect(await dimension()).toEqual(drawn)
+
+  // Gone into by a double-click, as a group: the breadcrumb says so, its labels go, and what is
+  // drawn there goes in it; Escape comes back out, the view where it was on screen.
+  const before = (await page.locator('.view-label').boundingBox())!
+  const inside = { x: before.x + before.width * 0.5, y: before.y + before.height * 0.5 }
+  await page.mouse.dblclick(inside.x, inside.y)
+  await expect(page.locator('.breadcrumb')).toContainText('North')
+  await expect(page.locator('.view-label')).toHaveCount(0)
+  await page.keyboard.press('d')
+  await page.mouse.click(before.x + before.width * 0.2, before.y + before.height * 0.6)
+  await page.mouse.click(before.x + before.width * 0.4, before.y + before.height * 0.6)
+  await page.mouse.click(before.x + before.width * 0.4, before.y + before.height * 0.6 + 30)
+  await page.keyboard.press('v')
+  await expect.poll(async () => (await saved(page)).filter((n) => n.type === 'dimension' && n.parent === 'e').length).toBe(2)
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.view-label')).toHaveCount(1)
+  const after = (await page.locator('.view-label').boundingBox())!
+  expect(after.x).toBeCloseTo(before.x, -1)
+  expect(after.width).toBeCloseTo(before.width, -1)
+})
+
+test('draws the dimensions of an elevation as one of what it holds: its rows chosen in Properties, removed and added back from its menu', async ({ page }) => {
+  await planWithElevation(page)
+  const properties = page.locator('[data-panel="properties"]')
+  // The view's settings: where it is drawn and at what scale, as any geometry; what it looks at; how it is drawn.
+  await page.locator('.view-label .view-frame-name').click()
+  await expect(properties.locator('h3')).toContainText(['Representation', 'Line of view'])
+  // Its scale as a drawing scale, the N of 1:N, read against the sheet it is on: here none, so 1:100.
+  await expect(field(page, 'Scale')).toHaveValue('100')
+  await field(page, 'Scale').fill('1:50')
+  await field(page, 'Scale').press('Enter')
+  await expect.poll(async () => (await saved(page)).find((n) => n.type === 'elevation')!.scale).toBe(2)
+  await expect(field(page, 'Scale')).toHaveValue('50')
+  await field(page, 'Scale').fill('25')
+  await field(page, 'Scale').press('Enter')
+  await expect.poll(async () => (await saved(page)).find((n) => n.type === 'elevation')!.scale).toBe(4)
+  // As large as the plan again: no scale of its own.
+  await field(page, 'Scale').fill('1:100')
+  await field(page, 'Scale').press('Enter')
+  await expect.poll(async () => (await saved(page)).find((n) => n.type === 'elevation')!.scale).toBeUndefined()
+  // One drawing has only one page: no page to choose for its plan.
+  await expect(properties.getByText('Plan on page')).toHaveCount(0)
+  // Its dimensions, under it in the Structure list, chosen there: a row left out is said false.
+  const row = (name: string) => objectRows(page).filter({ hasText: new RegExp(`^${name}$`) })
+  await row('North').getByTitle('Show what is inside').click()
+  await row('Automatic dimensions').click()
+  await expect(properties.locator('h3')).toContainText(['Dimensions drawn'])
+  await properties.getByRole('radiogroup', { name: 'End to end' }).getByRole('radio', { name: 'No' }).click()
+  const dimensions = () => saved(page).then((all) => all.filter((n) => n.type === 'autodimensions'))
+  await expect.poll(async () => (await dimensions())[0]?.overall).toBe(false)
+  // Removed, the view draws none; its menu, out of it, puts them back, all rows shown.
+  await expect(page.locator('.breadcrumb')).toContainText('North')
+  await page.keyboard.press('Delete')
+  await expect.poll(async () => (await dimensions()).length).toBe(0)
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.view-label')).toHaveCount(1)
+  await page.locator('.view-label .view-frame-name').click({ button: 'right' })
+  await page.locator('.context-menu:not(.submenu)').getByText('Add automatic dimensions').click()
+  await expect.poll(async () => (await dimensions()).length).toBe(1)
+  expect((await dimensions())[0]).toMatchObject({ parent: 'e' })
+  expect((await dimensions())[0].overall).toBeUndefined()
+  // Once there, the menu no longer offers them.
+  await page.locator('.view-label .view-frame-name').click({ button: 'right' })
+  await expect(page.locator('.context-menu:not(.submenu)')).not.toContainText('Add automatic dimensions')
+})
+
+test('lights a selected elevation by its outline only, and what it shows once picked in it', async ({ page }) => {
+  const at = await planWithElevation(page)
+  const box = (await page.locator('.view-label').boundingBox())!
+  const plan = (await page.locator('.stage canvas.canvas').boundingBox())!
+  /** How many pixels inside the elevation's drawing, clear of its outline, are of the accent colour (#0d99ff). */
+  const lit = () =>
+    page.evaluate(([x, y, w, h]) => {
+      const canvas = document.querySelector<HTMLCanvasElement>('.stage canvas.canvas')!
+      const scale = canvas.width / canvas.getBoundingClientRect().width
+      const data = canvas.getContext('2d')!.getImageData(Math.round(x * scale), Math.round(y * scale), Math.round(w * scale), Math.round(h * scale)).data
+      let count = 0
+      for (let i = 0; i < data.length; i += 4) if (Math.abs(data[i] - 13) < 40 && Math.abs(data[i + 1] - 153) < 40 && data[i + 2] > 215) count++
+      return count
+    }, [box.x - plan.x + 6, box.y - plan.y + 6, box.width - 12, box.height - 12])
+  await expect.poll(lit).toBe(0)
+  // Selected by its name: its outline is lit, not the socket and the wall it shows.
+  await page.locator('.view-label .view-frame-name').click()
+  await expect(objectRows(page).filter({ hasText: /^North$/ })).toHaveClass(/selected/)
+  await page.waitForTimeout(100)
+  expect(await lit()).toBe(0)
+  // The socket picked in it: lit there, as what is selected is.
+  await page.mouse.click(...at(2000, 5700))
+  await expect(objectRows(page).filter({ hasText: /Socket/ })).toHaveClass(/selected/)
+  await expect.poll(lit).toBeGreaterThan(0)
+})
+
+test('lists the parts of an elevation under it, and opens Properties on its line of view when it is picked by its line', async ({ page }) => {
+  const at = await planWithElevation(page)
+  const properties = page.locator('[data-panel="properties"]')
+  const section = (title: string) => properties.locator('section.section', { has: page.locator('h3', { hasText: new RegExp(`^${title}$`) }) })
+  const row = (name: string) => objectRows(page).filter({ hasText: new RegExp(`^${name}$`) })
+  // Its parts, then what is drawn on it: its line of view and its representation, which are not objects to move or remove.
+  await row('North').getByTitle('Show what is inside').click()
+  await expect(row('Line of view')).toHaveCount(1)
+  await expect(row('Representation')).toHaveCount(1)
+  await expect(row('Automatic dimensions')).toHaveCount(1)
+  // Selected whole, by its row: both its parts are, and Properties shows all of it.
+  await row('North').click()
+  await expect(row('Line of view')).toHaveClass(/selected/)
+  await expect(row('Representation')).toHaveClass(/selected/)
+  await expect(section('Representation')).not.toHaveClass(/folded/)
+  await expect(section('Line of view')).not.toHaveClass(/folded/)
+  // Its line of view picked there: the view selected, that part alone, Properties on its line, the rest folded.
+  await row('Line of view').click()
+  await expect(row('North')).toHaveClass(/selected/)
+  await expect(row('Line of view')).toHaveClass(/selected/)
+  await expect(row('Representation')).not.toHaveClass(/selected/)
+  await expect(section('Line of view')).not.toHaveClass(/folded/)
+  await expect(section('Representation')).toHaveClass(/folded/)
+  // Its representation picked: the other way round.
+  await row('Representation').click()
+  await expect(row('Representation')).toHaveClass(/selected/)
+  await expect(row('Line of view')).not.toHaveClass(/selected/)
+  await expect(section('Representation')).not.toHaveClass(/folded/)
+  await expect(section('Line of view')).toHaveClass(/folded/)
+  // Picked by its line on the plan: the same as by its row.
+  await page.keyboard.press('Escape')
+  await page.mouse.click(...at(1500, 1100))
+  await expect(row('North')).toHaveClass(/selected/)
+  await expect(section('Representation')).toHaveClass(/folded/)
+  await expect(section('Line of view')).not.toHaveClass(/folded/)
+  // By its drawing, it is selected whole.
+  await page.keyboard.press('Escape')
+  await page.locator('.view-label .view-frame-name').click()
+  await expect(row('Line of view')).toHaveClass(/selected/)
+  await expect(row('Representation')).toHaveClass(/selected/)
+  await expect(section('Line of view')).not.toHaveClass(/folded/)
+  // Nothing was removed nor moved by picking its parts.
+  expect((await saved(page)).filter((n) => n.type === 'elevation')).toHaveLength(1)
+})
+
+test('lists an elevation drawn on another page on the page it looks at too, with its parts where each is', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  const plan = drawing(
+    {
+      w: { id: 'w', type: 'wall', parent: 'page_1', layer: 'layer_1', order: 'a1', a: { x: 0, y: 0 }, b: { x: 4000, y: 0 }, thickness: 200 },
+      sheet: { id: 'sheet', type: 'page', parent: null, order: 'a1', name: 'Sheet' },
+      e: { id: 'e', type: 'elevation', parent: 'sheet', layer: 'layer_1', order: 'a1', page: 'page_1', a: { x: 0, y: 1100 }, b: { x: 4000, y: 1100 }, depth: 1000, x: 0, y: 0, name: 'North' },
+    },
+    { version: 6 },
+  )
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
+  // On the plan it looks at: listed first, faint, with the page it is drawn on.
+  const row = (name: RegExp) => objectRows(page).filter({ hasText: name })
+  await expect(objectRows(page).first()).toHaveClass(/foreign-view/)
+  await expect(row(/^North/)).toContainText('Sheet')
+  await row(/^North/).getByTitle('Show what is inside').click()
+  // Its line of view is here; its representation is on the sheet, where a click on it goes.
+  await expect(row(/^Line of view$/)).not.toHaveClass(/elsewhere/)
+  await expect(row(/^Representation/)).toHaveClass(/elsewhere/)
+  await row(/^Line of view$/).click()
+  await expect(row(/^North/)).toHaveClass(/selected/)
+  await row(/^Representation/).click()
+  await expect(page.locator('.view-label')).toHaveCount(1)
+  // On its own page it is listed as anything there, not faint, its line of view now the part elsewhere.
+  await expect(row(/^North/)).not.toHaveClass(/foreign-view/)
+  await expect(row(/^Line of view/)).toHaveClass(/elsewhere/)
+})
+
+test('brings a dimension into an elevation by dropping its row there, and copies one out of it to where the view draws it', async ({ page }) => {
+  await planWithElevation(page)
+  const box = (await page.locator('.view-label').boundingBox())!
+  // A dimension on the page, above the elevation (not on it), between it and the plan.
+  const y = box.y - 70
+  await page.keyboard.press('d')
+  await page.mouse.click(box.x + 20, y)
+  await page.mouse.click(box.x + 200, y)
+  await page.mouse.click(box.x + 200, y + 20)
+  await page.keyboard.press('v')
+  const dimensions = () => saved(page).then((all) => all.filter((n) => n.type === 'dimension'))
+  const [drawn] = await dimensions()
+  expect(drawn.parent).toBe('page_1')
+  const view = (await saved(page)).find((n) => n.type === 'elevation')!
+  // Its row dropped on the elevation's: in it, in its coordinates, seen where it was.
+  const row = (name: string) => objectRows(page).filter({ hasText: new RegExp(`^${name}$`) })
+  const height = (await row('North').boundingBox())!.height
+  await row('Dimension').dragTo(row('North'), { targetPosition: { x: 60, y: height / 2 } })
+  await expect.poll(async () => (await dimensions())[0].parent).toBe('e')
+  const [inside] = await dimensions()
+  expect(inside.a.x).toBeCloseTo(drawn.a.x - view.x, 0)
+  expect(inside.a.y).toBeCloseTo(drawn.a.y - view.y, 0)
+  expect(inside.b.x).toBeCloseTo(drawn.b.x - view.x, 0)
+
+  // Copied from inside the view and pasted in place on the page: where the view draws it.
+  await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2)
+  await expect(page.locator('.breadcrumb')).toContainText('North')
+  await row('Dimension').click()
+  await page.keyboard.press('Control+c')
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.view-label')).toHaveCount(1)
+  await page.keyboard.press('Control+Shift+v')
+  await expect.poll(async () => (await dimensions()).length).toBe(2)
+  const copy = (await dimensions()).find((n) => n.parent === 'page_1')!
+  expect(copy.a.x).toBeCloseTo(drawn.a.x, 0)
+  expect(copy.a.y).toBeCloseTo(drawn.a.y, 0)
 })

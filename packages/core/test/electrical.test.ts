@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import electrical from '../../warehouse/extensions/electrical.json'
-import { applyOps, canControl, controlsOn, createDocument, declarativeExtension, Registry, type Op, type Primitive } from '../src'
+import { applyOps, canControl, controlsOn, createDocument, declarativeExtension, primitiveBounds, Registry, type Op, type Primitive } from '../src'
 
 /* The electrical symbols that ship with the app (packages/warehouse/extensions/electrical.json), drawn in plan and from in front. */
 const registry = new Registry().use(declarativeExtension(electrical))
@@ -115,6 +115,8 @@ describe('the electrical symbols', () => {
     const radiator = registry.parametric.get('elec.radiator')!
     expect(radiator.size).toEqual({ x: 'length' })
     expect(radiator.build({ length: 1000 }, {})).toHaveLength(10)
-    expect(radiator.front!({ length: 600 })).toHaveLength(6)
+    expect(radiator.front!({ length: 600, height: 600 })).toHaveLength(6)
+    // As high as it is made, about its height above the floor: an elevation drags its top.
+    expect(primitiveBounds(radiator.front!({ length: 600, height: 800 })[0])).toMatchObject({ minY: -400, maxY: 400 })
   })
 })

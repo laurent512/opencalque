@@ -1,5 +1,6 @@
 import { arcPoints, type ParametricKind, type Primitive } from '@opencalque/core'
-import { atLeast, clamp, count, HEAVY, HEIGHT, line, LOOSE_WALL, mirrorAcross, mirrorAlong, OTHER_SIDE, outline, pt, THIN, WIDTH } from './shared'
+import { doorSolids, windowSolids } from './openingSolids'
+import { atLeast, clamp, count, HEAVY, HEIGHT, HINGED_WINDOW, hingedRight, LEAVES, line, LOOSE_WALL, mirrorAcross, mirrorAlong, onRails, OTHER_SIDE, outline, pt, THIN, WIDTH, WINDOW_FRAME } from './shared'
 
 /* Doors and windows: openings that cut the wall they are placed on, drawn along +X, the wall's line, and told its thickness. */
 
@@ -13,8 +14,13 @@ const HINGED = ['Single', 'Double']
 const ON_WALL = ['Sliding on wall', 'Double sliding on wall']
 /** Those that slide one way, which `slide` says. */
 const ONE_WAY = ['Sliding on wall', 'Pocket']
-/** How many leaves a sliding glazed door can have. */
-const LEAVES = { min: 2, max: 4 }
+/** How far a glazed sliding door or window is open: its first leaf slid over the next, in per cent of the way. Shut when left out. */
+const OPENED = (shown: (props: Record<string, any>) => boolean) => ({ key: 'opened', label: 'Opened', type: 'number' as const, unit: 'percent' as const, default: 0, shown })
+/**
+ * Which way a door that slides one way goes, or, on rails, which leaf slides: the first to the right
+ * (as before 2.2), or the last to the left (`onRails`).
+ */
+const SLIDES_TO = (shown: (props: Record<string, any>) => boolean) => ({ key: 'slide', label: 'Slides to', type: 'string' as const, default: 'Right', options: ['Left', 'Right'], shown })
 
 /** A rectangle, dashed when it shows where something goes rather than where it is. */
 const box = (x0: number, y0: number, x1: number, y1: number, dash?: number[]): Primitive => ({
@@ -43,14 +49,16 @@ export const door: ParametricKind = {
     { key: 'type', label: 'Type', type: 'string', default: 'Single', options: ['Single', 'Double', ...ON_WALL, 'Pocket', 'Sliding', 'Opening only'] },
     { key: 'hinge', label: 'Hinge', type: 'string', default: 'Left', options: ['Left', 'Right'], shown: ({ type }) => type === 'Single' },
     { key: 'angle', label: 'Open angle', type: 'number', default: 90, unit: 'angle', shown: ({ type }) => HINGED.includes(type) },
-    { key: 'slide', label: 'Slides to', type: 'string', default: 'Right', options: ['Left', 'Right'], shown: ({ type }) => ONE_WAY.includes(type) },
     { key: 'leaves', label: 'Leaves', type: 'number', default: 2, shown: ({ type }) => type === 'Sliding' },
+    OPENED(({ type }) => type === 'Sliding'),
+    SLIDES_TO(({ type }) => ONE_WAY.includes(type) || type === 'Sliding'),
     OTHER_SIDE,
   ],
   opening: ({ width }) => ({ from: 0, to: atLeast(1, width) }),
   size: { x: 'width' },
   sill: 'sillHeight',
-  build({ width, type, hinge, angle, slide, leaves, flip }, env) {
+  solids: doorSolids,
+  build({ width, type, hinge, angle, slide, leaves, opened, flip }, env) {
     const w = atLeast(1, width)
     const h = (env.wallThickness ?? LOOSE_WALL) / 2
     const open = clamp(angle, 5, 180)
@@ -83,17 +91,8 @@ export const door: ParametricKind = {
     } else if (type === 'Sliding') {
       // Its frame at each side, and its leaves on two rails, each overlapping the next.
       const frame = Math.min(50, w / 8)
-      const n = clamp(Math.round(Number(leaves) || LEAVES.min), LEAVES.min, LEAVES.max)
-      const overlap = Math.min(50, (w - 2 * frame) / (2 * n))
-      const length = (w - 2 * frame + (n - 1) * overlap) / n
-      const rail = Math.min(h * 0.4, 30)
-      const t = Math.min(rail * 0.8, 20)
       prims.push(line([pt(frame, -h), pt(frame, h)], THIN), line([pt(w - frame, -h), pt(w - frame, h)], THIN))
-      for (let i = 0; i < n; i++) {
-        const x = frame + i * (length - overlap)
-        const y = i % 2 === 0 ? -rail : rail
-        prims.push(box(x, y - t / 2, x + length, y + t / 2))
-      }
+      for (const leaf of onRails(w, frame, h, leaves, opened, slide)) prims.push(box(leaf.x0, leaf.y - leaf.thick / 2, leaf.x1, leaf.y + leaf.thick / 2))
     }
     if (type === 'Single' && hinge === 'Right') prims = mirrorAlong(prims, w)
     if (ONE_WAY.includes(type) && slide === 'Left') prims = mirrorAlong(prims, w)
@@ -122,6 +121,13 @@ export const door: ParametricKind = {
   },
 }
 
+/**
+ * The kinds of window: 'Casement' and 'Tilt and turn' open on hinges, a leaf for each pane, opened
+ * inside (+Y) by their angle (shut, as before 2.2, at 0); 'Fixed' does not open; 'Sliding' has its
+ * panes as leaves on two rails, as a glazed sliding door has, which a sill at the floor makes one.
+ */
+const WINDOW_TYPES = [...HINGED_WINDOW, 'Fixed', 'Sliding']
+
 export const windowKind: ParametricKind = {
   kind: 'arch.window',
   category: 'architecture',
@@ -129,46 +135,66 @@ export const windowKind: ParametricKind = {
   description: 'Place it on a wall: it cuts the opening and follows the wall. The sill marks the outside.',
   params: [
     { ...WIDTH, default: 1200 },
+    { key: 'type', label: 'Opening', type: 'string', default: 'Casement', options: WINDOW_TYPES },
     { key: 'panes', label: 'Panes', type: 'number', default: 2 },
     { key: 'glazing', label: 'Glazing', type: 'string', default: 'Double', options: ['Single', 'Double', 'Triple'] },
     HEIGHT(1250),
     { key: 'sill', label: 'Sill depth', type: 'number', default: 50, unit: 'length' },
     { key: 'sillHeight', label: 'Sill height', type: 'number', default: 900, unit: 'length' },
+    { key: 'angle', label: 'Open angle', type: 'number', default: 0, unit: 'angle', shown: ({ type }) => HINGED_WINDOW.includes(type) },
+    // Which side the pane left over is hinged on, when they are an odd number: the others open in pairs.
+    { key: 'hinge', label: 'Hinge', type: 'string', default: 'Left', options: ['Left', 'Right'], shown: ({ type, panes }) => HINGED_WINDOW.includes(type) && count(panes) % 2 === 1 },
+    OPENED(({ type }) => type === 'Sliding'),
+    SLIDES_TO(({ type }) => type === 'Sliding'),
     OTHER_SIDE,
   ],
   opening: ({ width }) => ({ from: 0, to: atLeast(1, width) }),
   size: { x: 'width' },
   sill: 'sillHeight',
-  build({ width, panes, glazing, sill, flip }, env) {
+  solids: windowSolids,
+  build({ width, panes, glazing, sill, type, angle, hinge, opened, slide, flip }, env) {
     const w = atLeast(1, width)
     const h = (env.wallThickness ?? LOOSE_WALL) / 2
     const frame = Math.min(50, w / 4)
-    // A line for each pane of glass, evenly across the middle of the wall.
-    const gap = Math.min(h * 0.3, 25)
-    const glass = glazing === 'Triple' ? [-gap, 0, gap] : glazing === 'Double' ? [-gap, gap] : [0]
-    const n = count(panes)
-    const prims: Primitive[] = [
-      line([pt(0, -h), pt(w, -h)]),
-      line([pt(0, h), pt(w, h)]),
-      line([pt(frame, -h), pt(frame, h)], THIN),
-      line([pt(w - frame, -h), pt(w - frame, h)], THIN),
-      ...glass.map((y) => line([pt(frame, y), pt(w - frame, y)], THIN)),
-    ]
-    for (let i = 1; i < n; i++) {
-      const x = frame + ((w - 2 * frame) * i) / n
-      prims.push(line([pt(x, -h), pt(x, h)], THIN))
+    const prims: Primitive[] = [line([pt(0, -h), pt(w, -h)]), line([pt(0, h), pt(w, h)]), line([pt(frame, -h), pt(frame, h)], THIN), line([pt(w - frame, -h), pt(w - frame, h)], THIN)]
+    if (type === 'Sliding') {
+      // Its leaves on two rails, each overlapping the next, as a glazed sliding door's.
+      for (const leaf of onRails(w, frame, h, panes, opened, slide)) prims.push(box(leaf.x0, leaf.y - leaf.thick / 2, leaf.x1, leaf.y + leaf.thick / 2))
+    } else {
+      // A line for each pane of glass, evenly across the middle of the wall.
+      const gap = Math.min(h * 0.3, 25)
+      const glass = glazing === 'Triple' ? [-gap, 0, gap] : glazing === 'Double' ? [-gap, gap] : [0]
+      prims.push(...glass.map((y) => line([pt(frame, y), pt(w - frame, y)], THIN)))
+      const n = count(panes)
+      const each = (w - 2 * frame) / n
+      for (let i = 1; i < n; i++) {
+        const x = frame + ((w - 2 * frame) * i) / n
+        prims.push(line([pt(x, -h), pt(x, h)], THIN))
+      }
+      // Opened, each leaf swung inside from its hinge, on the inner side of its frame, and the arc it goes along.
+      const open = HINGED_WINDOW.includes(type) ? clamp(Number(angle) || 0, 0, 180) : 0
+      if (open > 0) {
+        const y = Math.min(WINDOW_FRAME, 2 * h) / 2
+        for (let i = 0; i < n; i++) {
+          const right = hingedRight(i, n, hinge)
+          const hingePoint = pt(frame + ((w - 2 * frame) * (right ? i + 1 : i)) / n, y)
+          const [shut, swung] = right ? [180, 180 - open] : [0, open]
+          const tip = arcPoints(hingePoint, each, swung, swung, 1)[0]
+          prims.push(line([hingePoint, tip]), line(arcPoints(hingePoint, each, shut, swung), THIN))
+        }
+      }
     }
     if (sill > 0) prims.push(outline([pt(-30, -h), pt(w + 30, -h), pt(w + 30, -h - sill), pt(-30, -h - sill)], THIN))
     return flip ? mirrorAcross(prims) : prims
   },
-  // Seen from in front: from its sill height up, its frame, and a line between each pane.
-  front({ width, height, panes, sillHeight }) {
+  // Seen from in front: from its sill height up, its frame, and a line between each pane, or each leaf of a sliding one.
+  front({ width, height, panes, sillHeight, type }) {
     const w = atLeast(1, width)
     const bottom = -Math.max(0, Number(sillHeight) || 0) || 0
     const top = bottom - atLeast(1, height)
     const frame = Math.min(50, w / 4)
     const prims: Primitive[] = [outline([pt(0, bottom), pt(w, bottom), pt(w, top), pt(0, top)]), outline([pt(frame, bottom - frame), pt(w - frame, bottom - frame), pt(w - frame, top + frame), pt(frame, top + frame)], THIN)]
-    const n = count(panes)
+    const n = type === 'Sliding' ? clamp(count(panes), LEAVES.min, LEAVES.max) : count(panes)
     for (let i = 1; i < n; i++) {
       const x = frame + ((w - 2 * frame) * i) / n
       prims.push(line([pt(x, bottom - frame), pt(x, top + frame)], THIN))

@@ -108,4 +108,19 @@ describe('a rounded path in an extension written as data', () => {
   it('has its four corners when the radius comes to nothing', () => {
     expect(outline({ soft: 0 }).points).toEqual(square(500))
   })
+
+  it('keeps the ends of a path that does not say it is closed', () => {
+    const arch = declarativeExtension({
+      format: 'opencalque-extension',
+      formatVersion: 1,
+      id: 'test.arch',
+      name: 'Arch',
+      version: '1.0.0',
+      objects: [{ kind: 'test.arch', label: 'Arch', params: [], draw: [{ radius: 1000, path: [[0, 0], [50, -30], [100, 0]] }] }],
+    })
+    const [path] = new Registry().use(arch).parametric.get('test.arch')!.build({}, {}) as { points: Vec2[] }[]
+    // Left closed by default, it lost both ends and curled back on itself between them.
+    for (const [p, q] of [[path.points[0], { x: 0, y: 0 }], [path.points.at(-1)!, { x: 100, y: 0 }]]) expect(dist(p, q)).toBeLessThan(1e-6)
+    expect(path.points.slice(1).every((p, i) => p.x > path.points[i].x)).toBe(true)
+  })
 })

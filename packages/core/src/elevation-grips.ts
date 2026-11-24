@@ -1,4 +1,4 @@
-import { elevationHeightOps, elevationMovePatch, lineOf, type ElevationItem } from './elevation'
+import { elevationHeightOps, elevationMovePatch, lineOf, viewScale, type ElevationItem } from './elevation'
 import { add, dist, norm, scale, sub, type Vec2 } from './geometry'
 import { kindOf } from './kinds'
 import type { Op } from './ops'
@@ -6,6 +6,7 @@ import type { Registry } from './registry'
 import { frameGrips, resizeFrame, resizePatch } from './resize'
 import type { Document, Node, NodeOf } from './schema'
 import { dot } from './walls/course'
+import { heightAboveFloor, propsInPlace } from './walls/mount'
 
 /*
  * Editing an object by the sides of the box an elevation draws it in: whatever the object, each side
@@ -28,22 +29,25 @@ const ALONG = Math.SQRT1_2 - 1e-9
  * across the view (+ to the right) for its left or right, up (+) for its top or bottom; the side across
  * stays where it is. Null where that side cannot be dragged.
  */
-export function elevationSideOps(view: Elevation, doc: Document, registry: Registry, item: ElevationItem, side: ElevationSide, delta: number): Op[] | null {
+export function elevationSideOps(view: Elevation, doc: Document, registry: Registry, item: ElevationItem, side: ElevationSide, drawn: number): Op[] | null {
   const node = item.node
+  // Dragged in the drawing, where the view may be drawn larger or smaller than the plan.
+  const s = viewScale(view)
+  const delta = drawn / s
   if (side === 'top') return elevationHeightOps(doc, registry, node, delta)
   if (side === 'bottom') {
     // What is not raised (a door) has a bottom that stays on the floor.
     if (!item.raises) return null
     // No lower than the floor, no higher than 1 mm under its top.
-    const above = view.y - item.box.maxY
-    const tall = item.box.maxY - item.box.minY
+    const above = (view.y - item.box.maxY) / s
+    const tall = (item.box.maxY - item.box.minY) / s
     const dh = Math.min(Math.max(delta, -above), tall - 1)
     // As much shorter, its bottom where it is, then raised by as much: its top comes back where it was.
     const shorter = elevationHeightOps(doc, registry, node, -dh)
     if (!shorter) return null
     const changed = shorter.find((op): op is Extract<Op, { op: 'update_node' }> => op.op === 'update_node' && op.id === node.id)
     const after = (changed ? { ...node, ...changed.patch } : node) as typeof node
-    const raised = elevationMovePatch(view, doc, registry, after, 0, dh)
+    const raised = elevationMovePatch(view, doc, registry, after, 0, dh * s)
     return raised ? [...shorter, { op: 'update_node', id: node.id, patch: raised }] : null
   }
   const line = lineOf(doc, view)
@@ -74,6 +78,33 @@ function sideResize(doc: Document, registry: Registry, node: Node, d: Vec2, way:
   if (Math.abs(dot(norm(sub(handles[1], handles[0])), d)) < ALONG) return null
   const index = dot(sub(handles[1], handles[0]), d) * way > 0 ? 1 : 0
   return kindOf(node).moveHandle!(node, index, add(handles[index], scale(d, delta)), registry, doc)
+}
+
+/**
+ * The lines across an object an elevation draws that can be dragged up and down (its kind's
+ * `splits`: a tall unit's between its sections), as the Y of each in the drawing, from the lowest.
+ */
+export function elevationSplits(view: Elevation, doc: Document, registry: Registry, item: ElevationItem): number[] {
+  const node = item.node
+  const kind = node.type === 'parametric' ? registry.parametric.get(node.kind) : undefined
+  if (node.type !== 'parametric' || !kind?.splits) return []
+  const base = heightAboveFloor(node, registry) ?? 0
+  try {
+    return kind.splits(propsInPlace(doc, node, registry)).map((h) => view.y - (base + h) * viewScale(view))
+  } catch {
+    return []
+  }
+}
+
+/** What dragging the `i`-th of those lines to `y` in the drawing does, as operations (its kind's `moveSplit`); null when it cannot go there. */
+export function elevationSplitOps(view: Elevation, doc: Document, registry: Registry, item: ElevationItem, i: number, y: number): Op[] | null {
+  const node = item.node
+  const kind = node.type === 'parametric' ? registry.parametric.get(node.kind) : undefined
+  if (node.type !== 'parametric' || !kind?.moveSplit) return null
+  const at = (view.y - y) / viewScale(view) - (heightAboveFloor(node, registry) ?? 0)
+  const patch = kind.moveSplit(propsInPlace(doc, node, registry), i, at)
+  // Only what the line changes: a height worked out up to the ceiling stays worked out.
+  return patch ? [{ op: 'update_node', id: node.id, patch: { props: { ...node.props, ...patch } } }] : null
 }
 
 /** The sides of the box an elevation draws an object in that can be dragged (`elevationSideOps`). */

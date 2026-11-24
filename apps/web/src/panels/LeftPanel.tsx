@@ -1,8 +1,8 @@
 import { searchable } from '../search'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
-import { ChevronDown, ChevronRight, Eye, EyeOff, LayoutGrid, List, Lock, LockOpen, Pencil, Plus, Replace, ScanEye, Trash2, Copy } from 'lucide-react'
-import { childrenOf, componentPlacements, componentsOf, layersOf, pagesOf, toSVG, type Document, type Node, type Op, type Variant, colorsOf, colorUses } from '@opencalque/core'
-import { browseInstances, deleteEntry, deleteUnusedComponents, editModel, moveInOrder, duplicatePage, openComponent, placeIn, replaceInstances, stopBrowsing } from '../actions'
+import { Camera, ChevronDown, ChevronRight, Eye, EyeOff, Image, MoveHorizontal, LayoutGrid, List, Lock, LockOpen, Pencil, Plus, Replace, ScanEye, Trash2, Copy } from 'lucide-react'
+import { childrenOf, componentPlacements, componentsOf, layersOf, lookedAt, pagesOf, rootOf, viewsLookingAt, toSVG, type Document, type Node, type NodeOf, type Op, type Variant, colorsOf, colorUses } from '@opencalque/core'
+import { addPage, browseInstances, deleteEntry, deleteUnusedComponents, editModel, moveInOrder, duplicatePage, openComponent, placeIn, replaceInstances, stopBrowsing, zoomToViewMark, zoomToViewPicture } from '../actions'
 import { EntryChoice } from '../EntryChoice'
 import { entryName, entryOf, modelEntry, modelsOf } from '../entries'
 import { parametricPicture } from '../pictures'
@@ -13,7 +13,7 @@ import { msg, t } from '../i18n'
 import { MoreMenu } from '../MoreMenu'
 import { editComponent, showPage } from '../navigation'
 import { setPrefs, usePrefs } from '../prefs'
-import { apply, select, setTool, useStore } from '../store'
+import { apply, select, selectViewPart, setTool, useStore, type ViewPart } from '../store'
 import { EditableText, IconButton, labelOf, TypeIcon } from '../ui'
 import { useWindows } from '../windows'
 import { PanelActions } from '../panelHead'
@@ -139,11 +139,10 @@ function PageRow({ id, count }: { id: string; count: number }) {
 export function Pages() {
   const doc = useStore((s) => s.doc)
   const pages = pagesOf(doc)
-  const add = () => apply([{ op: 'add_node', node: { type: 'page', name: t('Page {n}', { n: pages.length + 1 }) } }])
   return (
     <section className="section untitled">
       <PanelActions>
-        <IconButton title={t('Add page')} onClick={add}>
+        <IconButton title={t('Add page')} onClick={addPage}>
           <Plus size={14} />
         </IconButton>
       </PanelActions>
@@ -353,11 +352,17 @@ const ROW_HEIGHT = 28
 /** Rows drawn beyond those in sight, above and below, so that scrolling shows no gap. */
 const OVERSCAN = 12
 
-/** A row of the Structure list: a node, and how deep in opened groups it is. */
+/** A row of the Structure list: a node, and how deep in opened groups it is; or one of the parts of a view (`part`), under it. */
 interface Line {
   node: Node
   depth: number
+  part?: ViewPart
+  /** A view on another page that looks at the plan of this one: listed here too, its eye or its line being here. */
+  foreign?: boolean
 }
+
+/** Whether a row opens to list what it holds under it: a group, and a view, whose parts are listed under it, then what is drawn on it. */
+const opens = (_doc: Document, node: Node): boolean => node.type === 'group' || node.type === 'elevation' || node.type === 'camera'
 
 /** The rows of the list, topmost first: what is in the container, each opened group followed by what it holds. */
 function linesOf(doc: Document, container: string, open: ReadonlySet<string>): Line[] {
@@ -367,7 +372,19 @@ function linesOf(doc: Document, container: string, open: ReadonlySet<string>): L
     for (let i = children.length - 1; i >= 0; i--) {
       const node = children[i]
       lines.push({ node, depth })
-      if (node.type === 'group' && open.has(node.id)) walk(node.id, depth + 1)
+      if (!opens(doc, node) || !open.has(node.id)) continue
+      // A view is one object, of two parts, which are not objects: listed to be picked, never moved nor removed apart.
+      if (node.type === 'camera' || node.type === 'elevation') lines.push({ node, depth: depth + 1, part: 'line' }, { node, depth: depth + 1, part: 'view' })
+      walk(node.id, depth + 1)
+    }
+  }
+  // On a page, the views of other pages that look at its plan come first, as their eyes and lines
+  // are drawn over it: the same objects as on their own pages, with their parts; what an elevation
+  // holds is drawn with it, on its own page, and listed there only.
+  if (doc.nodes[container]?.type === 'page') {
+    for (const node of viewsLookingAt(doc, container)) {
+      lines.push({ node, depth: 0, foreign: true })
+      if (open.has(node.id)) lines.push({ node, depth: 1, part: 'line', foreign: true }, { node, depth: 1, part: 'view', foreign: true })
     }
   }
   walk(container, 0)
@@ -438,7 +455,8 @@ function ObjectRow({ node, depth, open, toggle, show, twists }: { node: Node; de
         if (!open) show()
       } else placeIn(ids, node.parent!, { id: node.id, after: at === 'above' })
     },
-    node.type === 'group',
+    // A group, or a view (what is dropped in it is brought into its coordinates, `placeInOps`).
+    node.type === 'group' || node.type === 'elevation',
     // A group is not dropped into what it holds.
     (ids) => {
       for (let up = node.parent; up; up = doc.nodes[up]?.parent ?? null) if (ids.includes(up)) return true
@@ -458,7 +476,7 @@ function ObjectRow({ node, depth, open, toggle, show, twists }: { node: Node; de
       }}
       {...handlers}
     >
-      {node.type === 'group' ? (
+      {opens(doc, node) ? (
         <IconButton title={open ? t('Hide what is inside') : t('Show what is inside')} onClick={toggle}>
           {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
         </IconButton>
@@ -486,6 +504,84 @@ function ObjectRow({ node, depth, open, toggle, show, twists }: { node: Node; de
   )
 }
 
+/** What the parts of a view are called, as the sections of Properties that set them: a viewpoint's camera, an elevation's line of view, and the representation of either. */
+const PARTS: Record<'camera' | 'elevation', Record<ViewPart, string>> = {
+  camera: { line: msg('Camera'), view: msg('Representation') },
+  elevation: { line: msg('Line of view'), view: msg('Representation') },
+}
+
+/**
+ * A part of a view, under its row: a click selects the view, Properties opening on that part's
+ * section (`selectViewPart`). Its line on the plan of another page is said so,
+ * faint, with that page's name, and a click there goes to it.
+ */
+function PartRow({ node, part, depth, twists }: { node: NodeOf<'camera' | 'elevation'>; part: ViewPart; depth: number; twists: boolean }) {
+  const doc = useStore((s) => s.doc)
+  const scope = useStore((s) => s.scope)
+  // The view selected whole (by its row, by its picture), both its parts are; picked by one, that one.
+  const chosen = useStore((s) => s.selection.length === 1 && s.selection[0] === node.id && (s.viewPart === null || s.viewPart === part))
+  // Each part is on a page, which may not be the one shown: its line on the page it looks at, its representation on its own.
+  const here = rootOf(doc, scope)?.id
+  const own = rootOf(doc, node.parent)?.id
+  const page = part === 'line' ? lookedAt(doc, node) : own
+  const elsewhere = page && page !== here ? doc.nodes[page] : undefined
+  const pick = () => {
+    if (own === here && node.parent !== scope) editComponent(node.parent!)
+    selectViewPart(node.id, part)
+    if (elsewhere) (part === 'line' ? zoomToViewMark : zoomToViewPicture)()
+  }
+  const Icon = part === 'view' ? Image : node.type === 'camera' ? Camera : MoveHorizontal
+  return (
+    <div
+      className={`row clickable view-part${chosen ? ' selected' : ''}${elsewhere ? ' elsewhere' : ''}`}
+      style={{ paddingLeft: (twists ? 6 : 18) + depth * 14 }}
+      title={elsewhere ? t('On {page}: click to go there', { page: labelOf(doc, elsewhere) }) : undefined}
+      onClick={pick}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        pick()
+        useStore.setState({ contextMenu: { x: e.clientX, y: e.clientY } })
+      }}
+    >
+      {twists && <i className="twist" />}
+      <Icon size={13} className="type-icon" aria-hidden />
+      <span className="view-part-name">{t(PARTS[node.type][part])}</span>
+      {elsewhere && <span className="view-part-page">{labelOf(doc, elsewhere)}</span>}
+    </div>
+  )
+}
+
+/**
+ * A view of another page that looks at the plan of this one, at the top of its list: the same object
+ * as on its own page, whose name says where that is. A click selects it, here, where its eye or its
+ * line is; it is moved in the order of its own page, not here.
+ */
+function ForeignViewRow({ node, open, toggle }: { node: Node; open: boolean; toggle: () => void }) {
+  const doc = useStore((s) => s.doc)
+  const selected = useStore((s) => s.selection.includes(node.id))
+  const own = rootOf(doc, node.parent)
+  return (
+    <div
+      className={`row clickable foreign-view${selected ? ' selected' : ''}`}
+      style={{ paddingLeft: 6 }}
+      title={own ? t('Drawn on {page}, looking at the plan of this page', { page: labelOf(doc, own) }) : undefined}
+      onClick={() => select([node.id])}
+      onContextMenu={(e) => {
+        e.preventDefault()
+        if (!selected) select([node.id])
+        useStore.setState({ contextMenu: { x: e.clientX, y: e.clientY } })
+      }}
+    >
+      <IconButton title={open ? t('Hide what is inside') : t('Show what is inside')} onClick={toggle}>
+        {open ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+      </IconButton>
+      <TypeIcon node={node} />
+      <span className="view-part-name">{labelOf(doc, node)}</span>
+      {own && <span className="view-part-page">{labelOf(doc, own)}</span>}
+    </div>
+  )
+}
+
 /**
  * What is on the page (or in the component or group) being edited, topmost first. Only the rows in
  * sight are laid out, in a list as tall as all of them: a drawing imported from a DXF can hold
@@ -498,7 +594,7 @@ export function Objects() {
   const selection = useStore((s) => s.selection)
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set())
   const lines = useMemo(() => linesOf(doc, scope, open), [doc, scope, open])
-  const twists = useMemo(() => lines.some((line) => line.node.type === 'group'), [lines])
+  const twists = useMemo(() => lines.some((line) => opens(doc, line.node)), [lines, doc])
   const latest = useRef(lines)
   latest.current = lines
   const list = useRef<HTMLDivElement>(null)
@@ -555,9 +651,15 @@ export function Objects() {
     <section className="section untitled">
       {lines.length === 0 && <p className="hint">{t('Nothing drawn yet')}</p>}
       <div ref={list} style={{ height: lines.length * ROW_HEIGHT, paddingTop: from * ROW_HEIGHT, boxSizing: 'border-box' }}>
-        {lines.slice(from, to).map((line) => (
-          <ObjectRow key={line.node.id} node={line.node} depth={line.depth} open={open.has(line.node.id)} toggle={toggle(line.node.id)} show={() => setOpen((was) => new Set([...was, line.node.id]))} twists={twists} />
-        ))}
+        {lines.slice(from, to).map((line) =>
+          line.part ? (
+            <PartRow key={`${line.node.id}:${line.part}`} node={line.node as NodeOf<'camera' | 'elevation'>} part={line.part} depth={line.depth} twists={twists} />
+          ) : line.foreign ? (
+            <ForeignViewRow key={`${line.node.id}:here`} node={line.node} open={open.has(line.node.id)} toggle={toggle(line.node.id)} />
+          ) : (
+            <ObjectRow key={line.node.id} node={line.node} depth={line.depth} open={open.has(line.node.id)} toggle={toggle(line.node.id)} show={() => setOpen((was) => new Set([...was, line.node.id]))} twists={twists} />
+          ),
+        )}
       </div>
     </section>
   )

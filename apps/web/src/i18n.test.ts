@@ -56,6 +56,12 @@ describe('translations', () => {
       const shown = [...registry.parametric.values()].flatMap((k) => [k.label, k.description, ...k.params.flatMap((p) => [p.label, ...(p.options ?? [])])])
       const texts = [...shown, ...[...registry.commands.values()].map((c) => c.title)].filter((x): x is string => Boolean(x))
       expect(texts.filter((text) => !(text in registry.translations[code]))).toEqual([])
+      // The fields of the rows of a list (a tall unit's sections): a choice said as "Field: Value", or as its word.
+      const lists = [...registry.parametric.values()].flatMap((k) => k.params.filter((p) => p.type === 'list'))
+      const rows = lists.flatMap((p) => p.items ?? [])
+      const said = (text: string) => text in registry.translations[code]
+      const words = [...lists.flatMap((p) => [p.adding, p.toggle?.label]), ...rows.flatMap((item) => [item.label, ...(item.options ?? []).filter((option) => !said(`${item.label}: ${option}`))])]
+      expect(words.filter((text): text is string => !!text && !said(text))).toEqual([])
     })
   }
 

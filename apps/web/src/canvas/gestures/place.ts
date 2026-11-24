@@ -86,11 +86,11 @@ const sectionDown: Press = (c, e, _at, world) => {
   setTool('place', { ...viewPlacing(s.doc, { a: from, b: p }, t('Section {n}', { n: String(count(s.doc, 'elevation') + 1) })), sided: true })
 }
 
-const count = (doc: Document, type: 'elevation' | 'viewline') => Object.values(doc.nodes).filter((n) => n.type === type).length
+const count = (doc: Document, type: 'elevation') => Object.values(doc.nodes).filter((n) => n.type === type).length
 
-/** A view to put down, named `name`, with a new line, seen from it as it says, named in turn. */
-function viewPlacing(doc: Document, line: { a: Vec2; b: Vec2; depth?: number }, name: string): Extract<Placing, { type: 'elevation' }> {
-  return { type: 'elevation', name, lineId: newId(), line: { type: 'viewline', ...line, name: t('View line {n}', { n: String(count(doc, 'viewline') + 1) }) } }
+/** A view to put down, named `name`, holding its line, seen from it as it says. */
+function viewPlacing(_doc: Document, line: { a: Vec2; b: Vec2; depth?: number }, name: string): Extract<Placing, { type: 'elevation' }> {
+  return { type: 'elevation', name, line }
 }
 
 /** The section line drawn so far, from where it starts to the pointer. */
@@ -194,12 +194,11 @@ export const toolHover: Move<'idle'> = (c, _g, e, _at, world, out) => {
         : s.placing.type === 'table'
           ? { ...upright, ...s.placing.table }
           : s.placing.type === 'elevation'
-            ? { ...upright, type: 'elevation', line: s.placing.lineId, name: s.placing.name }
+            ? { ...upright, type: 'elevation', ...(s.placing.sided ? facing(s.placing.line, target.p) : s.placing.line), name: s.placing.name }
             : { ...common, type: 'instance', component: library ? library.id : s.placing.component }
-    // A view comes with its line, on the plan.
-    const line: Op[] =
-      s.placing.type === 'elevation' ? [{ op: 'add_node', node: { ...(s.placing.sided ? facing(s.placing.line, target.p) : s.placing.line), id: s.placing.lineId, parent: s.scope, ...layerHere(s) } }] : []
-    out.previewed = preview([...(library?.ops ?? []), ...line, { op: 'add_node', node }])
+    // A view comes with its automatic dimensions, what it holds: one may remove them.
+    const held: Op[] = s.placing.type === 'elevation' ? [{ op: 'add_node', node: { type: 'autodimensions', id: `${c.placed}_dimensions`, parent: c.placed, ...layerHere(s) } as NodeInput }] : []
+    out.previewed = preview([...(library?.ops ?? []), { op: 'add_node', node }, ...held])
   } else if (TWO_POINT.includes(s.tool) || s.tool === 'measure' || s.tool === 'angle' || ((s.tool === 'rotate' || s.tool === 'move') && s.selection.length > 0)) {
     out.marker = snap(c, world, e, []).marker
   } else if (s.tool === 'connect') {

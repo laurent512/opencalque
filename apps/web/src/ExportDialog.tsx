@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { FileText, Image as Picture, LoaderCircle, PenTool, Ruler, Table2, type LucideIcon } from 'lucide-react'
-import { pagesOf, pdfFontCharacters } from '@opencalque/core'
+import { pagesOf, pdfFontCharacters, rootOf } from '@opencalque/core'
 import { exportDxf, exportPdf, exportPng, exportQuantities, exportSvg, PNG_SIZES, type PdfExportStage } from './actions'
-import { language, msg, t } from './i18n'
+import { language, msg, t, tn } from './i18n'
 import { preparePdfFonts } from './pdfFonts'
+import { setPrefs, usePrefs } from './prefs'
 import { registry } from './extensions'
 import { apply, useStore } from './store'
-import { Field, labelOf } from './ui'
+import { Field, labelOf, Tabs } from './ui'
 import { useWindows } from './windows'
 import { Select } from './Select'
 
@@ -29,8 +30,10 @@ const FORMATS: [Format, string, string, LucideIcon][] = [
 ]
 
 /**
- * The one place a drawing is exported from: choose the format, then what goes in it. A PDF is
- * made of papers, one page each; an SVG, a PNG or a DXF holds one page of the drawing.
+ * The one place a drawing is exported from: choose the format, then what goes in it, then how. A
+ * PDF is made of papers, one page each; an SVG, a PNG or a DXF holds one page of the drawing, or
+ * what was selected when it opened, alone. Opened for the selection (Export the selection…, on a
+ * right-click), it starts on it: papers as a PDF of their sheets, anything else as a picture of it.
  */
 export function ExportDialog() {
   const open = useWindows((s) => s.exportOpen)
@@ -41,18 +44,36 @@ export function ExportDialog() {
   const [pixels, setPixels] = useState(PNG_SIZES[1])
   const [chosen, setChosen] = useState<string[]>([])
   const [from, setFrom] = useState(page)
+  // What was selected when it opened, and where: exported alone when asked.
+  const [what, setWhat] = useState<'page' | 'selection'>('page')
+  const [only, setOnly] = useState<string[]>([])
+  const [within, setWithin] = useState(page)
   const [progress, setProgress] = useState<PdfExportStage | null>(null)
+  const marks = usePrefs((s) => s.exportMarks)
   const running = useRef<AbortController | null>(null)
   const box = useRef<HTMLDivElement>(null)
 
   const pages = pagesOf(doc)
-  const papers = pages.flatMap((p) => Object.values(doc.nodes).filter((node) => node.type === 'paper' && node.parent === p.id))
-  // Opened afresh each time: the papers that are selected, or all of them, and the page in view.
+  // Each page's papers, those in groups too.
+  const papers = pages.flatMap((p) => Object.values(doc.nodes).filter((node) => node.type === 'paper' && rootOf(doc, node.parent)?.id === p.id))
+  // Opened afresh each time: the papers that are selected, or all of them, and the page in view;
+  // for the selection, on it.
   useEffect(() => {
     if (!open) return
     const picked = papers.filter((paper) => selection.includes(paper.id)).map((paper) => paper.id)
     setChosen(picked.length > 0 ? picked : papers.map((paper) => paper.id))
     setFrom(page)
+    const objects = selection.filter((id) => doc.nodes[id])
+    setOnly(objects)
+    setWithin(useStore.getState().scope)
+    const asked = useWindows.getState().exportSelection && objects.length > 0
+    if (asked && objects.every((id) => doc.nodes[id].type === 'paper')) {
+      setFormat('pdf')
+      setWhat('page')
+    } else if (asked) {
+      setFormat((was) => (was === 'pdf' || was === 'csv' ? 'png' : was))
+      setWhat('selection')
+    } else setWhat('page')
     box.current?.focus()
   }, [open])
   // A PDF that needs a font gets it loading now, while the papers are chosen: the Chinese one is large.
@@ -63,6 +84,9 @@ export function ExportDialog() {
 
   if (!open) return null
   const ready = format !== 'pdf' || chosen.length > 0
+  // The selection is offered for a picture or a DXF; a PDF is of sheets, a table of a page.
+  const offersSelection = only.length > 0 && format !== 'pdf' && format !== 'csv'
+  const selected = offersSelection && what === 'selection'
   const exported = doc.nodes[from]
   const height = exported?.type === 'page' ? exported.wallHeight : undefined
   const exporting = progress !== null
@@ -76,9 +100,11 @@ export function ExportDialog() {
     if (running.current || !ready) return
     if (format !== 'pdf') {
       close()
-      if (format === 'svg') await exportSvg(from)
-      else if (format === 'png') await exportPng(from, pixels)
-      else if (format === 'dxf') await exportDxf(from)
+      const alone = selected ? only : undefined
+      const of = selected ? within : from
+      if (format === 'svg') await exportSvg(of, alone)
+      else if (format === 'png') await exportPng(of, pixels, alone)
+      else if (format === 'dxf') await exportDxf(of, alone)
       else await exportQuantities(from)
       return
     }
@@ -126,62 +152,92 @@ export function ExportDialog() {
           ))}
         </div>
         <fieldset className="export-options" disabled={exporting}>
-          {format === 'pdf' ? (
-            papers.length === 0 ? (
-              <p className="hint">{t('Add a paper first (F): it sets the size and the scale of the printed sheet.')}</p>
+          {/* What goes in it: the sheets of a PDF, or a page or the selection. */}
+          <section className="export-section">
+            {format === 'pdf' ? (
+              papers.length === 0 ? (
+                <p className="hint">{t('Add a paper first (F): it sets the size and the scale of the printed sheet.')}</p>
+              ) : (
+                <>
+                  <h3>
+                    {t('Sheets')}
+                    <button className="text-button" onClick={() => setChosen(chosen.length === papers.length ? [] : papers.map((paper) => paper.id))}>
+                      {chosen.length === papers.length ? t('Untick all') : t('Tick all')}
+                    </button>
+                  </h3>
+                  {papers.map((paper) => (
+                    <label key={paper.id} className="pref-row">
+                      <input type="checkbox" checked={chosen.includes(paper.id)} onChange={(e) => setChosen(e.target.checked ? [...chosen, paper.id] : chosen.filter((id) => id !== paper.id))} />
+                      {labelOf(doc, paper)}
+                      <span className="faint">
+                        1:{paper.type === 'paper' ? (paper.scale ?? 100) : ''}
+                        {pages.length > 1 && rootOf(doc, paper.parent) ? ` · ${labelOf(doc, rootOf(doc, paper.parent)!)}` : ''}
+                      </span>
+                    </label>
+                  ))}
+                </>
+              )
             ) : (
               <>
-                <h3>
-                  {t('Sheets')}
-                  <button className="text-button" onClick={() => setChosen(chosen.length === papers.length ? [] : papers.map((paper) => paper.id))}>
-                    {chosen.length === papers.length ? t('Untick all') : t('Tick all')}
-                  </button>
-                </h3>
-                {papers.map((paper) => (
-                  <label key={paper.id} className="pref-row">
-                    <input type="checkbox" checked={chosen.includes(paper.id)} onChange={(e) => setChosen(e.target.checked ? [...chosen, paper.id] : chosen.filter((id) => id !== paper.id))} />
-                    {labelOf(doc, paper)}
-                    <span className="faint">
-                      1:{paper.type === 'paper' ? (paper.scale ?? 100) : ''}
-                      {pages.length > 1 && paper.parent ? ` · ${labelOf(doc, doc.nodes[paper.parent])}` : ''}
-                    </span>
+                <h3>{t('What is exported')}</h3>
+                {offersSelection && (
+                  <Tabs
+                    label={t('What is exported')}
+                    value={what}
+                    options={[
+                      { value: 'page', label: t('A page') },
+                      { value: 'selection', label: tn(only.length, 'The selection ({n} object)', 'The selection ({n} objects)') },
+                    ]}
+                    onChange={setWhat}
+                  />
+                )}
+                {!selected && (
+                  <label className="pref-field">
+                    <span>{t('Page')}</span>
+                    <Select value={from} onChange={setFrom} options={pages.map((p) => ({ value: p.id, label: labelOf(doc, p) }))} />
                   </label>
-                ))}
+                )}
               </>
-            )
-          ) : (
-            <label className="pref-field">
-              <span>{t('Page')}</span>
-              <Select value={from} onChange={setFrom} options={pages.map((p) => ({ value: p.id, label: labelOf(doc, p) }))} />
-            </label>
-          )}
-          {format === 'png' && (
-            <label className="pref-field">
-              <span>{t('Size')}</span>
-              <Select value={String(pixels)} onChange={(size) => setPixels(Number(size))} options={PNG_SIZES.map((size) => ({ value: String(size), label: t('{n} pixels on its longer side', { n: size }) }))} />
-            </label>
-          )}
-          {format === 'dxf' && <p className="hint">{t('Fills, line weights and pictures are not carried over to a DXF.')}</p>}
-          {format === 'csv' && (
-            <>
-              {/* Kept on the page: it is asked once, and a wall that stands higher or lower says so itself. */}
-              <Field
-                label={t('Wall height')}
-                numeric
-                length
-                optional
-                min={1}
-                value={height ?? ''}
-                placeholder={t('not given')}
-                onCommit={(value: number | undefined) => apply([{ op: 'update_node', id: from, patch: { wallHeight: value && value > 0 ? value : null } }])}
-              />
-              <p className="hint">
-                {height
-                  ? t('Each wall is measured along its middle line. The area of its face is its length by this height, less its doors and windows.')
-                  : t('Without a height, walls are given by their length and the ground they stand on. Give one to get the area of their faces, less doors and windows.')}
-              </p>
-            </>
-          )}
+            )}
+          </section>
+          {/* How: what each format can be asked for. */}
+          <section className="export-section">
+            <h3>{t('Options')}</h3>
+            {format === 'png' && (
+              <label className="pref-field">
+                <span>{t('Size')}</span>
+                <Select value={String(pixels)} onChange={(size) => setPixels(Number(size))} options={PNG_SIZES.map((size) => ({ value: String(size), label: t('{n} pixels on its longer side', { n: size }) }))} />
+              </label>
+            )}
+            {format !== 'csv' && (
+              // Drawn on the plan to work with, left out of what is printed unless asked for.
+              <label className="pref-row" title={t('The eye of each viewpoint and the line each elevation or section is taken from, as they are drawn on the plan to work with.')}>
+                <input type="checkbox" checked={marks} onChange={(e) => setPrefs({ exportMarks: e.target.checked })} />
+                {t('Viewpoints and view lines')}
+              </label>
+            )}
+            {format === 'dxf' && <p className="hint">{t('Fills, line weights and pictures are not carried over to a DXF.')}</p>}
+            {format === 'csv' && (
+              <>
+                {/* Kept on the page: it is asked once, and a wall that stands higher or lower says so itself. */}
+                <Field
+                  label={t('Wall height')}
+                  numeric
+                  length
+                  optional
+                  min={1}
+                  value={height ?? ''}
+                  placeholder={t('not given')}
+                  note={
+                    height
+                      ? t('Each wall is measured along its middle line. The area of its face is its length by this height, less its doors and windows.')
+                      : t('Without a height, walls are given by their length and the ground they stand on. Give one to get the area of their faces, less doors and windows.')
+                  }
+                  onCommit={(value: number | undefined) => apply([{ op: 'update_node', id: from, patch: { wallHeight: value && value > 0 ? value : null } }])}
+                />
+              </>
+            )}
+          </section>
         </fieldset>
         {progress && (
           <div className="export-progress" role="status" aria-live="polite" aria-atomic="true">

@@ -1,7 +1,7 @@
 import { useWindows } from '../windows'
 import { stopBrowsing } from '../actions/instances'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { type NodeOf, type Primitive, depthOf, dist, elevationItemsOf, elevationSides, lineOf, rootOf, seenArea, shownInElevations, viewsOf, gridlineBubbles, wallEndState, boundsFrame, buildScene, connectedWalls, frameContains, frameGrips, hitTest, kindOf, modifierKind, modifierParams, newId, placedScene, resizeFrame, rotate, sceneBounds, turnedBox, wallEdgeLines, wallLength, wallMiddle } from '@opencalque/core'
+import { type NodeOf, type Primitive, depthOf, dist, elevationItemsOf, elevationSides, elevationSplits, lookedAt, viewScale, rootOf, seenArea, shownInElevations, gridlineBubbles, wallEndState, boundsFrame, buildScene, connectedWalls, frameContains, frameGrips, hitTest, kindOf, modifierKind, modifierParams, newId, placedScene, resizeFrame, sceneAfterViewpoints, rotate, sceneBounds, turnedBox, wallEdgeLines, wallLength, wallMiddle } from '@opencalque/core'
 import { t } from '../i18n'
 import { finishTextEdit, zoomToFit } from '../actions'
 import { commandFor, onCommand } from '../commands'
@@ -15,6 +15,7 @@ import { formatLength, formatNumber, unitSuffix } from '../units'
 import { toWorld } from '../view'
 import { trackedPoints } from './aim'
 import { DARK_AROUND_CANVAS, DARK_CANVAS, drawScene, LIGHT_CANVAS, MAX_LINKED_WALLS, onPictureReady, onRepaint, type Overlay, type SizeLabel, type WallLinks } from './draw'
+import { framesOf } from '../perspective/seen'
 import { drawing } from './drawing'
 import { TURNING, type Gesture, type PointerAt } from './gesture'
 import { DRAW_PRESS, MOVES, PRESSES, RELEASES } from './gestures'
@@ -75,7 +76,15 @@ export function CanvasView() {
   }, [])
 
   const extensionsVersion = useExtensions((s) => s.version)
-  const scene = useMemo(() => buildScene(doc, scope, registry), [doc, scope, extensionsVersion])
+  // Built anew for each drawing, but for one where only viewpoints changed: dragging the view of one changes it at every step.
+  const built = useRef<{ doc: typeof doc; scope: string; version: number; scene: ReturnType<typeof buildScene> } | null>(null)
+  const scene = useMemo(() => {
+    const last = built.current
+    const kept = last && last.scope === scope && last.version === extensionsVersion ? sceneAfterViewpoints(last.doc, last.scene, doc, scope, registry) : null
+    const made = kept ?? buildScene(doc, scope, registry)
+    built.current = { doc, scope, version: extensionsVersion, scene: made }
+    return made
+  }, [doc, scope, extensionsVersion])
   // A component being edited is drawn as it is where it is placed, its unfilled shapes backed with white.
   const shown = useMemo(() => placedScene(doc, scope, scene), [doc, scope, scene])
   // Inside a group or a component, the rest of the drawing faded around it, as the preferences say.
@@ -91,8 +100,10 @@ export function CanvasView() {
 
   const handles = useMemo(() => {
     const node = selection.length === 1 ? doc.nodes[selection[0]] : undefined
-    return node && !lockedAmong(doc, selection) ? (kindOf(node).handles?.(node, registry, doc) ?? []) : []
-  }, [doc, selection])
+    // A view's handles are on the plan it looks at, wherever the view is shown: there only.
+    const elsewhere = (node?.type === 'elevation' || node?.type === 'camera') && lookedAt(doc, node) !== rootOf(doc, scope)?.id
+    return node && !elsewhere && !lockedAmong(doc, selection) ? (kindOf(node).handles?.(node, registry, doc) ?? []) : []
+  }, [doc, selection, scope])
 
   /**
    * What the ends of the selected walls are joined to, shown on them: a corner is a place where
@@ -150,41 +161,36 @@ export function CanvasView() {
     if ((node?.type !== 'parametric' && node?.type !== 'instance') || lockedAmong(doc, selection)) return []
     return elevationItemsOf(doc, registry, node.id)
       .filter(({ view }) => scene.some((item) => item.id === view.id && !item.locked))
-      .map(({ view, item }) => ({ view, item, sides: elevationSides(view, doc, registry, item) }))
-      .filter(({ sides }) => sides.length > 0)
+      .map(({ view, item }) => ({ view, item, sides: elevationSides(view, doc, registry, item), splits: elevationSplits(view, doc, registry, item) }))
+      .filter(({ sides, splits }) => sides.length > 0 || splits.length > 0)
   }, [doc, selection, tool, scene, extensionsVersion])
-  // The view lines selected, or those of the views selected, when on this page: what they see, up to
-  // their depth, and where their start and end are on each view of them on this page, over its top
-  // at its left and right. The one the pointer is on, not selected, shows what it sees faintly.
+  // The lines of the views selected, when on the plan of this page: what they see, up to their
+  // depth, and where their start and end are on the view, if it is on this page, over its top at
+  // its left and right. The one the pointer is on, not selected, shows what it sees faintly.
   const viewHover = overlay.viewHover
   const viewLines = useMemo(() => {
     const here = rootOf(doc, scope)?.id
-    const lines = new Map<string, NodeOf<'viewline'>>()
     const lineFor = (id: string) => {
       const node = doc.nodes[id]
-      const line = node?.type === 'viewline' ? node : node?.type === 'elevation' ? lineOf(doc, node) : null
-      return line && rootOf(doc, line.parent)?.id === here ? line : null
+      return node?.type === 'elevation' && lookedAt(doc, node) === here ? node : null
     }
-    for (const id of selection) {
-      const line = lineFor(id)
-      if (line) lines.set(line.id, line)
-    }
+    const views = selection.flatMap((id) => lineFor(id) ?? [])
     const pointed = viewHover ? lineFor(viewHover) : null
-    const faint = pointed && !lines.has(pointed.id) ? [{ a: pointed.a, b: pointed.b, area: seenArea(pointed), faint: true }] : []
-    return [...faint, ...[...lines.values()].map((line) => ({
-      a: line.a,
-      b: line.b,
-      area: seenArea(line),
-      back: t('Back · {depth}', { depth: formatLength(depthOf(line)) }),
-      marks: viewsOf(doc, line.id).flatMap((view) => {
-        const item = scene.find((one) => one.id === view.id)
-        const box = item ? sceneBounds([item]) : null
-        return box ? [{ start: { x: view.x, y: box.minY }, end: { x: view.x + dist(line.a, line.b), y: box.minY } }] : []
-      }),
-    }))]
+    const faint = pointed && !views.includes(pointed) ? [{ a: pointed.a, b: pointed.b, area: seenArea(pointed), faint: true }] : []
+    return [...faint, ...views.map((view) => {
+      const item = scene.find((one) => one.id === view.id)
+      const box = item ? sceneBounds([item]) : null
+      return {
+        a: view.a,
+        b: view.b,
+        area: seenArea(view),
+        back: t('Back · {depth}', { depth: formatLength(depthOf(view)) }),
+        marks: box ? [{ start: { x: view.x, y: box.minY }, end: { x: view.x + dist(view.a, view.b) * viewScale(view), y: box.minY } }] : [],
+      }
+    })]
   }, [doc, selection, scene, scope, viewHover])
-  // A view line's ends are dragged by their arrows, and the edges of what it sees anywhere along them: only its corners are drawn as points.
-  const drawnHandles = useMemo(() => (selection.length === 1 && doc.nodes[selection[0]]?.type === 'viewline' ? handles.slice(3, 7) : handles), [handles, selection, doc])
+  // A view's line ends are dragged by their arrows, and the edges of what it sees anywhere along them: only its corners are drawn as points.
+  const drawnHandles = useMemo(() => (selection.length === 1 && doc.nodes[selection[0]]?.type === 'elevation' && handles.length === 10 ? handles.slice(3, 7) : handles), [handles, selection, doc])
   const selectionLabels = useMemo((): SizeLabel[] => {
     const node = tool === 'select' && selection.length === 1 ? doc.nodes[selection[0]] : undefined
     if (node?.type === 'paper') return paperLabel(node)
@@ -294,11 +300,23 @@ export function CanvasView() {
   }, [doc.id, sized])
 
   // What is painted: while a text is typed in place, without that text. Kept from one paint to the
-  // next, so that the painter can keep the drawing it painted from it (`drawScene`).
-  const drawnScene = useMemo(
-    () => (editingId ? shown.map((item) => (item.id === editingId ? { ...item, prims: withoutTyped(item.prims, editingBubble) } : item)) : shown),
-    [shown, editingId, editingBubble],
-  )
+  // next, so that the painter can keep the drawing it painted from it (`drawScene`). Each viewpoint
+  // of the page paints the picture of its view in its frame, where it is in the stacking order, a
+  // white sheet under it: what is stacked over it in Structure shows over it (`viewPictures`).
+  const drawnScene = useMemo(() => {
+    const typed = editingId ? shown.map((item) => (item.id === editingId ? { ...item, prims: withoutTyped(item.prims, editingBubble) } : item)) : shown
+    const cameras = typed.filter((item) => item.node.type === 'camera' && !item.foreign)
+    if (cameras.length === 0) return typed
+    const frames = framesOf(doc, cameras.map((item) => item.node as NodeOf<'camera'>))
+    return typed.map((item) => {
+      const frame = item.node.type === 'camera' && !item.foreign ? frames.get(item.id) : undefined
+      if (!frame) return item
+      const sheet: Primitive = { kind: 'path', points: [{ x: frame.x, y: frame.y }, { x: frame.x + frame.width, y: frame.y }, { x: frame.x + frame.width, y: frame.y + frame.height }, { x: frame.x, y: frame.y + frame.height }], closed: true, fill: '#ffffff', stroke: 'none', screen: true }
+      const picture: Primitive = { kind: 'image', x: frame.x, y: frame.y, width: frame.width, height: frame.height, href: `view:${item.id}`, screen: true }
+      // What it keeps for printing (its picture, `picture`) is not shown: the view is drawn live; its eye is.
+      return { ...item, prims: [sheet, picture, ...item.prims.filter((p) => p.screen)] }
+    })
+  }, [shown, editingId, editingBubble, doc])
 
   useEffect(() => {
     const canvas = canvasRef.current!
@@ -308,7 +326,7 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette, around, grid)
+    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), inViewSplits: inViewGrips.flatMap(({ item, splits }) => splits.map((y) => ({ box: item.box, y }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines }, showGrid, palette, around, grid)
   }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, grid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines, inViews, inViewGrips, viewLines, drawnHandles])
 
   // Lets the quick bar finish the shape in progress with the sizes typed there.
@@ -434,6 +452,8 @@ export function CanvasView() {
       const whole = run.every((id) => s.selection.includes(id)) && s.selection.length === run.length
       select(whole ? connectedWalls(s.doc, hit.node, true) : run)
     } else if (hit?.node.type === 'instance') editComponent(hit.node.component, hit.node)
+    // Into a view, to draw and change its dimensions and notes, in its own coordinates.
+    else if (hit?.node.type === 'elevation' && hit.id === hit.node.id) editComponent(hit.id)
     else if (hit?.node.type === 'group') {
       // Into the innermost group there, with what was double-clicked in it selected: a door seen
       // through groups in groups is picked up in one double-click, and Esc climbs out a group at a

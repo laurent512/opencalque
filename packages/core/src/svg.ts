@@ -1,6 +1,6 @@
 import { parseColor } from './colors'
 import type { Bounds } from './geometry'
-import { buildScene, paintOrder, sceneBounds, type PaintStep } from './scene'
+import { buildScene, paintOrder, printedScene, sceneBounds, type PaintStep } from './scene'
 import type { Registry } from './registry'
 import type { Document } from './schema'
 
@@ -52,8 +52,10 @@ export function svgBox(svg: string): Bounds {
 }
 
 /** Renders a page or component to a standalone SVG, in millimetres: all of it with a margin, or just `area`. */
-export function toSVG(doc: Document, containerId: string, registry: Registry, options: { area?: Bounds } = {}): string {
-  const scene = buildScene(doc, containerId, registry)
+export function toSVG(doc: Document, containerId: string, registry: Registry, options: { area?: Bounds; marks?: boolean; only?: string[] } = {}): string {
+  // Only what is given, when it is (what is selected), framed alone.
+  const all = buildScene(doc, containerId, registry)
+  const scene = printedScene(options.only ? all.filter((item) => options.only!.includes(item.id)) : all, options.marks)
   const b = options.area ?? sceneBounds(scene) ?? { minX: 0, minY: 0, maxX: 1000, maxY: 1000 }
   const margin = options.area ? 0 : Math.max(b.maxX - b.minX, b.maxY - b.minY) * 0.05 + 1
   const box = [b.minX - margin, b.minY - margin, b.maxX - b.minX + 2 * margin, b.maxY - b.minY + 2 * margin]

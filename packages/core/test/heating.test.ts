@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { architecture } from '../../ext-architecture/src'
-import { Registry, type NodeOf, type Primitive } from '../src'
+import { applyOps, createDocument, elevationHeightOps, primitiveBounds, Registry, type NodeOf, type Primitive } from '../src'
 
 const registry = new Registry().use(architecture)
 const radiator = registry.parametric.get('arch.radiator')!
@@ -33,6 +33,19 @@ describe('a radiator', () => {
     const props = registry.resolveProps(radiator, {})
     expect(radiator.box!.resize(props, { width: 1234.4, height: 120 })).toEqual({ width: 1234, depth: 120 })
     expect(radiator.box!.resize(props, { width: 50, height: 10 })).toEqual({ width: 200, depth: 40 })
+  })
+
+  it('is as high as its body, from 15 cm above the floor, which dragging its top in an elevation makes higher', () => {
+    const top = (props: Record<string, unknown>) => Math.min(...radiator.front!(registry.resolveProps(radiator, props)).map((p) => primitiveBounds(p)!.minY))
+    // As it always was, to begin with: 60 cm high, its top 75 cm above the floor.
+    expect(top({})).toBe(-750)
+    expect(top({ height: 900 })).toBe(-1050)
+    expect(radiator.height!(registry.resolveProps(radiator, { height: 900 }))).toBe(1050)
+    // Never so low that its valve and sections have no room.
+    expect(top({ height: 10 })).toBe(-250)
+    const doc = applyOps(createDocument('Plan'), [{ op: 'add_node', node: { type: 'parametric', id: 'r', parent: 'page_1', kind: 'arch.radiator', props: {}, x: 0, y: 0 } as never }])
+    const ops = elevationHeightOps(doc, registry, doc.nodes.r as NodeOf<'parametric'>, 200)!
+    expect(applyOps(doc, ops).nodes.r).toMatchObject({ props: { height: 800 } })
   })
 
   it('cannot be made to draw without end', () => {

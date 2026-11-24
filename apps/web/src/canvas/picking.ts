@@ -74,6 +74,20 @@ export function inViewGripAt(c: Canvas, at: Vec2): { view: NodeOf<'elevation'>; 
   return best && { view: best.view, item: best.item, side: best.side }
 }
 
+/** The line across the selected object a view draws (`elevationSplits`) under a point of the canvas, within the width of the object and a little above and below. */
+export function inViewSplitAt(c: Canvas, at: Vec2): { view: NodeOf<'elevation'>; item: ElevationItem; index: number; y: number } | null {
+  let best: { view: NodeOf<'elevation'>; item: ElevationItem; index: number; y: number; off: number } | null = null
+  for (const { view, item, splits } of c.inViewGrips) {
+    const [left, right] = [onScreen({ x: item.box.minX, y: 0 }).x, onScreen({ x: item.box.maxX, y: 0 }).x]
+    if (at.x < left || at.x > right) continue
+    for (const [index, y] of splits.entries()) {
+      const off = Math.abs(onScreen({ x: 0, y }).y - at.y)
+      if (off <= 4 && (!best || off < best.off)) best = { view, item, index, y, off }
+    }
+  }
+  return best && { view: best.view, item: best.item, index: best.index, y: best.y }
+}
+
 /** Which temporary dimension's length is written under a point of the canvas, by its place in their list. */
 export function clearanceAt(c: Canvas, at: Vec2): number | null {
   const index = c.clearanceLabels.findIndex((box) => at.x >= box.x && at.x <= box.x + box.width && at.y >= box.y && at.y <= box.y + box.height)
@@ -224,7 +238,7 @@ export function endAt(c: Canvas, at: Vec2): { wall: NodeOf<'wall'>; end: 'a' | '
 export function viewEdgeAt(c: Canvas, at: Vec2): { index: number; edge: [Vec2, Vec2] } | null {
   const { view, doc, selection } = get()
   const node = selection.length === 1 ? doc.nodes[selection[0]] : undefined
-  if (node?.type !== 'viewline' || c.handles.length !== 10) return null
+  if (node?.type !== 'elevation' || c.handles.length !== 10) return null
   const toScreen = (p: Vec2) => ({ x: p.x * view.zoom + view.x, y: p.y * view.zoom + view.y })
   const [a, b, farB, farA] = c.handles.slice(3, 7)
   const edges: [number, Vec2, Vec2][] = [[7, a, b], [0, farA, farB], [8, farA, a], [9, b, farB]]
@@ -243,7 +257,7 @@ export function viewEdgeAt(c: Canvas, at: Vec2): { index: number; edge: [Vec2, V
 /** Whether a point of the canvas is on a handle of the one selected view line: a corner, an arrow or an edge of what it sees. */
 export function viewLineHandleAt(c: Canvas, at: Vec2): boolean {
   const { doc, selection, tool } = get()
-  return tool === 'select' && selection.length === 1 && doc.nodes[selection[0]]?.type === 'viewline' && handleAt(c, at) >= 0
+  return tool === 'select' && selection.length === 1 && doc.nodes[selection[0]]?.type === 'elevation' && handleAt(c, at) >= 0
 }
 
 /** The handle of the one selected object under a point of the canvas, as its index, or -1. */
@@ -252,7 +266,7 @@ export function handleAt(c: Canvas, at: Vec2): number {
   const toScreen = (p: Vec2) => ({ x: p.x * view.zoom + view.x, y: p.y * view.zoom + view.y })
   // The ends of a selected view line are taken by the arrow drawn at each, anywhere along it (`viewArrow`).
   const node = selection.length === 1 ? doc.nodes[selection[0]] : undefined
-  if (node?.type === 'viewline' && c.handles.length === 10) {
+  if (node?.type === 'elevation' && c.handles.length === 10) {
     // The corners of what it sees first, taken a little further off than an edge is, so that the
     // edges meeting there do not take them; then the arrows at its ends, then its edges, anywhere along.
     const point = [3, 4, 5, 6].find((index) => dist(toScreen(c.handles[index]), at) < 10)

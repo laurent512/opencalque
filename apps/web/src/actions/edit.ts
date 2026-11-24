@@ -13,7 +13,9 @@ import {
   groupNodes,
   modifierKind,
   moveOps,
+  newId,
   orderAfter,
+  pagesOf,
   orderBefore,
   ordersAt,
   placeInOps,
@@ -30,7 +32,9 @@ import {
   type Node,
   type Op,
   replaceWithOps,
+  lookedAt,
 } from '@opencalque/core'
+import { zoomToFit } from './view'
 import { registry } from '../extensions'
 import { t, tn } from '../i18n'
 import { showPage } from '../navigation'
@@ -145,6 +149,13 @@ export const canStraightenPolylines = () => selectedPolylines().some((n) => n.sm
 /** Closes or opens the selected polylines, or curves or straightens them; null takes the property away. */
 export function setPolylines(patch: { closed?: true | null; smooth?: true | null }): void {
   apply(selectedPolylines().map((n): Op => ({ op: 'update_node', id: n.id, patch })))
+}
+
+/** Adds an empty page after the others and shows it. */
+export function addPage(): void {
+  const id = newId('page')
+  const name = t('Page {n}', { n: pagesOf(get().doc).length + 1 })
+  if (apply([{ op: 'add_node', node: { id, type: 'page', name } }])) showPage(id)
 }
 
 /** Makes a copy of a page, with what is on it, and shows the copy. */
@@ -363,9 +374,28 @@ export function editModel(entry: string): void {
 export const makeComponent = () =>
   guarded(() => {
     const { doc, selection } = get()
+    // A viewpoint stays on the page, whose plan it looks at and where its view is shown (`createComponent` leaves it there).
+    if (selection.every((id) => doc.nodes[id]?.type === 'camera')) return toast(t('A viewpoint stays on the page, whose plan it looks at: it cannot go in a component.'))
     const name = t('Component {n}', { n: componentsOf(doc).length + 1 })
     const result = createComponent(doc, registry, selection, name)
     if (apply(result.ops)) select([result.instanceId])
+  })
+
+/**
+ * Moves the view selected (a 3D view, an elevation, a section) to another page, still looking at
+ * the plan it looked at (`page`), and goes there with it selected and in sight: a sheet of views
+ * kept apart from the plan.
+ */
+export const moveViewToPage = (pageId: string) =>
+  guarded(() => {
+    const { doc, selection } = get()
+    const node = selection.length === 1 ? doc.nodes[selection[0]] : undefined
+    if (!node || (node.type !== 'elevation' && node.type !== 'camera') || doc.nodes[pageId]?.type !== 'page') return
+    const looked = lookedAt(doc, node)
+    if (!apply([{ op: 'update_node', id: node.id, patch: { parent: pageId, page: looked === pageId ? null : looked } }])) return
+    showPage(pageId)
+    select([node.id])
+    zoomToFit()
   })
 
 /** Deletes a component of the drawing and every placement of it, once the user has said yes. */
@@ -444,7 +474,7 @@ export function reorderSelection(to: 'front' | 'forward' | 'backward' | 'back'):
  */
 export function placeIn(ids: string[], parent: string, target?: { id: string; after: boolean }): void {
   const { doc, scope } = get()
-  const ops = placeInOps(doc, ids, parent, target)
+  const ops = placeInOps(doc, ids, parent, target, registry)
   if (ops.length === 0 || !apply(ops)) return
   if (parent === scope) return select(ids)
   let outer = parent

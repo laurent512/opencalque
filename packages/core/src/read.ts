@@ -1,5 +1,5 @@
 import * as z from 'zod'
-import { carriesOwnLines, carriesWallTypes, MIGRATIONS, withoutWallTypes, withViewLines } from './migrations'
+import { carriesOwnLines, carriesViewLines, carriesWallTypes, MIGRATIONS, withLinesInViews, withoutWallTypes, withViewLines } from './migrations'
 import { repairDocument } from './repair'
 import { DocumentSchema, FORMAT, FORMAT_VERSION, FORMER_FORMAT, NODE_TYPES, type Document } from './schema'
 import { keepUnknown } from './unknown'
@@ -44,9 +44,11 @@ export function readDocument(json: unknown): { doc: Document; repairs: string[] 
   // Saved by a development build of version 2 that still had wall types: taken out as from version 1.
   const typed = carriesWallTypes(raw)
   if (typed) raw = withoutWallTypes(raw)
-  // Saved by a development build of version 3 whose views carried their own line: each given one.
-  const lined = carriesOwnLines(raw)
-  if (lined) raw = withViewLines(raw)
+  // Saved by a development build of version 3 whose views said `obstructions`: said as `walls`.
+  if (carriesOwnLines(raw)) raw = withViewLines(raw)
+  // Saved by a development build of version 6 that still had lines apart from their views: put in them.
+  const lined = carriesViewLines(raw)
+  if (lined) raw = withLinesInViews(raw)
   if (isPlain(raw.nodes)) {
     for (const [key, node] of Object.entries(raw.nodes)) {
       if (isPlain(node) && typeof node.type === 'string' && !NODE_TYPES.includes(node.type)) {
@@ -59,7 +61,7 @@ export function readDocument(json: unknown): { doc: Document; repairs: string[] 
   const { doc, repairs } = repairDocument(keepUnknown(raw, result.data))
   const before = [
     ...(typed ? ['Wall types, left by a development version, were taken out: each became a material of its name, and each wall has what its type gave it.'] : []),
-    ...(lined ? ['Views made by a development version were brought up to date: each that carried its own line was given a view line on the plan, named after it.'] : []),
+    ...(lined ? ['Views made by a development version were brought up to date: each holds its line, and a line with no view is a line of dashes and dots.'] : []),
   ]
   return { doc, repairs: [...before, ...repairs] }
 }

@@ -1,11 +1,13 @@
 import { arcMiddleOfRadius, dist, len, newId, nextGridLabel, norm, paperSize, perp, sub, type NodeInput, type Vec2 } from '@opencalque/core'
 import { t } from '../../i18n'
-import { apply, cancel, commit, layerHere, preview, useStore } from '../../store'
+import { apply, cancel, commit, layerHere, preview, select, setTool, useStore } from '../../store'
+import { showPanel } from '../../dock'
 import { formatLength, formatNumber } from '../../units'
 import { gridStep } from '../../view'
 import { lineEnd, snap, type Target } from '../aim'
 import { BOXES, CHAINED, DRAG_DISTANCE, DRAG_TIME, SAME_POINT, type GestureOf, type Keys } from '../gesture'
 import { get, reset, syncStep, type Canvas, type Move, type Press, type Release } from '../runtime'
+import { newFrame } from '../../perspective/seen'
 import { arcNode, axisOf, constrain, currentStyle, paperFormats, polyline, shape, sizes, wallOps } from '../shapes'
 
 /*
@@ -81,8 +83,19 @@ export function finishShape(c: Canvas, g: GestureOf<'draw'>, end: Vec2, chain: b
     c.setOverlay({})
     return
   }
-  if (preview(tool === 'wall' ? wallOps(g.id, g.start, p) : [{ op: 'add_node', node: shape(tool, g.id, g.start, p) }])) {
+  // A viewpoint puts its view in the upper right of what is on screen, in sight at once.
+  const node = tool === 'camera' ? { ...shape(tool, g.id, g.start, p), frame: newFrame(useStore.getState().view, useStore.getState().viewport) } : shape(tool, g.id, g.start, p)
+  if (preview(tool === 'wall' ? wallOps(g.id, g.start, p) : [{ op: 'add_node', node }])) {
     commit()
+    // A viewpoint is drawn to be looked through: it is drawn once and selected, to be dragged
+    // about with its view in sight, as an elevation is put down once.
+    if (tool === 'camera') {
+      setTool('select')
+      select([g.id])
+      showPanel('properties')
+      c.gesture = { kind: 'idle' }
+      return
+    }
     // The grid line drawn next is labelled after this one: B after A, 2 after 1.
     if (tool === 'gridline') useStore.setState((s) => ({ gridlineTemplate: { ...s.gridlineTemplate, label: nextGridLabel(String(s.gridlineTemplate.label ?? '')) } }))
   } else cancel()

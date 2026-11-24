@@ -247,36 +247,85 @@ export function carriesWallTypes(doc: Raw): boolean {
 }
 
 /**
- * Whether a drawing holds views as a development build of OpenCalque 1.9 saved them (version 3):
- * carrying their own line, before a view and its line were two nodes, or saying whether they show
- * the walls in the way (`obstructions`) where they now say whether they show walls (`walls`).
- * `readDocument` puts them right with `withViewLines`.
+ * Whether a drawing holds views as a development build of OpenCalque 1.9 saved them (version 3),
+ * saying whether they show the walls in the way (`obstructions`) where they now say whether they
+ * show walls (`walls`). `readDocument` puts them right with `withViewLines`. (Those views carried
+ * their own line, as views do again from version 6: that part of them needs nothing.)
  */
 export function carriesOwnLines(doc: Raw): boolean {
-  return isPlain(doc.nodes) && Object.values(doc.nodes).some((node) => isPlain(node) && node.type === 'elevation' && ((!('line' in node) && 'a' in node) || 'obstructions' in node))
+  return isPlain(doc.nodes) && Object.values(doc.nodes).some((node) => isPlain(node) && node.type === 'elevation' && 'obstructions' in node)
 }
 
-/**
- * Each view that carries its own line given a line of its own, as the app now makes them: the line
- * (`viewline`) beside it, on its layer and named after it, with its ends and depth; the view keeps
- * its id, its name and where it is drawn, and refers to the line. One that says `obstructions`
- * says it as `walls`.
- */
+/** Each view that says `obstructions` says it as `walls`. */
 export function withViewLines(doc: Raw): Raw {
   if (!isPlain(doc.nodes)) return doc
   const nodes: Raw = { ...doc.nodes }
   for (const [key, found] of Object.entries(doc.nodes)) {
-    if (!isPlain(found) || found.type !== 'elevation') continue
+    if (!isPlain(found) || found.type !== 'elevation' || !('obstructions' in found)) continue
     const { obstructions, ...rest } = found
-    const node: Raw = 'obstructions' in found ? { ...rest, ...('walls' in found || obstructions === undefined ? {} : { walls: obstructions }) } : found
-    nodes[key] = node
-    if ('line' in node || !('a' in node)) continue
-    const { a, b, depth, ...view } = node
-    let id = `${typeof node.id === 'string' ? node.id : key}_line`
-    while (id in nodes) id = `${id}_`
-    const named = typeof node.name === 'string' ? { name: `${node.name}, line` } : {}
-    nodes[id] = { id, type: 'viewline', parent: node.parent, order: node.order, ...('layer' in node ? { layer: node.layer } : {}), ...named, a, b, ...(depth === undefined ? {} : { depth }) }
-    nodes[key] = { ...view, line: id }
+    nodes[key] = { ...rest, ...('walls' in found || obstructions === undefined ? {} : { walls: obstructions }) }
+  }
+  return { ...doc, nodes }
+}
+
+/** Whether a drawing still has lines its views were drawn from (`viewline`, versions 3 to 5, and development builds of 6), which `withLinesInViews` puts in the views. */
+export function carriesViewLines(doc: Raw): boolean {
+  return isPlain(doc.nodes) && Object.values(doc.nodes).some((node) => isPlain(node) && node.type === 'viewline')
+}
+
+/** The dashes and dots a view line was drawn with, in screen pixels: what a line with no view keeps. */
+const VIEW_LINE_DASH = [14, 4, 2, 4]
+
+/**
+ * Version 5 to 6: a view holds its line (ARCHITECTURE §10, "Views"). Each view (`elevation`) is
+ * given its line's ends and depth, and, when it is drawn on another page or component than its line,
+ * the page its line was on (`page`), which is what it looks at; it no longer names a line. A line
+ * with several views gives each its own copy. A line with no view becomes a plain line of dashes and
+ * dots where it was (a `polyline`, with its name, layer and the rest of what it had), so that nothing
+ * that was drawn disappears; its arrows go. A view whose line was missing drew nothing, and goes.
+ */
+export function withLinesInViews(doc: Raw): Raw {
+  if (!isPlain(doc.nodes)) return doc
+  const nodes: Raw = { ...doc.nodes }
+  const rootOf = (id: unknown): unknown => {
+    let at = id
+    for (let depth = 0; depth < 64; depth++) {
+      const node = typeof at === 'string' ? nodes[at] : undefined
+      if (!isPlain(node)) return at
+      if (node.parent === null || node.parent === undefined) return at
+      at = node.parent
+    }
+    return at
+  }
+  const seen = new Set<string>()
+  for (const [key, view] of Object.entries(doc.nodes)) {
+    if (!isPlain(view) || view.type !== 'elevation' || !('line' in view)) continue
+    const { line: lineId, ...rest } = view
+    const line = typeof lineId === 'string' ? doc.nodes[lineId] : undefined
+    if (!isPlain(line) || line.type !== 'viewline') {
+      delete nodes[key]
+      continue
+    }
+    seen.add(lineId as string)
+    const page = rootOf(line.parent)
+    const elsewhere = page !== rootOf(view.parent)
+    const { dimensions, ...kept } = rest
+    nodes[key] = { ...kept, a: line.a, b: line.b, ...(line.depth === undefined ? {} : { depth: line.depth }), ...(elsewhere && typeof page === 'string' ? { page } : {}) }
+    // The dimensions it drew by itself, unless it said not to, are what it holds now.
+    if (dimensions !== false) {
+      let id = `${key}_dimensions`
+      while (id in nodes) id = `${id}_`
+      nodes[id] = { id, type: 'autodimensions', parent: key, order: 'a0', ...('layer' in view ? { layer: view.layer } : {}) }
+    }
+  }
+  for (const [key, line] of Object.entries(doc.nodes)) {
+    if (!isPlain(line) || line.type !== 'viewline') continue
+    if (seen.has(key)) {
+      delete nodes[key]
+      continue
+    }
+    const { a, b, depth: _, type: __, style, ...rest } = line
+    nodes[key] = { ...rest, type: 'polyline', points: [a, b], style: { ...(isPlain(style) ? style : {}), dash: VIEW_LINE_DASH } }
   }
   return { ...doc, nodes }
 }
@@ -348,4 +397,6 @@ export const MIGRATIONS: ((doc: Raw) => Raw)[] = [
   (doc) => doc,
   // Version 5: a desk's office chair is an object of its own.
   withOfficeChairs,
+  // Version 6 brings viewpoints (the `camera` node type), and views that hold their line.
+  withLinesInViews,
 ]

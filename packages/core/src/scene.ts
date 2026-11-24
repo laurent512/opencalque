@@ -2,10 +2,11 @@ import { childrenOf, isLocked, isVisible, leavesOf } from './document'
 import { applyTransform, boundsContain, boundsContainPoint, boundsOfPoints, boundsTouch, pointInPolygon, unionBounds, type Bounds, type Vec2 } from './geometry'
 import { drawnSolid, kindOf, nodePrimitives, objectBacking, PAPER_EDGE, PAPER_FILL } from './kinds'
 import { mergedOutlines } from './merge'
-import { distToPrimitive, insidePrimitive, primitiveBounds, primitiveTouches, type Primitive } from './primitives'
+import { distToPrimitive, insidePrimitive, primitiveBounds, primitiveTouches, printedPrims, transformPrimitive, type Primitive } from './primitives'
 import type { Registry } from './registry'
-import type { Document, Node } from './schema'
+import type { Document, Node, NodeOf } from './schema'
 import { hostWall } from './walls/openings'
+import { viewPlacement, viewsLookingAt } from './elevation'
 
 /** One visible child of the container being shown, ready to paint and hit-test. */
 export interface SceneItem {
@@ -13,6 +14,13 @@ export interface SceneItem {
   node: Node
   prims: Primitive[]
   bounds: Bounds | null
+  /** Where it can be picked, when that is more than its box: a view's line on the plan, drawn only to work with, is not part of its box but is clicked. */
+  reach?: Bounds
+  /**
+   * The mark of a view on another page that looks at this one (`viewsLookingAt`): clicked, it
+   * selects that view; a box drawn round the plan, or Select all, does not take it.
+   */
+  foreign?: boolean
   locked: boolean
   /**
    * Outlines where it is picked up although nothing may be drawn there, never painted: the gap a
@@ -30,8 +38,11 @@ export interface SceneItem {
 function itemOf(node: Node, doc: Document, registry: Registry, prims: Primitive[]): SceneItem {
   const held = node.type === 'group' ? leavesOf(doc, node.id).filter((leaf) => isVisible(doc, leaf)) : [node]
   const area = held.flatMap((leaf) => openingArea(doc, leaf, registry) ?? [])
-  const bounds = area.reduce((b, outline) => unionBounds(b, boundsOfPoints(outline)), boundsOf(prims))
-  return { id: node.id, node, prims, bounds, locked: isLocked(doc, node), ...(area.length > 0 ? { area } : {}) }
+  // A view's line on the plan, drawn only to work with, is not part of its box, which is its drawing: picked by it, the view is not taken by a box drawn round the plan.
+  const boxed = prims.some((p) => p.screen) && prims.some((p) => !p.screen) ? prims.filter((p) => !p.screen) : prims
+  const bounds = area.reduce((b, outline) => unionBounds(b, boundsOfPoints(outline)), boundsOf(boxed))
+  const reach = boxed !== prims ? unionBounds(bounds, boundsOf(prims)) : null
+  return { id: node.id, node, prims, bounds, ...(reach ? { reach } : {}), locked: isLocked(doc, node), ...(area.length > 0 ? { area } : {}) }
 }
 
 /** The gap a door or window cuts in the wall it is set in, as world points; none for any other node, or an opening in no wall. */
@@ -54,13 +65,97 @@ export function openingArea(doc: Document, node: Node, registry: Registry): [Vec
 }
 
 /** Everything visible in a page or component, bottom to top. */
+/**
+ * Whether something painted after the item `id` (stacked over it, in the order of the Structure
+ * list) hides part of `box`: a filled shape or a picture whose box meets it. What the editor shows
+ * over a view, its name and its frame, would otherwise show through what covers it.
+ */
+export function coveredInScene(scene: SceneItem[], id: string, box: Bounds): boolean {
+  const at = scene.findIndex((item) => item.id === id)
+  if (at < 0) return false
+  for (let i = at + 1; i < scene.length; i++) {
+    const item = scene[i]
+    if (item.foreign || !item.bounds || !boundsTouch(item.bounds, box)) continue
+    const hides = item.prims.some((p) => !p.screen && (p.kind === 'image' || ((p.kind === 'ellipse' || (p.kind === 'path' && p.closed)) && p.fill !== undefined && p.fill !== 'none')))
+    if (hides) return true
+  }
+  return false
+}
+
 export function buildScene(doc: Document, containerId: string, registry: Registry): SceneItem[] {
   const ctx = { doc, registry, depth: 0 }
   const items = childrenOf(doc, containerId)
     .filter((node) => isVisible(doc, node))
     .map((node) => itemOf(node, doc, registry, nodePrimitives(node, ctx)))
+  // The marks of the views shown on other pages that look at this one: on top, to be found.
+  const foreign = viewsLookingAt(doc, containerId)
+    .filter((node) => isVisible(doc, node))
+    .map((node): SceneItem => ({ ...itemOf(node, doc, registry, nodePrimitives(node, { ...ctx, mark: true })), foreign: true }))
   const sheet = templateSheet(doc, containerId)
-  return sheet ? [sheet, ...items] : items
+  // Inside a view, what it draws of the plan, in its coordinates: the ground what is drawn in it is
+  // drawn on and snapped to, never picked (`viewBackdrop`).
+  const container = doc.nodes[containerId]
+  const backdrop = container?.type === 'elevation' ? [viewBackdrop(container, doc, registry)] : []
+  return [...(sheet ? [sheet] : []), ...backdrop, ...items, ...foreign]
+}
+
+/**
+ * What a view draws of the plan, brought into its own coordinates (along its line, up from its floor),
+ * where what it holds is drawn: an item of its own id, locked, so that it is seen and snapped to but
+ * not picked or moved.
+ */
+export function viewBackdrop(view: NodeOf<'elevation'>, doc: Document, registry: Registry): SceneItem {
+  const { x, y, scale } = viewPlacement(view)
+  const back = { x: -x / scale, y: -y / scale, scale: 1 / scale }
+  const prims = nodePrimitives(view, { doc, registry, depth: 0, bare: true }).map((p) => transformPrimitive(p, back))
+  return { id: `${view.id}:drawing`, node: view, prims, bounds: boundsOf(prims), locked: true }
+}
+
+/**
+ * A scene as it is printed and exported: what is drawn only to work with in the editor (`screen`:
+ * the eye of a viewpoint, the line of an elevation) left out, and an item that drew nothing else
+ * with it, so that it neither shows nor counts in the box of what is drawn. With `marks`, the
+ * person asked for them (Viewpoints and view lines, in the export window): kept, as on screen.
+ */
+export function printedScene(scene: SceneItem[], marks = false): SceneItem[] {
+  if (marks || !scene.some((item) => item.prims.some((p) => p.screen))) return scene
+  return scene.flatMap((item) => {
+    const prims = printedPrims(item.prims)
+    if (prims === item.prims) return [item]
+    return prims.length === 0 ? [] : [{ ...item, prims, bounds: item.area ? item.area.reduce((b, outline) => unionBounds(b, boundsOfPoints(outline)), boundsOf(prims)) : boundsOf(prims) }]
+  })
+}
+
+/**
+ * The scene of a container after an edit that changed nothing but viewpoints in it, made from the
+ * scene before (`buildScene` of `before`): a viewpoint's mark is drawn from itself alone, so only
+ * those are drawn again, and dragging the view of one, which changes it at every step, does not
+ * draw the whole plan again each time. Null when more changed: the scene is then built anew.
+ */
+export function sceneAfterViewpoints(before: Document, scene: SceneItem[], doc: Document, containerId: string, registry: Registry): SceneItem[] | null {
+  if (before === doc) return scene
+  // Everything but the nodes as it was: the layers, the colours, the materials, the settings.
+  const keys = new Set([...Object.keys(before), ...Object.keys(doc)])
+  for (const key of keys) if (key !== 'nodes' && (before as unknown as Record<string, unknown>)[key] !== (doc as unknown as Record<string, unknown>)[key]) return null
+  const ids = Object.keys(doc.nodes)
+  if (ids.length !== Object.keys(before.nodes).length) return null
+  const changed = new Set<string>()
+  for (const id of ids) {
+    const [was, now] = [before.nodes[id], doc.nodes[id]]
+    if (was === now) continue
+    if (was?.type !== 'camera' || now.type !== 'camera' || was.parent !== now.parent || was.parent !== containerId || was.order !== now.order || was.visible !== now.visible || was.layer !== now.layer) return null
+    changed.add(id)
+  }
+  if (changed.size === 0) return scene
+  const ctx = { doc, registry, depth: 0 }
+  let found = 0
+  const out = scene.map((item) => {
+    if (!changed.has(item.id)) return item
+    found++
+    const node = doc.nodes[item.id]
+    return itemOf(node, doc, registry, nodePrimitives(node, ctx))
+  })
+  return found === changed.size ? out : null
 }
 
 /**
@@ -146,7 +241,8 @@ export function hitTest(scene: SceneItem[], p: Vec2, tolerance: number): SceneIt
   let nearest = Infinity
   for (let i = scene.length - 1; i >= 0 && nearest > 0; i--) {
     const item = scene[i]
-    if (item.locked || !item.bounds || !boundsContainPoint(item.bounds, p, tolerance)) continue
+    const box = item.reach ?? item.bounds
+    if (item.locked || !box || !boundsContainPoint(box, p, tolerance)) continue
     const off = distToItem(item, p)
     if (off <= tolerance && (best === null || off < nearest - tolerance / 5)) {
       best = item
@@ -158,7 +254,7 @@ export function hitTest(scene: SceneItem[], p: Vec2, tolerance: number): SceneIt
 
 /** Unlocked items lying entirely inside the rectangle. */
 export function itemsInside(scene: SceneItem[], rect: Bounds): SceneItem[] {
-  return scene.filter((item) => !item.locked && item.bounds && boundsContain(rect, item.bounds))
+  return scene.filter((item) => !item.locked && !item.foreign && item.bounds && boundsContain(rect, item.bounds))
 }
 
 /**
@@ -172,6 +268,7 @@ export function itemsTouching(scene: SceneItem[], rect: Bounds): SceneItem[] {
   return scene.filter(
     (item) =>
       !item.locked &&
+      !item.foreign &&
       item.bounds &&
       boundsTouch(rect, item.bounds) &&
       (item.prims.some((prim) => touches(prim, isSolid(item))) || (item.area ?? []).some((points) => touches({ kind: 'path', points, closed: true }, true))),

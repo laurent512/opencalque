@@ -7,7 +7,7 @@ import { leavesOf as everythingIn } from './document'
 import type { Document, Node, NodeOf } from './schema'
 import { courseOf, cross, distToBody, dot, middleAcross, tidy, wallSides, type Wall } from './walls/course'
 import { followAlong } from './walls/follow'
-import { faceAcross, faceStretch, heightAboveFloor, mountAt, mountedOn, mountOf, wallMounted } from './walls/mount'
+import { DEFAULT_WALL_HEIGHT, faceAcross, faceStretch, heightAboveFloor, heightInPlace, heightOf, mountAt, mountedOn, mountOf, propsInPlace, wallMounted } from './walls/mount'
 import { openingSpan, wallOpenings } from './walls/openings'
 import { wallOutline } from './walls/outline'
 import { wallsIn } from './walls/spatial'
@@ -15,12 +15,12 @@ import { wallsIn } from './walls/spatial'
 /*
  * Views of the plan (ARCHITECTURE §4, "Elevations and sections"), worked out from the plan each time
  * they are drawn, as a room's floor is: nothing of a view is stored but its line, its depth and
- * where it is drawn. There is one drawing, never two kept in step. The line (a `viewline` node) is
- * on the plan, and says what is seen: a cut along it, seen from the right of it (as it runs from
- * `a` to `b`), looking at what lies beyond it up to its depth: what crosses the line is cut, what is
- * beyond it seen. The views drawn from it (`elevation` nodes, which refer to it) say only where they
- * are drawn, and how; any page may hold them. An elevation is a view whose line's far side lies on
- * the face of a wall: the line is tied to that wall only by that, and follows it as doors do.
+ * where it is drawn. There is one drawing, never two kept in step. A view (an `elevation` node)
+ * holds its line (ARCHITECTURE §10, "Views"), which says what is seen: a cut along it, seen from the
+ * right of it (as it runs from `a` to `b`), looking at what lies beyond it up to its depth: what
+ * crosses the line is cut, what is beyond it seen; and it is drawn at its `x`, `y`, on its page or
+ * on another (`page` is then the page it looks at). An elevation is a view whose far side lies on
+ * the face of a wall: it is tied to that wall only by that, and follows it as doors do.
  */
 
 /**
@@ -41,8 +41,7 @@ const WALL_SEEN = '#ffffff'
 /** The walls in front of them, cut by its line or in the way of what it sees: plain grey, all alike. */
 const WALL_GREY = '#e8ecf1'
 
-/** How high a wall stands in an elevation when neither it nor its page says. */
-export const DEFAULT_WALL_HEIGHT = 2500
+export { DEFAULT_WALL_HEIGHT, heightOf }
 /** How far a wall may be turned from the line of a view, as a sine (30°), and be a face it looks at, at a slant; turned further, it is at the side. */
 const FACE_TURN = 0.5
 /** How far, in mm, the line may be off a face, and still be on it. */
@@ -56,34 +55,63 @@ const STANDING_WEIGHT = 0.6
 const FLOOR_WEIGHT = 2
 
 export type Elevation = NodeOf<'elevation'>
-export type ViewLine = NodeOf<'viewline'>
+/** What a view sees, and from where: its line, its depth, and the page or component whose plan it looks at (`parent`). */
+export interface ViewLine {
+  a: Vec2
+  b: Vec2
+  depth?: number
+  parent: string | null
+}
 type Face = 'left' | 'right'
 /** What a line sees, and from where. */
 type Sight = Pick<ViewLine, 'a' | 'b' | 'depth'>
 
-/** The line a view is drawn from, or null when the drawing has none of that id. */
-export function lineOf(doc: Document, view: Pick<Elevation, 'line'>): ViewLine | null {
-  const line = doc.nodes[view.line]
-  return line?.type === 'viewline' ? line : null
+/** The page a view looks at: the one it says (`page`) while the drawing has it, else the page or component it is on. */
+export function lookedAt(doc: Document, view: Pick<Elevation, 'page' | 'parent'>): string | null {
+  if (view.page && doc.nodes[view.page]?.type === 'page') return view.page
+  return rootOf(doc, view.parent)?.id ?? view.parent
 }
 
-/** The views drawn from a line, in the drawing's order of ids. */
-export function viewsOf(doc: Document, lineId: string): Elevation[] {
-  return Object.values(doc.nodes).filter((node): node is Elevation => node.type === 'elevation' && node.line === lineId)
+/** What a view sees, and from where: its own line, on the plan it looks at. */
+export function lineOf(doc: Document, view: Pick<Elevation, 'a' | 'b' | 'depth' | 'page' | 'parent'>): ViewLine {
+  return { a: view.a, b: view.b, depth: view.depth, parent: lookedAt(doc, view) }
 }
+
+/** The views (elevations, viewpoints) that look at a page from another, by that page: kept with each state of the drawing. */
+const lookers = new WeakMap<Document['nodes'], Map<string, Node[]>>()
 
 /**
- * When a patch moves the start of a line, the views of it moved across by as much as its start went
- * along the line, so that what they still show stays where it was on the sheet: a view made shorter
- * at its start by dragging its line keeps its end where it was. Only for the editor's drags of a
- * line by its ends and corners; a line moved whole, with the plan, leaves its views where they are.
+ * The views shown on another page that look at the plan of `pageId` (`page`): the plan draws their
+ * marks, to place them, and a click there selects them (`buildScene`).
  */
-export function keepViewsOps(doc: Document, line: ViewLine, patch: Record<string, unknown>): Op[] {
+export function viewsLookingAt(doc: Document, pageId: string): Node[] {
+  let index = lookers.get(doc.nodes)
+  if (!index) {
+    index = new Map()
+    for (const node of Object.values(doc.nodes)) {
+      if ((node.type !== 'elevation' && node.type !== 'camera') || !node.page || node.page === rootOf(doc, node.parent)?.id) continue
+      index.set(node.page, [...(index.get(node.page) ?? []), node])
+    }
+    lookers.set(doc.nodes, index)
+  }
+  return index.get(pageId) ?? []
+}
+
+/** Whether a view's line is on the page or component it is drawn on, where its line is shown and dragged. */
+export const lineHere = (doc: Document, view: Pick<Elevation, 'page' | 'parent'>): boolean => lookedAt(doc, view) === (rootOf(doc, view.parent)?.id ?? view.parent)
+
+/**
+ * When a patch moves the start of a view's line, the view moved across by as much as its start
+ * went along the line, so that what it still shows stays where it was on the sheet: a view made
+ * shorter at its start by dragging its line keeps its end where it was. Only for the editor's drags
+ * of a line by its ends and corners; a line moved whole, with the plan, leaves the view where it is.
+ */
+export function keptViewPatch(view: Pick<Elevation, 'a' | 'b' | 'x' | 'scale'>, patch: Record<string, unknown>): Record<string, unknown> {
   const a = patch.a as Vec2 | undefined
-  if (!a || dist(line.a, line.b) < 1e-6) return []
-  const shift = dot(sub(a, line.a), norm(sub(line.b, line.a)))
-  if (Math.abs(shift) < 1e-9) return []
-  return viewsOf(doc, line.id).map((view): Op => ({ op: 'update_node', id: view.id, patch: { x: tidy(view.x + shift) } }))
+  if (!a || dist(view.a, view.b) < 1e-6) return patch
+  const shift = dot(sub(a, view.a), norm(sub(view.b, view.a))) * viewScale(view)
+  if (Math.abs(shift) < 1e-9) return patch
+  return { ...patch, x: tidy(view.x + shift) }
 }
 
 /** The way to the right of a line from `a` to `b`, which is where a view along it is seen from. */
@@ -114,11 +142,12 @@ export function farSide(node: Sight): [Vec2, Vec2] {
 }
 
 /**
- * The patch that gives a view line another depth (undefined: the default). An elevation, whose far
- * side is on the face of a wall (`elevationWall`), keeps its far side there: its line moves, nearer
- * the face or further from it. A section keeps its line, where it cuts, and sees nearer or further.
+ * The patch that gives a view another depth (undefined: the default). An elevation, whose far side
+ * is on the face of a wall (`elevationWall`), keeps its far side there: its line moves, nearer the
+ * face or further from it. A section keeps its line, where it cuts, and sees nearer or further.
  */
-export function depthPatch(doc: Document, line: ViewLine, depth: number | undefined): Record<string, unknown> {
+export function depthPatch(doc: Document, view: Elevation, depth: number | undefined): Record<string, unknown> {
+  const line = lineOf(doc, view)
   const next = depth === undefined ? undefined : Math.max(0, depth)
   const stored = { depth: next ?? null }
   if (dist(line.a, line.b) < 1e-6 || !elevationWall(doc, line)) return stored
@@ -336,24 +365,19 @@ export function elevationWall(doc: Document, node: ViewLine): { wall: Wall; face
  * Where an opening is, up the wall: from the floor, or from its sill when its kind says one
  * (`sill`), up to its `height` parameter, never above the wall; the whole wall without one.
  */
-function heightsOf(kind: ParametricKind, props: Record<string, any>, wall: number): [number, number] {
+export function heightsOf(kind: ParametricKind, props: Record<string, any>, wall: number): [number, number] {
   const bottom = kind.sill ? Math.max(0, Number(props[kind.sill]) || 0) : 0
   const tall = typeof props.height === 'number' && props.height > 0 ? props.height : wall - bottom
   return [Math.min(bottom, wall), Math.min(bottom + tall, wall)]
 }
 
-/** How high a wall stands: its own height, else its page's, else `DEFAULT_WALL_HEIGHT`. */
-function heightOf(doc: Document, wall: Wall): number {
-  const page = rootOf(doc, wall.parent)
-  return wall.height ?? (page?.type === 'page' ? page.wallHeight : undefined) ?? DEFAULT_WALL_HEIGHT
-}
 
 /**
  * The points a primitive is drawn through, in the drawing: a path's own, round an ellipse every
  * fifteen degrees. Not the box around it, upright on the page, which is wider than an object turned
  * at an angle: two kitchen units side by side along a slanted wall would be drawn over each other.
  */
-function outlineOf(p: Primitive): Vec2[] {
+export function outlineOf(p: Primitive): Vec2[] {
   if (p.kind === 'path') return p.points
   if (p.kind !== 'ellipse') return []
   const turn = ((p.rotation ?? 0) * Math.PI) / 180
@@ -416,8 +440,8 @@ function clipLine(p: Vec2, d: Vec2, length: number, polygon: Vec2[]): [number, n
  * the walls along the line, their doors and windows, what is fixed on those faces, the walls the
  * line runs into cut through, the floor, and its dimensions.
  */
-export function elevationPrimitives(node: Elevation, doc: Document, registry: Registry, measure: Measure = () => []): Primitive[] {
-  return layout(node, doc, registry, measure).prims
+export function elevationPrimitives(node: Elevation, doc: Document, registry: Registry): Primitive[] {
+  return layout(node, doc, registry).prims
 }
 
 /** Draws a dimension from `a` to `b`, its line `offset` mm to the right of the way from `a` to `b` (as a dimension node does). */
@@ -427,6 +451,8 @@ export type Measure = (a: Vec2, b: Vec2, offset: number) => Primitive[]
 const CHAIN_BELOW = 300
 /** How far right of what it measures the height of an object fixed on the face is written, in mm. */
 const HEIGHT_BESIDE = 60
+/** How far left of a view the height of the face it looks at is written, in mm. */
+const FACE_HEIGHT_BESIDE = 300
 
 /** An object of the plan as an elevation shows it: a door or window, what is fixed on the face, or what stands in front of it, and the box it is drawn in. */
 export interface ElevationItem {
@@ -437,6 +463,36 @@ export interface ElevationItem {
   raises: boolean
   /** Whether what is drawn in front of it hides all of it: it is then neither dimensioned nor taken by a click in the view. */
   hidden?: boolean
+  /**
+   * The Y in the drawing of the level lines drawn across it, inside its box (`levelsOf`): under a
+   * door, the edges of an oven or a fridge, between two drawers. What is dragged lines up with them.
+   */
+  levels: number[]
+}
+
+/** How much of the width of an object a level line drawn in it must take to be one to line up with: not a handle, a knob or the curve of a corner. */
+const LEVEL_SHARE = 0.3
+
+/**
+ * The Y of the level lines that `prims` draw across `box`, inside it (not its top and bottom), each
+ * once: the straight stretches of paths within half a millimetre of level that take at least
+ * `LEVEL_SHARE` of its width.
+ */
+export function levelsOf(prims: Primitive[], box: Bounds): number[] {
+  const least = Math.max(1, (box.maxX - box.minX) * LEVEL_SHARE)
+  const found: number[] = []
+  for (const p of prims) {
+    if (p.kind !== 'path') continue
+    const n = p.points.length
+    for (let i = 0; i < (p.closed ? n : n - 1); i++) {
+      const [a, b] = [p.points[i], p.points[(i + 1) % n]]
+      if (Math.abs(a.y - b.y) > 0.5 || Math.abs(a.x - b.x) < least) continue
+      const y = (a.y + b.y) / 2
+      if (y - box.minY < 1 || box.maxY - y < 1 || found.some((f) => Math.abs(f - y) < 0.5)) continue
+      found.push(y)
+    }
+  }
+  return found.sort((a, b) => b - a)
 }
 
 /** What a view draws of something beyond its line: over which stretch of it, and how far it is along the line of sight at a point `s` of that stretch. */
@@ -577,7 +633,7 @@ function paintOrder(layers: Layer[]): Layer[] {
 }
 
 /** The smallest convex outline around points (Andrew's monotone chain), counter-clockwise. */
-function convexHull(points: Vec2[]): Vec2[] {
+export function convexHull(points: Vec2[]): Vec2[] {
   const sorted = [...points].sort((p, q) => p.x - q.x || p.y - q.y)
   if (sorted.length < 3) return sorted
   const turn = (o: Vec2, p: Vec2, q: Vec2) => (p.x - o.x) * (q.y - o.y) - (p.y - o.y) * (q.x - o.x)
@@ -607,21 +663,70 @@ const standingWeight = (p: Primitive): Primitive => ((p.kind === 'path' || p.kin
  * Whether the plan shows `node`: it, its layer and every group it is in shown. What the plan does
  * not show, its views do not draw either: an object, a door, a wall hidden, or on a hidden layer.
  */
-function shownOnPlan(doc: Document, node: Node): boolean {
+export function shownOnPlan(doc: Document, node: Node): boolean {
   for (let at: Node | undefined = node, depth = 0; at && at.type !== 'page' && depth < 64; at = at.parent ? doc.nodes[at.parent] : undefined, depth++) {
     if (!isVisible(doc, at)) return false
   }
   return true
 }
 
-/** What an elevation draws, and where in it each object of the plan is. */
-function layout(view: Elevation, doc: Document, registry: Registry, measure: Measure = () => []): { prims: Primitive[]; items: ElevationItem[] } {
+/** How much larger than the plan a view is drawn (`scale`), within what is sensible. */
+export const viewScale = (view: Pick<Elevation, 'scale'>): number => Math.min(20, Math.max(0.05, view.scale ?? 1))
+
+/**
+ * Where a view puts what it holds (its dimensions, its notes): at its (x, y), as large as it is
+ * drawn. What it holds is in its own coordinates: along its line from its start, up from its floor
+ * (Y negative), in mm of the plan, so that a dimension says the real length.
+ */
+export const viewPlacement = (view: Pick<Elevation, 'x' | 'y' | 'scale'>) => ({ x: view.x, y: view.y, scale: viewScale(view) })
+
+/** What a view draws, laid out in its own coordinates: as large as the plan, from its origin. */
+interface Laid {
+  prims: Primitive[]
+  items: ElevationItem[]
+  /** The faces seen, white, as boxes: as high as the highest, the face's height. */
+  faces: Bounds[]
+  /** How long its line is. */
+  length: number
+}
+
+/** Each view's layout in its own coordinates, kept with each state of the drawing: its drawing and its automatic dimensions both read it. */
+const laidOut = new WeakMap<Document['nodes'], WeakMap<Elevation, Laid>>()
+function laid(view: Elevation, doc: Document, registry: Registry): Laid {
+  let views = laidOut.get(doc.nodes)
+  if (!views) laidOut.set(doc.nodes, (views = new WeakMap()))
+  let found = views.get(view)
+  if (!found) views.set(view, (found = layoutAtPlanScale({ ...view, x: 0, y: 0 }, doc, registry)))
+  return found
+}
+
+/**
+ * What an elevation draws, and where in it each object of the plan is, at its place and scale:
+ * laid out in its own coordinates (`laid`), then put at its (x, y) and made larger or smaller, what
+ * it draws and the boxes of what it shows alike, so that what works with them in the drawing
+ * (picking, dragging, lining up) needs no more than to turn a distance dragged back into one of the
+ * plan (`viewScale`). Its dimensions are what it holds (`autoDimensionPrimitives`), drawn as it is.
+ */
+function layout(view: Elevation, doc: Document, registry: Registry): { prims: Primitive[]; items: ElevationItem[] } {
+  const drawn = laid(view, doc, registry)
+  const s = viewScale(view)
+  const placing = viewPlacement(view)
+  const y = (v: number) => view.y + v * s
+  const x = (v: number) => view.x + v * s
+  return {
+    prims: drawn.prims.map((p) => transformPrimitive(p, placing)),
+    items: drawn.items.map((item) => ({ ...item, box: { minX: x(item.box.minX), maxX: x(item.box.maxX), minY: y(item.box.minY), maxY: y(item.box.maxY) }, levels: item.levels.map(y) })),
+  }
+}
+
+/** What an elevation draws, as large as the plan, and where in it each object of the plan is. */
+function layoutAtPlanScale(view: Elevation, doc: Document, registry: Registry): Laid {
   const line = lineOf(doc, view)
-  if (!line) return { prims: [], items: [] }
+  if (!line) return { prims: [], items: [], faces: [], length: 0 }
   // What it sees from its line, drawn where it is.
-  const node = { ...line, x: view.x, y: view.y, walls: view.walls, dimensions: view.dimensions }
+  const node = { ...line, x: view.x, y: view.y, walls: view.walls }
   const length = dist(node.a, node.b)
-  if (length < 1e-6) return { prims: [], items: [] }
+  if (length < 1e-6) return { prims: [], items: [], faces: [], length }
   const d = norm(sub(node.b, node.a))
   const along = (p: Vec2) => dot(sub(p, node.a), d)
   const at = (s: number, h: number): Vec2 => ({ x: node.x + s, y: node.y - h })
@@ -662,7 +767,7 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
     const box = prims.map(primitiveBounds).reduce<Bounds | null>((all, one) => (one ? (all ? unionBounds(all, one) : one) : all), null)
     const kind = object.type === 'parametric' ? registry.parametric.get(object.kind) : undefined
     if (box) {
-      const item: ElevationItem = { node: object, role, box, raises: role !== 'opening' || !!kind?.sill }
+      const item: ElevationItem = { node: object, role, box, raises: role !== 'opening' || !!kind?.sill, levels: levelsOf(prims, box) }
       items.push(item)
       if (prims[0]) drawnFirst.set(item, prims[0])
     }
@@ -742,7 +847,7 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
       const origin = applyTransform({ x: 0, y: 0 }, object)
       if (mountOf(object, registry)?.on !== 'wall' || mountedOn(doc, object, registry)?.face !== face || !within(along(origin)) || !between(origin)) continue
       const kind = registry.parametric.get(object.kind)
-      const own = kind?.front?.(registry.resolveProps(kind, object.props))
+      const own = kind?.front?.(propsInPlace(doc, object, registry))
       const half = PLATE / 2
       faces.push(...shown(object, 'fixed', placed(object, own ?? [{ kind: 'path', points: [{ x: -half, y: -half }, { x: half, y: -half }, { x: half, y: half }, { x: -half, y: half }], closed: true }], heightAboveFloor(object, registry) ?? 0)))
     }
@@ -819,7 +924,7 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
     const raised = heightAboveFloor(leaf, registry) ?? 0
     if (leaf.type === 'parametric') {
       const kind = registry.parametric.get(leaf.kind)
-      const props = kind ? registry.resolveProps(kind, leaf.props) : {}
+      const props = kind ? propsInPlace(doc, leaf, registry) : {}
       tall = kind?.height?.(props)
       // Drawn as its kind draws it from where it is seen, lighter than the walls; else as its box.
       looks = kind ? seenAs(leaf, props, raised) : null
@@ -855,7 +960,7 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
     const ss = points.map(along)
     if (Math.max(...ss) < 0 || Math.min(...ss) > length) continue
     const kind = registry.parametric.get(leaf.kind)
-    const props = kind ? registry.resolveProps(kind, leaf.props) : {}
+    const props = kind ? propsInPlace(doc, leaf, registry) : {}
     const own = kind?.front?.(props)
     const half = PLATE / 2
     const h = heightAboveFloor(leaf, registry) ?? 0
@@ -875,10 +980,7 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
   }
   for (const item of items) item.box = { ...item.box, minX: Math.max(item.box.minX, x0), maxX: Math.min(item.box.maxX, x1) }
   const floor: Primitive = { kind: 'path', points: [at(0, 0), at(length, 0)], strokeWidth: FLOOR_WEIGHT }
-  // Where each thing fixed on the face is: a chain along the floor from the start of the view, and
-  // its height above the floor beside it. What a person setting them out on site measures.
-  const dimensions: Primitive[] = []
-  // What is painted after an item and filled hides it; one all hidden is not dimensioned.
+  // What is painted after an item and filled hides it; one all hidden is neither dimensioned nor taken.
   const ordered = paintOrder(layers)
   const layerOf = new Map<Primitive, number>(ordered.flatMap((layer, i) => layer.prims.map((p) => [p, i] as [Primitive, number])))
   const covering = ordered.map((layer) => layer.prims.flatMap((p) => (p.kind === 'path' && p.closed && p.fill !== undefined && p.fill !== 'none' ? [primitiveBounds(p)!] : [])))
@@ -886,21 +988,72 @@ function layout(view: Elevation, doc: Document, registry: Registry, measure: Mea
     const at = layerOf.get(drawnFirst.get(item)!)
     if (at !== undefined) item.hidden = covers(covering.slice(at + 1).flat(), item.box)
   }
-  const placedItems = items.filter((item) => item.role === 'fixed' && !item.hidden)
-  if (node.dimensions !== false && placedItems.length > 0) {
-    const stops = [0, ...placedItems.map((item) => along(applyTransform({ x: 0, y: 0 }, item.node))), length].map((s) => Math.round(s)).sort((p, q) => p - q)
-    const chain = stops.filter((s, i) => i === 0 || s - stops[i - 1] >= 1)
-    for (let i = 1; i < chain.length; i++) dimensions.push(...measure(at(chain[i - 1], 0), at(chain[i], 0), CHAIN_BELOW))
-    for (const item of placedItems) {
-      const h = heightAboveFloor(item.node, registry) ?? 0
-      if (h < 1) continue
-      const x = item.box.maxX + HEIGHT_BESIDE
-      dimensions.push(...measure({ x, y: node.y }, { x, y: node.y - h }, 0))
-    }
-  }
+  const faces = ordered.flatMap((layer) => layer.prims.flatMap((p) => (p.kind === 'path' && p.own && p.closed && p.fill === WALL_SEEN ? [primitiveBounds(p)!] : [])))
   // Its name is not written: as for anything else, it names it in the Structure list. A title under
   // it is a text of its own, written where and as the person wants.
-  return { prims: [...ordered.flatMap((layer) => layer.prims.map(clipped)), floor, ...dimensions], items }
+  return { prims: [...ordered.flatMap((layer) => layer.prims.map(clipped)), floor], items, faces, length }
+}
+
+/** Which rows a view's automatic dimensions draw (`autodimensions`): each unless it says false. */
+export interface DimensionRows {
+  fixed?: boolean
+  pieces?: boolean
+  overall?: boolean
+  heights?: boolean
+}
+
+/** Stops of a chain nearer than this, in mm, are one: the few millimetres between two units are no dimension. */
+const NEAREST_STOPS = 15
+
+/**
+ * The dimensions a view draws by itself (`autodimensions`, what it holds), in its own coordinates:
+ * along its line from its start, up from its floor (Y negative). Rows, from the floor down: what is
+ * fixed on the face (a socket, a switch, a wall cabinet), from the start of the view to each
+ * (`fixed`), with its height above the floor beside it (`heights`); the sides of the doors, the
+ * windows and what stands in front, one after the other, a kitchen's units (`pieces`), with a door's
+ * or a window's sill and top beside it (`heights`); the face from end to end, and its height at its
+ * start (`overall`). What a person setting them out on site measures. Stops nearer than
+ * `NEAREST_STOPS` are one; what is hidden is not dimensioned.
+ */
+export function autoDimensionPrimitives(view: Elevation, doc: Document, registry: Registry, measure: Measure, rows: DimensionRows = {}): Primitive[] {
+  const { items, faces, length } = laid(view, doc, registry)
+  const line = lineOf(doc, view)
+  if (length < 1e-6) return []
+  const d = norm(sub(line.b, line.a))
+  const along = (p: Vec2) => dot(sub(p, line.a), d)
+  const at = (s: number, h: number): Vec2 => ({ x: s, y: -h })
+  const dimensions: Primitive[] = []
+  const chainAt = (stops: number[], below: number) => {
+    const sorted = [0, ...stops, length].map((s) => Math.round(Math.min(length, Math.max(0, s)))).sort((p, q) => p - q)
+    const chain = sorted.filter((s, i) => i === 0 || s - sorted[i - 1] >= NEAREST_STOPS || s === length)
+    // The end of the view is a stop of its own: one nearer it before it goes.
+    const kept = chain.filter((s, i) => !(i > 0 && i < chain.length - 1 && length - s < NEAREST_STOPS))
+    for (let i = 1; i < kept.length; i++) dimensions.push(...measure(at(kept[i - 1], 0), at(kept[i], 0), below))
+  }
+  const heightsAt = (x: number, heights: number[]) => {
+    const ups = [0, ...heights.filter((h) => h >= 1).map((h) => Math.round(h))].sort((p, q) => p - q).filter((h, i, all) => i === 0 || h - all[i - 1] >= 1)
+    for (let i = 1; i < ups.length; i++) dimensions.push(...measure({ x, y: -ups[i - 1] }, { x, y: -ups[i] }, 0))
+  }
+  const fixed = items.filter((item) => item.role === 'fixed' && !item.hidden)
+  const pieces = items.filter((item) => (item.role === 'opening' || item.role === 'standing') && !item.hidden)
+  let below = CHAIN_BELOW
+  if (rows.fixed !== false && fixed.length > 0) {
+    chainAt(fixed.map((item) => along(applyTransform({ x: 0, y: 0 }, item.node))), below)
+    below += CHAIN_BELOW
+  }
+  if (rows.heights !== false) for (const item of fixed) heightsAt(item.box.maxX + HEIGHT_BESIDE, [heightAboveFloor(item.node, registry) ?? 0])
+  if (rows.pieces !== false && pieces.length > 0) {
+    chainAt(pieces.flatMap((item) => [item.box.minX, item.box.maxX]), below)
+    below += CHAIN_BELOW
+  }
+  // A door's or a window's sill and top; not the underside of what stands on the floor, which is the few centimetres of its plinth.
+  if (rows.heights !== false) for (const item of pieces) if (item.role === 'opening') heightsAt(item.box.maxX + HEIGHT_BESIDE, [-item.box.maxY, -item.box.minY])
+  if (rows.overall !== false && (faces.length > 0 || pieces.length > 0 || fixed.length > 0)) {
+    chainAt([], below)
+    const top = faces.reduce((most, face) => Math.max(most, -face.minY), 0)
+    if (top >= 1) heightsAt(-FACE_HEIGHT_BESIDE, [top])
+  }
+  return dimensions
 }
 
 /** The object of the plan an elevation shows at `p` (within `margin` of its box), what is fixed on the face before the doors and windows. */
@@ -912,14 +1065,21 @@ export function elevationItemAt(node: Elevation, doc: Document, registry: Regist
 }
 
 /** Every elevation of the drawing that shows the object `id`, not all hidden there, with how it shows it. */
+/** Whether a view shows any of `ids` (not hidden behind what is in front): read from its layout, kept for each state of the drawing. */
+export function viewShows(view: Elevation, doc: Document, registry: Registry, ids: ReadonlySet<string>): boolean {
+  return ids.size > 0 && laid(view, doc, registry).items.some((item) => !item.hidden && ids.has(item.node.id))
+}
+
 export function elevationItemsOf(doc: Document, registry: Registry, id: string): { view: Elevation; item: ElevationItem }[] {
   return Object.values(doc.nodes).flatMap((view) => (view.type === 'elevation' ? layout(view, doc, registry).items.filter((item) => item.node.id === id && !item.hidden).map((item) => ({ view, item })) : []))
 }
 
 /**
  * What something dragged in an elevation lines up with, in the drawing: the sides (`xs`), the tops
- * and bottoms (`ys`) and the middles across (`middles`) of everything else it shows of the plan, the
- * sides and tops of the walls it draws, its floor and its two ends. `except` is the object dragged.
+ * and bottoms (`ys`) and the middles across (`middles`) of everything else it shows of the plan, with
+ * the level lines drawn across them (`levels`: under a door, the edges of an oven or a fridge, so that
+ * the fronts of units side by side are made as high), the sides and tops of the walls it draws,
+ * its floor and its two ends. `except` is the object dragged.
  */
 export function elevationEdges(view: Elevation, doc: Document, registry: Registry, except: string): { xs: number[]; ys: number[]; middles: number[] } {
   const { prims, items } = layout(view, doc, registry)
@@ -928,8 +1088,8 @@ export function elevationEdges(view: Elevation, doc: Document, registry: Registr
   const line = lineOf(doc, view)
   const length = line ? dist(line.a, line.b) : 0
   return {
-    xs: [...others.flatMap(({ box }) => [box.minX, box.maxX]), ...walls.flatMap((b) => [b.minX, b.maxX]), view.x, view.x + length],
-    ys: [...others.flatMap(({ box }) => [box.minY, box.maxY]), ...walls.map((b) => b.minY), view.y],
+    xs: [...others.flatMap(({ box }) => [box.minX, box.maxX]), ...walls.flatMap((b) => [b.minX, b.maxX]), view.x, view.x + length * viewScale(view)],
+    ys: [...others.flatMap(({ box, levels }) => [box.minY, box.maxY, ...levels]), ...walls.map((b) => b.minY), view.y],
     middles: others.map(({ box }) => (box.minX + box.maxX) / 2),
   }
 }
@@ -949,7 +1109,9 @@ export function shownInElevations(doc: Document, registry: Registry, ids: string
  * moves across the view, as what is made to be fixed on a wall but is on none does, and up or down
  * by its height above the floor (`z`, left out back on the floor). Null when the view has no line, or one of no length.
  */
-export function elevationMovePatch(view: Elevation, doc: Document, registry: Registry, object: ElevationItem['node'], ds: number, dh: number): Record<string, unknown> | null {
+export function elevationMovePatch(view: Elevation, doc: Document, registry: Registry, object: ElevationItem['node'], drawnAlong: number, drawnUp: number): Record<string, unknown> | null {
+  // Dragged in the drawing, where the view may be drawn larger or smaller than the plan.
+  const [ds, dh] = [drawnAlong / viewScale(view), drawnUp / viewScale(view)]
   const node = lineOf(doc, view)
   if (!node) return null
   const length = dist(node.a, node.b)
@@ -996,10 +1158,14 @@ export function elevationHeightOps(doc: Document, registry: Registry, object: El
   }
   const kind = registry.parametric.get(object.kind)
   if (!kind?.params.some((p) => p.key === 'height' && p.type === 'number')) return null
-  const was = Number(registry.resolveProps(kind, object.props).height) || 0
+  const was = Number(propsInPlace(doc, object, registry).height) || 0
   const height = Math.max(1, tidy(was + dh))
-  const patch: Record<string, unknown> = { props: { ...object.props, height } }
   const mount = mountOf(object, registry)
+  // Where its height is worked out, what its kind says makes it that high (a wall cabinet no longer
+  // up to the ceiling), or nothing: a tall unit of sections is as high as they are.
+  const set = heightInPlace(doc, object, registry) === null ? { height } : kind.heightSet?.(registry.resolveProps(kind, object.props), height)
+  if (!set) return null
+  const patch: Record<string, unknown> = { props: { ...object.props, ...set } }
   if (mount?.on === 'wall' && mount.measured !== 'bottom') patch.z = tidy((heightAboveFloor(object, registry) ?? 0) + (height - was) / 2)
   return [{ op: 'update_node', id: object.id, patch }]
 }
@@ -1017,52 +1183,113 @@ function carriers(doc: Document, node: Pick<ViewLine, 'a' | 'b' | 'parent'>): { 
 }
 
 /**
- * The operations that keep the lines of elevations on the faces they look at when an edit changed the walls of
- * those faces (`applyEdit`), as `mountFollowOps` does for what is fixed on them: their far side is
- * put back on the face, and their line kept their depth in front of it. Each end of the far side is
- * seen to alone. One that was at an end of the face as drawn (a corner of the room) stays
+ * The operations that keep the lines of views where they belong after an edit (`applyEdit`).
+ *
+ * A view moved with the walls it looks at (its `x`, `y` moved by as much as a wall of the plan it
+ * looks at, in the same edit, its line left as it was) has its line moved with them: the plan and
+ * its views were moved together, as a selection of both is. So has a view whose plan was moved
+ * whole, every wall of it by as much, the view staying where it is drawn: a section goes with the
+ * plan it cuts, as an elevation does with its face.
+ *
+ * An elevation whose face the edit changed, as `mountFollowOps` does for what is fixed on it: its
+ * far side is put back on the face, and its line kept its depth in front of it. Each end of the far
+ * side is seen to alone. One that was at an end of the face as drawn (a corner of the room) stays
  * at an end of a face: where a face still ends there (the wall turned round, or cut in two there)
  * it is left, else it goes to that end of the face, so that the view of a whole face stays of the
  * whole face as the wall gets longer or shorter. One that was along the wall is left while it is still on a face, else keeps its place
  * along the wall as a door does (`followAlong`). Both go on the same face, wherever it now is. Left
  * alone: a line the edit changed itself, and one on a wall that is curved or was taken away.
  */
+/** A view's line moved by `d`. */
+const shifted = (view: Elevation, d: Vec2) => ({ a: { x: tidy(view.a.x + d.x), y: tidy(view.a.y + d.y) }, b: { x: tidy(view.b.x + d.x), y: tidy(view.b.y + d.y) } })
+
 export function elevationFollowOps(before: Document, after: Document, changed: Iterable<string>): Op[] {
+  const ids = [...changed]
   const walls = new Map<string, { old: Wall; now: Wall }>()
-  for (const id of changed) {
+  const views: { old: Elevation; now: Elevation }[] = []
+  for (const id of ids) {
     const old = before.nodes[id]
     const now = after.nodes[id]
-    if (old?.type === 'wall' && now?.type === 'wall' && old !== now && !old.bulge && !now.bulge) walls.set(id, { old, now })
+    if (old?.type === 'wall' && now?.type === 'wall' && old !== now) walls.set(id, { old, now })
+    if (old?.type === 'elevation' && now?.type === 'elevation' && old !== now) views.push({ old, now })
   }
   if (walls.size === 0) return []
   const ops: Op[] = []
-  const roots = new Set([...walls.values()].map(({ old }) => rootOf(before, old.parent)?.id).filter((id): id is string => !!id))
-  for (const root of roots) {
-    for (const node of leavesOf(before, root)) {
-      if (node.type !== 'viewline' || after.nodes[node.id] !== node) continue
-      const [farA, farB] = farSide(node)
-      const far = { a: farA, b: farB, parent: node.parent }
-      const on = carriers(before, far).find((carrier) => walls.has(carrier.wall.id))
-      if (!on) continue
-      const { old, now } = walls.get(on.wall.id)!
-      const [was, is] = [courseOf(old), courseOf(now)]
-      const across = faceAcross(now, on.face)
-      const still = carriers(after, far)
-      const stretch = faceStretch(after, now, on.face)
-      const d = norm(sub(far.b, far.a))
-      const follow = (p: Vec2): Vec2 => {
-        const s = was.project(p).along
-        const atEnd = Math.abs(s - on.stretch[0]) <= ON_FACE ? stretch[0] : Math.abs(s - on.stretch[1]) <= ON_FACE ? stretch[1] : null
-        if (atEnd !== null ? still.some(({ ends }) => ends.some((end) => dist(end, p) <= ON_FACE)) : still.some(({ ends }) => (dot(sub(p, ends[0]), d) + ON_FACE) * (dot(sub(p, ends[1]), d) - ON_FACE) <= 0)) return p
-        const q = is.offset(atEnd ?? followAlong(old, now, s, 0), across)
-        return { x: tidy(q.x), y: tidy(q.y) }
+  // By value: every node an operation touches is parsed again, its points new objects.
+  const same = (p: Vec2, q: Vec2) => p.x === q.x && p.y === q.y
+  const lineKept = (old: Elevation, now: Elevation) => same(old.a, now.a) && same(old.b, now.b) && old.depth === now.depth
+  // Moved with the plan: the line goes as far as the view and the walls went.
+  const carried = new Set<string>()
+  for (const { old, now } of views) {
+    if (!lineKept(old, now)) continue
+    const d = { x: now.x - old.x, y: now.y - old.y }
+    if (Math.hypot(d.x, d.y) < 1e-9) continue
+    const page = lookedAt(before, old)
+    const along = [...walls.values()].some(({ old: was, now: is }) => rootOf(before, was.parent)?.id === page && Math.abs(is.a.x - was.a.x - d.x) < 1e-6 && Math.abs(is.a.y - was.a.y - d.y) < 1e-6 && Math.abs(is.b.x - was.b.x - d.x) < 1e-6 && Math.abs(is.b.y - was.b.y - d.y) < 1e-6)
+    if (!along) continue
+    carried.add(now.id)
+    ops.push({ op: 'update_node', id: now.id, patch: shifted(old, d) })
+  }
+  // The plan moved whole: every wall of a page by the same, the views of it left where they are drawn.
+  const wholly = new Map<string, Vec2 | null>()
+  const movedBy = (page: string): Vec2 | null => {
+    if (wholly.has(page)) return wholly.get(page)!
+    let d: Vec2 | null = null
+    for (const wall of wallsIn(before, page)) {
+      const now = walls.get(wall.id)?.now
+      const by = now && { x: now.a.x - wall.a.x, y: now.a.y - wall.a.y }
+      const same = by && Math.abs(now.b.x - wall.b.x - by.x) < 1e-6 && Math.abs(now.b.y - wall.b.y - by.y) < 1e-6 && (!d || (Math.abs(by.x - d.x) < 1e-6 && Math.abs(by.y - d.y) < 1e-6))
+      if (!same) {
+        d = null
+        break
       }
-      const [a, b] = [follow(far.a), follow(far.b)]
-      if (a === far.a && b === far.b) continue
-      // The line back in front of the face, as far as it was.
-      const line = viewOfFace({ a, b }, depthOf(node))
-      ops.push({ op: 'update_node', id: node.id, patch: { a: line.a, b: line.b } })
+      d = by
     }
+    const found = d && Math.hypot(d.x, d.y) > 1e-9 ? d : null
+    wholly.set(page, found)
+    return found
+  }
+  for (const node of Object.values(before.nodes)) {
+    if (node.type !== 'elevation' || carried.has(node.id) || after.nodes[node.id] !== node) continue
+    const page = lookedAt(before, node)
+    const d = page ? movedBy(page) : null
+    if (!d) continue
+    carried.add(node.id)
+    ops.push({ op: 'update_node', id: node.id, patch: shifted(node, d) })
+  }
+  // On the face of a wall the edit changed: back on it.
+  const straight = new Map([...walls].filter(([, { old, now }]) => !old.bulge && !now.bulge))
+  if (straight.size === 0) return ops
+  const roots = new Set([...straight.values()].map(({ old }) => rootOf(before, old.parent)?.id).filter((id): id is string => !!id))
+  for (const node of Object.values(before.nodes)) {
+    if (node.type !== 'elevation' || carried.has(node.id)) continue
+    const now = after.nodes[node.id]
+    // A view the edit set itself (but for moving where it is drawn) is left as it was set.
+    if (now?.type !== 'elevation' || !lineKept(node, now) || (now !== node && now.x === node.x && now.y === node.y)) continue
+    const line = lineOf(before, node)
+    if (!line.parent || !roots.has(line.parent)) continue
+    const [farA, farB] = farSide(line)
+    const far = { a: farA, b: farB, parent: line.parent }
+    const on = carriers(before, far).find((carrier) => straight.has(carrier.wall.id))
+    if (!on) continue
+    const { old, now: wall } = straight.get(on.wall.id)!
+    const [was, is] = [courseOf(old), courseOf(wall)]
+    const across = faceAcross(wall, on.face)
+    const still = carriers(after, far)
+    const stretch = faceStretch(after, wall, on.face)
+    const d = norm(sub(far.b, far.a))
+    const follow = (p: Vec2): Vec2 => {
+      const s = was.project(p).along
+      const atEnd = Math.abs(s - on.stretch[0]) <= ON_FACE ? stretch[0] : Math.abs(s - on.stretch[1]) <= ON_FACE ? stretch[1] : null
+      if (atEnd !== null ? still.some(({ ends }) => ends.some((end) => dist(end, p) <= ON_FACE)) : still.some(({ ends }) => (dot(sub(p, ends[0]), d) + ON_FACE) * (dot(sub(p, ends[1]), d) - ON_FACE) <= 0)) return p
+      const q = is.offset(atEnd ?? followAlong(old, wall, s, 0), across)
+      return { x: tidy(q.x), y: tidy(q.y) }
+    }
+    const [a, b] = [follow(far.a), follow(far.b)]
+    if (a === far.a && b === far.b) continue
+    // The line back in front of the face, as far as it was.
+    const moved = viewOfFace({ a, b }, depthOf(line))
+    ops.push({ op: 'update_node', id: node.id, patch: { a: moved.a, b: moved.b } })
   }
   return ops
 }

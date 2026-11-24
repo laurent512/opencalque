@@ -34,7 +34,8 @@ function stable(value: unknown): string {
 /** A parameter that tells a model apart from the others of its kind: its label and its value. */
 export interface VariantDetail {
   label: string
-  value: string | number | boolean
+  /** For a list (a tall unit's sections), the choice of each of its rows: what each row is. */
+  value: string | number | boolean | string[]
 }
 
 /** One model of a parametric object: its kind and parameters, the objects of it, and what tells it apart from the other models listed of its kind. */
@@ -88,6 +89,11 @@ export function variantsOf(nodes: NodeOf<'parametric'>[], registry: Registry): V
       .filter((param) => new Set(others.map((other) => stable(other.props[param.key]))).size > 1)
       .flatMap((param): VariantDetail[] => {
         const value = variant.props[param.key]
+        if (param.type === 'list' && Array.isArray(value)) {
+          // Each row by its first choice, a section by what it is: "Drawers / Oven / Doors".
+          const choice = param.items?.find((item) => item.options)
+          return choice ? [{ label: choice.label, value: value.map((row: Record<string, unknown>) => String(row[choice.key])) }] : []
+        }
         return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? [{ label: param.label, value }] : []
       })
   }
@@ -101,11 +107,17 @@ export function variantsOf(nodes: NodeOf<'parametric'>[], registry: Registry): V
  */
 export function variantLabel(name: string, detail: VariantDetail[], translate: (text: string) => string = (text) => text): string {
   const parts = detail.flatMap(({ label, value }) => {
+    if (Array.isArray(value)) return value.length > 0 ? [value.map((one) => sayChoice(label, one, translate)).join(' / ')] : []
     if (typeof value === 'number') return [String(Math.round(value * 10) / 10)]
     if (typeof value === 'boolean') return value ? [translate(label)] : []
-    const scoped = `${label}: ${value}`
-    const said = translate(scoped)
-    return [said !== scoped ? said : translate(value)]
+    return [sayChoice(label, value, translate)]
   })
   return parts.length > 0 ? `${translate(name)} ${parts.join(' · ')}` : translate(name)
+}
+
+/** A choice in a language: as "Parameter: Value" first, which says it for that parameter, else as its word. */
+function sayChoice(label: string, value: string, translate: (text: string) => string): string {
+  const scoped = `${label}: ${value}`
+  const said = translate(scoped)
+  return said !== scoped ? said : translate(value)
 }

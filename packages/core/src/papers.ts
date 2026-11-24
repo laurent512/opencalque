@@ -1,5 +1,7 @@
 import { boundsContain, type Vec2 } from './geometry'
 import type { SceneItem } from './scene'
+import { rootOf } from './document'
+import type { Document } from './schema'
 
 /**
  * A paper is a sheet laid on the drawing: a rectangle in world millimetres that stands for a real
@@ -120,6 +122,23 @@ export function paperRescaled(paper: { x: number; y: number; width: number; heig
 export function paperSheet(paper: { name?: string; width: number; height: number; scale?: number }): { name: string; scale: number; format: string } {
   const scale = paper.scale ?? DEFAULT_PAPER_SCALE
   return { name: paper.name ?? '', scale, format: paperFormat(paper)?.name ?? `${Math.round(paper.width / scale)} × ${Math.round(paper.height / scale)}` }
+}
+
+/**
+ * The drawing scale of the sheet a point of a page is drawn on, as the N of 1:N: of the paper of
+ * that page under it, the one on top when they overlap; on none,
+ * `DEFAULT_PAPER_SCALE`. What a view's scale in Properties is read against: a view twice as large
+ * as the plan on a sheet at 1:100 is at 1:50.
+ */
+export function sheetScaleAt(doc: Document, parent: string | null, at: Vec2): number {
+  const page = rootOf(doc, parent)?.id
+  let found: { scale?: number; order: string } | undefined
+  for (const node of Object.values(doc.nodes)) {
+    if (node.type !== 'paper' || at.x < node.x || at.x > node.x + node.width || at.y < node.y || at.y > node.y + node.height) continue
+    if (rootOf(doc, node.parent)?.id !== page) continue
+    if (!found || node.order > found.order) found = node
+  }
+  return found?.scale ?? DEFAULT_PAPER_SCALE
 }
 
 /** Ids of everything lying entirely on a paper: what moves, and is copied, with it. */

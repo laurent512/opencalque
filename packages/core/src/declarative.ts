@@ -1,7 +1,8 @@
 import * as z from 'zod'
 import { arcPoints, roundCorners } from './geometry'
 import type { Primitive } from './primitives'
-import type { Extension, ParametricKind } from './registry'
+import type { Vec2 } from './geometry'
+import type { Extension, KindSolid, ParametricKind } from './registry'
 
 /**
  * Extensions written as data instead of code. A declarative extension describes parametric
@@ -163,6 +164,20 @@ const ShapeSchema = z.union([
   z.object({ ...Look, text: z.object({ x: Expr, y: Expr, value: z.string(), size: Expr, align: z.enum(['left', 'center']).optional() }) }),
 ])
 
+const Solid = {
+  when: Look.when,
+  repeat: Look.repeat,
+  bottom: Expr.describe('Where it starts, in mm above where the object stands (the floor, or its height above it). An expression over the parameters, not the index of a repeat.'),
+  top: Expr.describe('Where it ends, in mm, as "bottom".'),
+  finish: z.enum(['plain', 'dark', 'metal', 'glass']).optional().describe('What it looks like: as the object (the default), dark (black glass, a screen), metal (steel, a tap) or glass, seen through (the panes of a window).'),
+}
+const SolidSchema = z
+  .union([
+    z.object({ ...Solid, path: z.array(z.tuple([Expr, Expr])).min(3), radius: Expr.optional().describe('Rounds its corners, as for a shape.') }),
+    z.object({ ...Solid, ellipse: z.object({ cx: Expr, cy: Expr, rx: Expr, ry: Expr }) }),
+  ])
+  .describe('A slab of the object in 3D: an outline on the plan, in the same terms as "draw", standing from "bottom" to "top".')
+
 export const DeclarativeExtensionSchema = z
   .object({
     format: z.literal('opencalque-extension'),
@@ -186,7 +201,10 @@ export const DeclarativeExtensionSchema = z
               type: z.enum(['number', 'boolean', 'string']),
               default: z.union([z.number(), z.boolean(), z.string()]),
               options: z.array(z.string()).optional(),
-              unit: z.enum(['length', 'angle']).optional().describe("'length' marks a number as a length in mm, shown in the unit the user works in; 'angle' as an angle in degrees."),
+              unit: z
+                .enum(['length', 'angle', 'percent'])
+                .optional()
+                .describe("'length' marks a number as a length in mm, shown in the unit the user works in; 'angle' as an angle in degrees; 'percent' as a percentage from 0 to 100, set with a slider that keeps it there (expressions should still clamp it: a file may hold any number)."),
             }),
           ),
           opening: z.object({ from: Expr, to: Expr }).optional().describe('Makes the object cut walls along this stretch of its X axis, like a door.'),
@@ -247,6 +265,10 @@ export const DeclarativeExtensionSchema = z
             .array(ShapeSchema)
             .optional()
             .describe('How it looks in an elevation seen from behind, in the same terms as "front": for what stands free, as a table. Left out, a box.'),
+          solids: z
+            .array(SolidSchema)
+            .optional()
+            .describe('What it is made of in 3D, for the view of a viewpoint: slabs, each an outline standing from a bottom to a top. A table its top on its legs, a chair its seat, its legs and its back. Left out, the outline its plan draws, raised to its "height".'),
         }),
       )
       .min(1),
@@ -286,7 +308,7 @@ function compileShapes(draw: Shape[]): Draw[] {
       const radius = shape.radius === undefined ? null : n(compileExpression(shape.radius))
       one = (scope, out) => {
         const corners = points.map(([x, y]) => ({ x: x(scope), y: y(scope) }))
-        out.push({ kind: 'path', points: radius ? roundCorners(corners, radius(scope), shape.closed) : corners, closed: shape.closed, ...look })
+        out.push({ kind: 'path', points: radius ? roundCorners(corners, radius(scope), shape.closed === true) : corners, closed: shape.closed, ...look })
       }
     } else if ('ellipse' in shape) {
       const [cx, cy, rx, ry] = [shape.ellipse.cx, shape.ellipse.cy, shape.ellipse.rx, shape.ellipse.ry].map((e) => n(compileExpression(e)))
@@ -323,6 +345,43 @@ function drawShapes(shapes: Draw[], scope: Scope): Primitive[] {
   return out.filter((p) => (p.kind === 'path' ? p.points.every((q) => Number.isFinite(q.x) && Number.isFinite(q.y)) : true))
 }
 
+type SolidSource = NonNullable<DeclarativeExtension['objects'][number]['solids']>[number]
+
+/** The slabs of an object said as data, each made a function of its parameters. */
+function compileSolids(solids: SolidSource[]): (scope: Scope) => KindSolid[] {
+  const compiled = solids.map(({ bottom, top, finish, ...shape }) => ({
+    draw: compileShapes(['path' in shape ? { ...shape, closed: true } : shape] as Shape[])[0],
+    bottom: compileExpression(bottom),
+    top: compileExpression(top),
+    finish,
+  }))
+  return (scope) => {
+    const out: KindSolid[] = []
+    for (const solid of compiled) {
+      const [bottom, top] = [Number(solid.bottom(scope)), Number(solid.top(scope))]
+      if (!Number.isFinite(bottom) || !Number.isFinite(top)) continue
+      const drawn: Primitive[] = []
+      solid.draw(scope, drawn)
+      for (const p of drawn) {
+        const ring = ringOf(p)
+        if (ring) out.push({ outline: ring, bottom, top, ...(solid.finish ? { finish: solid.finish } : {}) })
+      }
+    }
+    return out
+  }
+}
+
+/** The outline of a closed path or an ellipse, as a ring of points; null for anything else or what is not a number. */
+function ringOf(p: Primitive): Vec2[] | null {
+  const ring =
+    p.kind === 'path'
+      ? p.points
+      : p.kind === 'ellipse'
+        ? Array.from({ length: 24 }, (_, i) => ({ x: p.cx + p.rx * Math.cos((i * Math.PI) / 12), y: p.cy + p.ry * Math.sin((i * Math.PI) / 12) }))
+        : null
+  return ring && ring.length >= 3 && ring.every((q) => Number.isFinite(q.x) && Number.isFinite(q.y)) ? ring : null
+}
+
 /** Turns the JSON of a declarative extension into an extension. Throws, with the reason, when it is not valid. */
 export function declarativeExtension(json: unknown): Extension {
   const parsed = DeclarativeExtensionSchema.safeParse(json)
@@ -334,6 +393,7 @@ export function declarativeExtension(json: unknown): Extension {
     const front = object.front && compileShapes(object.front)
     const side = object.side && compileShapes(object.side)
     const back = object.back && compileShapes(object.back)
+    const solids = object.solids && compileSolids(object.solids)
     const tall = object.height === undefined ? null : compileExpression(object.height)
     const from = object.opening && compileExpression(object.opening.from)
     const to = object.opening && compileExpression(object.opening.to)
@@ -354,6 +414,7 @@ export function declarativeExtension(json: unknown): Extension {
       front: front ? (props) => drawShapes(front, { ...props, wall: 0 }) : undefined,
       side: side ? (props) => drawShapes(side, { ...props, wall: 0 }) : undefined,
       back: back ? (props) => drawShapes(back, { ...props, wall: 0 }) : undefined,
+      solids: solids ? (props, env) => solids({ ...props, wall: env?.wallThickness ?? 0 }) : undefined,
       ports: ports ? (props) => ports.filter(({ when }) => !when || when({ ...props, wall: 0 })).map(({ port }) => port) : undefined,
     }
   })
@@ -366,6 +427,7 @@ export function declarativeExtension(json: unknown): Extension {
       kind.front?.(defaults)
       kind.side?.(defaults)
       kind.back?.(defaults)
+      kind.solids?.(defaults, {})
       kind.height?.(defaults)
       kind.opening?.(defaults)
       kind.ports?.(defaults)

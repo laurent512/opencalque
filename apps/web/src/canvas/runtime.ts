@@ -73,8 +73,12 @@ export interface Canvas {
   clearanceLabels: { x: number; y: number; width: number; height: number }[]
   /** The pointer shown over a grip, so it says what dragging there does. */
   gripCursor: string | null
-  /** Where the views on the page show the one selected object, and the sides of its box there that can be dragged (`elevationSides`). */
-  inViewGrips: { view: NodeOf<'elevation'>; item: ElevationItem; sides: ElevationSide[] }[]
+  /**
+   * Where the views on the page show the one selected object, the sides of its box there that can be
+   * dragged (`elevationSides`), and the lines across it that can (`elevationSplits`: a tall unit's
+   * between its sections), as the Y of each in the drawing.
+   */
+  inViewGrips: { view: NodeOf<'elevation'>; item: ElevationItem; sides: ElevationSide[]; splits: number[] }[]
 
   element(): HTMLCanvasElement
   setOverlay(overlay: Overlay | ((o: Overlay) => Overlay)): void

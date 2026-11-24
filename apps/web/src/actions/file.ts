@@ -13,6 +13,7 @@ import { newDrawingSettings } from '../units'
 import { toast, useWindows } from '../windows'
 import { baseName, guarded } from './common'
 import { zoomToFit } from './view'
+import { keepViewPictures } from '../perspective/keep'
 
 /* Drawings and files: new, open, save, the welcome window's ways in, exports, and what is imported from files. */
 
@@ -133,6 +134,7 @@ export const openRecent = (path: string) =>
 export const saveDocument = (saveAs = false) =>
   guarded(async () => {
     cancel()
+    await keepViewPictures()
     const { doc, file } = get()
     const token = saveAs ? undefined : (file?.token ?? undefined)
     const stored = await platform.save(serializeDocument(forFile(doc)), file?.name ?? `${baseName()}.opencalque`, token)
@@ -168,6 +170,7 @@ export const exportPdf = async (only?: string[], onProgress?: (stage: PdfExportS
   await guarded(async () => {
     try {
       signal?.throwIfAborted()
+      await keepViewPictures()
       const { doc, selection } = get()
       const papers = Object.values(doc.nodes).filter((node) => node.type === 'paper')
       if (papers.length === 0) return toast(t('Add a paper first (F): it sets the size and the scale of the printed sheet.'))
@@ -179,7 +182,7 @@ export const exportPdf = async (only?: string[], onProgress?: (stage: PdfExportS
       const fonts = await abortable(pdfFonts(pdfFontCharacters(doc, registry, ids), language()), signal)
       await onProgress?.('rendering')
       signal?.throwIfAborted()
-      const pdf = toPDF(doc, registry, ids, { fonts })
+      const pdf = toPDF(doc, registry, ids, { fonts, marks: usePrefs.getState().exportMarks })
       await onProgress?.('saving')
       signal?.throwIfAborted()
       const stored = await platform.save(pdf, `${baseName()}.pdf`)
@@ -193,11 +196,11 @@ export const exportPdf = async (only?: string[], onProgress?: (stage: PdfExportS
   return exported
 }
 
-/** Exports one page (or, without one given, what is being edited) for other CAD programs. */
-export const exportDxf = (container?: string) =>
+/** Exports one page (or, without one given, what is being edited) for other CAD programs; given `only`, those objects of it alone. */
+export const exportDxf = (container?: string, only?: string[]) =>
   guarded(async () => {
     const { doc, scope } = get()
-    await platform.save(toDXF(doc, container ?? scope, registry), `${baseName()}.dxf`)
+    await platform.save(toDXF(doc, container ?? scope, registry, { marks: usePrefs.getState().exportMarks, only }), `${baseName()}.dxf`)
   })
 
 /**
@@ -242,10 +245,11 @@ export const exportQuantities = (pageId?: string) =>
   })
 
 /** Exports one page (or, without one given, what is being edited) as a picture. */
-export const exportSvg = (container?: string) =>
+export const exportSvg = (container?: string, only?: string[]) =>
   guarded(async () => {
+    await keepViewPictures()
     const { doc, scope } = get()
-    await platform.save(toSVG(doc, container ?? scope, registry), `${baseName()}.svg`)
+    await platform.save(toSVG(doc, container ?? scope, registry, { marks: usePrefs.getState().exportMarks, only }), `${baseName()}.svg`)
   })
 
 /** The sizes, in pixels along its longer side, a page can be exported as a picture at; browsers draw no canvas much larger. */
@@ -277,14 +281,15 @@ export async function svgToCanvas(svg: string, pixels: number): Promise<HTMLCanv
 }
 
 /**
- * Exports one page (or, without one given, what is being edited) as a PNG picture `pixels` wide
- * on its longer side, at most 8000: the SVG export, drawn by the browser on a white canvas, so that
+ * Exports one page (or, without one given, what is being edited), or given `only` those objects of
+ * it alone, as a PNG picture `pixels` wide on its longer side, at most 8000: the SVG export, drawn by the browser on a white canvas, so that
  * the two look alike.
  */
-export const exportPng = (container: string | undefined, pixels: number) =>
+export const exportPng = (container: string | undefined, pixels: number, only?: string[]) =>
   guarded(async () => {
+    await keepViewPictures()
     const { doc, scope } = get()
-    const canvas = await svgToCanvas(toSVG(doc, container ?? scope, registry), pixels)
+    const canvas = await svgToCanvas(toSVG(doc, container ?? scope, registry, { marks: usePrefs.getState().exportMarks, only }), pixels)
     const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'))
     if (!blob) throw new Error(t('The picture is too large to be made: choose a smaller size.'))
     await platform.save(new Uint8Array(await blob.arrayBuffer()), `${baseName()}.png`)

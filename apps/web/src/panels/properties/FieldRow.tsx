@@ -1,4 +1,4 @@
-import { depthPatch, type Document, lengthOf, newId, type Node, type NodeOf, resolveColor, DEFAULT_INK, type Op, type Pattern, wallEndsOf, wallLength, turnToOps } from '@opencalque/core'
+import { applyOps, depthPatch, type Document, lengthOf, newId, type Node, type NodeOf, resolveColor, DEFAULT_INK, type Op, type Pattern, wallEndsOf, wallLength, turnToOps } from '@opencalque/core'
 import { Fragment, useState, type ReactNode } from 'react'
 import { Pipette, Link2, Undo2, SquareSplitHorizontal } from 'lucide-react'
 import { msg, t } from '../../i18n'
@@ -11,9 +11,10 @@ import { MaterialChoice, type MaterialOption } from '../../MaterialChoice'
 import { unfilledPatch } from '../../materials'
 import { showPanel } from '../../dock'
 import { WeightChoice } from '../../WeightChoice'
-import { DashPicker, Field, FieldPair, IconButton, OpacitySlider, PictureRow, ProportionLock, Section, YesNo } from '../../ui'
+import { DashPicker, Field, FieldPair, IconButton, OpacitySlider, PercentField, PictureRow, ProportionLock, Section, YesNo } from '../../ui'
 import { formatAngle, formatLength } from '../../units'
 import { GEOMETRY, LOOK_SECTIONS, rowName, rowsOf, STROKE, type FieldSpec, type Option } from './fields'
+import { ListField } from './ListField'
 import { WallEdges } from './walls'
 import { Select } from '../../Select'
 
@@ -70,8 +71,13 @@ export function FieldRow({ node, nodes, field, update }: { node: Node; nodes: No
       return apply(turnToOps(now, nodes.map((n) => now.nodes[n.id]).filter(Boolean), next, registry))
     }
     // An elevation given another depth keeps its face where it is: its line moves (`depthPatch`).
-    if (field.path === 'depth') return update((n) => (n.type === 'viewline' ? depthPatch(now, n, typeof next === 'number' ? next : undefined) : patchFor(n, field.path, next)))
+    if (field.path === 'depth') return update((n) => (n.type === 'elevation' ? depthPatch(now, n, typeof next === 'number' ? next : undefined) : patchFor(n, field.path, next)))
     update((n) => patchFor(n, field.path, next))
+  }
+  // A list's rows, which a change sets as a whole on every object selected.
+  if (field.type === 'list') return <ListField node={node} doc={doc} field={field} mixed={mixed} commit={commit} />
+  if (field.type === 'number' && field.percent) {
+    return <PercentField label={t(field.label)} value={typeof value === 'number' ? value : mixed ? undefined : Number(value) || 0} onChange={commit} />
   }
   if (field.type === 'number' || (field.type === 'string' && !field.options)) {
     return (
@@ -83,8 +89,10 @@ export function FieldRow({ node, nodes, field, update }: { node: Node; nodes: No
         multiline={field.multiline}
         numeric={field.type === 'number'}
         length={field.length}
-        suffix={field.angle || field.path === 'rotation' ? '°' : undefined}
+        prefix={field.prefix}
+        suffix={field.suffix ?? (field.angle || field.path === 'rotation' ? '°' : undefined)}
         optional={field.optional}
+        readOnly={field.readOnly?.(node, doc)}
         step={field.path === 'opacity' || field.path === 'bend' ? 0.01 : field.path.endsWith('strokeWidth') ? 0.1 : undefined}
         min={SIZES.test(field.path) || (field.length && field.path.startsWith('props.')) ? 0 : undefined}
         value={(value as string | number | undefined) ?? ''}
@@ -260,17 +268,24 @@ function GroupRow({ fields, ...props }: { node: Node; nodes: Node[]; fields: Fie
       }
       return out
     })
-  // What its own reading and setting gives (`get`, `set`): the others by theirs.
+  // What its own reading and setting gives (`get`, `set`): the others by theirs, each set on what the
+  // one before made, as two of them may set one property (a view's frame, its width and its height).
   const setAlong = (own: FieldSpec): FieldSpec => ({
     ...own,
     set: (n, value, now) => {
       const was = valueOf(own, n, now)
-      const ops = own.set!(n, value, now)
+      let ops = own.set!(n, value, now)
       if (typeof was !== 'number' || typeof value !== 'number' || !(was > 0) || !(value > 0)) return ops
-      return [...ops, ...others(own).flatMap((other) => {
+      let doc = applyOps(now, ops)
+      for (const other of others(own)) {
         const far = valueOf(other, n, now)
-        return typeof far === 'number' && other.set ? other.set(n, tidy((far * value) / was), now) : []
-      })]
+        const at = doc.nodes[n.id]
+        if (typeof far !== 'number' || !other.set || !at) continue
+        const more = other.set(at, tidy((far * value) / was), doc)
+        doc = applyOps(doc, more)
+        ops = [...ops, ...more]
+      }
+      return ops
     },
   })
   return (
@@ -335,8 +350,12 @@ export function Sections({ node, nodes = [node], fields, update, pick, extras = 
   const shown = fields.filter((f) => !f.when || nodes.every(f.when))
   const titles = [...new Set(shown.map((f) => f.section ?? GEOMETRY))]
   let at = titles.includes(GEOMETRY) ? titles.indexOf(GEOMETRY) + 1 : 0
+  // Each part that is not one of the fields' goes after the one before it in the list: after Geometry, or after a part of the fields it follows.
   for (const { title } of extras) {
-    if (titles.includes(title)) continue
+    if (titles.includes(title)) {
+      if (title !== GEOMETRY) at = titles.indexOf(title) + 1
+      continue
+    }
     if (title === GEOMETRY) titles.unshift(title)
     else titles.splice(at, 0, title)
     at++
@@ -380,7 +399,7 @@ export function Sections({ node, nodes = [node], fields, update, pick, extras = 
           )}
           {title === STROKE && wall && split && <WallEdges wall={wall} />}
           {/* A view's a-b is the line on the plan it looks at, not a length of its own to set. */}
-          {title === GEOMETRY && nodes.length === 1 && 'a' in node && node.type !== 'viewline' && <LengthRow node={node} />}
+          {title === GEOMETRY && nodes.length === 1 && 'a' in node && node.type !== 'elevation' && node.type !== 'camera' && <LengthRow node={node} />}
           {title === GEOMETRY && nodes.length === 1 && (node.type === 'wall' || node.type === 'line') && <AngleRow node={node} />}
           {extras.map((extra, i) => extra.title === title && <Fragment key={`after ${i}`}>{extra.after}</Fragment>)}
         </Section>

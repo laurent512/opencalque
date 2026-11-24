@@ -1,4 +1,4 @@
-import { controlsOn, type Document, type Op } from '@opencalque/core'
+import { controlsOn, elevationWall, heightInPlace, heightOf, lineOf, type Document, type NodeOf, type Op } from '@opencalque/core'
 import {
   boundsOfNode,
   boxInRoom,
@@ -328,6 +328,67 @@ export const TASKS: Task[] = [
         // The left wall runs up, from (0, 4000) to (0, 0): the kitchen is on its right face.
         check('fixed on the inner face of the left wall', mount?.wall.id === 'k_left' && mount.face === 'right', mount ? `${mount.wall.id}, ${mount.face} face` : 'on no wall'),
         check('in the middle of it', sockets.length === 1 && Math.abs(sockets[0].y - 2000) <= 150, sockets.length === 1 ? `y ${Math.round(sockets[0].y)}` : undefined),
+        noProblems(o),
+      ]
+    },
+  },
+  {
+    id: 'elevation-of-wall',
+    about: 'An elevation of the inside face of a wall, drawn beside the plan',
+    start: plans.kitchenWithDoor,
+    prompt: 'Make an elevation of the inside of the top wall of the kitchen, and put it below the plan.',
+    // Its line 1 m in front of the face (at y = 100), seeing up to it; the view's floor 3 m below the plan.
+    reference: { ops: () => [{ op: 'add_node', node: { type: 'elevation', id: 'north', parent: PAGE, name: 'Kitchen, north', a: { x: 100, y: 1100 }, b: { x: 4900, y: 1100 }, depth: 1000, x: 100, y: 7000 } } as Op, { op: 'add_node', node: { type: 'autodimensions', id: 'north_dimensions', parent: 'north' } } as Op] },
+    checks: (o) => {
+      const views = Object.values(o.doc.nodes).filter((n): n is NodeOf<'elevation'> => n.type === 'elevation')
+      const view = views.length === 1 ? views[0] : null
+      const face = view ? elevationWall(o.doc, lineOf(o.doc, view)) : null
+      const along = view ? Math.hypot(view.b.x - view.a.x, view.b.y - view.a.y) : 0
+      return [
+        check('one elevation', views.length === 1, `${views.length}`),
+        // The top wall runs right, from (0, 0) to (5000, 0): the kitchen is on its right face.
+        check('of the inside face of the top wall', face?.wall.id === 'k_top' && face.face === 'right', face ? `${face.wall.id}, ${face.face} face` : 'of no face'),
+        check('the whole face, or nearly', along >= 4500, view ? `${Math.round(along)} mm` : undefined),
+        // Drawn below the plan, clear of it: its top (2.5 m above its floor) under the bottom wall.
+        check('below the plan, clear of it', !!view && view.y - 2500 > 4100, view ? `its floor at y ${Math.round(view.y)}` : undefined),
+        // Dimensioned as the editor's tool would: it holds its automatic dimensions.
+        check('with its automatic dimensions', !!view && Object.values(o.doc.nodes).some((n) => n.type === 'autodimensions' && n.parent === view.id)),
+        noProblems(o),
+      ]
+    },
+  },
+  {
+    id: 'tall-unit-sections',
+    about: 'A tall unit of sections of its own, up to the ceiling',
+    start: plans.kitchenWithDoor,
+    prompt: 'In the right-hand corner against the top wall, put a 60 cm tall kitchen unit that goes up to the ceiling: three drawers at the bottom, 72 cm high together, a 60 cm oven above them, an open niche of 38 cm, a 40 cm door, and a filler panel the rest of the way up.',
+    reference: {
+      ops: () => [
+        object('tall', 'arch.tallunit', 4300, 100, 0, {
+          sections: [
+            { type: 'Drawer', height: 240 },
+            { type: 'Drawer', height: 240 },
+            { type: 'Drawer', height: 240 },
+            { type: 'Oven', height: 600 },
+            { type: 'Open', height: 380 },
+            { type: 'Door', height: 400 },
+            { type: 'Filler' },
+          ],
+        }),
+      ],
+    },
+    checks: (o) => {
+      const units = objectsOf(o.doc, 'arch.tallunit')
+      const unit = units.length === 1 ? units[0] : null
+      const mount = unit ? mountOfNode(o.doc, unit) : null
+      const rows = unit ? ((prop(unit, 'sections') as { type: string; height: number }[]) ?? []) : []
+      const near = (row: { height: number } | undefined, mm: number) => !!row && Math.abs(row.height - mm) <= 30
+      return [
+        check('one tall unit', units.length === 1, `${units.length}`),
+        check('against the inner face of the top wall, in the right-hand corner', mount?.wall.id === 'k_top' && !!unit && Math.abs(unit.x + Number(prop(unit, 'width')) - 4900) <= 150, mount && unit ? `${mount.wall.id}, its right side at x ${Math.round(unit.x + Number(prop(unit, 'width')))}` : 'on no wall'),
+        check('up to the ceiling', !!unit && !!mount && heightInPlace(o.doc, unit, registry) === heightOf(o.doc, mount.wall), unit ? `${heightInPlace(o.doc, unit, registry) ?? prop(unit, 'height')} mm high` : undefined),
+        check('three drawers, an oven, an open niche, a door and a filler, from the floor up', rows.map((row) => row.type).join(' ') === 'Drawer Drawer Drawer Oven Open Door Filler', rows.map((row) => row.type).join(', ') || 'no sections'),
+        check('the drawers 72 cm high together, the oven 60 cm, the niche 38 cm, the door 40 cm', near({ height: rows.slice(0, 3).reduce((sum, row) => sum + row.height, 0) }, 720) && near(rows[3], 600) && near(rows[4], 380) && near(rows[5], 400), rows.map((row) => `${row.type} ${row.height}`).join(', ')),
         noProblems(o),
       ]
     },

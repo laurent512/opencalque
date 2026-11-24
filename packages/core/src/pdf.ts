@@ -1,9 +1,11 @@
 import { parseColor } from './colors'
 import { rotate, type Vec2 } from './geometry'
 import { decodePng } from './png'
-import { PRINT_MM_PER_PIXEL, type Primitive } from './primitives'
+import { isVisible, leavesOf, rootOf } from './document'
+import { nodePrimitives } from './kinds'
+import { PRINT_MM_PER_PIXEL, printedPrims, type Primitive } from './primitives'
 import type { Registry } from './registry'
-import { buildScene, paintOrder, type PaintStep } from './scene'
+import { buildScene, paintOrder, printedScene, type PaintStep } from './scene'
 import type { Document, NodeOf } from './schema'
 import { readTrueType, type TrueTypeFont } from './truetype'
 
@@ -145,7 +147,7 @@ interface Resources {
 }
 
 /** The drawing commands for one paper: what lies on it, brought to the page's own measure. */
-function pageContent(doc: Document, paper: Paper, registry: Registry, resources: Resources): { width: number; height: number; commands: string } {
+function pageContent(doc: Document, paper: Paper, registry: Registry, resources: Resources, marks = false): { width: number; height: number; commands: string } {
   const perMm = POINT / (paper.scale ?? 100)
   const height = paper.height * perMm
   const at = (p: Vec2) => `${n((p.x - paper.x) * perMm)} ${n(height - (p.y - paper.y) * perMm)}`
@@ -257,13 +259,27 @@ function pageContent(doc: Document, paper: Paper, registry: Registry, resources:
     out.push('Q')
   }
 
-  for (const step of paintOrder(sheetPrimitives(doc, paper, registry))) paint(step)
+  for (const step of paintOrder(sheetPrimitives(doc, paper, registry, marks))) paint(step)
   return { width: paper.width * perMm, height, commands: out.join('\n') }
 }
 
-/** What is on a sheet, without the sheets themselves: the page is the paper. */
-const sheetPrimitives = (doc: Document, paper: Paper, registry: Registry): Primitive[] =>
-  buildScene(doc, paper.parent!, registry).flatMap((item) => (item.node.type === 'paper' && item.id !== paper.id ? [] : item.prims.filter((p) => p.backdrop !== true)))
+/**
+ * What is on a sheet, without the other sheets: the page is the paper. All that is on its page is
+ * taken, the paper being in a group or not; a group that holds papers draws them, so what it holds
+ * is taken one by one, without the papers but this one.
+ */
+function sheetPrimitives(doc: Document, paper: Paper, registry: Registry, marks = false): Primitive[] {
+  const page = rootOf(doc, paper.parent)?.id ?? paper.parent!
+  const ctx = { doc, registry, depth: 0 }
+  const shown = (prims: Primitive[]) => (marks ? prims : printedPrims(prims)).filter((p) => p.backdrop !== true)
+  return printedScene(buildScene(doc, page, registry), marks).flatMap((item) => {
+    if (item.node.type === 'paper') return item.id === paper.id ? shown(item.prims) : []
+    if (item.node.type !== 'group') return shown(item.prims)
+    const held = leavesOf(doc, item.id).filter((leaf) => isVisible(doc, leaf))
+    if (!held.some((leaf) => leaf.type === 'paper')) return shown(item.prims)
+    return held.flatMap((leaf) => (leaf.type === 'paper' && leaf.id !== paper.id ? [] : shown(nodePrimitives(leaf, ctx))))
+  })
+}
 
 /** The papers to export: those given, in that order, or every paper of the document, page by page. */
 function papersOf(doc: Document, paperIds?: string[]): Paper[] {
@@ -300,6 +316,8 @@ export interface PdfOptions {
    * embedded. Without them, those characters print as "?".
    */
   fonts?: Uint8Array[]
+  /** The marks drawn to work with (the eyes of viewpoints, the lines of views), printed too, as on screen. */
+  marks?: boolean
 }
 
 /**
@@ -312,7 +330,7 @@ export function toPDF(doc: Document, registry: Registry, paperIds?: string[], op
 
   const given = (options.fonts ?? []).map((bytes): Embedded => ({ font: readTrueType(bytes), glyphs: [0], numbers: new Map([[0, 0]]), characters: [''] }))
   const resources: Resources = { alphas: [], images: [], imageByHref: new Map(), fonts: given }
-  const pages = papers.map((paper) => pageContent(doc, paper, registry, resources))
+  const pages = papers.map((paper) => pageContent(doc, paper, registry, resources, options.marks))
   // A given font none of whose glyphs was used is left out; the others take five objects each.
   const used = given.flatMap((embedded, i) => (embedded.glyphs.length > 1 ? [{ embedded, name: `F${FONTS.length + i + 1}` }] : []))
   const fonts = used.flatMap(({ embedded }, i) => embeddedFont(embedded, 3 + FONTS.length + 5 * i))

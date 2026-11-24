@@ -61,7 +61,7 @@ describe('an agent working on a file over MCP', () => {
   it('keeps the guide and each type of node well within what a client takes from a tool', async () => {
     const { call } = await connected(fileBackend(undefined, registry))
     const guide = (await call('read_guide')).text
-    expect(guide.length).toBeLessThan(30_000)
+    expect(guide.length).toBeLessThan(32_000)
     expect(guide).toContain('arch.door')
     const types = /The types of node are ([^.]+)\./.exec(guide)![1].split(', ')
     expect(types).toContain('wall')

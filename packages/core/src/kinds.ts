@@ -13,8 +13,9 @@ import type { Registry } from './registry'
 import { DEFAULT_MATERIAL, type Asset, type Document, type DrawingSettings, type Node, type NodeOf, type NodeType, type WallEdge } from './schema'
 import { DEFAULT_PAPER_SCALE, paperFormat, paperSheet } from './papers'
 import { regionPerimeter, roomAt } from './rooms'
-import { drawElevationsWith, elevationPrimitives, moveViewCorner, moveViewEdge, moveViewEnd, seenArea } from './elevation'
+import { autoDimensionPrimitives, drawElevationsWith, elevationPrimitives, keptViewPatch, lineHere, moveViewCorner, moveViewEdge, moveViewEnd, seenArea, viewPlacement, type Measure } from './elevation'
 import { tablePrimitives } from './tables'
+import { cameraEdges, cameraPrimitives, fovThrough, frameHeight, markTip } from './camera'
 import { bendThrough, linkMiddle, linkPrimitives } from './networks'
 import { bulgeThrough, heightAboveFloor, hostWall, materialSeams, mountOf, wallArc, wallMiddle, wallParallel, wallPoints, wallPolygons, wallSeams, wallOutlineRuns, wallSides, wallSpot } from './walls'
 
@@ -31,7 +32,7 @@ const VIEW_LINE_HEAD = 180
  * A view line on the plan, as the mark of a section is drawn: a line of dashes and dots from end to
  * end, and at each end an arrow the way its views look, filled.
  */
-function viewLinePrimitives(node: NodeOf<'viewline'>): Primitive[] {
+function viewLinePrimitives(node: { a: Vec2; b: Vec2 }): Primitive[] {
   const length = Math.hypot(node.b.x - node.a.x, node.b.y - node.a.y)
   const line: Primitive = { kind: 'path', points: [node.a, node.b], dash: [14, 4, 2, 4], own: true }
   if (length < 1e-6) return [line]
@@ -70,6 +71,13 @@ export interface KindContext {
   ink?: string
   /** The paper being drawn on, for what the drawing puts on every sheet: text fields are filled in for that sheet and the page it lies on. */
   sheet?: { name: string; scale: number; format: string; page: string | null }
+  /**
+   * Only the mark of a view on the plan it looks at (the eye of a viewpoint, the line of an
+   * elevation), drawn there for a view that is on another page (`foreignViews`).
+   */
+  mark?: boolean
+  /** Only what a view draws of the plan, without its line nor what it holds: the backdrop of what is drawn inside it (`buildScene`). */
+  bare?: boolean
 }
 
 /** What a text says once its fields are filled in for where it is being drawn. */
@@ -117,6 +125,11 @@ export interface NodeKind<N> {
   parallel?(node: N, distance: number): Record<string, unknown> | null
   /** How far `p` is from the node, signed as `parallel` takes a distance. */
   beside?(node: N, p: Vec2): number
+  /**
+   * What it draws is to work with, in the editor, and never printed nor exported: the eye of a
+   * viewpoint, the line an elevation is taken from (ARCHITECTURE §10, "Views").
+   */
+  screenOnly?: boolean
 }
 
 const moveXY = (node: { x: number; y: number }, d: Vec2) => ({ x: node.x + d.x, y: node.y + d.y })
@@ -714,6 +727,16 @@ function dimensionPrimitives(node: NodeOf<'dimension'>, drawing?: DrawingSetting
 }
 
 // Building a data: URL copies megabytes, so it is done once per asset, not once per redraw.
+/** The picture a viewpoint keeps of its view (`picture`), in its frame on a white sheet: none without a frame or a picture. */
+function keptPicture(node: NodeOf<'camera'>, doc: Document): Primitive[] {
+  const asset = node.picture ? doc.assets?.[node.picture] : undefined
+  if (!asset || !node.frame) return []
+  const { x, y, width } = node.frame
+  const height = frameHeight(node.frame)
+  const sheet: Primitive = { kind: 'path', points: [{ x, y }, { x: x + width, y }, { x: x + width, y: y + height }, { x, y: y + height }], closed: true, fill: '#ffffff', stroke: 'none' }
+  return [sheet, { kind: 'image', x, y, width, height, href: assetUrl(asset) }]
+}
+
 const assetUrls = new WeakMap<Asset, string>()
 
 export function assetUrl(asset: Asset): string {
@@ -822,37 +845,85 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     // A table stays upright and readable: it goes to where its corner is taken, its text scaled.
     transform: (node, t) => ({ ...t.point(node), ...(node.size === undefined && t.scale === 1 ? {} : { size: t.length(node.size ?? 200) }) }),
   },
-  viewline: {
-    primitives: viewLinePrimitives,
+  camera: {
+    // Its view, as the editor last drew it (`picture`), on a white sheet in its frame: what prints
+    // and exports, and what the editor paints its live view over (`viewPictures`). Its eye, on the
+    // plan it looks at: on its own page, unless its view is shown on another page (`page`), where the
+    // plan it looks at draws it (`foreignViews`); there to place it, never printed (`screen`).
+    primitives: (node, ctx) => {
+      const eye = ctx.mark || lineHere(ctx.doc, node) ? cameraPrimitives(node).map((p) => ({ ...p, screen: true })) : []
+      return ctx.mark ? eye : [...keptPicture(node, ctx.doc), ...eye]
+    },
     move: moveAB,
-    // The edges of what it sees, by their middles, dragged across as a wall's faces are (0 its far
-    // side, which sets how far it sees; 7 the line; 8 and 9 the sides at its start and its end);
-    // its ends (1, 2), dragged along it, make its views look at part of the face only; the four
-    // corners of what it sees (3 to 6), dragged, turn that area about the corner across, a rectangle still.
+    // Where the eye is, which moves it looking the same way; the tip of its mark, which turns it
+    // (its mark is always as long, `MARK_LENGTH`: nothing of the view depends on it); and the two
+    // ends of the arc of what it sees, dragged sideways to make it see wider or narrower.
+    // Fixed (`fixed`), it has none: where it stands and the way it looks are kept.
+    handles: (node) => (node.fixed ? [] : [node.a, markTip(node) ?? node.b, ...cameraEdges(node)]),
+    moveHandle: (node, index, p) => {
+      if (index === 0) return moveAB(node, sub(p, node.a))
+      if (index === 1) return dist(p, node.a) < 1e-6 ? {} : { b: p }
+      const fov = fovThrough(node, p)
+      return fov === null ? {} : { fov }
+    },
+    snapPoints: (node) => [node.a],
+    snapLines: () => [],
+    transform: transformAB,
+  },
+  elevation: {
+    // Its dimensions are drawn as dimensions are, in the drawing's way of writing numbers. Its
+    // line, on the plan of the page it is on, is drawn there to place it, never printed (`screen`):
+    // clicked, it selects the view.
+    // What it holds (its dimensions, its notes, `VIEW_CONTENTS`) is in its own coordinates, put where
+    // it is drawn and as large (`viewPlacement`): a dimension says the real length, and goes with it.
+    primitives: (node, ctx) => {
+      if (ctx.mark) return viewLinePrimitives(node).map((p) => ({ ...p, screen: true }))
+      const drawn = elevationPrimitives(node, ctx.doc, ctx.registry)
+      if (ctx.bare) return drawn
+      const placing = viewPlacement(node)
+      const held = childrenOf(ctx.doc, node.id)
+        .filter((child) => isVisible(ctx.doc, child))
+        .flatMap((child) => nodePrimitives(child, { ...ctx, depth: ctx.depth + 1 }).map((p) => transformPrimitive(p, placing)))
+      return [...drawn, ...held, ...(lineHere(ctx.doc, node) ? viewLinePrimitives(node).map((p) => ({ ...p, screen: true })) : [])]
+    },
+    // Moved, it is drawn elsewhere; what it shows is set by its line (moved with the plan, `elevationFollowOps`).
+    move: moveXY,
+    // The edges of what its line sees, by their middles, dragged across as a wall's faces are (0
+    // its far side, which sets how far it sees; 7 the line; 8 and 9 the sides at its start and its
+    // end); the line's ends (1, 2), dragged along it, make it look at part of the face only; the
+    // four corners of what it sees (3 to 6), dragged, turn that area about the corner across, a
+    // rectangle still. A drag of its start moves the view across as far (`keptViewPatch`), so
+    // that what it still shows stays where it was. On the plan it looks at, wherever the view is
+    // (the canvas shows them there only).
     handles: (node) => {
       const area = seenArea(node)
       return [mid(area[2], area[3]), node.a, node.b, ...area, mid(area[0], area[1]), mid(area[3], area[0]), mid(area[1], area[2])]
     },
     moveHandle: (node, index, p) =>
-      index === 0 || index >= 7
-        ? moveViewEdge(node, (['far', 'line', 'start', 'end'] as const)[index === 0 ? 0 : index - 6], p)
-        : index < 3
-          ? moveViewEnd(node, index === 1 ? 'a' : 'b', p)
-          : moveViewCorner(node, (index - 3) as 0 | 1 | 2 | 3, p),
-    snapPoints: (node) => [node.a, node.b],
-    // Mirrored, it keeps looking at what it looked at, mirrored too: its ends change places.
-    transform: (node, t) => (t.mirror ? { a: t.point(node.b), b: t.point(node.a) } : transformAB(node, t)),
-  },
-  elevation: {
-    // Its dimensions are drawn as dimensions are, in the drawing's way of writing numbers.
-    primitives: (node, ctx) =>
-      elevationPrimitives(node, ctx.doc, ctx.registry, (a, b, offset) =>
-        dimensionPrimitives(styledDimension(ctx.doc, { id: node.id, type: 'dimension', parent: node.parent, order: node.order, a, b, offset }), ctx.doc.settings),
+      keptViewPatch(
+        node,
+        index === 0 || index >= 7
+          ? moveViewEdge(node, (['far', 'line', 'start', 'end'] as const)[index === 0 ? 0 : index - 6], p)
+          : index < 3
+            ? moveViewEnd(node, index === 1 ? 'a' : 'b', p)
+            : moveViewCorner(node, (index - 3) as 0 | 1 | 2 | 3, p),
       ),
-    // Moved, it is drawn elsewhere; what it shows is set by its line.
-    move: moveXY,
-    // A view stays upright, to be read: it goes to where its corner is taken.
+    // A view stays upright, to be read: it goes to where its corner is taken. Its line turns only
+    // with the walls it looks at (`transformOps`).
     transform: (node, t) => ({ ...t.point(node) }),
+  },
+  autodimensions: {
+    // The dimensions its view draws by itself, in its coordinates, in the drawing's way of writing
+    // numbers and its dimension style, as dimensions are; it has no place of its own to move.
+    primitives: (node, ctx) => {
+      const view = node.parent ? ctx.doc.nodes[node.parent] : undefined
+      if (view?.type !== 'elevation') return []
+      const measure: Measure = (a, b, offset) =>
+        dimensionPrimitives(styledDimension(ctx.doc, { id: node.id, type: 'dimension', parent: node.parent, order: node.order, a, b, offset, ...(node.dimensionStyle ? { dimensionStyle: node.dimensionStyle } : {}) }), ctx.doc.settings)
+      return autoDimensionPrimitives(view, ctx.doc, ctx.registry, measure, node)
+    },
+    move: () => ({}),
+    transform: () => ({}),
   },
   link: {
     // Drawn between what its two ends draw, which it follows: it has no place of its own to move.
@@ -1107,6 +1178,14 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
         // A door twice the size is a door with twice the width, not a stretched drawing of one.
         const props: Record<string, unknown> = { ...node.props }
         for (const param of kind.params) {
+          // The lengths in each row of a list too: a tall unit's sections.
+          if (param.type === 'list' && Array.isArray(props[param.key])) {
+            const lengths = (param.items ?? []).filter((item) => item.unit === 'length' && typeof item.default === 'number')
+            props[param.key] = (props[param.key] as unknown[]).map((row) =>
+              row && typeof row === 'object' ? { ...row, ...Object.fromEntries(lengths.flatMap((item) => (typeof (row as Record<string, unknown>)[item.key] === 'number' ? [[item.key, t.length((row as Record<string, number>)[item.key])]] : []))) } : row,
+            )
+            continue
+          }
           if (param.unit !== 'length' || typeof param.default !== 'number') continue
           const value = props[param.key]
           props[param.key] = t.length(typeof value === 'number' ? value : param.default)
@@ -1228,7 +1307,8 @@ export function nodePrimitives(node: Node, ctx: KindContext): Primitive[] {
   const solid = node.type === 'instance' || node.type === 'parametric'
   const backing = solid ? objectBacking(styled) : []
   // Last of all, so modifiers work on the node as it would otherwise be drawn.
-  return applyModifiers(node, [...backing, ...styled, ...hatching], ctx.registry)
+  const drawn = applyModifiers(node, [...backing, ...styled, ...hatching], ctx.registry)
+  return kindOf(node).screenOnly ? drawn.map((p) => ({ ...p, screen: true })) : drawn
 }
 
 /** The operations that translate a node by `d`. For a group that means moving everything inside it. */

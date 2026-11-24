@@ -1,4 +1,4 @@
-import { boundsOf, buildScene, inverseOf, transformPrimitive, type Document, type Node, type Registry, type SceneItem, type Transform } from '@opencalque/core'
+import { boundsOf, buildScene, inverseOf, transformPrimitive, viewPlacement, type Document, type Node, type Registry, type SceneItem, type Transform } from '@opencalque/core'
 import { scopePath } from './scopePath'
 
 /** How the rest of the drawing is shown while editing inside a group, or a component: faded around it, or not at all. */
@@ -33,6 +33,13 @@ export function surroundings(
     const component = doc.nodes[inner.id]?.type === 'component'
     if ((component ? show.components : show.groups) !== 'faded') break
     let leading = inner.id
+    // A view (an elevation, a section) is gone into in its own coordinates: what is around it is
+    // brought into them, as through a placement (`viewPlacement`).
+    const view = doc.nodes[inner.id]
+    if (view?.type === 'elevation') {
+      const { x, y, scale } = viewPlacement(view)
+      undo = [{ x: -x / scale, y: -y / scale, scale: 1 / scale }, ...undo]
+    }
     if (component) {
       const placement = way && doc.nodes[way[outer.depth]]
       const back = placement?.type === 'instance' ? inverseOf(placement) : null

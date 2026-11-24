@@ -52,12 +52,15 @@ export function drawer(x0: number, x1: number, y0: number, y1: number): Primitiv
   return [rect(x0, y0, x1, y1, THIN), bar((x0 + x1) / 2 - reach, y1 + below, (x0 + x1) / 2 + reach, y1 + below)]
 }
 
-/** `n` doors side by side across x0 to x1: one opens from its right, two or more in pairs, from where they meet. */
-export function doors(x0: number, x1: number, y0: number, y1: number, n: number): Primitive[] {
+/**
+ * `n` doors side by side across x0 to x1: one hinged on its left, opening from its right (or the
+ * other way, `hinge` 'Right'), two or more in pairs, from where they meet.
+ */
+export function doors(x0: number, x1: number, y0: number, y1: number, n: number, hinge = 'Left'): Primitive[] {
   const leaves = Math.min(MAX_FRONTS, count(n))
   const each = (x1 - x0) / leaves
   return Array.from({ length: leaves }, (_, i) => {
-    const handle: Handle = leaves === 1 ? 'right' : i % 2 === 0 ? (i === leaves - 1 ? 'left' : 'right') : 'left'
+    const handle: Handle = leaves === 1 ? (hinge === 'Right' ? 'left' : 'right') : i % 2 === 0 ? (i === leaves - 1 ? 'left' : 'right') : 'left'
     return door(x0 + i * each + (i > 0 ? GAP / 2 : 0), x0 + (i + 1) * each - (i < leaves - 1 ? GAP / 2 : 0), y0, y1, handle)
   }).flat()
 }
@@ -100,19 +103,19 @@ export type Fronts = 'Doors' | 'Drawers' | 'Door and drawer' | 'Oven' | 'None'
 export const FRONTS: Fronts[] = ['Doors', 'Drawers', 'Door and drawer', 'Oven']
 
 /** The fronts of a unit from x0 to x1 between y0 (the top of its plinth) and y1 (under its worktop). */
-export function frontsOf(layout: string, x0: number, x1: number, y0: number, y1: number, leaves: number, rows: number): Primitive[] {
+export function frontsOf(layout: string, x0: number, x1: number, y0: number, y1: number, leaves: number, rows: number, hinge?: string): Primitive[] {
   const [a, b] = [y0 - GAP, y1 + GAP]
   if (b >= a) return []
   if (layout === 'None') return []
   if (layout === 'Drawers') return drawers(x0, x1, a, b, rows)
   // A drawer of 150 mm along the top, the doors under it.
-  if (layout === 'Door and drawer') return [...drawer(x0, x1, b + Math.min(150, (a - b) / 3), b), ...doors(x0, x1, a, b + Math.min(150, (a - b) / 3) + GAP, leaves)]
+  if (layout === 'Door and drawer') return [...drawer(x0, x1, b + Math.min(150, (a - b) / 3), b), ...doors(x0, x1, a, b + Math.min(150, (a - b) / 3) + GAP, leaves, hinge)]
   // An oven of 595 mm under the worktop, a drawer under it.
   if (layout === 'Oven') {
     const top = b + Math.min(595, (a - b) * 0.8)
     return [...oven(x0, x1, top, b), ...(a - top > GAP * 4 ? drawer(x0, x1, a, top + GAP) : [])]
   }
-  return doors(x0, x1, a, b, leaves)
+  return doors(x0, x1, a, b, leaves, hinge)
 }
 
 /**

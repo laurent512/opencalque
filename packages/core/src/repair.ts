@@ -134,7 +134,7 @@ export function repairDocument(input: Document): { doc: Document; repairs: strin
       set(rest)
       repairs.push(`Wall "${node.id}" was of material "${node.material}", which does not exist; it is of the default material.`)
     }
-    if (node.type === 'dimension' && node.dimensionStyle !== undefined && !doc.dimensionStyles?.[node.dimensionStyle]) {
+    if ((node.type === 'dimension' || node.type === 'autodimensions') && node.dimensionStyle !== undefined && !doc.dimensionStyles?.[node.dimensionStyle]) {
       const { dimensionStyle: _, ...rest } = node
       set(rest)
       repairs.push(`Dimension "${node.id}" was in dimension style "${node.dimensionStyle}", which does not exist; it keeps the look it gives itself.`)
@@ -143,9 +143,15 @@ export function repairDocument(input: Document): { doc: Document; repairs: strin
       delete nodes[node.id]
       repairs.push(`Picture "${node.id}" was removed: its file ("${node.asset}") is not in the drawing.`)
     }
-    if (node.type === 'elevation' && nodes[node.line]?.type !== 'viewline') {
-      delete nodes[node.id]
-      repairs.push(`View "${node.id}" was removed: its line ("${node.line}") is not in the drawing.`)
+    if (node.type === 'camera' && node.picture !== undefined && !doc.assets?.[node.picture]) {
+      const { picture: _, ...rest } = node
+      set(rest)
+      repairs.push(`Viewpoint "${node.id}" kept a picture ("${node.picture}") that is not in the drawing; it is made again when the drawing is saved.`)
+    }
+    if ((node.type === 'elevation' || node.type === 'camera') && node.page !== undefined && nodes[node.page]?.type !== 'page') {
+      const { page: _, ...rest } = node
+      set(rest)
+      repairs.push(`View "${node.id}" looked at a page ("${node.page}") that is not in the drawing; it looks at the plan of the page it is on.`)
     }
     if (node.type === 'link' && (node.from === node.to || !linkable(nodes[node.from]) || !linkable(nodes[node.to]))) {
       delete nodes[node.id]

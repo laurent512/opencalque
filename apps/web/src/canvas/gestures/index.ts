@@ -6,7 +6,7 @@ import { angleDown, angleMove, measureDown, measureMove } from './measure'
 import { offsetDown, parallelMove } from './offset'
 import { extendDown, filletDown, filletMove } from './fit'
 import { elevationDown, eyedropperDown, placeDown, sectionMove, splitDown, toolHover, trimDown } from './place'
-import { cornerMove, cropMove, dragUp, elevatedMove, gripMove, endMove, faceMove, handleMove, hover, marqueeMove, marqueeUp, moveMove, pressMove, pressUp, resizeMove, rotateMove, scaleMove, selectDown } from './select'
+import { cornerMove, cropMove, dragUp, elevatedMove, gripMove, splitMove, endMove, faceMove, handleMove, hover, marqueeMove, marqueeUp, moveMove, pressMove, pressUp, resizeMove, rotateMove, scaleMove, selectDown } from './select'
 import { displaceMove, moveToolDown } from './move'
 import { connectDown, connectMove } from './connect'
 import { rotateDown, turnMove } from './turn'
@@ -51,6 +51,7 @@ export const MOVES: { [K in Gesture['kind']]: Move<K> } = {
   press: pressMove,
   elevated: elevatedMove,
   grip: gripMove,
+  split: splitMove,
   section: sectionMove,
   connect: connectMove,
   move: moveMove,
@@ -80,6 +81,7 @@ export const RELEASES: { [K in Gesture['kind']]?: Release<K> } = {
   press: pressUp,
   elevated: dragUp,
   grip: dragUp,
+  split: dragUp,
   move: dragUp,
   handle: dragUp,
   corner: dragUp,

@@ -23,8 +23,12 @@ export function createComponent(
   const picked = new Set(nodeIds)
   const first = doc.nodes[nodeIds[0]]
   if (!first || first.parent === null) throw new OpError('Select at least one object to create a component')
-  const nodes = childrenOf(doc, first.parent).filter((n) => picked.has(n.id))
-  if (nodes.length !== picked.size) throw new OpError('Objects of a component must all be on the same page')
+  const all = childrenOf(doc, first.parent).filter((n) => picked.has(n.id))
+  if (all.length !== picked.size) throw new OpError('Objects of a component must all be on the same page')
+  // A viewpoint stays on the page, whose plan it looks at and where its view is shown; so does one inside a group taken in.
+  const inside = (n: Node): Node[] => childrenOf(doc, n.id).flatMap((child) => [child, ...inside(child)])
+  const nodes = all.filter((n) => n.type !== 'camera' && !inside(n).some((child) => child.type === 'camera'))
+  if (nodes.length === 0) throw new OpError(all.some((n) => n.type === 'camera') ? 'A viewpoint stays on the page, whose plan it looks at: it cannot go in a component' : 'Select at least one object to create a component')
 
   const ctx = { doc, registry, depth: 0 }
   const bounds = boundsOf(nodes.flatMap((n) => nodePrimitives(n, ctx)))
@@ -34,7 +38,6 @@ export function createComponent(
   const instanceId = newId()
   // What goes into the component leaves its layer: the placement takes the first one, for all of it.
   const layer = layerIn(doc, first.parent, nodes.find((n) => n.layer !== undefined)?.layer)
-  const inside = (n: Node): Node[] => childrenOf(doc, n.id).flatMap((child) => [child, ...inside(child)])
   const ops: Op[] = [
     { op: 'add_node', node: { type: 'component', id: componentId, name } },
     ...nodes.flatMap((n) => moveOps(doc, n, back)),
@@ -170,10 +173,6 @@ export function transplantOps(
     only?: Set<string>
     fallbackLayer?: string
     onTop?: boolean
-    /** Nodes that keep their id where they land, as the lines a clipboard refers to. */
-    keep?: Set<string>
-    /** The ids of the view lines, copied before, that the views copied here are of. */
-    lines?: Map<string, string>
   },
 ): { ops: Op[]; top: string[]; ids: Map<string, string> } {
   const layerByName = new Map(layersOf(target).map((l) => [l.name, l.id]))
@@ -184,13 +183,13 @@ export function transplantOps(
   const copyInto = (parent: string, into: string, depth: number) => {
     for (const child of childrenOf(source, parent)) {
       if (depth === 0 && options.only && !options.only.has(child.id)) continue
-      // A picture needs its file too. The asset keeps its id, so copying it twice adds it once.
-      const asset = child.type === 'image' ? source.assets?.[child.asset] : undefined
+      // A picture needs its file too, and so does the picture a viewpoint keeps of its view. The asset keeps its id, so copying it twice adds it once.
+      const asset = child.type === 'image' ? source.assets?.[child.asset] : child.type === 'camera' && child.picture ? source.assets?.[child.picture] : undefined
       if (asset && !target.assets?.[asset.id] && !ops.some((o) => o.op === 'add_asset' && o.asset.id === asset.id)) {
         ops.push({ op: 'add_asset', asset })
       }
       // So does the dimension style it is drawn in, which keeps its id as well.
-      const dimensionStyle = child.type === 'dimension' && child.dimensionStyle ? source.dimensionStyles?.[child.dimensionStyle] : undefined
+      const dimensionStyle = (child.type === 'dimension' || child.type === 'autodimensions') && child.dimensionStyle ? source.dimensionStyles?.[child.dimensionStyle] : undefined
       // So does the material of a wall or of a floor, which keeps its id too.
       const materials = [child.type === 'wall' || child.type === 'room' ? child.material : undefined].flatMap((id) => (id && source.materials?.[id] ? [source.materials[id]] : []))
       // So does a shared colour it, its style or its materials refer to, which also keeps its id.
@@ -206,7 +205,7 @@ export function transplantOps(
       }
       const sourceLayer = child.layer === undefined ? undefined : source.layers[child.layer]
       const layer = layered ? ((sourceLayer && layerByName.get(sourceLayer.name)) ?? options.fallbackLayer) : undefined
-      const node = { ...child, id: options.keep?.has(child.id) ? child.id : newId(child.type === 'group' ? 'group' : 'n'), parent: into, layer }
+      const node = { ...child, id: newId(child.type === 'group' ? 'group' : 'n'), parent: into, layer }
       ids.set(child.id, node.id)
       if (node.layer === undefined) delete node.layer
       // Added without an order, each goes on top of the last: the children are taken bottom first.
@@ -218,21 +217,15 @@ export function transplantOps(
       }
       ops.push({ op: 'add_node', node: node as NodeInput })
       if (depth === 0) top.push(node.id)
-      if (child.type === 'group') copyInto(child.id, node.id, depth + 1)
+      if (child.type === 'group' || child.type === 'elevation') copyInto(child.id, node.id, depth + 1)
     }
   }
   copyInto(from, to, 0)
-  // A view is of the copy of its line, when its line was copied too, and comes after it, once it is there.
   // A link joins the copies of its two ends, after them; one whose ends were not both copied is left out.
-  const views: Op[] = []
   const links: Op[] = []
   const rest: Op[] = []
   for (const op of ops) {
-    if (op.op === 'add_node' && op.node.type === 'elevation') {
-      const line = ids.get(op.node.line) ?? options.lines?.get(op.node.line)
-      if (line) op.node.line = line
-      views.push(op)
-    } else if (op.op === 'add_node' && op.node.type === 'link') {
+    if (op.op === 'add_node' && op.node.type === 'link') {
       const [from, to] = [ids.get(op.node.from), ids.get(op.node.to)]
       if (!from || !to) {
         if (top.includes(op.node.id!)) top.splice(top.indexOf(op.node.id!), 1)
@@ -241,7 +234,7 @@ export function transplantOps(
       links.push({ ...op, node: { ...op.node, from, to } })
     } else rest.push(op)
   }
-  return { ops: [...rest, ...views, ...links], top, ids }
+  return { ops: [...rest, ...links], top, ids }
 }
 
 /**

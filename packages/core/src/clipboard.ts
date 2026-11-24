@@ -1,28 +1,27 @@
 import { importComponents, transplantOps } from './components'
 import { colorsOf } from './colors'
-import { childrenOf, createDocument, layersOf, leavesOf, pagesOf } from './document'
-import { lineOf, viewsOf } from './elevation'
-import type { Bounds, Transform, Vec2 } from './geometry'
+import { childrenOf, createDocument, layersOf, leavesOf, pagesOf, rootOf } from './document'
+import { lookedAt } from './elevation'
+import { unionBounds, type Bounds, type Transform, type Vec2 } from './geometry'
+import { frameHeight } from './camera'
 import { moveOps } from './kinds'
 import { linksAt } from './networks'
 import { applyOps, OpError, type Op } from './ops'
 import type { Registry } from './registry'
 import { buildScene, sceneBounds } from './scene'
-import type { Document, Node, NodeOf } from './schema'
+import type { Document, Node } from './schema'
 import { transformOps } from './transform'
 
-/** The page of a clipboard that holds the lines its views are of, copied without them: they are not pasted, but referred to. */
+/** The page in which clipboards made before 2.2 held the lines their views were of: such a clipboard still pastes. */
 const LINES_PAGE = 'Lines of the views'
 
 /**
  * Copies nodes into a small document of their own, together with the components, pictures and
  * layer names they need. That document is what goes on the clipboard: it is plain JSON, so it can
  * be pasted into another drawing, another window, or a text file.
- * A view line takes its views along, wherever they are: the copy of a line is a line with views of
- * its own. A view copied without its line keeps referring to it: the line goes on a page of its
- * own (`LINES_PAGE`), under its own id, and the paste makes the new view a view of that line when
- * the drawing still has it, which stays where it is (copying a view, as cutting it, never moves
- * the line it is drawn from).
+ * A view holds its line; the clipboard says which page's plan each view copied looks at
+ * (`meta.looking`, by the id of its copy: a page of the drawing, which the clipboard has not), so
+ * that pasted alone, anywhere, it still looks where it did (`pasteNodes`).
  */
 export function copyNodes(doc: Document, nodeIds: string[]): Document {
   const picked = new Set(nodeIds)
@@ -37,14 +36,9 @@ export function copyNodes(doc: Document, nodeIds: string[]): Document {
   const joining = linksAt(doc, ends).filter((link) => ends.has(link.from) && ends.has(link.to) && !ends.has(link.id) && link.parent === first.parent)
   for (const link of joining) picked.add(link.id)
   nodes.push(...joining)
-  const drawn = [...held, ...joining]
-  const copied = new Set(drawn.map((n) => n.id))
-  const along = drawn.flatMap((n) => (n.type === 'viewline' ? viewsOf(doc, n.id).filter((view) => !copied.has(view.id)) : []))
-  const referred = [...new Map([...drawn, ...along].flatMap((n): [string, NodeOf<'viewline'>][] => {
-    const line = n.type === 'elevation' ? lineOf(doc, n) : null
-    return line && !copied.has(line.id) ? [[line.id, line]] : []
-  })).values()]
-  const all = [...drawn, ...along, ...referred]
+  // What a view holds (its dimensions, its notes) is copied with it, and needs its layers too.
+  held.push(...held.flatMap((n) => (n.type === 'elevation' ? childrenOf(doc, n.id) : [])))
+  const all = [...held, ...joining]
   const components = [...new Set(all.flatMap((n) => (n.type === 'instance' ? [n.component] : [])))]
   const layers = new Set(all.flatMap((n) => (n.layer ? [n.layer] : [])))
 
@@ -59,28 +53,25 @@ export function copyNodes(doc: Document, nodeIds: string[]): Document {
   ])
   const imported = importComponents(clip, doc, components)
   const options = { components: imported.imported }
-  // The lines referred to first, so that the views copied have them.
-  const lines: Op[] = []
-  if (referred.length > 0) {
-    lines.push({ op: 'add_node', node: { id: 'lines', type: 'page', name: LINES_PAGE, parent: null } })
-    for (const [parent, ids] of byParent(referred)) lines.push(...transplantOps(imported.doc, doc, parent, 'lines', { ...options, only: ids, keep: ids }).ops)
-  }
   // Only the picked nodes are taken from their parent, not their unpicked siblings.
   const main = transplantOps(imported.doc, doc, first.parent, 'page_1', { ...options, only: picked })
-  const views = [...byParent(along)].flatMap(([parent, ids]) => transplantOps(imported.doc, doc, parent, 'page_1', { ...options, only: ids, lines: main.ids }).ops)
-  return applyOps(imported.doc, [...lines, ...main.ops, ...views])
+  // The views look at the clipboard's own page there; which page of the drawing each looked at is said beside.
+  const looking: Record<string, string> = {}
+  for (const n of held) {
+    const view = n.type === 'elevation' || n.type === 'camera'
+    const copy = view ? main.ids.get(n.id) : undefined
+    const page = view ? lookedAt(doc, n) : null
+    if (copy && page) looking[copy] = page
+  }
+  const copied = applyOps(imported.doc, main.ops.map(withoutPage))
+  return Object.keys(looking).length > 0 ? { ...copied, meta: { ...copied.meta, looking } } : copied
 }
 
-/** Nodes by their parent, as the ids of those under each. */
-function byParent(nodes: Node[]): Map<string, Set<string>> {
-  const out = new Map<string, Set<string>>()
-  for (const node of nodes) {
-    if (node.parent === null) continue
-    const ids = out.get(node.parent) ?? new Set<string>()
-    ids.add(node.id)
-    out.set(node.parent, ids)
-  }
-  return out
+/** A view added looking at the page it is added on: the page it looked at is said apart (`meta.looking`). */
+function withoutPage(op: Op): Op {
+  if (op.op !== 'add_node' || (op.node.type !== 'elevation' && op.node.type !== 'camera') || !('page' in op.node)) return op
+  const { page: _, ...node } = op.node
+  return { ...op, node } as Op
 }
 
 /** Whether some JSON is a document produced by `copyNodes`. */
@@ -92,29 +83,41 @@ export function isClipboard(doc: Document): boolean {
 /**
  * Adds the contents of a clipboard document under `parent`, moved by `offset`. Components come
  * along (or are reused when they were pasted before); nodes go to the layer of the same name, or
- * to `fallbackLayer` when the drawing has none. A view copied without its line is a view of that
- * line, where it is, when the drawing has it still; else the line comes too, where it was.
+ * to `fallbackLayer` when the drawing has none. A view pasted with walls looks at them, its line
+ * moved as they are; pasted alone, it looks where it did, at the plan of the page it was copied
+ * from while the drawing has it, else at the page it is pasted on, from the same place.
  * Returns the new document, the operations that make it, and the ids of the pasted top-level nodes.
  */
 export function pasteNodes(doc: Document, clip: Document, parent: string, offset: Vec2, fallbackLayer?: string): { doc: Document; ops: Op[]; ids: string[] } {
-  const [page, linesPage] = pagesOf(clip)
+  const [page] = pagesOf(clip)
   if (!page) throw new OpError('Nothing to paste')
   const withComponents = importComponents(doc, clip)
   const options = { components: withComponents.imported, fallbackLayer, onTop: true }
-  const lines = new Map<string, string>()
-  const missing = new Set<string>()
-  for (const line of linesPage?.name === LINES_PAGE ? childrenOf(clip, linesPage.id) : []) {
-    if (withComponents.doc.nodes[line.id]?.type === 'viewline') lines.set(line.id, line.id)
-    else missing.add(line.id)
-  }
-  const brought = missing.size > 0 ? transplantOps(withComponents.doc, clip, linesPage!.id, parent, { ...options, only: missing }) : { ops: [], ids: new Map<string, string>() }
-  for (const [from, to] of brought.ids) lines.set(from, to)
-  // What is pasted is new where it lands: on top, as anything drawn there next would be.
-  const { ops, top } = transplantOps(withComponents.doc, clip, page.id, parent, { ...options, lines })
-  let pasted = applyOps(withComponents.doc, [...brought.ops, ...ops])
+  // What is pasted is new where it lands: on top, as anything drawn there next would be. A view
+  // goes in looking at the page it is pasted on, and is told another below.
+  const { ops: added, top, ids } = transplantOps(withComponents.doc, clip, page.id, parent, options)
+  const ops = added.map(withoutPage)
+  let pasted = applyOps(withComponents.doc, ops)
   const moves = top.flatMap((id) => moveOps(pasted, pasted.nodes[id], offset))
   pasted = applyOps(pasted, moves)
-  return { doc: pasted, ops: [...withComponents.ops, ...brought.ops, ...ops, ...moves], ids: top }
+  const copied = leavesOf(clip, page.id)
+  const withWalls = copied.some((n) => n.type === 'wall')
+  const here = rootOf(pasted, parent)?.id
+  const pages = (clip.meta?.looking ?? {}) as Record<string, unknown>
+  const looking = copied.flatMap((view): Op[] => {
+    const id = view.type === 'elevation' || view.type === 'camera' ? ids.get(view.id) : undefined
+    if (!id || (view.type !== 'elevation' && view.type !== 'camera')) return []
+    // A viewpoint's view is its frame, which lands where the paste does; its eye goes only with the walls.
+    const frame = view.type === 'camera' && view.frame ? { frame: { ...view.frame, x: view.frame.x + offset.x, y: view.frame.y + offset.y } } : {}
+    if (withWalls) return [{ op: 'update_node', id, patch: { a: { x: view.a.x + offset.x, y: view.a.y + offset.y }, b: { x: view.b.x + offset.x, y: view.b.y + offset.y }, ...frame } }]
+    const page = pages[view.id]
+    const elsewhere = typeof page === 'string' && page !== here && pasted.nodes[page]?.type === 'page' ? { page } : {}
+    // Moved as everything pasted is, a viewpoint's eye goes back where it was: it looks where it did.
+    const eye = view.type === 'camera' ? { a: view.a, b: view.b } : {}
+    return Object.keys({ ...elsewhere, ...eye, ...frame }).length > 0 ? [{ op: 'update_node', id, patch: { ...elsewhere, ...eye, ...frame } }] : []
+  })
+  pasted = applyOps(pasted, looking)
+  return { doc: pasted, ops: [...withComponents.ops, ...ops, ...moves, ...looking], ids: top }
 }
 
 /** A point that tells where a node is, to know whether two nodes of the same kind lie in the same place. */
@@ -143,7 +146,13 @@ function anchor(doc: Document, node: Node): Vec2 | null {
  */
 export function pasteOffset(doc: Document, clip: Document, scope: string, registry: Registry, place: { visible: Bounds | null; step: number; at?: Vec2 }): Vec2 {
   const page = pagesOf(clip)[0]
-  const box = page ? sceneBounds(buildScene(clip, page.id, registry)) : null
+  // A viewpoint is where its view is, its frame: what a paste puts in sight.
+  const box = page
+    ? buildScene(clip, page.id, registry).reduce<Bounds | null>((all, item) => {
+        const frame = item.node.type === 'camera' && item.node.frame
+        return unionBounds(all, frame ? { minX: frame.x, minY: frame.y, maxX: frame.x + frame.width, maxY: frame.y + frameHeight(frame) } : item.bounds)
+      }, null)
+    : null
   if (!page || !box) return { x: 0, y: 0 }
   const { visible, step, at } = place
   const middle = { x: (box.minX + box.maxX) / 2, y: (box.minY + box.maxY) / 2 }

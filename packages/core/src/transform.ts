@@ -39,10 +39,17 @@ export function transformOps(doc: Document, nodes: Node[], t: Similarity, regist
 
   // Groups have no geometry, but they are listed too: a group can carry modifiers of its own.
   const everything = (list: Node[]): Node[] => list.flatMap((n) => (n.type === 'group' ? [n, ...everything(childrenOf(doc, n.id))] : [n]))
-  return everything(nodes).flatMap((node): Op[] => {
+  const all = everything(nodes)
+  // A view turned with walls, the plan it looks at, has its line turned with them; mirrored, it
+  // keeps looking at what it looked at, mirrored too: its ends change places. Turned alone, it
+  // stays upright where its corner goes, looking where it did.
+  const withPlan = all.some((n) => n.type === 'wall')
+  const line = (node: Node): Record<string, unknown> =>
+    node.type === 'elevation' && withPlan ? (placed.mirror ? { a: placed.point(node.b), b: placed.point(node.a) } : { a: placed.point(node.a), b: placed.point(node.b) }) : {}
+  return all.flatMap((node): Op[] => {
     const geometry = kindOf(node).transform(node, placed, registry)
     if (!geometry) return []
-    const patch = { ...geometry, ...modifiersOf(node) }
+    const patch = { ...geometry, ...line(node), ...modifiersOf(node) }
     return Object.keys(patch).length > 0 ? [{ op: 'update_node', id: node.id, patch }] : []
   })
 }

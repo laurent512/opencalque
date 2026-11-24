@@ -4,6 +4,7 @@ import { platform } from './platform'
 import { usePrefs } from './prefs'
 import { forFile, isDirty, useStore } from './store'
 import { toast } from './windows'
+import { keepViewPictures } from './perspective/keep'
 
 /** How long the drawing must have been left alone before it is saved, in milliseconds. */
 const DELAY = 2000
@@ -19,8 +20,12 @@ export function autosaves(file = useStore.getState().file): boolean {
 }
 
 async function save(): Promise<void> {
-  const { doc, file, base, saved } = useStore.getState()
-  if (!autosaves(file) || base || doc === saved) return
+  const was = useStore.getState()
+  if (!autosaves(was.file) || was.base || was.doc === was.saved) return
+  // Its 3D views as they are now, for what reads the file without drawing them (`keepViewPictures`).
+  await keepViewPictures()
+  const { doc, file, base } = useStore.getState()
+  if (file !== was.file || base) return
   try {
     const stored = await platform.save(serializeDocument(forFile(doc)), file!.name, file!.token)
     // The drawing may have been changed, or another one opened, while this one was being written.

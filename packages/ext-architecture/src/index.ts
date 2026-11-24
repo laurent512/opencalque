@@ -1,8 +1,8 @@
 import type { Extension, Op, ParametricKind } from '@opencalque/core'
 import { bathtub, showerHead, showerTray, toilet, wallHungToilet, washbasin } from './bathroom'
 import { compass } from './compass'
-import { banquette, chair, cornerSofa, desk, officeChair, sofa } from './furniture'
-import { fireplace, gasBoiler, heatPump, radiator, RADIATOR_TOP, waterHeater } from './heating'
+import { banquette, chair, cornerSofa, desk, highChair, officeChair, sofa } from './furniture'
+import { fireplace, gasBoiler, heatPump, radiator, waterHeater } from './heating'
 import { bedsideTable, chestOfDrawers, wardrobe } from './bedroom'
 import { baseUnit, dishwasher, fridge, hob, hood, sink, splashback, tallUnit, wallCabinet, washingMachine, worktop } from './kitchen'
 import { door, windowKind } from './openings'
@@ -48,9 +48,8 @@ export const architecture: Extension = {
     api.registerParametric(splashback)
     // Against two walls, which a snap to one cannot put it against.
     api.registerParametric(tall(cornerSofa, 850, false))
-    for (const kind of [sofa('arch.sofa', 'Sofa', 1600, 2), sofa('arch.armchair', 'Armchair', 850, 1), chair, banquette, desk, officeChair]) api.registerParametric(kind)
-    api.registerParametric(tall(radiator, RADIATOR_TOP))
-    for (const kind of [heatPump, gasBoiler, waterHeater, fireplace]) api.registerParametric(kind)
+    for (const kind of [sofa('arch.sofa', 'Sofa', 1600, 2), sofa('arch.armchair', 'Armchair', 850, 1), chair, highChair, banquette, desk, officeChair]) api.registerParametric(kind)
+    for (const kind of [radiator, heatPump, gasBoiler, waterHeater, fireplace]) api.registerParametric(kind)
     api.registerParametric(compass)
 
     api.registerCommand({

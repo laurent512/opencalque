@@ -15,10 +15,12 @@ export type Gesture =
   /** A section line being drawn: where it starts, its end to click. */
   | { kind: 'section'; from: Vec2 }
   /** An object of the plan dragged where an elevation shows it: across the view along its wall, up and down for its height. */
-  /** `box` is where the view drew it when it was taken, and `edges` what it lines up with there (`elevationEdges`). */
-  | { kind: 'elevated'; view: NodeOf<'elevation'>; node: NodeOf<'parametric'> | NodeOf<'instance'>; start: Vec2; role: 'opening' | 'fixed' | 'standing'; raises: boolean; box: Bounds; edges: ElevationEdges }
+  /** `box` is where the view drew it when it was taken, `levels` the level lines drawn across it, and `edges` what it lines up with there (`elevationEdges`). */
+  | { kind: 'elevated'; view: NodeOf<'elevation'>; node: NodeOf<'parametric'> | NodeOf<'instance'>; start: Vec2; role: 'opening' | 'fixed' | 'standing'; raises: boolean; box: Bounds; levels: number[]; edges: ElevationEdges }
   /** A side of the box an elevation draws an object of the plan in, dragged: the side across stays where it is (`elevationSideOps`). */
   | { kind: 'grip'; view: NodeOf<'elevation'>; item: ElevationItem; side: ElevationSide; start: Vec2; edges: ElevationEdges }
+  /** A line across an object an elevation draws, dragged up and down (`elevationSplitOps`): the `index`-th, which was at `y` in the drawing. */
+  | { kind: 'split'; view: NodeOf<'elevation'>; item: ElevationItem; index: number; y: number; start: Vec2; edges: ElevationEdges }
   /** `moving` and `others` are what is moved and what it can line up with, as they stood when the move began. */
   | { kind: 'move'; start: Vec2; nodes: Node[]; moving: Alignable | null; others: Alignable[] }
   /** With `grab`, the handle was taken that far from its point (the arrow at an end of a view, anywhere along it), which it keeps as it is dragged. */
@@ -87,7 +89,7 @@ export interface Keys {
   shiftKey: boolean
 }
 
-export const TWO_POINT: Tool[] = ['line', 'curve', 'arc', 'wall', 'divider', 'dimension', 'annotation', 'gridline', 'rect', 'ellipse', 'circle', 'paper']
+export const TWO_POINT: Tool[] = ['line', 'curve', 'arc', 'wall', 'divider', 'camera', 'dimension', 'annotation', 'gridline', 'rect', 'ellipse', 'circle', 'paper']
 /** The tools that measure what is drawn: their points snap to it, never to the grid. A dimension's line is still placed by grid steps. */
 export const MEASURING: Tool[] = ['dimension', 'measure', 'angle']
 /** Tools whose two typed sizes are a width and a height. */

@@ -2,7 +2,7 @@ import { generateKeyBetween } from 'fractional-indexing'
 import * as z from 'zod'
 import { withoutColorRef } from './colors'
 import { withDimensionStyle } from './dimensions'
-import { componentUses, holdsChildren, isContainer, isOrderKey, layersOf, linkable, newId, orderAfter, rootOf } from './document'
+import { componentUses, holdsChildren, isContainer, isOrderKey, layersOf, linkable, newId, orderAfter, rootOf, VIEW_CONTENTS } from './document'
 import {
   AssetSchema,
   DEFAULT_MATERIAL,
@@ -81,7 +81,7 @@ export const OpSchema = z.discriminatedUnion('op', [
     .describe('Changes properties of a node. Set "parent" or "order" to move it. "id" and "type" cannot change.'),
   z
     .object({ op: z.literal('remove_node'), id: z.string() })
-    .describe('Removes a node and everything inside it. Removing a component also removes its instances, removing a viewline the elevations drawn from it, and removing an object the links that join it to others.'),
+    .describe('Removes a node and everything inside it. Removing a component also removes its instances, and removing an object the links that join it to others.'),
   z.object({ op: z.literal('add_layer'), layer: z.looseObject({ name: z.string() }) }),
   z.object({ op: z.literal('update_layer'), id: z.string(), patch }),
   z
@@ -192,7 +192,23 @@ export function applyOps(doc: Document, ops: Op[]): Document {
       i = end
     } else applyOp(next, ops[i++], batch)
   }
+  // What the operations left as it was stays the very same object, so that whatever was worked out
+  // from it (a view raised to its heights, a scene) is seen to still hold: copied above to be
+  // changed safely, the layers would otherwise be new after any edit at all.
+  for (const key of KEPT_WHOLE) {
+    const [was, now] = [doc[key], next[key]] as [Record<string, unknown> | undefined, Record<string, unknown> | undefined]
+    if (was && now && was !== now && sameEntries(was, now)) (next as unknown as Record<string, unknown>)[key] = was
+  }
   return next
+}
+
+/** The parts of a document besides its nodes that `applyOps` copies before changing them. */
+const KEPT_WHOLE = ['layers', 'assets', 'colors', 'dimensionStyles', 'materials'] as const
+
+/** Whether two records hold the same values under the same keys. */
+function sameEntries(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  const keys = Object.keys(a)
+  return keys.length === Object.keys(b).length && keys.every((key) => a[key] === b[key])
 }
 
 /** The highest order key among the children of `parent`, or one above it; null when it has none. */
@@ -224,14 +240,13 @@ function removal(d: Document): { along: (id: string) => string[]; pages: number 
   for (const node of Object.values(d.nodes)) {
     if (node.type === 'link') for (const end of [node.from, node.to]) add(links, end, node.id)
     if (node.parent !== null) add(children, node.parent, node.id)
-    // A view is removed with its line, as a placement is with its component.
-    const used = node.type === 'instance' ? node.component : node.type === 'elevation' ? node.line : null
+    const used = node.type === 'instance' ? node.component : null
     if (used !== null) add(instances, used, node.id)
     if (node.type === 'page') pages++
   }
   const along = (id: string) => {
     const type = d.nodes[id]?.type
-    const users = type === 'component' || type === 'viewline' ? (instances.get(id) ?? []) : []
+    const users = type === 'component' ? (instances.get(id) ?? []) : []
     return [...(children.get(id) ?? []), ...(links.get(id) ?? []), ...users]
   }
   return { along, pages }
@@ -239,7 +254,7 @@ function removal(d: Document): { along: (id: string) => string[]; pages: number 
 
 /**
  * Removes nodes as `remove_node` operations one after the other would: each with everything
- * inside it however deeply, a component with its instances, a view line with its views, and an object with its links. Naming a node that an earlier one
+ * inside it however deeply, a component with its instances, and an object with its links. Naming a node that an earlier one
  * of them took along is an error, as it would be one at a time.
  */
 function removeNodes(d: Document, ids: string[]): void {
@@ -329,6 +344,15 @@ function checkNode(d: Document, node: Node): void {
   }
   const root = rootOf(d, node.parent)
   if (!root) throw new OpError(`Node ${node.id}: is not inside any page or component`)
+  // A view holds what is drawn on it, annotations, in its own coordinates; what is of the plan goes on the plan.
+  if (node.parent !== null && d.nodes[node.parent]?.type === 'elevation' && !VIEW_CONTENTS.includes(node.type)) {
+    throw new OpError(`Node ${node.id}: a ${node.type} cannot go in an elevation or section, which holds what is drawn on it (${VIEW_CONTENTS.join(', ')}); put it on the plan`)
+  }
+  // A view's automatic dimensions are its own: they go in a view only.
+  if (node.type === 'autodimensions' && (node.parent === null || d.nodes[node.parent]?.type !== 'elevation')) throw new OpError(`Node ${node.id}: automatic dimensions go in an elevation or section (their parent), which they dimension`)
+  if (node.type === 'autodimensions' && node.dimensionStyle !== undefined && !d.dimensionStyles?.[node.dimensionStyle]) throw new OpError(`Unknown dimension style "${node.dimensionStyle}"`)
+  // A viewpoint looks at the plan of its page, where its view is shown: inside a component it would see nothing and show nowhere.
+  if (node.type === 'camera' && root.type === 'component') throw new OpError(`Node ${node.id}: a viewpoint goes on a page, not in a component: it looks at the plan of its page`)
   if (node.layer !== undefined && root.type === 'component') {
     throw new OpError(`Node ${node.id}: what is inside a component has no layer, each placement of the component giving its own. Leave "layer" out.`)
   }
@@ -336,10 +360,11 @@ function checkNode(d: Document, node: Node): void {
     throw new OpError(`Node ${node.id}: an instance has no style; it looks as its component is drawn. Change the shapes inside the component, or put the instance on a layer of another colour.`)
   }
   if (node.type === 'image' && !d.assets?.[node.asset]) throw new OpError(`Unknown asset "${node.asset}"`)
+  if (node.type === 'camera' && node.picture !== undefined && !d.assets?.[node.picture]) throw new OpError(`Unknown asset "${node.picture}"`)
   if (node.type === 'dimension' && node.dimensionStyle !== undefined && !d.dimensionStyles?.[node.dimensionStyle]) throw new OpError(`Unknown dimension style "${node.dimensionStyle}"`)
   if (node.type === 'room' && node.material !== undefined && !d.materials?.[node.material]) throw new OpError(`Unknown material "${node.material}"`)
   if (node.type === 'wall' && node.material !== undefined && !d.materials?.[node.material]) throw new OpError(`Wall ${node.id}: unknown material "${node.material}"`)
-  if (node.type === 'elevation' && d.nodes[node.line]?.type !== 'viewline') throw new OpError(`Node ${node.id}: unknown view line "${node.line}"; a view is drawn from a viewline of the drawing`)
+  if ((node.type === 'elevation' || node.type === 'camera') && node.page !== undefined && d.nodes[node.page]?.type !== 'page') throw new OpError(`Node ${node.id}: "page" is "${node.page}", which is not a page of the drawing; leave it out for a view of the plan of the page it is on`)
   if (node.type === 'link') checkLink(d, node, root.id)
   if (node.type === 'instance') {
     if (d.nodes[node.component]?.type !== 'component') throw new OpError(`Unknown component "${node.component}"`)

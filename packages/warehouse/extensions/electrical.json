@@ -46,7 +46,8 @@
       "Electric radiator": "Radiateur électrique",
       "Switch with a dimmer": "Interrupteur avec variateur",
       "Two circuits": "Deux circuits",
-      "Length": "Longueur"
+      "Length": "Longueur",
+      "Height": "Hauteur"
     },
     "es": {
       "Motion detector": "Detector de movimiento",
@@ -87,7 +88,8 @@
       "Electric radiator": "Radiador eléctrico",
       "Switch with a dimmer": "Interruptor con regulador",
       "Two circuits": "Dos circuitos",
-      "Length": "Longitud"
+      "Length": "Longitud",
+      "Height": "Altura"
     },
     "de": {
       "Motion detector": "Bewegungsmelder",
@@ -128,7 +130,8 @@
       "Electric radiator": "Elektroheizkörper",
       "Switch with a dimmer": "Schalter mit Dimmer",
       "Two circuits": "Zwei Stromkreise",
-      "Length": "Länge"
+      "Length": "Länge",
+      "Height": "Höhe"
     },
     "zh": {
       "Motion detector": "移动探测器",
@@ -169,7 +172,8 @@
       "Electric radiator": "电暖器",
       "Switch with a dimmer": "带调光的开关",
       "Two circuits": "两路",
-      "Length": "长度"
+      "Length": "长度",
+      "Height": "高度"
     },
     "ja": {
       "Motion detector": "人感センサー",
@@ -210,7 +214,8 @@
       "Electric radiator": "電気ヒーター",
       "Switch with a dimmer": "調光スイッチ",
       "Two circuits": "2 回路",
-      "Length": "長さ"
+      "Length": "長さ",
+      "Height": "高さ"
     },
     "ko": {
       "Motion detector": "동작 감지기",
@@ -251,7 +256,8 @@
       "Electric radiator": "전기 라디에이터",
       "Switch with a dimmer": "조광 스위치",
       "Two circuits": "2회로",
-      "Length": "길이"
+      "Length": "길이",
+      "Height": "높이"
     },
     "tr": {
       "Motion detector": "Hareket dedektörü",
@@ -292,7 +298,8 @@
       "Electric radiator": "Elektrikli radyatör",
       "Switch with a dimmer": "Dimmerli anahtar",
       "Two circuits": "İki devre",
-      "Length": "Uzunluk"
+      "Length": "Uzunluk",
+      "Height": "Yükseklik"
     }
   },
   "objects": [
@@ -570,7 +577,10 @@
       "category": "electrical",
       "label": "Electric radiator",
       "mount": { "on": "wall", "height": 450 },
-      "params": [{ "key": "length", "label": "Length", "type": "number", "default": 1000, "unit": "length" }],
+      "params": [
+        { "key": "length", "label": "Length", "type": "number", "default": 1000, "unit": "length" },
+        { "key": "height", "label": "Height", "type": "number", "default": 600, "unit": "length" }
+      ],
       "size": { "x": "length" },
       "ports": [
         { "key": "in", "label": "Control", "carries": "control", "way": "in" }
@@ -580,8 +590,8 @@
         { "repeat": { "count": "floor(length / 100) - 1" }, "path": [["(i + 1) * 100", 0], ["(i + 1) * 100", 120]] }
       ],
       "front": [
-        { "path": [[0, -300], ["length", -300], ["length", 300], [0, 300]], "closed": true, "radius": 10 },
-        { "repeat": { "count": "floor(length / 100) - 1" }, "path": [["(i + 1) * 100", -270], ["(i + 1) * 100", 270]] }
+        { "path": [[0, "-height / 2"], ["length", "-height / 2"], ["length", "height / 2"], [0, "height / 2"]], "closed": true, "radius": 10 },
+        { "repeat": { "count": "floor(length / 100) - 1" }, "path": [["(i + 1) * 100", "30 - height / 2"], ["(i + 1) * 100", "height / 2 - 30"]] }
       ]
     },
     {

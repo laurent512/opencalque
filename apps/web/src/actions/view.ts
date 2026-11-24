@@ -1,6 +1,7 @@
-import { boundsOf, buildScene, nodePrimitives, rootOf, sceneBounds, type Bounds } from '@opencalque/core'
+import { boundsOf, boundsOfPoints, buildScene, cameraPrimitives, isVisible, lookedAt, nodePrimitives, rootOf, sceneBounds, seenArea, unionBounds, type Bounds, type Node } from '@opencalque/core'
+import { camerasOf, framesOf } from '../perspective/seen'
 import { registry } from '../extensions'
-import { editComponent } from '../navigation'
+import { editComponent, showPage } from '../navigation'
 import { useStore } from '../store'
 
 /* Where the drawing is looked at: zooming, and coming back to the view left when going inside a component from a list. */
@@ -48,9 +49,12 @@ export function zoomBy(factor: number): void {
   useStore.setState({ view: { zoom, x: cx - ((cx - view.x) / view.zoom) * zoom, y: cy - ((cy - view.y) / view.zoom) * zoom } })
 }
 
+/** Brings the whole of what is drawn into view, with the views of its viewpoints in their frames on the plan. */
 export function zoomToFit(): void {
   const { doc, scope } = get()
-  showBounds(sceneBounds(buildScene(doc, scope, registry)))
+  const cameras = camerasOf(doc, scope).filter((c) => isVisible(doc, c))
+  const frames = [...framesOf(doc, cameras).values()].map((f): Bounds => ({ minX: f.x, minY: f.y, maxX: f.x + f.width, maxY: f.y + f.height }))
+  showBounds(frames.reduce<Bounds | null>((all, one) => unionBounds(all, one), sceneBounds(buildScene(doc, scope, registry))))
 }
 
 /** Brings what is selected into the middle of the view, filling it: to see where an object picked in a list is. */
@@ -62,6 +66,45 @@ export function zoomToSelection(): void {
   // Room around it, as much again as it is large and at least a metre, so that one sees where it is and not only what.
   const room = Math.max(b.maxX - b.minX, b.maxY - b.minY, 1000)
   showBounds({ minX: b.minX - room, minY: b.minY - room, maxX: b.maxX + room, maxY: b.maxY + room })
+}
+
+/** The view selected alone (a 3D view, an elevation, a section), or none. */
+function selectedView(): Extract<Node, { type: 'camera' | 'elevation' }> | null {
+  const { doc, selection } = get()
+  const node = selection.length === 1 ? doc.nodes[selection[0]] : undefined
+  return node?.type === 'camera' || node?.type === 'elevation' ? node : null
+}
+
+/** On `page` with the view still selected: a view's eye or line and its picture may be on two pages. */
+function goWith(node: Node, page: string | null): void {
+  if (!page || page === rootOf(get().doc, get().scope)?.id) return
+  showPage(page)
+  useStore.setState({ selection: [node.id] })
+}
+
+/** Zooms on where the view selected looks from, on the plan it looks at: a viewpoint's eye and what it sees, an elevation's line and what it sees. */
+export function zoomToViewMark(): void {
+  const node = selectedView()
+  if (!node) return
+  goWith(node, lookedAt(get().doc, node))
+  const b = node.type === 'camera' ? boundsOf(cameraPrimitives(node)) : boundsOfPoints(seenArea(node))
+  if (!b) return
+  const room = Math.max(b.maxX - b.minX, b.maxY - b.minY, 1000) / 2
+  showBounds({ minX: b.minX - room, minY: b.minY - room, maxX: b.maxX + room, maxY: b.maxY + room })
+}
+
+/** Zooms on the picture of the view selected, on the page it is shown on: a viewpoint's frame, an elevation's drawing. */
+export function zoomToViewPicture(): void {
+  const node = selectedView()
+  if (!node) return
+  const { doc } = get()
+  const page = rootOf(doc, node.parent)?.id ?? null
+  goWith(node, page)
+  if (node.type === 'camera') {
+    const frame = framesOf(doc, [node]).get(node.id)
+    return frame && showBounds({ minX: frame.x, minY: frame.y, maxX: frame.x + frame.width, maxY: frame.y + frame.height })
+  }
+  showBounds(page ? (buildScene(doc, page, registry).find((item) => item.id === node.id)?.bounds ?? null) : null)
 }
 
 /** Brings a rectangle of the drawing into the middle of the view: at the same zoom where it fits there, so that going from one thing to the next does not jump; else zoomed out to fit it. */

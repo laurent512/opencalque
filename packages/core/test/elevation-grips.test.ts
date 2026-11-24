@@ -21,6 +21,12 @@ const registry = new Registry().use({
       ],
       mount: { on: 'floor' },
       height: ({ height }) => height,
+      // From in front, a line across it halfway up, as under a door, and a knob too small to line up with.
+      front: ({ width, height }) => [
+        { kind: 'path', points: [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: -height }, { x: 0, y: -height }], closed: true },
+        { kind: 'path', points: [{ x: 0, y: -height / 2 }, { x: width, y: -height / 2 }] },
+        { kind: 'path', points: [{ x: 10, y: -height * 0.9 }, { x: 60, y: -height * 0.9 }] },
+      ],
       box: {
         bounds: ({ width, depth }) => ({ left: 0, top: 0, right: width, bottom: depth }),
         resize: (_, size) => ({ ...(size.width === undefined ? {} : { width: size.width }), ...(size.height === undefined ? {} : { depth: size.height }) }),
@@ -157,6 +163,16 @@ describe('lining up in an elevation', () => {
     expect(edges.xs).not.toContain(2600)
     expect(edges.ys).toEqual(expect.arrayContaining([10000, 9000, 8000]))
     expect(edges.middles).toEqual(expect.arrayContaining([3200]))
+  })
+
+  it('offers the level lines drawn across the other objects, so that the fronts of units side by side are made as high', () => {
+    const doc = plan()
+    // The unit's line halfway up, 450 above the floor, but not its knob, nor its top and bottom twice.
+    expect(shown(doc, 'u').item.levels).toEqual([9550])
+    // For the placement beside it; not for the unit itself.
+    expect(elevationEdges(shown(doc, 'i').view, doc, registry, 'i').ys).toContain(9550)
+    expect(elevationEdges(shown(doc, 'i').view, doc, registry, 'i').ys).not.toContain(9190)
+    expect(elevationEdges(shown(doc, 'u').view, doc, registry, 'u').ys).not.toContain(9550)
   })
 
   it('moves edges onto the nearest one within reach', () => {

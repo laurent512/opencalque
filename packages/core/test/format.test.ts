@@ -163,7 +163,8 @@ describe('operations', () => {
 
   it('leaves out of a deletion what another node deleted with it takes along, in any order', () => {
     const doc = applyOps(createDocument(), [
-      ...viewOps({ id: 'vl', a: { x: 0, y: 0 }, b: { x: 1000, y: 0 }, x: 0, y: 2000 }),
+      { op: 'add_node', node: { id: 'vl', type: 'component' } as any },
+      { op: 'add_node', node: { id: 'vlv', type: 'instance', parent: 'page_1', component: 'vl', x: 0, y: 0 } as any },
       { op: 'add_node', node: { id: 'g', type: 'group', parent: 'page_1' } as any },
       { op: 'add_node', node: { id: 'in', type: 'line', parent: 'g', a: { x: 0, y: 0 }, b: { x: 1, y: 0 } } as any },
       { op: 'add_node', node: { id: 'out', type: 'line', parent: 'page_1', a: { x: 0, y: 0 }, b: { x: 1, y: 0 } } as any },

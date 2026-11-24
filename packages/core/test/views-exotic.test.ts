@@ -13,7 +13,8 @@ const registry = new Registry().use(architecture).use(declarativeExtension(elect
 
 const add = (doc: Document, ...nodes: Record<string, unknown>[]): Document => applyOps(doc, nodes.map((node): Op => ({ op: 'add_node', node: { parent: 'page_1', ...node } as never })))
 const wall = (id: string, a: [number, number], b: [number, number], extra: Record<string, unknown> = {}) => ({ type: 'wall', id, a: { x: a[0], y: a[1] }, b: { x: b[0], y: b[1] }, thickness: 200, ...extra })
-const drawn = (doc: Document, id = 'vv') => nodePrimitives(doc.nodes[id], { doc, registry, depth: 0 })
+/** What a view draws as a view: without its line on the plan, drawn only to work with. */
+const drawn = (doc: Document, id = 'vv') => nodePrimitives(doc.nodes[id], { doc, registry, depth: 0 }).filter((p) => !p.screen)
 
 interface Box {
   index: number
@@ -122,7 +123,7 @@ describe('a view across a room with no square corner', () => {
   it('looks at the wall it is nearly along, at a slant, as a face, white, with what is fixed on it; the walls at the sides grey', () => {
     // The line turned 7° off the bottom wall: a section, no longer an elevation of it.
     const doc = applyOps(add(pentagonDoc(), { type: 'parametric', id: 'c', kind: 'arch.wallcabinet', props: {}, x: 2176.58, y: 699.76, rotation: 200.329333, z: 950 }), [
-      { op: 'update_node', id: 'v', patch: { a: { x: 4130.67, y: 271.17 }, b: { x: 896.41, y: -1416.87 }, depth: 1591.53 } },
+      { op: 'update_node', id: 'vv', patch: { a: { x: 4130.67, y: 271.17 }, b: { x: 896.41, y: -1416.87 }, depth: 1591.53 } },
     ])
     const all = boxes(drawn(doc))
     const face = all.find(seenSurface)!

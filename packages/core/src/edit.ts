@@ -3,6 +3,10 @@ import type { Registry } from './registry'
 import type { Document } from './schema'
 import { elevationFollowOps } from './elevation'
 import { mountFollowOps, openingFollowOps } from './walls/follow'
+import { childrenOf } from './document'
+import { dist, norm, sub } from './geometry'
+import { moveOps } from './kinds'
+import { dot } from './walls/course'
 
 /**
  * `ops` applied to `doc`, with what follows from them: the doors and windows of the walls they
@@ -16,5 +20,35 @@ export function applyEdit(doc: Document, ops: Op[], registry: Registry): { doc: 
   const next = applyOps(doc, ops)
   const changed = ops.flatMap((op) => (op.op === 'update_node' ? [op.id] : []))
   const follow = changed.length > 0 ? [...openingFollowOps(doc, next, changed, registry), ...mountFollowOps(doc, next, changed, registry), ...elevationFollowOps(doc, next, changed)] : []
-  return follow.length > 0 ? { doc: applyOps(next, follow), ops: [...ops, ...follow] } : { doc: next, ops }
+  const followed = follow.length > 0 ? applyOps(next, follow) : next
+  // What views hold, kept over what it measures once their lines are where they go.
+  const moved = [...changed, ...follow.flatMap((op) => (op.op === 'update_node' ? [op.id] : []))]
+  const held = moved.length > 0 ? viewContentFollowOps(doc, followed, moved) : []
+  const all = [...follow, ...held]
+  return all.length > 0 ? { doc: held.length > 0 ? applyOps(followed, held) : followed, ops: [...ops, ...all] } : { doc: next, ops }
+}
+
+/**
+ * What a view holds (its dimensions, its notes) is measured along its line from its start: when
+ * that start moves along the line, alone (its end dragged, the face it looks at grown or shortened
+ * at that end), what it holds goes back as far, so that it stays over what it was over; a line moved
+ * whole, both ends alike, moves nothing in it. What the edit changed itself is left as it set it.
+ */
+export function viewContentFollowOps(before: Document, after: Document, changed: Iterable<string>): Op[] {
+  const ids = new Set(changed)
+  const ops: Op[] = []
+  for (const id of ids) {
+    const [was, now] = [before.nodes[id], after.nodes[id]]
+    if (was?.type !== 'elevation' || now?.type !== 'elevation') continue
+    const da = sub(now.a, was.a)
+    const db = sub(now.b, was.b)
+    if (Math.hypot(da.x, da.y) < 1e-9 || Math.hypot(da.x - db.x, da.y - db.y) < 1e-9 || dist(was.a, was.b) < 1e-6) continue
+    const shift = dot(da, norm(sub(was.b, was.a)))
+    if (Math.abs(shift) < 1e-9) continue
+    for (const child of childrenOf(before, id)) {
+      if (ids.has(child.id) || after.nodes[child.id] !== child) continue
+      ops.push(...moveOps(before, child, { x: -shift, y: 0 }))
+    }
+  }
+  return ops
 }

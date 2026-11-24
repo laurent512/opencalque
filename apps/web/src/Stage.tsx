@@ -47,6 +47,8 @@ import { redo, setTool, undo, useStore } from './store'
 import { hintsFor, type Hint, type Tool } from './tools'
 import { ICONS, isTool, SEPARATOR, shownTool, tidyToolbar, type ButtonTool } from './toolbar'
 import { TextEditor } from './TextEditor'
+import { ViewFrames } from './perspective/ViewFrames'
+import { ElevationLabels } from './canvas/ElevationLabels'
 import { ClearanceEditor } from './ClearanceEditor'
 import { IconButton, labelOf, TypeIcon } from './ui'
 import { useWindows } from './windows'
@@ -607,6 +609,8 @@ export function Stage() {
   return (
     <main className="stage">
       <CanvasView />
+      <ViewFrames />
+      <ElevationLabels />
       <Breadcrumb />
       <Status />
       {toast && <div className="toast">{toast}</div>}

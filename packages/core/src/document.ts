@@ -28,7 +28,11 @@ export const settingsOf = (doc: Pick<Document, 'settings'>): Required<Pick<Drawi
 export const isContainer = (node: Node): node is ContainerNode => node.type === 'page' || node.type === 'component'
 
 /** Whether other nodes can have this node as their parent. */
-export const holdsChildren = (node: Node): boolean => isContainer(node) || node.type === 'group'
+/** What an elevation or a section may hold: what is drawn on it, annotations, in its own coordinates (along its line from its start, up from its floor, in mm). */
+export const VIEW_CONTENTS: string[] = ['dimension', 'autodimensions', 'text', 'annotation', 'line', 'polyline', 'rect', 'ellipse']
+
+// A view (an elevation, a section) holds what is drawn on it, in its own coordinates (`VIEW_CONTENTS`).
+export const holdsChildren = (node: Node): boolean => isContainer(node) || node.type === 'group' || node.type === 'elevation'
 
 const byOrder = <T extends { id: string; order: string }>(a: T, b: T) =>
   a.order < b.order ? -1 : a.order > b.order ? 1 : a.id < b.id ? -1 : 1
@@ -194,7 +198,8 @@ export function checkIntegrity(doc: Document): string[] {
     if (node.layer !== undefined && rootOf(doc, node.parent)?.type === 'component') problems.push(`Node ${key}: is inside a component and has a layer`)
     if (node.type === 'instance' && node.style !== undefined) problems.push(`Node ${key}: an instance has a style`)
     if (node.type === 'image' && !doc.assets?.[node.asset]) problems.push(`Node ${key}: unknown asset "${node.asset}"`)
-    if (node.type === 'elevation' && doc.nodes[node.line]?.type !== 'viewline') problems.push(`Node ${key}: unknown view line "${node.line}"`)
+    if (node.type === 'camera' && node.picture !== undefined && !doc.assets?.[node.picture]) problems.push(`Node ${key}: unknown asset "${node.picture}"`)
+    if ((node.type === 'elevation' || node.type === 'camera') && node.page !== undefined && doc.nodes[node.page]?.type !== 'page') problems.push(`Node ${key}: looks at "${node.page}", which is not a page`)
     if (node.type === 'link' && (node.from === node.to || !linkable(doc.nodes[node.from]) || !linkable(doc.nodes[node.to]))) problems.push(`Node ${key}: a link that does not join two objects ("${node.from}", "${node.to}")`)
     if (node.type === 'instance') {
       const component = doc.nodes[node.component]
@@ -221,16 +226,17 @@ export function withoutAssets(doc: Document): Document {
 export const deskDrewChair = (node: { type?: unknown; kind?: unknown; props?: unknown }): boolean =>
   node.type === 'parametric' && node.kind === 'arch.desk' && !(typeof node.props === 'object' && node.props !== null && (node.props as Record<string, unknown>).chair === false)
 
-/** Assets no image refers to any more are left out, so deleting a picture shrinks the file. */
+/** Assets no image (nor the kept picture of a viewpoint) refers to any more are left out, so deleting a picture shrinks the file. */
 export function serializeDocument(doc: Document): string {
-  const used = new Set(Object.values(doc.nodes).flatMap((n) => (n.type === 'image' ? [n.asset] : [])))
+  const used = new Set(Object.values(doc.nodes).flatMap((n) => (n.type === 'image' ? [n.asset] : n.type === 'camera' && n.picture ? [n.picture] : [])))
   const assets = Object.fromEntries(Object.entries(doc.assets ?? {}).filter(([id]) => used.has(id)))
   const { assets: _, ...rest } = doc
   // A drawing says the oldest version that knows all it holds, so that older versions of the app
-  // still open it: version 2 with no elevation, view line or link (1.8 and earlier), 3 with no link
-  // (1.9), 4 with no desk that an older version would draw with an office chair (1.11).
+  // still open it: 6 with a viewpoint or an elevation (2.2; from 1.9 to 2.1 an elevation was the
+  // view of a line of its own, which they would misread), 5 with a desk that an older version would
+  // draw with an office chair (1.12), 4 with a link (1.10), else 2 (1.2).
   const nodes = Object.values(doc.nodes)
-  const needed = nodes.some(deskDrewChair) ? 5 : nodes.some((n) => n.type === 'link') ? 4 : nodes.some((n) => n.type === 'elevation' || n.type === 'viewline') ? 3 : 2
+  const needed = nodes.some((n) => n.type === 'camera' || n.type === 'elevation') ? 6 : nodes.some(deskDrewChair) ? 5 : nodes.some((n) => n.type === 'link') ? 4 : 2
   const version = Math.min(doc.version, needed)
   return JSON.stringify(used.size > 0 ? { ...rest, version, assets } : { ...rest, version }, null, 2) + '\n'
 }

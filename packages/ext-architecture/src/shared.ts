@@ -16,6 +16,41 @@ const MAX_STEPS = 500
 export const count = (value: number) => (Number.isFinite(value) ? Math.min(MAX_STEPS, Math.max(1, Math.round(value))) : 1)
 export const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 
+/** How deep a window's frame is across the wall, in mm: its leaves are hinged on its inner side. */
+export const WINDOW_FRAME = 70
+
+/** How many leaves a glazed sliding door or window can have. */
+export const LEAVES = { min: 2, max: 4 }
+
+/**
+ * Glazed leaves on two rails across a frame of width `w`, the jambs `frame` wide, in a wall `h` either
+ * side of its middle, each leaf overlapping the next; the first slid to the right over the second by
+ * `opened` per cent of the way, or, when it `slide`s to the 'Left', the last over the one before it.
+ * Where each is along the wall (x0 to x1) and across it (about y), and how thick.
+ */
+export function onRails(w: number, frame: number, h: number, leaves: unknown, opened: unknown, slide?: unknown) {
+  const n = clamp(Math.round(Number(leaves) || LEAVES.min), LEAVES.min, LEAVES.max)
+  const overlap = Math.min(50, (w - 2 * frame) / (2 * n))
+  const length = (w - 2 * frame + (n - 1) * overlap) / n
+  const rail = Math.min(h * 0.4, 30)
+  const slid = (clamp(Number(opened) || 0, 0, 100) / 100) * (length - overlap)
+  const thick = Math.min(rail * 0.8, 20)
+  const [moving, by] = slide === 'Left' ? [n - 1, -slid] : [0, slid]
+  return Array.from({ length: n }, (_, i) => {
+    const x0 = frame + i * (length - overlap) + (i === moving ? by : 0)
+    return { x0, x1: x0 + length, y: i % 2 === 0 ? -rail : rail, thick }
+  })
+}
+
+/** The kinds of window that open on hinges, a leaf for each pane. */
+export const HINGED_WINDOW = ['Casement', 'Tilt and turn']
+/**
+ * Whether the pane `i` of `n` of a window is hinged on its right: panes open in pairs, from where they
+ * meet, the second of each pair hinged on its right; the one left over, of an odd number, is hinged
+ * as `hinge` says, and the others with it.
+ */
+export const hingedRight = (i: number, n: number, hinge: unknown) => (i % 2 === 1) !== (n % 2 === 1 && hinge === 'Right')
+
 /** The most bowls a washbasin or a sink takes. */
 export const MAX_BOWLS = 4
 

@@ -1,6 +1,7 @@
-import { add, CONTROL, DEFAULT_MATERIAL, type Document, drawnSolid, frameGrips, type Node, norm, OBJECT_FILL, type Op, type ParametricKind, portsOf, resizeFrame, resizePatch, scale, sub, TEXT_FIELDS, type Pattern } from '@opencalque/core'
+import { add, CONTROL, DEFAULT_MATERIAL, sheetScaleAt, viewScale, type NodeOf, type Document, drawnSolid, frameGrips, heightInPlace, type Node, norm, OBJECT_FILL, type Op, type ParametricKind, portsOf, resizeFrame, resizePatch, scale, sub, TEXT_FIELDS, type Pattern } from '@opencalque/core'
 import { msg, t } from '../../i18n'
 import { registry } from '../../extensions'
+import { frameShown } from '../../perspective/seen'
 
 /* The fields of the Properties panel, by type of object: which properties are shown, under which heading, as what kind of field. */
 
@@ -17,7 +18,7 @@ export interface FieldSpec {
    * 'dash' is a checkbox standing for a dash pattern; 'opacity' a slider from 0 to 1, shown as a
    * percentage; 'fill' what covers the inside of a shape, `style.fill` and `style.pattern` together.
    */
-  type: 'number' | 'string' | 'boolean' | 'color' | 'dash' | 'weight' | 'fill' | 'opacity'
+  type: 'number' | 'string' | 'boolean' | 'color' | 'dash' | 'weight' | 'fill' | 'opacity' | 'list'
   /** Heading the field appears under. Defaults to "Geometry". */
   section?: string
   /** Shown when the property is unset. */
@@ -30,6 +31,8 @@ export interface FieldSpec {
   length?: boolean
   /** The number is an angle in degrees, which its box says. */
   angle?: boolean
+  /** The number is a percentage, set with a slider and kept from 0 to 100 (`PercentField`). */
+  percent?: boolean
   /** The property may be cleared by emptying the field. */
   optional?: boolean
   /** For a number with no fallback: what it means unset, written faint in the empty field. Dragged with Alt, it starts from 0. */
@@ -48,14 +51,44 @@ export interface FieldSpec {
   material?: boolean
   /** Said when the pointer rests on the field: what the number is measured to. */
   note?: string
+  /** Written faint after the number in its box: its unit when it is not a length nor an angle, as "%". */
+  suffix?: string
+  /** Written faint before the number in its box, and may be typed: the "1:" of a scale. */
+  prefix?: string
   /** The row it shares with the fields beside it, when its path does not say (`ROWS`): which, and what it is called there. */
   row?: { id: string; name: string; size?: boolean; label?: string }
+  /** Shown, not typed, for objects this is true of: the height of a tall unit, which its sections make. */
+  readOnly?: (node: Node, doc: Document) => boolean
+  /** For a list: the parameter it is, which says the fields of its rows (`ListField`). */
+  list?: ParametricKind['params'][number]
   /** For what is not a property of the node itself (a placement's width, its component's height): how it is read, and the operations that set it. */
   get?: (node: Node, doc: Document) => unknown
   set?: (node: Node, value: unknown, doc: Document) => Op[]
 }
 
 export const GEOMETRY = msg('Geometry')
+/** The parts of a view's settings, as its parts are listed under it in Structure: its line of view (or a viewpoint's camera), on the plan; and its representation, on the sheet. */
+export const VIEW_SEES = msg('Line of view')
+/** The part of a view that is drawn on the sheet, a viewpoint's or an elevation's: where, how large, and how. */
+export const REPRESENTATION = msg('Representation')
+/** A viewpoint's part on the plan: where its eye is and how it looks, with its lens, its height and its tilt. */
+export const CAMERA = msg('Camera')
+
+/**
+ * Where a viewpoint's view is on the plan and how large, as anything else's geometry: its frame's
+ * corner, width and height, which give its picture its shape. A view with no frame yet has the one
+ * it is shown in; given a width, it keeps the height it is shown at.
+ */
+function frameField(key: 'x' | 'y' | 'width' | 'height', label: string): FieldSpec {
+  return {
+    ...len(`frame.${key}`, label, undefined, REPRESENTATION),
+    get: (node, doc) => (node.type === 'camera' ? frameShown(doc, node)[key] : undefined),
+    set: (node, value, doc) => {
+      if (node.type !== 'camera' || typeof value !== 'number' || ((key === 'width' || key === 'height') && !(value > 0))) return []
+      return [{ op: 'update_node', id: node.id, patch: { frame: { ...frameShown(doc, node), [key]: Math.round(value) } } }]
+    },
+  }
+}
 
 /**
  * Fields shown side by side on one row when they follow one another, by their paths: which row, and
@@ -221,7 +254,7 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
   gridline: GRIDLINE,
   rect: [len('x', msg('X')), len('y', msg('Y')), len('width', msg('W')), len('height', msg('H')), num('rotation', msg('Rotation'), 0), ...SHAPE_STYLE],
   // A paper's size is its format and scale, set under Sheet: here only where it lies.
-  paper: [len('x', msg('X')), len('y', msg('Y'))],
+  paper: [{ ...len('x', msg('X')), row: { id: 'at', name: 'X', label: msg('Position') } }, { ...len('y', msg('Y')), row: { id: 'at', name: 'Y', label: msg('Position') } }],
   // Where the name is written is where the room is: its X and Y are the name's.
   room: [
     len('x', msg('X'), undefined, ROOM_LABEL),
@@ -235,17 +268,55 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
   ],
   divider: AB,
   // What it counts, and its columns, are set above (`TableSettings`); here, how it is written.
-  // A view: where it is drawn, and what of the plan it draws; what it shows comes from its line
-  // (chosen among the drawing's, `viewFields`) and the plan. Its name, above, names it in the
-  // Structure list; it is not written on the drawing.
+  // A view, in its two parts, each a section named as its row under the view in Structure (the
+  // owner's choice): its representation, where it is drawn, at what scale (as dragged by its label
+  // and its corners) and how; then its line of view, on the plan (from its start to its end, as
+  // dragged there, and how far it sees), apart, so that its X and Y are not taken for its place.
+  // Its name, above, names it in the Structure list; it is not written on the drawing. Its
+  // dimensions are what it holds (`autodimensions`), each set apart.
   elevation: [
-    len('x', msg('X')),
-    len('y', msg('Y')),
-    { path: 'walls', label: msg('Show walls'), type: 'boolean', fallback: true },
-    { path: 'dimensions', label: msg('Dimensions'), type: 'boolean', fallback: true },
+    { ...len('x', msg('X'), undefined, REPRESENTATION), row: { id: 'at', name: 'X', label: msg('Position') } },
+    { ...len('y', msg('Y'), undefined, REPRESENTATION), row: { id: 'at', name: 'Y', label: msg('Position') } },
+    // Its scale on the sheet it lies on, the N of 1:N, a number dragged with Alt as any other; kept
+    // as a factor of the plan's (`scale`), so that it stays as large on the page when the sheet's
+    // scale changes.
+    {
+      path: 'scale',
+      label: msg('Scale'),
+      type: 'number',
+      section: REPRESENTATION,
+      prefix: '1:',
+      note: msg('The scale it is drawn at on the sheet it lies on (on none, at 1:100): at 1:50 on a sheet at 1:100 it is twice as large as the plan. Its dimensions still say the real lengths.'),
+      get: (node, doc) => {
+        const n = sheetScaleAt(doc, node.parent, node as NodeOf<'elevation'>) / viewScale(node as NodeOf<'elevation'>)
+        return n >= 10 ? Math.round(n) : Math.round(n * 10) / 10
+      },
+      set: (node, value, doc) => {
+        if (typeof value !== 'number' || !(value > 0)) return []
+        const factor = Math.min(20, sheetScaleAt(doc, node.parent, node as NodeOf<'elevation'>) / value)
+        return [{ op: 'update_node', id: node.id, patch: { scale: Math.abs(factor - 1) < 1e-9 ? null : factor } }]
+      },
+    },
+    { ...len('a.x', msg('X'), undefined, VIEW_SEES), row: { id: 'a', name: 'X', label: msg('Start') } },
+    { ...len('a.y', msg('Y'), undefined, VIEW_SEES), row: { id: 'a', name: 'Y', label: msg('Start') } },
+    { ...len('b.x', msg('X'), undefined, VIEW_SEES), row: { id: 'b', name: 'X', label: msg('End') } },
+    { ...len('b.y', msg('Y'), undefined, VIEW_SEES), row: { id: 'b', name: 'Y', label: msg('End') } },
+    len('depth', msg('Depth'), 6000, VIEW_SEES),
+    { path: 'walls', label: msg('Walls in front'), type: 'boolean', fallback: true, section: REPRESENTATION, note: msg('The walls between its line and the faces it looks at, cut or in the way, drawn grey; without them, all of each face shows.') },
   ],
-  // The line a view is taken from: how far it sees. Its ends are dragged on the plan.
-  viewline: [...AB, len('depth', msg('Depth'), 6000)],
+  // A viewpoint: where the eye is and what it looks towards, also dragged on the plan. How far it
+  // looks towards says nothing of what it sees: it has no length to show. Its lens, its eye's height
+  // and its tilt are in sections of their own (`viewpoint.tsx`), with how its view is drawn.
+  camera: [
+    { ...frameField('x', msg('X')), row: { id: 'at', name: 'X', label: msg('Position') } },
+    { ...frameField('y', msg('Y')), row: { id: 'at', name: 'Y', label: msg('Position') } },
+    { ...frameField('width', msg('W')), row: { id: 'size', name: 'W', size: true, label: msg('Size') } },
+    { ...frameField('height', msg('H')), row: { id: 'size', name: 'H', size: true, label: msg('Size') } },
+    { ...len('a.x', msg('X'), undefined, CAMERA), row: { id: 'a', name: 'X', label: msg('Eye') } },
+    { ...len('a.y', msg('Y'), undefined, CAMERA), row: { id: 'a', name: 'Y', label: msg('Eye') } },
+    { ...len('b.x', msg('X'), undefined, CAMERA), row: { id: 'b', name: 'X', label: msg('Looks towards') } },
+    { ...len('b.y', msg('Y'), undefined, CAMERA), row: { id: 'b', name: 'Y', label: msg('Looks towards') } },
+  ],
   table: [
     { path: 'title', label: msg('Title'), type: 'string', optional: true },
     len('x', msg('X')),
@@ -343,12 +414,7 @@ export function commonFields(nodes: Node[], doc: Document): FieldSpec[] {
  */
 const placedFill = (field: FieldSpec): FieldSpec => (field.type === 'fill' && field.fallback === 'none' ? { ...field, fallback: OBJECT_FILL, unset: msg('default') } : field)
 
-/** A view's fields, the first the line it is drawn from, picked among the drawing's by their names. */
-function viewFields(doc: Document): FieldSpec[] {
-  const lines = Object.values(doc.nodes).filter((n) => n.type === 'viewline')
-  const line: FieldSpec = { path: 'line', label: msg('View line'), type: 'string', options: lines.map((l, i) => ({ value: l.id, label: l.name || t('View line {n}', { n: String(i + 1) }) })) }
-  return [line, ...(FIELDS.elevation ?? [])]
-}
+
 
 /**
  * A link's fields: which button of a double switch it starts from (a choice only where there are
@@ -428,8 +494,47 @@ function sizeKeys(kind: ParametricKind, props: Record<string, unknown>): { W?: s
   }
 }
 
+/** The choices of a parameter, each said as "Parameter: Value" where its kind says it so for that parameter: "Single" glazing is not a "Single" door. */
+export const paramOptions = (p: ParametricKind['params'][number]): Option[] | undefined =>
+  p.options?.map((value) => ({ value, label: t(`${p.label}: ${value}`) !== `${p.label}: ${value}` ? `${p.label}: ${value}` : value }))
+
+/**
+ * The height of what its kind may work out where it stands (`heightIn`): when it does, the height it
+ * has there (a wall cabinet up to the ceiling, a tall unit as high as its sections). Typed, it makes
+ * it that high as its kind says (`heightSet`: a wall cabinet no longer up to the ceiling); where its
+ * kind says nothing, it is shown, not typed.
+ */
+const heightThere = (field: FieldSpec): FieldSpec => {
+  const key = field.path.slice('props.'.length)
+  const worked = (node: Node, doc: Document) => (node.type === 'parametric' ? heightInPlace(doc, node, registry) : null)
+  return {
+    ...field,
+    get: (node, doc) => worked(node, doc) ?? (node.type === 'parametric' ? node.props[key] : undefined),
+    set: (node, value, doc) => {
+      const kind = node.type === 'parametric' ? registry.parametric.get(node.kind) : undefined
+      if (!kind || node.type !== 'parametric' || typeof value !== 'number') return []
+      const patch = worked(node, doc) === null ? { [key]: value } : kind.heightSet?.(registry.resolveProps(kind, node.props), value)
+      return patch ? [{ op: 'update_node', id: node.id, patch: { props: { ...node.props, ...patch } } }] : []
+    },
+    readOnly: (node, doc) => worked(node, doc) !== null && !(node.type === 'parametric' && registry.parametric.get(node.kind)?.heightSet),
+  }
+}
+
+/** A view's automatic dimensions: the rows it draws, each on unless it says not, and the dimension style they are drawn in, among the drawing's. */
+function autoDimensionFields(doc: Document): FieldSpec[] {
+  const ROWS_OF = msg('Dimensions drawn')
+  const styles = Object.values(doc.dimensionStyles ?? {})
+  return [
+    { path: 'fixed', label: msg('Fixed on the face'), type: 'boolean', fallback: true, section: ROWS_OF, note: msg('Sockets, switches and wall cabinets, from the start of the view to each.') },
+    { path: 'pieces', label: msg('Along the floor'), type: 'boolean', fallback: true, section: ROWS_OF, note: msg('The sides of the doors, windows and furniture, one after the other.') },
+    { path: 'overall', label: msg('End to end'), type: 'boolean', fallback: true, section: ROWS_OF, note: msg('The face from end to end, and its height.') },
+    { path: 'heights', label: msg('Heights'), type: 'boolean', fallback: true, section: ROWS_OF, note: msg('Of what is fixed on the face, and of a door\'s or a window\'s sill and top.') },
+    { path: 'dimensionStyle', label: msg('Dimension style'), type: 'string', section: ROWS_OF, options: [{ value: '', label: msg('default') }, ...styles.map((style) => ({ value: style.id, label: style.name }))] },
+  ]
+}
+
 export function fieldsOf(node: Node, doc: Document): FieldSpec[] {
-  const fields = node.type === 'room' ? roomFields(node, doc) : node.type === 'elevation' ? viewFields(doc) : node.type === 'link' ? linkFields(node, doc) : (FIELDS[node.type] ?? [])
+  const fields = node.type === 'room' ? roomFields(node, doc) : node.type === 'link' ? linkFields(node, doc) : node.type === 'autodimensions' ? autoDimensionFields(doc) : (FIELDS[node.type] ?? [])
   // What every placed object has, first: where it is (X, Y, and Z, its height above the floor),
   // how it is turned, and how large it is (W, D, H). What is its own comes after.
   const [x, y, rotation] = PLACEMENT
@@ -438,26 +543,37 @@ export function fieldsOf(node: Node, doc: Document): FieldSpec[] {
   if (node.type !== 'parametric') return drawnSolid(doc, node.parent) ? fields.map(placedFill) : fields
   const kind = registry.parametric.get(node.kind)
   const params = kind?.params ?? []
-  const asField = (p: ParametricKind['params'][number]): FieldSpec => ({
-    path: `props.${p.key}`,
-    label: p.label,
-    type: p.type,
-    length: p.unit === 'length',
-    angle: p.unit === 'angle',
-    fallback: p.default,
-    // A value may be said differently for one parameter: "Single" glazing is not a "Single" door.
-    options: p.options?.map((value) => ({ value, label: t(`${p.label}: ${value}`) !== `${p.label}: ${value}` ? `${p.label}: ${value}` : value })),
-  })
-  // A door or a window has no height above the floor of its own: it is in its wall, and goes up and down by its sill.
-  const z = kind?.opening ? [] : [aboveFloor(kind?.mount)]
+  const asField = (p: ParametricKind['params'][number]): FieldSpec =>
+    p.type === 'list'
+      ? { path: `props.${p.key}`, label: p.label, type: 'list', list: p }
+      : {
+          path: `props.${p.key}`,
+          label: p.label,
+          type: p.type,
+          length: p.unit === 'length',
+          angle: p.unit === 'angle',
+          percent: p.unit === 'percent',
+          fallback: Array.isArray(p.default) ? undefined : p.default,
+          options: paramOptions(p),
+        }
+  // A door or a window is as high above the floor as its sill: that parameter is its Z, beside X and Y
+  // (it is kept with the rest of its parameters, where elevations and extensions read it).
+  const sill = kind?.sill ? params.find((p) => p.key === kind.sill && p.type === 'number') : undefined
+  const z = kind?.opening
+    ? sill
+      ? [{ ...asField(sill), label: msg('Height above floor'), note: msg('Height above the floor, to its sill'), row: ROWS.z }]
+      : []
+    : [aboveFloor(kind?.mount)]
   const shown = kind?.mount?.on === 'wall' ? [{ path: 'showHeight', label: msg('Height on plan'), type: 'boolean' as const, fallback: false }] : []
   const props = kind ? registry.resolveProps(kind, node.props) : {}
   const keys = kind ? sizeKeys(kind, props) : {}
-  const sized = (['W', 'D', 'H'] as const).flatMap((name) => {
+  const sized = (['W', 'D', 'H'] as const).flatMap((name): FieldSpec[] => {
     const param = params.find((p) => p.key === keys[name])
-    return param ? [{ ...asField(param), row: SIZE(name) }] : []
+    if (!param) return []
+    const field = { ...asField(param), row: SIZE(name) }
+    return [name === 'H' && kind?.heightIn ? heightThere(field) : field]
   })
   // The rest of its parameters, under its own name, those that mean something with the values it has.
-  const own = params.filter((p) => !Object.values(keys).includes(p.key) && (p.shown?.(props) ?? true)).map((p): FieldSpec => ({ ...asField(p), section: kind!.label }))
+  const own = params.filter((p) => !Object.values(keys).includes(p.key) && p !== sill && (p.shown?.(props) ?? true)).map((p): FieldSpec => ({ ...asField(p), section: kind!.label }))
   return [x, y, ...z, rotation, ...shown, ...sized, ...own, ...STYLE]
 }

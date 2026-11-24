@@ -1,6 +1,7 @@
-import { roundCorners, transformPrimitive, type ParametricKind, type Primitive } from '@opencalque/core'
+import { roundCorners, transformPrimitive, type KindSolid, type ParametricKind, type Primitive, type Vec2 } from '@opencalque/core'
 import { drawer, rect } from './fronts'
 import { atLeast, circle, clamp, count, DEPTH, line, mirrorAlong, outline, pt, roundBox, sizedBox, THIN, WIDTH } from './shared'
+import { box, chairSolids, disc, legs } from './solids'
 
 /** What a corner sofa's frame takes behind its seats and at the end of each side, in mm. */
 const SOFA_BACK = 170
@@ -138,18 +139,48 @@ export const sofa = (kind: string, label: string, width: number, seats: number):
       ]).flat(),
     ]
   },
+  // In 3D, on its feet: its arms, its back, and a cushion for each seat on its base and against its back.
+  solids({ width, depth, seats }) {
+    const w = atLeast(2 * SOFA_ARM + 200, width)
+    const d = atLeast(2 * SOFA_BACK + 200, depth)
+    const [arm, back] = [SOFA_ARM, SOFA_BACK]
+    const n = Math.min(12, count(seats))
+    const seat = (w - 2 * arm) / n
+    const cushion = SEAT - 120
+    return [
+      ...legs(30, 30, w - 30, d - 30, 50, LEGS),
+      { outline: box(0, 0, arm, d), bottom: LEGS, top: ARM_TOP },
+      { outline: box(w - arm, 0, w, d), bottom: LEGS, top: ARM_TOP },
+      { outline: box(arm, 0, w - arm, back), bottom: LEGS, top: BACK_TOP },
+      { outline: box(arm, back, w - arm, d), bottom: LEGS, top: cushion },
+      ...Array.from({ length: n }, (_, k): KindSolid[] => [
+        { outline: roundCorners(box(arm + k * seat + 6, back + 178, arm + (k + 1) * seat - 6, d - 8), 45), bottom: cushion, top: SEAT },
+        { outline: roundCorners(box(arm + k * seat + 6, back + 6, arm + (k + 1) * seat - 6, back + 166), 40), bottom: SEAT, top: BACK_TOP - 30 },
+      ]).flat(),
+    ]
+  },
   front: ({ width, seats }) => sofaFront(0, atLeast(2 * SOFA_ARM + 200, width), SOFA_ARM, SOFA_ARM, seats),
   side: ({ depth }) => sofaSide(atLeast(2 * SOFA_BACK + 200, depth), SOFA_BACK),
 })
 
 /** A ring's stretch between two angles, `thickness` thick inside radius `r` about (cx, cy), as a closed shape: the curved back of a chair. */
 function band(cx: number, cy: number, r: number, thickness: number, from: number, to: number): Primitive {
+  return outline(bandRing(cx, cy, r, thickness, from, to))
+}
+function bandRing(cx: number, cy: number, r: number, thickness: number, from: number, to: number): Vec2[] {
   const steps = 16
   const at = (radius: number, i: number) => {
     const a = ((from + ((to - from) * i) / steps) * Math.PI) / 180
     return pt(cx + radius * Math.cos(a), cy + radius * Math.sin(a))
   }
-  return outline([...Array.from({ length: steps + 1 }, (_, i) => at(r, i)), ...Array.from({ length: steps + 1 }, (_, i) => at(r - thickness, steps - i))])
+  return [...Array.from({ length: steps + 1 }, (_, i) => at(r, i)), ...Array.from({ length: steps + 1 }, (_, i) => at(r - thickness, steps - i))]
+}
+/** The curved back of a chair `w` wide, on the plan, as `chair` draws it. */
+function chairBack(w: number): Vec2[] {
+  const half = w / 2
+  const r = Math.max(half * 1.5, 640 * (w / 450))
+  const reach = (Math.asin(Math.min(1, (half - 4) / r)) * 180) / Math.PI
+  return bandRing(half, r + 22, r, 44, 270 - reach, 270 + reach)
 }
 
 /** How high a chair's seat is, and the top of its back, in mm. */
@@ -168,10 +199,11 @@ export const chair: ParametricKind = {
   build({ width, depth }) {
     const [w, d] = [atLeast(300, width), atLeast(300, depth)]
     // The backrest, an arc across the width; the seat in front of it.
-    const half = w / 2
-    const r = Math.max(half * 1.5, 640 * (w / 450))
-    const reach = (Math.asin(Math.min(1, (half - 4) / r)) * 180) / Math.PI
-    return [band(half, r + 22, r, 44, 270 - reach, 270 + reach), roundBox(0, 76, w, d, [30, 30, 75, 75])]
+    return [outline(chairBack(w)), roundBox(0, 76, w, d, [30, 30, 75, 75])]
+  },
+  solids: ({ width, depth }) => {
+    const [w, d] = [atLeast(300, width), atLeast(300, depth)]
+    return chairSolids(w, d, 76, CHAIR_SEAT, CHAIR_BACK, chairBack(w))
   },
   front: ({ width }) => chairFront(atLeast(300, width)),
   back: ({ width }) => chairFront(atLeast(300, width)),
@@ -180,6 +212,58 @@ export const chair: ParametricKind = {
     return [rect(0, -CHAIR_SEAT + 20, d, -CHAIR_SEAT - 20), rect(25, 0, 50, -CHAIR_SEAT + 20, THIN), rect(d - 50, 0, d - 25, -CHAIR_SEAT + 20, THIN), outline([pt(22, -CHAIR_SEAT - 20), pt(0, -CHAIR_BACK), pt(44, -CHAIR_BACK), pt(66, -CHAIR_SEAT - 20)])]
   },
 }
+/** How high a high chair's seat is at a kitchen counter (90 cm) and at a bar (105 cm), its footrest under it, and how high its back stands over its seat, in mm. */
+const HIGH_SEATS: Record<string, number> = { Counter: 650, Bar: 750 }
+const FOOTREST_UNDER = 350
+const HIGH_BACK = 320
+const highSeat = (height: string) => HIGH_SEATS[height] ?? HIGH_SEATS.Counter
+
+/**
+ * A high chair, for a kitchen counter or a bar: a seat as high as the counter wants, on four legs
+ * held by a footrest, with a low back or none (a stool). Its back at the top, as the dining chair's.
+ */
+export const highChair: ParametricKind = {
+  kind: 'arch.chair.high',
+  label: 'High chair',
+  category: 'dining',
+  description: 'Its seat at 65 cm for a counter, 75 cm for a bar; without a back, a stool.',
+  params: [
+    { ...WIDTH, default: 420 },
+    DEPTH(440),
+    { key: 'height', label: 'Seat height', type: 'string', default: 'Counter', options: ['Counter', 'Bar'] },
+    { key: 'back', label: 'Back', type: 'boolean', default: true },
+  ],
+  box: sizedBox('width', 'depth', 300),
+  height: ({ height, back }) => highSeat(height) + (back !== false ? HIGH_BACK : 0),
+  build({ width, depth, back }) {
+    const [w, d] = [atLeast(300, width), atLeast(300, depth)]
+    // Its seat and its back behind it; its legs and footrest are under the seat.
+    return [...(back !== false ? [outline(chairBack(w))] : []), roundBox(0, back !== false ? 76 : 30, w, d, [30, 30, 75, 75])]
+  },
+  solids: ({ width, depth, height, back }) => {
+    const [w, d] = [atLeast(300, width), atLeast(300, depth)]
+    const seat = highSeat(height)
+    return chairSolids(w, d, back !== false ? 76 : 30, seat, back !== false ? seat + HIGH_BACK : null, chairBack(w), seat - FOOTREST_UNDER)
+  },
+  front: ({ width, height, back }) => highChairFront(atLeast(300, width), highSeat(height), back !== false),
+  back: ({ width, height, back }) => highChairFront(atLeast(300, width), highSeat(height), back !== false),
+  side: ({ depth, height, back }) => {
+    const d = atLeast(300, depth)
+    const seat = highSeat(height)
+    const prims = [rect(0, -seat + 40, d, -seat), rect(25, 0, 55, -seat + 40, THIN), rect(d - 50, 0, d - 20, -seat + 40, THIN), line([pt(55, -seat + FOOTREST_UNDER), pt(d - 50, -seat + FOOTREST_UNDER)], THIN)]
+    if (back) prims.push(rect(22, -seat, 66, -seat - HIGH_BACK))
+    return prims
+  },
+}
+/** A high chair seen from in front or behind: its legs, its footrest, its seat and its back over it. */
+const highChairFront = (w: number, seat: number, back: boolean): Primitive[] => [
+  rect(0, -seat + 40, w, -seat),
+  rect(25, 0, 55, -seat + 40, THIN),
+  rect(w - 55, 0, w - 25, -seat + 40, THIN),
+  line([pt(55, -seat + FOOTREST_UNDER), pt(w - 55, -seat + FOOTREST_UNDER)], THIN),
+  ...(back ? [roundBox(10, -seat - 60, w - 10, -seat - HIGH_BACK, [20, 20, 0, 0])] : []),
+]
+
 /** A chair seen from in front or behind: its legs, its seat, its back over the seat. */
 const chairFront = (w: number): Primitive[] => [rect(0, -CHAIR_SEAT + 20, w, -CHAIR_SEAT - 20), rect(20, 0, 45, -CHAIR_SEAT + 20, THIN), rect(w - 45, 0, w - 20, -CHAIR_SEAT + 20, THIN), roundBox(10, -CHAIR_SEAT - 60, w - 10, -CHAIR_BACK, [20, 20, 0, 0])]
 
@@ -220,6 +304,20 @@ export const desk: ParametricKind = {
       roundBox(mid - 280, 180, mid + 280, 212, 12, THIN),
       roundBox(mid - 220, d - 320, mid + 220, d - 170, 16, THIN),
       { kind: 'ellipse', cx: mid + 310, cy: d - 245, rx: 30, ry: 48, strokeWidth: 0.5 },
+    ]
+  },
+  // In 3D, its top on two side panels, and the screen standing on it.
+  solids: ({ width, depth }) => {
+    const [w, d] = [atLeast(600, width), atLeast(400, depth)]
+    const mid = w / 2
+    return [
+      { outline: box(0, 0, w, d), bottom: DESK_TOP - 30, top: DESK_TOP },
+      { outline: box(0, 0, 30, d), bottom: 0, top: DESK_TOP - 30 },
+      { outline: box(w - 30, 0, w, d), bottom: 0, top: DESK_TOP - 30 },
+      { outline: box(mid - 70, 100, mid + 70, 180), bottom: DESK_TOP, top: DESK_TOP + 15 },
+      { outline: box(mid - 15, 120, mid + 15, 150), bottom: DESK_TOP, top: DESK_TOP + 80 },
+      { outline: box(mid - 280, 180, mid + 280, 205), bottom: DESK_TOP + 60, top: DESK_TOP + 380, finish: 'dark' },
+      { outline: roundCorners(box(mid - 220, d - 320, mid + 220, d - 170), 16), bottom: DESK_TOP, top: DESK_TOP + 15 },
     ]
   },
   front: ({ width }) => {
@@ -265,6 +363,27 @@ export const officeChair: ParametricKind = {
   params: [],
   height: () => OFFICE_BACK,
   build: () => officeChairPlan(),
+  // In 3D, its five arms on the floor, its column, its seat and armrests, and its back.
+  solids: () => {
+    const [cx, cy] = [330, 370]
+    const arms = [270, 342, 54, 126, 198].map((angle): KindSolid => {
+      const [dx, dy] = [Math.cos((angle * Math.PI) / 180), Math.sin((angle * Math.PI) / 180)]
+      const [nx, ny] = [-dy * 20, dx * 20]
+      const end = pt(cx + 300 * dx, cy + 300 * dy)
+      return { outline: [pt(cx + nx, cy + ny), pt(end.x + nx, end.y + ny), pt(end.x - nx, end.y - ny), pt(cx - nx, cy - ny)], bottom: 40, top: 80 }
+    })
+    return [
+      ...arms,
+      ...[270, 342, 54, 126, 198].map((angle): KindSolid => ({ outline: disc(cx + 300 * Math.cos((angle * Math.PI) / 180), cy + 300 * Math.sin((angle * Math.PI) / 180), 25, 12), bottom: 0, top: 45 })),
+      { outline: disc(cx, cy, 30, 12), bottom: 80, top: OFFICE_SEAT - 50 },
+      { outline: roundCorners(box(92, 150, 568, 590), [60, 60, 110, 110]), bottom: OFFICE_SEAT - 50, top: OFFICE_SEAT },
+      { outline: roundCorners(box(46, 215, 88, 505), 21), bottom: OFFICE_SEAT + 180, top: OFFICE_SEAT + 220 },
+      { outline: roundCorners(box(572, 215, 614, 505), 21), bottom: OFFICE_SEAT + 180, top: OFFICE_SEAT + 220 },
+      { outline: box(52, 330, 82, 390), bottom: OFFICE_SEAT, top: OFFICE_SEAT + 180 },
+      { outline: box(578, 330, 608, 390), bottom: OFFICE_SEAT, top: OFFICE_SEAT + 180 },
+      { outline: bandRing(330, 900, 820, 70, 253, 287), bottom: OFFICE_SEAT + 50, top: OFFICE_BACK },
+    ]
+  },
   front: () => officeChairFront(),
   back: () => officeChairFront(),
   // From its side, its own Y from its back: the back leaning over the seat, the column, the base.

@@ -11,9 +11,12 @@ const MIN_DEPTH = 40
 const SECTION = 60
 /** The most sections drawn: a length typed by mistake must not draw a million lines. */
 const MAX_SECTIONS = 200
-/** How high above the floor a radiator's body starts and ends, in mm. */
+/** How high above the floor a radiator's body starts, in mm. */
 export const RADIATOR_FOOT = 150
-export const RADIATOR_TOP = 750
+/** The least a radiator's body is made high, in mm: room for its valve and the ends of its sections. */
+const MIN_BODY = 100
+/** How high its body is, made at least `MIN_BODY`: what its top is dragged to in an elevation. */
+const bodyOf = (height: number) => Math.max(MIN_BODY, Number.isFinite(height) ? height : 600)
 
 /**
  * A heating radiator against a wall: its body, cut into sections that keep their width as it is
@@ -24,8 +27,11 @@ export const radiator: ParametricKind = {
   label: 'Radiator',
   category: 'heating',
   description: 'Against the wall by its back. Pull its sides to make it longer: its sections keep their width. Its valve is at one end.',
-  params: [{ ...WIDTH, label: 'Length', default: 800 }, DEPTH(100), { key: 'valve', label: 'Valve', type: 'string', default: 'Right', options: ['Right', 'Left'] }],
+  // Its height is that of its body, which starts 15 cm above the floor.
+  params: [{ ...WIDTH, label: 'Length', default: 800 }, DEPTH(100), HEIGHT(600), { key: 'valve', label: 'Valve', type: 'string', default: 'Right', options: ['Right', 'Left'] }],
   box: sizedBox('width', 'depth', MIN_LENGTH, MIN_DEPTH),
+  mount: { on: 'floor' },
+  height: ({ height }) => RADIATOR_FOOT + bodyOf(height),
   build({ width, depth, valve }) {
     const w = atLeast(1, width)
     const d = atLeast(1, depth)
@@ -40,19 +46,23 @@ export const radiator: ParametricKind = {
   },
   // Seen from in front, its sections from 15 cm above the floor, its valve on the pipe that comes up
   // from the floor at its end; from the side, its body off the wall on its brackets.
-  front: ({ width, valve }) => {
+  front: ({ width, height, valve }) => {
     const w = atLeast(1, width)
+    const top = RADIATOR_FOOT + bodyOf(height)
     const sections = Math.min(MAX_SECTIONS, Math.max(1, Math.round(w / SECTION)))
-    const prims: Primitive[] = [outline([pt(0, -RADIATOR_FOOT), pt(w, -RADIATOR_FOOT), pt(w, -RADIATOR_TOP), pt(0, -RADIATOR_TOP)])]
-    for (let i = 1; i < sections; i++) prims.push(line([pt((i * w) / sections, -RADIATOR_FOOT - 20), pt((i * w) / sections, -RADIATOR_TOP + 20)], THIN))
+    const prims: Primitive[] = [outline([pt(0, -RADIATOR_FOOT), pt(w, -RADIATOR_FOOT), pt(w, -top), pt(0, -top)])]
+    for (let i = 1; i < sections; i++) prims.push(line([pt((i * w) / sections, -RADIATOR_FOOT - 20), pt((i * w) / sections, -top + 20)], THIN))
     const end = valve === 'Left' ? 0 : w
     const out = valve === 'Left' ? -1 : 1
     prims.push(line([pt(end, -RADIATOR_FOOT - 30), pt(end + out * 40, -RADIATOR_FOOT - 30), pt(end + out * 40, 0)]), circle(end + out * 40, -RADIATOR_FOOT - 60, 18))
     return prims
   },
-  side: ({ depth }) => {
+  side: ({ depth, height }) => {
     const d = atLeast(1, depth)
-    return [outline([pt(30, -RADIATOR_FOOT), pt(30 + d, -RADIATOR_FOOT), pt(30 + d, -RADIATOR_TOP), pt(30, -RADIATOR_TOP)]), line([pt(0, -RADIATOR_FOOT - 80), pt(30, -RADIATOR_FOOT - 80)]), line([pt(0, -RADIATOR_TOP + 80), pt(30, -RADIATOR_TOP + 80)])]
+    const top = RADIATOR_FOOT + bodyOf(height)
+    // Its brackets, a little in from its top and bottom.
+    const bracket = Math.min(80, bodyOf(height) / 4)
+    return [outline([pt(30, -RADIATOR_FOOT), pt(30 + d, -RADIATOR_FOOT), pt(30 + d, -top), pt(30, -top)]), line([pt(0, -RADIATOR_FOOT - bracket), pt(30, -RADIATOR_FOOT - bracket)]), line([pt(0, -top + bracket), pt(30, -top + bracket)])]
   },
 }
 

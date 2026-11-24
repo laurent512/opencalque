@@ -2,7 +2,7 @@ import { arcPoints, pointInPolygon, type Vec2 } from './geometry'
 import { outsideMass, unionMass } from './merge'
 import { segmentsInside } from './modifiers'
 import type { Registry } from './registry'
-import { buildScene } from './scene'
+import { buildScene, printedScene } from './scene'
 import type { Document } from './schema'
 
 const n = (value: number) => String(Math.round(value * 1000) / 1000)
@@ -24,7 +24,7 @@ const dxfText = (text: string) =>
  * drawing's layers, in millimetres, with Y turned to point up as CAD expects. Fills, line weights
  * and pictures are not carried over.
  */
-export function toDXF(doc: Document, containerId: string, registry: Registry): string {
+export function toDXF(doc: Document, containerId: string, registry: Registry, options: { marks?: boolean; only?: string[] } = {}): string {
   const out: string[] = ['0', 'SECTION', '2', 'ENTITIES']
   const entity = (type: string, layer: string, codes: (string | number)[]) => out.push('0', type, '8', layer, ...codes.map(String))
   // DXF has nothing like a clip outline, so a line is cut down to the part inside every one of them.
@@ -40,7 +40,9 @@ export function toDXF(doc: Document, containerId: string, registry: Registry): s
   // middle of another, whose end is hidden and which opens the side it meets. Where one material
   // meets another, the line is a line of its own, drawn over the walls; a wall stacked over one of
   // another material shows its outline across it (`outsideMass`).
-  const scene = buildScene(doc, containerId, registry)
+  // Only what is given, when it is (what is selected).
+  const all = buildScene(doc, containerId, registry)
+  const scene = printedScene(options.only ? all.filter((item) => options.only!.includes(item.id)) : all, options.marks)
   const { mass, of } = unionMass(scene.flatMap((item) => item.prims))
 
   for (const item of scene) {

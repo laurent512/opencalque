@@ -64,6 +64,25 @@ describe('PDF export', () => {
     for (const expected of ['Project', 'House on Elm St', 'Revisions', '2026-11-17', 'Issued for permit', 'Drawn by', 'KL', 'Sheet title', 'Floor plan', 'Scale', '1:48', 'Sheet no.', 'A-101']) expect(words).toContain(expected)
   })
 
+  it('prints a paper in a group with all that is on its page, and none of the other papers of its group', async () => {
+    const grouped = applyOps(createDocument('House'), [
+      add({ type: 'group', id: 'sheets' }),
+      add({ type: 'paper', id: 'first', parent: 'sheets', name: 'First sheet', x: 0, y: 0, width: 21000, height: 14850, scale: 50, titleBlock: {} }),
+      add({ type: 'paper', id: 'second', parent: 'sheets', name: 'Second sheet', x: 0, y: 0, width: 21000, height: 14850, scale: 50, titleBlock: {} }),
+      add({ type: 'text', parent: 'sheets', x: 3000, y: 3000, text: 'In the group', size: 300 }),
+      add({ type: 'text', x: 3000, y: 6000, text: 'On the page', size: 300 }),
+    ])
+    const words = async (id: string) => (await (await (await open(toPDF(grouped, registry, [id]))).getPage(1)).getTextContent()).items.map((item: any) => item.str)
+    const first = await words('first')
+    expect(first).toContain('On the page')
+    expect(first).toContain('In the group')
+    expect(first).toContain('First sheet')
+    expect(first).not.toContain('Second sheet')
+    expect(await words('second')).toContain('Second sheet')
+    // Every paper of the drawing, in groups too, when none is given.
+    expect((await open(toPDF(grouped, registry))).numPages).toBe(2)
+  })
+
   it('draws to scale: 6 m of wall at 1:50 is 120 mm on the sheet', async () => {
     const text = new TextDecoder('latin1').decode(toPDF(doc, registry, ['a3']))
     // The wall's centerline runs from x = 2000 to 8000 mm of drawing: 40 to 160 mm of paper, 113.386 to 453.543 points.

@@ -1,4 +1,4 @@
-import { add, arcThrough, DEFAULT_PAPER_SCALE, dist, len, norm, PAPER_FORMATS, paperSize, perp, scale, sub, wallArc, wallEdgeLines, wallMiddle, wallSides, type Document, type NodeInput, type NodeOf, type Op, type SnapKind, type Style, type Vec2 } from '@opencalque/core'
+import { add, arcThrough, DEFAULT_PAPER_SCALE, dist, len, norm, PAPER_FORMATS, paperSize, perp, rootOf, scale, sub, viewPlacement, wallArc, wallEdgeLines, wallMiddle, wallSides, type Document, type NodeInput, type NodeOf, type Op, type SnapKind, type Style, type Vec2 } from '@opencalque/core'
 import { dimensionToolLook } from '../actions'
 import { registry } from '../extensions'
 import { t } from '../i18n'
@@ -7,6 +7,7 @@ import { formatLength, formatNumber, unit } from '../units'
 import type { Overlay, SizeLabel, AngleMark } from './draw'
 import { BOXES, FORMAT_REACH } from './gesture'
 import { layerHere } from '../store'
+import { viewUnder } from './ElevationLabels'
 import { usePrefs } from '../prefs'
 import { get } from './runtime'
 
@@ -186,6 +187,11 @@ export function shape(tool: Tool, id: string, a: Vec2, b: Vec2, offset = 0): Nod
       return { ...common, type: 'wall', a, b, thickness: wallThickness, ...(wallMaterial && doc.materials?.[wallMaterial] ? { material: wallMaterial } : {}) }
     case 'divider':
       return { id, parent: scope, ...layerHere(), type: 'divider', a, b }
+    case 'camera': {
+      // Named in the order they are drawn, as papers are: the Perspective panel lists them by name.
+      const count = Object.values((base ?? doc).nodes).filter((n) => n.type === 'camera').length
+      return { id, parent: scope, ...layerHere(), type: 'camera', name: t('Viewpoint {n}', { n: String(count + 1) }), a, b }
+    }
     case 'annotation':
       // The tip is the first point clicked, the text goes at the second; the words are typed afterwards.
       return { ...annotationTemplate, ...common, type: 'annotation', a, b, text: '' } as NodeInput
@@ -199,6 +205,15 @@ export function shape(tool: Tool, id: string, a: Vec2, b: Vec2, offset = 0): Nod
       const style = typeof look.dimensionStyle === 'string' ? doc.dimensionStyles?.[look.dimensionStyle] : undefined
       // New dimensions read in the unit the user works in, unless the tool's settings or its style say otherwise; their decimal mark is the drawing's.
       const written = style?.unit === undefined ? { unit: unit() } : {}
+      // Drawn on an elevation or a section, from the page, it goes in it, in its coordinates: it moves
+      // and grows with it, and says the real length.
+      const page = rootOf(base ?? doc, scope)
+      const view = page && page.id === scope ? viewUnder(base ?? doc, page.id, a, b) : null
+      if (view) {
+        const { x, y, scale: s } = viewPlacement(view)
+        const local = (p: Vec2) => ({ x: (p.x - x) / s, y: (p.y - y) / s })
+        return { ...written, ...look, ...common, parent: view.id, type: 'dimension', a: local(a), b: local(b), offset: offset / s } as NodeInput
+      }
       return { ...written, ...look, ...common, type: 'dimension', a, b, offset } as NodeInput
     }
     case 'rect':

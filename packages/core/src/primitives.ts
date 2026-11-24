@@ -57,6 +57,17 @@ export interface PrimStyle {
    * fill to fade. The white an object backs such a shape with (`objectBacking`) is faded as much.
    */
   faded?: number
+  /**
+   * Drawn in the editor only, to work with: never printed nor exported (`printedScene`). Set by
+   * `nodePrimitives` on what a kind marked `screenOnly` draws: the eye of a viewpoint, the line of
+   * an elevation (ARCHITECTURE §10, "Views").
+   */
+  screen?: boolean
+}
+
+/** A scene as it is printed and exported: without what is drawn only to work with (`screen`). */
+export function printedPrims<P extends PrimStyle>(prims: P[]): P[] {
+  return prims.some((p) => p.screen) ? prims.filter((p) => !p.screen) : prims
 }
 
 export interface PathPrim extends PrimStyle {

@@ -47,6 +47,49 @@ export function heightAboveFloor(node: Node, registry: Registry): number | null 
   return node.z ?? (mount?.on === 'wall' ? (mount.height ?? null) : null)
 }
 
+/** How high a wall stands when neither it nor its page says, in mm. */
+export const DEFAULT_WALL_HEIGHT = 2500
+
+/** How high a wall stands: its own height, else its page's, else `DEFAULT_WALL_HEIGHT`. */
+export function heightOf(doc: Document, wall: Wall): number {
+  const page = rootOf(doc, wall.parent)
+  return wall.height ?? (page?.type === 'page' ? page.wallHeight : undefined) ?? DEFAULT_WALL_HEIGHT
+}
+
+/**
+ * How tall an object is where it stands when its kind works it out (`heightIn`: a wall cabinet up
+ * to the ceiling, a tall unit of sections), given how high the top of the wall it is against is
+ * over its underside, or of its page's walls when it is against none. Never less than 1 mm. Null
+ * when its own `height` stands.
+ */
+export function heightInPlace(doc: Document, node: Node, registry: Registry): number | null {
+  const kind = node.type === 'parametric' ? registry.parametric.get(node.kind) : undefined
+  if (!kind?.heightIn || node.type !== 'parametric') return null
+  const on = mountedOn(doc, node, registry)
+  const page = rootOf(doc, node.parent)
+  const top = on ? heightOf(doc, on.wall) : ((page?.type === 'page' ? page.wallHeight : undefined) ?? DEFAULT_WALL_HEIGHT)
+  let tall: number | null = null
+  try {
+    tall = kind.heightIn(registry.resolveProps(kind, node.props), Math.max(1, top - (heightAboveFloor(node, registry) ?? 0)))
+  } catch {
+    return null
+  }
+  return tall === null || !Number.isFinite(tall) ? null : Math.max(1, tidy(tall))
+}
+
+/**
+ * The parameters of a parametric object as it is drawn where it stands: its own, its kind's
+ * defaults filled in, and its `height` as its kind works it out there, when it does (`heightInPlace`).
+ * What draws an object in its place (an elevation, a view in 3D) reads these.
+ */
+export function propsInPlace(doc: Document, node: NodeOf<'parametric'>, registry: Registry): Record<string, any> {
+  const kind = registry.parametric.get(node.kind)
+  if (!kind) return node.props
+  const props = registry.resolveProps(kind, node.props)
+  const tall = heightInPlace(doc, node, registry)
+  return tall === null ? props : { ...props, height: tall }
+}
+
 /** The middle of its back, the way its own X runs and the way it stands out, in the drawing. */
 function backOf(node: { x: number; y: number; rotation?: number; flipX?: boolean }, mount: Mount): { at: Vec2; along: Vec2; out: Vec2 } {
   const back = mount.back ?? 0

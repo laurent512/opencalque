@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { platform } from './platform'
-import { buildScene, componentsOf, pagesOf, unusedComponents } from '@opencalque/core'
+import { buildScene, childrenOf, componentsOf, pagesOf, rootOf, unusedComponents } from '@opencalque/core'
 import {
+  addPage,
   deleteSelection,
   deleteUnusedComponents,
   copySelection,
@@ -12,6 +13,7 @@ import {
   exportSvg,
   importLibrary,
   makeComponent,
+  moveViewToPage,
   vectorizeSelection,
   newDocument,
   openDocument,
@@ -22,6 +24,8 @@ import {
   ungroupSelection,
   zoomBy,
   zoomToFit,
+  zoomToViewMark,
+  zoomToViewPicture,
   zoomToSelection,
   selectAlike,
   nudgeSelection,
@@ -50,7 +54,7 @@ import {
 } from './actions'
 import { registry } from './extensions'
 import { editComponent, showPage } from './navigation'
-import { apply, redo, select, setTool, undo, useStore } from './store'
+import { apply, layerHere, redo, select, setTool, undo, useStore } from './store'
 import { type Tool } from './tools'
 import { toast, useWindows } from './windows'
 import { PANELS, resetLayout, togglePanel, useDock, type PanelId } from './dock'
@@ -96,6 +100,8 @@ export interface Command {
 const get = useStore.getState
 const prefs = usePrefs.getState
 const selected = () => get().selection.length > 0
+/** The type of the one thing selected, if one is. */
+const selectedType = () => (get().selection.length === 1 ? get().doc.nodes[get().selection[0]]?.type : undefined)
 const onlyInstance = () => get().selection.length === 1 && get().doc.nodes[get().selection[0]]?.type === 'instance'
 /** One placement selected: an instance, or a parametric object, which is placed as a model is (`entries.ts`). */
 const onlyPlacement = () => get().selection.length === 1 && ['instance', 'parametric'].includes(get().doc.nodes[get().selection[0]]?.type ?? '')
@@ -169,7 +175,9 @@ const STATIC: Command[] = [
   { id: 'file.autosave', title: msg('Save automatically'), category: 'File', checked: () => prefs().autosave, run: () => setPrefs({ autosave: !prefs().autosave }) },
   { id: 'file.import', title: msg('Import…'), category: 'File', keys: ['Mod+I'], global: true, interrupts: true, keywords: 'pdf picture image dxf library components extension plan', run: importFile },
   { id: 'file.drawingSettings', title: msg('Drawing settings…'), category: 'File', global: true, interrupts: true, keywords: 'units decimal comma square feet metres project client address author', run: () => useWindows.setState({ drawingSettingsOpen: true }) },
-  { id: 'file.export', title: msg('Export…'), category: 'File', keys: ['Mod+P', 'Mod+E'], global: true, interrupts: true, keywords: 'pdf svg dxf print', run: () => useWindows.setState({ exportOpen: true }) },
+  { id: 'file.export', title: msg('Export…'), category: 'File', keys: ['Mod+P', 'Mod+E'], global: true, interrupts: true, keywords: 'pdf svg dxf print', run: () => useWindows.setState({ exportOpen: true, exportSelection: false }) },
+  // From the right-click menu: what is selected, papers as their sheets in a PDF, anything else alone in a picture.
+  { id: 'file.exportSelection', title: msg('Export the selection…'), category: 'File', when: () => get().selection.length > 0, run: () => useWindows.setState({ exportOpen: true, exportSelection: true }) },
   { id: 'file.importPlan', title: msg('Import floor plan (PDF or picture)…'), category: 'File', interrupts: true, run: importFloorPlan },
   { id: 'file.importDxf', title: msg('Import DXF (from other CAD programs)…'), category: 'File', interrupts: true, run: importDxf },
   { id: 'file.importLibrary', title: msg('Import component library…'), category: 'File', interrupts: true, run: importLibrary },
@@ -193,7 +201,7 @@ const STATIC: Command[] = [
     interrupts: true,
     run: () => {
       const { doc, scope } = get()
-      select(buildScene(doc, scope, registry).filter((item) => !item.locked).map((item) => item.id))
+      select(buildScene(doc, scope, registry).filter((item) => !item.locked && !item.foreign).map((item) => item.id))
     },
   },
   { id: 'edit.selectSimilar', title: msg('Select similar'), category: 'Edit', keys: ['Mod+Shift+A'], when: selected, keywords: 'same alike matching', run: () => selectAlike('similar') },
@@ -259,6 +267,24 @@ const STATIC: Command[] = [
   { id: 'component.finish', title: msg('Finish editing this group or component'), category: 'Components', when: () => get().scope !== get().page, run: () => editComponent(null) },
 
   { id: 'view.zoomToFit', title: msg('Zoom to fit'), category: 'View', keys: ['Shift+1'], run: zoomToFit },
+  // A view (3D, elevation, section) is in two places: where it looks from, on its plan, and its picture.
+  { id: 'view.zoomToEye', title: msg('Zoom to the eye'), category: 'View', when: () => selectedType() === 'camera', run: zoomToViewMark },
+  { id: 'view.zoomToLine', title: msg('Zoom to its line'), category: 'View', when: () => selectedType() === 'elevation', run: zoomToViewMark },
+  // A view's own dimensions, put back in it once taken out.
+  {
+    id: 'view.addAutoDimensions',
+    title: msg('Add automatic dimensions'),
+    category: 'Edit',
+    when: () => {
+      const { doc, selection } = get()
+      return selectedType() === 'elevation' && !childrenOf(doc, selection[0]).some((n) => n.type === 'autodimensions')
+    },
+    run: () => {
+      const { selection } = get()
+      apply([{ op: 'add_node', node: { type: 'autodimensions', parent: selection[0], ...layerHere() } }])
+    },
+  },
+  { id: 'view.zoomToView', title: msg('Zoom to the view'), category: 'View', when: () => selectedType() === 'camera' || selectedType() === 'elevation', run: zoomToViewPicture },
   { id: 'view.zoomToSelection', title: msg('Zoom to selection'), short: msg('Zoom to it'), category: 'View', keys: ['Shift+2'], when: selected, run: zoomToSelection },
   { id: 'view.zoomIn', title: msg('Zoom in'), category: 'View', keys: ['+', 'Shift++', 'Mod+='], run: () => zoomBy(1.25) },
   { id: 'view.toggleTheme', title: msg('Dark theme'), category: 'View', keywords: 'dark light mode appearance colours', checked: () => useTheme.getState().dark, run: toggleTheme },
@@ -340,13 +366,14 @@ const STATIC: Command[] = [
   tool('room', msg('Room'), 'A'),
   tool('divider', msg('Room divider'), 'Shift+A'),
   tool('elevation', msg('Elevation or section'), 'Shift+W'),
+  tool('camera', msg('Viewpoint'), 'Shift+P'),
   tool('connect', msg('Connect switches to lights'), 'Shift+C'),
   { id: 'tool.calibrate', title: msg('Set the scale of an imported plan'), category: 'Tools', run: () => setTool('calibrate') },
 
   { id: 'warehouse.components', title: msg('Object library…'), category: 'Insert', global: true, run: () => useWindows.setState({ warehouse: 'components' }) },
   { id: 'prefs.toolbar', title: msg('Customise the toolbar…'), category: 'General', global: true, run: () => useWindows.setState({ preferencesOpen: true, preferencesPage: 'toolbar' }) },
   { id: 'warehouse.extensions', title: msg('Extensions…'), category: 'General', global: true, run: () => useWindows.setState({ preferencesOpen: true, preferencesPage: 'extensions' }) },
-  { id: 'page.add', title: msg('Add page'), category: 'Pages', run: () => apply([{ op: 'add_node', node: { type: 'page', name: t('Page {n}', { n: pagesOf(get().doc).length + 1 }) } }]) },
+  { id: 'page.add', title: msg('Add page'), category: 'Pages', run: addPage },
   { id: 'layer.add', title: msg('Add layer'), category: 'Layers', run: () => apply([{ op: 'add_layer', layer: { name: t('Layer {n}', { n: Object.keys(get().doc.layers).length + 1 }) } }]) },
 ]
 
@@ -400,6 +427,19 @@ export function allCommands(): Command[] {
       keywords: 'Place component',
       category: 'Insert',
       run: () => setTool('place', { type: 'instance', component: component.id }),
+    })),
+    // A view (3D, elevation, section) moved to another page, still looking at its plan.
+    ...pagesOf(doc).map((page): Command => ({
+      id: `view.moveTo.${page.id}`,
+      title: t('Move to page: {name}', { name: labelOf(doc, page) }),
+      keywords: 'Move to page sheet view',
+      category: 'Pages',
+      when: () => {
+        const { doc: now, selection } = get()
+        const node = selection.length === 1 ? now.nodes[selection[0]] : undefined
+        return (node?.type === 'camera' || node?.type === 'elevation') && rootOf(now, node.parent)?.id !== page.id
+      },
+      run: () => moveViewToPage(page.id),
     })),
     ...pagesOf(doc).map((page): Command => ({
       id: `page.show.${page.id}`,

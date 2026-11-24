@@ -3,7 +3,9 @@ import {
   elevationEdges,
   elevationItemAt,
   elevationItemsOf,
+  viewShows,
   elevationSideOps,
+  elevationSplitOps,
   type MoveGuides,
   nearestEdge,
   elevationMovePatch,
@@ -22,7 +24,8 @@ import {
   moveCornerOps,
   moveViewCorner,
   perp,
-  keepViewsOps,
+  keptViewPatch,
+  boundsContainPoint,
   moveGuides,
   type MoveSnap,
   moveOps,
@@ -57,7 +60,7 @@ import { gridStep } from '../../view'
 import { formatLength, formatNumber } from '../../units'
 import { heldNearest, lineEnd, snap, squareFrom, type Target } from '../aim'
 import { ALIGN_REACH, MOUNT_REACH, SNAP_REACH, TOUCH_REACH, type ElevationEdges, type GestureOf } from '../gesture'
-import { clearanceAt, cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, inViewGripAt, lineUp, pointedAt, titleAt, viewEdgeAt, viewLineHandleAt } from '../picking'
+import { clearanceAt, cornerAt, endAt, faceAt, looseEndAt, frameCornerAt, frameCursor, frameGripAt, gripAt, gripBox, handleAt, inViewGripAt, inViewSplitAt, lineUp, pointedAt, titleAt, viewEdgeAt, viewLineHandleAt } from '../picking'
 import { get, type Canvas, type Move, type Press, type Release } from '../runtime'
 import { logMoveEnd, logMoveStart, logMoveStep } from '../snapLog'
 import { faceAcross, faceOf, paperLabel, resizeCursor, round, sizes, thicknessLabel, thicknessStep, wallNormal } from '../shapes'
@@ -143,7 +146,7 @@ export const selectDown: Press = (c, e, at, world) => {
   if (index >= 0) {
     const node = s.doc.nodes[s.selection[0]]
     // An end of a view line is taken by its arrow, anywhere along it: the end keeps that far from the pointer.
-    const end = node.type === 'viewline' && (index === 1 || index === 2) ? (index === 1 ? node.a : node.b) : null
+    const end = node.type === 'elevation' && (index === 1 || index === 2) ? (index === 1 ? node.a : node.b) : null
     c.gesture = { kind: 'handle', node, index, ...(end ? { grab: sub(world, end) } : {}) }
     return
   }
@@ -162,11 +165,17 @@ export const selectDown: Press = (c, e, at, world) => {
     c.gesture = { kind: 'grip', view: side.view, item: side.item, side: side.side, start: world, edges: elevationEdges(side.view, s.doc, registry, side.item.node.id) }
     return
   }
+  // A line across it there (a tall unit's between two sections), dragged up and down.
+  const split = e.shiftKey || e.ctrlKey || e.metaKey ? null : inViewSplitAt(c, at)
+  if (split) {
+    c.gesture = { kind: 'split', ...split, start: world, edges: elevationEdges(split.view, s.doc, registry, split.item.node.id) }
+    return
+  }
   const shown = e.shiftKey || e.ctrlKey || e.metaKey ? null : elevationAt(c, world)
   if (shown) {
     select([shown.item.node.id])
     const edges = elevationEdges(shown.view, s.doc, registry, shown.item.node.id)
-    c.gesture = { kind: 'elevated', view: shown.view, node: shown.item.node, start: world, role: shown.item.role, raises: shown.item.raises, box: shown.item.box, edges }
+    c.gesture = { kind: 'elevated', view: shown.view, node: shown.item.node, start: world, role: shown.item.role, raises: shown.item.raises, box: shown.item.box, levels: shown.item.levels, edges }
     return
   }
   const hit = titleAt(c, at) ?? hitTest(c.scene, world, 5 / s.view.zoom)
@@ -189,6 +198,15 @@ export const selectDown: Press = (c, e, at, world) => {
   if (adding) ids = ids.includes(hit.id) ? ids.filter((id) => id !== hit.id) : [...ids, hit.id]
   else if (!ids.includes(hit.id)) ids = [hit.id]
   select(ids)
+  // A view pressed by its line or its eye on the plan, not by its picture: Properties opens on its
+  // line of view or its camera (`viewPart`).
+  const byLine = hit.node.type === 'camera' || (hit.node.type === 'elevation' && (hit.foreign || (!!hit.bounds && !boundsContainPoint(hit.bounds, world))))
+  if (!adding && ids.length === 1 && byLine) useStore.setState({ viewPart: 'line' })
+  // Dragged by its line, an elevation's line moves across, as by its edge (7), and the drawing stays where it is.
+  if (!adding && byLine && hit.node.type === 'elevation' && kindOf(hit.node).handles!(hit.node, registry, s.doc).length === 10) {
+    c.gesture = { kind: 'handle', node: hit.node, index: 7 }
+    return
+  }
   // A paper moves alone, over the drawing: that is how a sheet is put where it frames what it should.
   if (ids.includes(hit.id)) c.gesture = { kind: 'press', at, start: world, nodes: ids.map((id) => s.doc.nodes[id]) }
 }
@@ -301,11 +319,10 @@ export const handleMove: Move<'handle'> = (c, g, e, _at, world, out) => {
   out.marker = target.marker
   // The other walls that end at a wall's corner come along with it, unless Alt is held.
   const joined = e.altKey ? [] : wallEndFollowOps(s.base ?? s.doc, g.node, g.index, target.p)
-  // A corner of what a view line sees turns it about the corner across; with Shift, it keeps its way and sets its depth.
-  const patch = g.node.type === 'viewline' && g.index >= 3 && g.index <= 6 ? moveViewCorner(g.node, (g.index - 3) as 0 | 1 | 2 | 3, target.p, e.shiftKey ? 'stretch' : 'turn') : kindOf(g.node).moveHandle!(g.node, g.index, target.p, registry, s.base ?? s.doc)
-  // Its views keep what they still show where it was on the sheet.
-  const views = g.node.type === 'viewline' ? keepViewsOps(s.base ?? s.doc, g.node, patch) : []
-  out.previewed = preview([{ op: 'update_node', id: g.node.id, patch }, ...views, ...joined])
+  // A corner of what a view's line sees turns it about the corner across; with Shift, it keeps its
+  // way and sets its depth. The view keeps what it still shows where it was on the sheet (`keptViewPatch`).
+  const patch = g.node.type === 'elevation' && g.index >= 3 && g.index <= 6 ? keptViewPatch(g.node, moveViewCorner(g.node, (g.index - 3) as 0 | 1 | 2 | 3, target.p, e.shiftKey ? 'stretch' : 'turn')) : kindOf(g.node).moveHandle!(g.node, g.index, target.p, registry, s.base ?? s.doc)
+  out.previewed = preview([{ op: 'update_node', id: g.node.id, patch }, ...joined])
 }
 
 export const cornerMove: Move<'corner'> = (c, g, e, _at, world, out) => {
@@ -451,11 +468,20 @@ export const marqueeMove: Move<'marquee'> = (c, g, _e, _at, world, out) => {
  * With nothing in progress, the pointer says what a press there would do: resize along a diagonal,
  * turn, move a point, make a wall thicker by its face or longer by its end.
  */
-/** The object of the plan that an elevation on the drawing shows under the pointer, and that elevation; locked ones are left out. */
+/**
+ * The object of the plan that an elevation on the drawing shows under the pointer, and that
+ * elevation; locked ones are left out. Only in a view that is open: selected, or showing what is
+ * selected (picked in it, or on the plan). In any other, the first press takes the view, and a drag
+ * moves it, as a 3D view's does and a group's first click does (the owner's choice); the next goes
+ * into it.
+ */
 function elevationAt(c: Canvas, world: Vec2) {
   const s = get()
+  const selected = new Set(s.selection)
   for (const item of c.scene) {
-    if (item.node.type !== 'elevation') continue
+    // Inside a view, its drawing (`viewBackdrop`) is the ground drawn on, not a view to pick in.
+    if (item.node.type !== 'elevation' || item.id !== item.node.id) continue
+    if (!selected.has(item.id) && !viewShows(item.node, s.doc, registry, selected)) continue
     const found = elevationItemAt(item.node, s.doc, registry, world, 3 / s.view.zoom)
     if (found && !isLocked(s.doc, found.node) && !isLocked(s.doc, item.node)) return { view: item.node, item: found }
   }
@@ -498,8 +524,8 @@ function viewSteps(e: { altKey: boolean }) {
 
 /**
  * An object dragged in an elevation: across the view along its wall and, for what can be raised, up
- * and down. Its sides and its middle line up with those of what is beside it, its top and bottom
- * with theirs, the walls' and the floor, else it goes by whole steps of the grid. Shift keeps it to
+ * and down. Its sides and its middle line up with those of what is beside it, its top, its bottom and
+ * the level lines drawn across it with theirs, the walls' and the floor, else it goes by whole steps of the grid. Shift keeps it to
  * whichever way it went further; Alt lines up with nothing and leaves the grid. Its height is said as it goes.
  */
 export const elevatedMove: Move<'elevated'> = (_c, g, e, _at, world, out) => {
@@ -508,7 +534,7 @@ export const elevatedMove: Move<'elevated'> = (_c, g, e, _at, world, out) => {
   const { box, edges } = g
   const middle = (box.minX + box.maxX) / 2
   const across = lineUpInView(world.x - g.start.x, [[[box.minX, box.maxX], edges.xs], [[middle], edges.middles]], reach, step, free)
-  const upright = g.raises ? lineUpInView(world.y - g.start.y, [[[box.minY, box.maxY], edges.ys]], reach, step, free) : { delta: 0, at: null }
+  const upright = g.raises ? lineUpInView(world.y - g.start.y, [[[box.minY, box.maxY, ...g.levels], edges.ys]], reach, step, free) : { delta: 0, at: null }
   let [ds, dh] = [across.delta, -upright.delta]
   let [x, y] = [across.at, upright.at]
   if (e.shiftKey) {
@@ -549,6 +575,23 @@ export const gripMove: Move<'grip'> = (_c, g, e, _at, world, out) => {
   if (now) out.status = `${formatLength(now.maxX - now.minX)} × ${formatLength(now.maxY - now.minY)}`
 }
 
+/**
+ * A line across what a view draws (a tall unit's between two sections), dragged up and down: it lines
+ * up with the tops and bottoms of what is beside it, the walls and the floor, else goes by whole steps
+ * of the grid; Alt lines up with nothing and leaves the grid. How high it is above the floor is said as it goes.
+ */
+export const splitMove: Move<'split'> = (_c, g, e, _at, world, out) => {
+  const s = get()
+  const { step, free, reach } = viewSteps(e)
+  const moved = lineUpInView(world.y - g.start.y, [[[g.y], g.edges.ys]], reach, step, free)
+  const y = g.y + moved.delta
+  const ops = elevationSplitOps(g.view, s.base ?? s.doc, registry, g.item, g.index, y)
+  if (!ops) return
+  out.previewed = preview(ops)
+  out.smart = viewGuides(g.edges, null, moved.at)
+  out.status = t('{height} above the floor', { height: formatLength(g.view.y - y - (heightAboveFloor(g.item.node, registry) ?? 0)) })
+}
+
 /** What a press on each side of the box a view draws the selected object in does, said while the pointer is on it. */
 const GRIP_HINTS = {
   left: msg('Drag the side to make it wider or narrower: the other side stays where it is'),
@@ -565,6 +608,12 @@ export const hover: Move<'idle'> = (c, _g, _e, at, world, out) => {
     out.status = t(GRIP_HINTS[side.side])
     const cursor = side.side === 'left' || side.side === 'right' ? 'ew-resize' : 'ns-resize'
     if (c.gripCursor !== cursor) c.setGripCursor(cursor)
+    if (s.wallFace !== null) useStore.setState({ wallFace: null })
+    return
+  }
+  if (s.tool === 'select' && inViewSplitAt(c, at)) {
+    out.status = t('Drag the line up or down: the parts either side of it give and take')
+    if (c.gripCursor !== 'row-resize') c.setGripCursor('row-resize')
     if (s.wallFace !== null) useStore.setState({ wallFace: null })
     return
   }
@@ -609,7 +658,7 @@ export const hover: Move<'idle'> = (c, _g, _e, at, world, out) => {
     const hit = pointed?.item
     if (pointed) out.hovered = { thing: pointed.thing, ...(pointed.thing !== hit ? { group: { id: hit!.id, bounds: hit!.bounds } } : {}) }
     const type = hit && s.doc.nodes[hit.id]?.type
-    if (type === 'viewline' || type === 'elevation') out.viewHover = hit!.id
+    if (type === 'elevation') out.viewHover = hit!.id
   }
 }
 

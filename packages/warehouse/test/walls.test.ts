@@ -14,7 +14,7 @@ import { standardRegistry } from '../src'
 const NOT_AGAINST_WALLS: Record<string, string[]> = {
   // In a wall, by their own snap (`snapOpeningToWall`), not against its face.
   'in a wall': ['arch.door', 'arch.window'],
-  'standing in the room': ['arch.stair', 'arch.stair.l', 'arch.stair.u', 'arch.stair.spiral', 'arch.chair', 'arch.officechair', 'furn.table'],
+  'standing in the room': ['arch.stair', 'arch.stair.l', 'arch.stair.u', 'arch.stair.spiral', 'arch.chair', 'arch.chair.high', 'arch.officechair', 'furn.table'],
   // Its two backs go against two walls, which a snap to one cannot put it against.
   'in a corner': ['arch.sofa.corner'],
   'on the ceiling': ['elec.light', 'elec.pendant', 'elec.spot', 'elec.strip', 'elec.junction', 'elec.smoke', 'elec.fan', 'elec.motion'],

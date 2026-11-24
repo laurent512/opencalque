@@ -14,14 +14,13 @@ export interface ViewSpec {
   parent?: string
 }
 
-/** The nodes of a view: its line, under `id`, and the view of that line, under `id` followed by "v". */
+/** The node of a view, which holds its line, under `id` followed by "v" (where tests once had the view of a line `id`). */
 export function viewNodes({ id, a, b, depth, x, y, walls, dimensions, name, parent = 'page_1' }: ViewSpec): Record<string, unknown>[] {
   const own = <T extends object>(values: T) => Object.fromEntries(Object.entries(values).filter(([, value]) => value !== undefined))
-  return [
-    { type: 'viewline', id, parent, a, b, ...own({ depth }) },
-    { type: 'elevation', id: `${id}v`, parent, line: id, x, y, ...own({ walls, dimensions, name }) },
-  ]
+  // Its dimensions drawn by itself are what it holds, unless it says none (as the tool makes a view).
+  const view = { type: 'elevation', id: `${id}v`, parent, a, b, ...own({ depth }), x, y, ...own({ walls, name }) }
+  return dimensions === false ? [view] : [view, { type: 'autodimensions', id: `${id}vd`, parent: `${id}v` }]
 }
 
-/** The operations that add a view and its line. */
+/** The operations that add a view. */
 export const viewOps = (spec: ViewSpec): Op[] => viewNodes(spec).map((node): Op => ({ op: 'add_node', node: node as never }))

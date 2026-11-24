@@ -22,10 +22,10 @@ export type Placing = (
   | { type: 'library'; library: Document; component: string; names: Record<string, string> }
   | { type: 'table'; table: Omit<NodeOf<'table'>, 'id' | 'parent' | 'order' | 'x' | 'y'> }
   /**
-   * A view, put down with the line it is drawn from (`lineId`, made with it): its name, and its
-   * line's. With `sided`, a section: the side of its line it is put down on is the side it is seen from.
+   * A view, put down holding its line: its name, and what it sees. With `sided`, a section: the
+   * side of its line it is put down on is the side it is seen from.
    */
-  | { type: 'elevation'; name: string; lineId: string; line: Omit<NodeOf<'viewline'>, 'id' | 'parent' | 'order'>; sided?: boolean }
+  | { type: 'elevation'; name: string; line: { a: Vec2; b: Vec2; depth?: number }; sided?: boolean }
 ) & { carried?: boolean }
 
 /**
@@ -114,6 +114,11 @@ interface Interaction {
   editingText: { id: string; create?: NodeInput; bubble?: number } | null
   /** Which of the temporary dimensions of the one selected object (`clearances`) is being typed, by its place in their list. */
   measuring: number | null
+  /**
+   * Which part of the view selected was picked: its line or eye on the plan (`line`), or its
+   * picture (`view`). Properties opens on that part's settings. Any other selecting forgets it.
+   */
+  viewPart: ViewPart | null
   /** Where the right-click menu is open, in window coordinates. */
   contextMenu: { x: number; y: number } | null
   /** Where on the drawing the last right-click was, for commands of its menu that act at that very place. */
@@ -196,6 +201,7 @@ const IDLE: Interaction = {
   wallFace: null,
   editingText: null,
   measuring: null,
+  viewPart: null,
   contextMenu: null,
   menuPoint: null,
   status: '',
@@ -253,6 +259,20 @@ function record(doc: Document, ops: Op[]): void {
   pending = []
   if (doc === before) return set({ ...settle(s, doc), base: null })
   set({ ...settle(s, doc), base: null, past: [...s.past, { doc: before, ops }].slice(-HISTORY_LIMIT), future: [] })
+}
+
+/**
+ * Applies operations that keep in the drawing what is worked out from it (the picture of each 3D
+ * view, `keepViewPictures`), outside the history: there is nothing to undo, and an undo leaves the
+ * picture of the state it goes back to, made again when the drawing is next saved. A drawing that
+ * was saved stays so. Not during a gesture: false then, and nothing is applied.
+ */
+export function keep(ops: Op[]): boolean {
+  const s = get()
+  if (s.base || ops.length === 0) return false
+  const doc = applyEdit(s.doc, ops, registry).doc
+  set({ ...settle(s, doc), saved: s.saved === s.doc ? doc : s.saved })
+  return true
 }
 
 /** `ops` applied to `doc`, with what follows from them (`applyEdit`). */
@@ -345,7 +365,15 @@ export function setTool(tool: Tool, placing: Placing | null = null): void {
 }
 
 export function select(ids: string[]): void {
-  set({ selection: ids, corner: null, measuring: null })
+  set({ selection: ids, corner: null, measuring: null, viewPart: null })
+}
+
+/** The parts of a view, a viewpoint or an elevation: its line or eye on the plan, and its picture. */
+export type ViewPart = 'line' | 'view'
+
+/** Selects a view by one of its parts, which Properties then opens on. */
+export function selectViewPart(id: string, part: ViewPart): void {
+  set({ selection: [id], corner: null, measuring: null, viewPart: part })
 }
 
 /** Selects the wall corner at a point, in place of any objects. */

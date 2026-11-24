@@ -6,7 +6,7 @@ z.config({ jitless: true })
 export const FORMAT = 'opencalque'
 /** What `format` was before the project was renamed. Such drawings are still read. */
 export const FORMER_FORMAT = 'opencad'
-export const FORMAT_VERSION = 5
+export const FORMAT_VERSION = 6
 
 const Id = z.string().min(1)
 
@@ -313,26 +313,51 @@ export const NodeSchema = z
     z
       .object({
         ...base,
-        type: z.literal('viewline'),
-        a: Vec2Schema.describe('Where the line starts on the plan: the left end of the views taken from it.'),
-        b: Vec2Schema.describe('Where it ends: the right end of those views.'),
-        depth: z.number().nonnegative().optional().describe('How far beyond the line its views see, in mm: their far side, which lies on the face of the wall for an elevation of it. Defaults to 6000.'),
+        type: z.literal('camera'),
+        a: Vec2Schema.describe('Where the eye is on the plan: where whoever looks stands.'),
+        b: Vec2Schema.describe('A point it looks towards, level: sets only the way it looks, however far it is.'),
+        fov: z.number().min(10).max(150).optional().describe('How wide it sees, from its left edge to its right, in degrees. Defaults to 70.'),
+        eyeHeight: z.number().nonnegative().optional().describe('How high above the floor the eye is, in mm. Defaults to 1500.'),
+        pitch: z.number().min(-60).max(60).optional().describe('How far it looks up (positive) or down (negative) from level, in degrees. Defaults to 0: level, vertical lines staying vertical.'),
+        page: Id.optional().describe('The id of the page whose plan it looks at, when its view is shown on another page (where this node is). Left out, the plan of the page it is on.'),
+        fixed: z.boolean().optional().describe('true keeps where it stands and the way it looks: in the editor, dragging in its view or the wheel over it does not move it, nor does dragging its eye on the plan. Its values set here still change it. Left out, free.'),
+        frame: z
+          .object({ x: z.number(), y: z.number(), width: z.number().positive(), height: z.number().positive().optional() })
+          .optional()
+          .describe('Where its view is on the page, in mm: the top left corner of the box, its width and its height, which give the shape of its picture (left out, 9/16 of its width). The editor draws the view there; printed and exported, it is its picture ("picture"). Left out, beside the plan, and not printed.'),
+        picture: Id.optional().describe('The id of an asset holding the picture of its view as the editor last drew it (refreshed when the drawing is saved or exported): what prints and exports in its frame, and what shows it where the view cannot be drawn. Kept by the editor; left out, nothing is printed in its frame.'),
       })
       .describe(
-        "The line on the plan an elevation or a section is taken from, drawn on the plan as a reference line with an arrow at each end, the way it looks: a cut along the line from a to b, seen from the right of that line (as it runs from a to b, which is below a line drawn from left to right, since Y grows downward), so that a is on the left of its views, looking beyond it up to depth. What the line crosses is drawn cut through (walls, above and below the doors and windows they are cut at); beyond it, up to depth, the faces turned towards it with their doors, windows and what is fixed on them at its height, the furniture, and the walls in the way. A line whose far side (depth beyond it) lies on the face of a wall makes elevations of that wall, and follows the wall when the wall changes: usually 1000 in front of the face, with depth 1000. One across the plan makes sections. What it sees is drawn by the elevation nodes that refer to it, any number, anywhere; removing the line removes them.",
+        'A viewpoint: someone standing at a, looking towards b (level, or tilted up or down by pitch), as a photograph of the room would be taken. Drawn on the plan as a dot and the lines of what it sees; the editor shows the view it takes of the walls, doors, windows and furniture, raised to their heights, as a picture to give an image model with a description of what is in view.',
       ),
     z
       .object({
         ...base,
         type: z.literal('elevation'),
-        line: Id.describe('The id of the viewline it is the view of: what it sees, and from where.'),
+        a: Vec2Schema.describe('Where its line starts on the plan: the left end of the view.'),
+        b: Vec2Schema.describe('Where its line ends: the right end of the view.'),
+        depth: z.number().nonnegative().optional().describe('How far beyond its line it sees, in mm: its far side, which lies on the face of the wall for an elevation of it. Defaults to 6000.'),
+        page: Id.optional().describe('The id of the page whose plan it looks at, when it is drawn on another page. Left out, the plan of the page it is on.'),
         x: z.number(),
         y: z.number(),
+        scale: z.number().positive().max(20).optional().describe('How much larger than the plan it is drawn, about (x, y): 2 draws it twice as large (at 1:50 on a sheet at 1:100). Its dimensions still say the real lengths. Defaults to 1.'),
         walls: z.boolean().optional().describe('false leaves out the walls in front of the faces it sees, to see all of them: those its line cuts, and those in the way (a wall at an angle within what it sees). Shown when left out, all plain grey.'),
-        dimensions: z.boolean().optional().describe('false leaves out the dimensions it draws by itself: along the floor from its start to each object fixed on the face, and the height of each above the floor. Shown when left out.'),
       })
       .describe(
-        'An elevation or a section: the view of what its viewline sees, drawn from the plan each time it is drawn, on any page, with (x, y) the point of the floor under the start of its line (a); heights go up from there. Moving it moves only where it is drawn; what it shows is set by its line.',
+        "An elevation or a section: a cut along its line on the plan, from a to b, seen from the right of that line (as it runs from a to b, which is below a line drawn from left to right, since Y grows downward), so that a is on the left of the view, looking beyond it up to depth; drawn from the plan each time it is drawn, at (x, y), the point of the floor under a, heights going up from there. What the line crosses is drawn cut through (walls, above and below the doors and windows they are cut at); beyond it, up to depth, the faces turned towards it with their doors, windows and what is fixed on them at its height, the furniture, and the walls in the way. A line whose far side (depth beyond it) lies on the face of a wall makes an elevation of that wall, and follows the wall when the wall changes: usually 1000 in front of the face, with depth 1000. One across the plan makes a section. The line is shown on the plan in the editor, to place it, and never printed. Moving the view moves where it is drawn; moving it with the walls it looks at moves its line too. It holds what is drawn on it as its children (dimension, text, annotation, line, polyline, rect, ellipse), in its own coordinates: x along its line from a, y up from its floor (negative), in mm of the plan, drawn at (x, y) and its scale, so that a dimension says the real length.",
+      ),
+    z
+      .object({
+        ...base,
+        type: z.literal('autodimensions'),
+        fixed: z.boolean().optional().describe('false leaves out the row of what is fixed on the face (sockets, switches, wall cabinets), from the start of the view to each. Shown when left out.'),
+        pieces: z.boolean().optional().describe('false leaves out the row of the sides of the doors, windows and what stands in front (furniture, kitchen units), one after the other along the floor. Shown when left out.'),
+        overall: z.boolean().optional().describe('false leaves out the face from end to end and its height. Shown when left out.'),
+        heights: z.boolean().optional().describe('false leaves out the heights: of what is fixed on the face, and of a door\'s or window\'s sill and top. Shown when left out.'),
+        dimensionStyle: Id.optional().describe('The id of the dimension style they are drawn in (a key of the drawing\'s "dimensionStyles"). Left out, the drawing\'s default.'),
+      })
+      .describe(
+        "The dimensions an elevation or a section draws by itself, worked out from the plan each time: one of what it holds (its parent must be an \"elevation\"), with no position of its own, drawn in the view's coordinates under its floor and beside what it measures. Remove it for none; one is put in each view the tool makes.",
       ),
     z
       .object({
