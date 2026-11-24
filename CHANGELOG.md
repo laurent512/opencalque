@@ -4,7 +4,7 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
-## Unreleased
+## 2.2.0 — 2026-11-24
 
 ### New
 - A window has an opening type: casement (the usual, as before), tilt and turn, fixed, or sliding, its panes then leaves on two rails, which makes a glazed sliding window, or with its sill at the floor a sliding patio window. A casement or tilt-and-turn window opens by its angle (Open angle, 0 for shut): its leaves swing into the room in pairs from where they meet, on the plan with their arc and in the perspective view; the pane left over of an odd number is hinged on the side chosen. A sliding window, and a sliding patio door, open as far as said (Opened, in per cent), the first leaf sliding over the next. A fixed window has no handles.
