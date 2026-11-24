@@ -9,6 +9,9 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 ### Improved
 - In the perspective view, the door of an oven, and of a microwave, has a window of glass with the dark inside of the oven behind it, as on its elevation, in a base unit, under a hob and in a tall unit: its front was plain, like a cupboard's, and an image model rendering the view took it for one.
 
+### Fixed
+- A paste right after a copy or a cut is immediate: it waited for the picture of the copy to be put on the clipboard, which on a slow computer took seconds.
+
 ## 2.2.0 — 2026-11-24
 
 ### New

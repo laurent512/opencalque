@@ -14,8 +14,10 @@ const get = useStore.getState
 
 // Kept as well as the system clipboard, which a browser may refuse to let a page read.
 let lastCopy = ''
-// The copy still being written to the system clipboard (its picture takes a moment), which a paste waits for.
+// The copy still being written to the system clipboard (its picture takes a moment), and whether
+// it is still being written: a paste meanwhile takes `lastCopy`, which is what is going there.
 let writing: Promise<void> = Promise.resolve()
+let pending = false
 
 /**
  * The given objects plus everything lying on any paper among them. A paper is copied, cut and
@@ -98,7 +100,10 @@ export const copySelection = () =>
     // It says where it was seen, so that pasted elsewhere (out of a component, onto the page) it lands there.
     const clip = withPlacement(copyNodes(doc, withPaperContents(selection)), scopePlacement())
     lastCopy = JSON.stringify(clip)
-    writing = writeClipboard(clip, lastCopy)
+    pending = true
+    const thisOne = (writing = writeClipboard(clip, lastCopy).finally(() => {
+      if (writing === thisOne) pending = false
+    }))
     await writing
   })
 
@@ -156,9 +161,9 @@ export const paste = (inPlace = false) => {
   // Read now, before the clipboard is: the menu that set it is gone by the time that answers.
   const at = get().menuPoint ?? undefined
   return guarded(async () => {
-    // A copy made just before is on the clipboard only once its picture is.
-    await writing
-    const { text, picture } = await readClipboard()
+    // A copy made just before is on the clipboard only once its picture is, which on a slow
+    // computer takes seconds: meanwhile what is going there is pasted, without waiting for it.
+    const { text, picture } = pending ? { text: lastCopy, picture: null } : await readClipboard()
     if (!clipOf(text) && picture) return placePicture(new Uint8Array(await picture.arrayBuffer()), at)
     let clip = clipOf(text || lastCopy)
     if (!clip) return toast(t('There is nothing from OpenCalque on the clipboard.'))
