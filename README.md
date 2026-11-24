@@ -14,48 +14,108 @@
   <a href="#contributing"><img alt="Contributions welcome" src="https://img.shields.io/badge/contributions-welcome-22c55e"></a>
 </p>
 
-![A furnished apartment plan open in OpenCalque: rooms with floor patterns and areas, doors, windows, furniture, dimensions and notes](docs/screenshot.png)
+![A kitchen drawn in OpenCalque from nothing: four walls drawn by their corners, a window and a door put in them, a tall unit, a base unit, a sink, a hob and a table with chairs taken from the object library; then a viewpoint placed in the room, its 3D view moved under the plan and made larger, a look around by dragging in it, and the view shaded](docs/first-look.gif)
 
-*Calque* is French for tracing paper, and for a layer. OpenCalque is a drafting table for buildings: draw walls that join themselves, drop in doors, windows and stairs that know how to behave, name rooms and get their area, then frame it all on a sheet. It is a desktop app and a web app from the same code, and everything it saves is a file you can read.
+*Calque* is French for tracing paper, and for a layer. OpenCalque is a drafting table for buildings: draw walls that join themselves, drop in doors, windows, stairs and furniture that know how to behave, name rooms and get their area, see it in elevation and in 3D, then frame it all on a sheet. It is a desktop app and a web app from the same code, and everything it saves is a file you can read.
 
-> **Status: stable.** The editor works end to end and is covered by unit tests and browser tests, and a drawing saved by it stays readable by every later version ([what stays stable](#what-stays-stable)). [Download it](#download) or run it from source, and see [what is not there yet](#what-is-not-there-yet) and [what changed](CHANGELOG.md).
+> **Status: stable.** Covered by unit and browser tests, and a drawing saved by it stays readable by every later version. See [what changed](CHANGELOG.md) and [what is not there yet](docs/GUIDE.md#what-is-not-there-yet).
 
 ## Why OpenCalque
 
 | | |
 | --- | --- |
-| **Figma-like, not CAD-like** | A toolbar, panels you can dock anywhere, a command list on `Ctrl+K` with every shortcut rebindable, hints that show only the next step. No command line to memorise. |
-| **Built for buildings** | Walls mitre at any angle and stay joined when you move one. Doors and windows snap into walls and cut them. Rooms are found from the walls and report their area. |
-| **Non-destructive** | Components update everywhere at once. Modifiers such as crop and floor patterns change how something is drawn without changing it, and can be switched off at any time. |
-| **Open by design** | A drawing is plain JSON with a published schema. Every edit is a small JSON operation, the same ones the editor, the CLI and the assistant use. |
+| **Figma-like, not CAD-like** | A toolbar, panels you dock anywhere, every command on `Ctrl+K` with rebindable shortcuts, hints that show only the next step. No command line to memorise. |
+| **Built for buildings** | Walls mitre at any angle and stay joined when you move one. Doors and windows snap into walls and cut them. Rooms are found from the walls. Elevations, sections and 3D views are drawn from the plan and follow every change. |
+| **Non-destructive** | Components update everywhere at once. Modifiers such as crop and floor patterns change how something is drawn without changing it. |
+| **Open by design** | A drawing is plain JSON with a published schema. Every edit is a small JSON operation, the same ones the editor, the CLI and AI agents use. |
 | **Works with AI, or without** | A built-in assistant edits the drawing from a description, through Claude, a local model with Ollama, or any OpenAI-compatible service. The rest of the app never goes online. |
 | **Free** | MIT licensed. No account, no subscription, no telemetry. |
 
-## A first look
-
-![A kitchen drawn in OpenCalque from nothing: four walls drawn by their corners, a door and a window put in them, then a tall unit, base units, a sink, a dishwasher and a hob set against the wall from the object library, two sockets raised over the worktop in their properties and a switch by the door; the Elevation tool then lights the kitchen wall's face and puts its elevation beside the plan, with the units, the window, the sockets at their height and the dimensions](docs/first-look.gif)
-
 ## Download
 
-Installers for each version are on the [releases page](https://github.com/laurent512/opencalque/releases/latest):
+Use it in a browser, with nothing to install: **[opencalque.com](https://opencalque.com)**. Or take the desktop app from the [releases page](https://github.com/laurent512/opencalque/releases/latest):
 
 | System | File |
 | --- | --- |
-| Windows | `OpenCalque-…-windows-setup.exe` to install, or `…-windows-portable.exe` to run without installing |
+| Windows | `OpenCalque-…-windows-setup.exe`, or `…-windows-portable.exe` to run without installing |
 | macOS | `OpenCalque-…-mac-arm64.dmg` (Apple silicon) or `…-mac-x64.dmg` (Intel) |
-| Linux | `OpenCalque-…-linux-x86_64.AppImage`, or `…-linux-arm64.AppImage` for ARM (a Raspberry Pi 4 or 5 on a 64-bit system) |
-
-The builds are not signed, so the system asks before running them the first time:
-
-- **Windows**: choose "More info", then "Run anyway".
-- **macOS**: open the app once, then go to System Settings → Privacy & Security, where an "Open Anyway" button for OpenCalque appears; on macOS 14 and earlier, right-clicking the app and choosing Open does the same. If a version before 0.4.1 says the app "is damaged", run `xattr -cr /Applications/OpenCalque.app` once, or take a newer version.
-- **Linux**: make the AppImage executable (`chmod +x OpenCalque-*.AppImage`). AppImages need FUSE 2, which recent Ubuntu does not install by default (`sudo apt install libfuse2t64`). On Ubuntu 24.04 and later, an Electron app started from an AppImage can close at once because the system restricts the sandbox it uses; starting it with `--no-sandbox` gets past that.
-
-The macOS and Linux builds are made by the same release workflow as the Windows one, but have not been tried on a real Mac or Linux machine by the maintainers: reports of what works and what does not are welcome.
+| Linux | `OpenCalque-…-linux-x86_64.AppImage`, or `…-linux-arm64.AppImage` (a Raspberry Pi 4 or 5 on a 64-bit system) |
 
 When it starts, pick **Start with the example** to get a furnished flat to take apart.
 
-Or use it in a browser, with nothing to install: **[opencalque.com](https://opencalque.com)**. Chrome and Edge can open and save a drawing in place; other browsers download it.
+<details>
+<summary>The builds are not signed: what to do the first time</summary>
+
+- **Windows**: choose "More info", then "Run anyway".
+- **macOS**: open the app once, then go to System Settings → Privacy & Security, where an "Open Anyway" button for OpenCalque appears; on macOS 14 and earlier, right-click the app and choose Open.
+- **Linux**: make the AppImage executable (`chmod +x OpenCalque-*.AppImage`). AppImages need FUSE 2 (`sudo apt install libfuse2t64` on recent Ubuntu). If the app closes at once on Ubuntu 24.04 or later, start it with `--no-sandbox`.
+
+The Windows setup and the AppImage update themselves. The macOS and Linux builds come from the same workflow as the Windows one but have not been tried on a real Mac or Linux machine by the maintainers: reports are welcome.
+
+</details>
+
+## What you can do
+
+- **Walls** drawn along their middle or a face, joined at any angle, straight or curved, each of a material drawn with its hatch. Corners you drag, walls you extend and trim.
+- **Doors, windows and stairs** that snap into walls: hinged, sliding and pocket doors, casement, tilt-and-turn, fixed and sliding windows, four kinds of stairs.
+- **Rooms** found from the walls, with their name and area, and **tables of quantities** on the drawing that keep up to date; CSV export of areas, lengths and counts.
+- **Elevations, sections and 3D views** drawn from the plan. A viewpoint shows what you see from where you stand, as lines, shaded or a depth map, saved as a picture with a description to hand to an image model.
+- **An object library** of kitchen units, furniture, bathroom, heating and electrical symbols, resized by their sides; switches linked to the lights they control.
+- **Drafting**: lines, polylines, curves, arcs, dimensions and chains of them, text with fields, notes with leaders, hatches, exact sizes typed in mm, cm, m, inches or feet and inches.
+- **Sheets**: papers at standard formats and scales with a title block, exported as a vector PDF at true scale, and SVG, DXF and PNG.
+- **Bring in** a PDF or a picture to trace at its scale, or a DXF from another CAD program, sheets laid out in paper space included.
+- **Organise** with pages, layers, groups, components, shared colours, and modifiers that crop, repeat or fill without changing what they apply to.
+
+Every tool and shortcut is in **[the guide](docs/GUIDE.md)**; everything the app does, and what comes next, in [FEATURES.md](docs/FEATURES.md).
+
+![A furnished apartment plan open in OpenCalque: rooms with floor patterns and areas, doors, windows, furniture, dimensions and notes](docs/screenshot.png)
+
+## Scripts and the command line
+
+Everything the editor does to a drawing, a script can do too. With Node 22 or later, the CLI runs from npm with nothing to install:
+
+```sh
+npx opencalque new plan.opencalque "My plan"
+npx opencalque apply plan.opencalque edits.json      # a JSON array of operations
+npx opencalque check plan.opencalque                 # what is wrong with it, as JSON
+npx opencalque pdf plan.opencalque --out plan.pdf    # every paper as a page, at its real scale
+npx opencalque png plan.opencalque --out plan.png
+```
+
+A wall is one operation:
+
+```json
+{ "op": "add_node", "node": { "type": "wall", "parent": "page_1", "a": { "x": 0, "y": 0 }, "b": { "x": 6000, "y": 0 }, "thickness": 200 } }
+```
+
+A batch is all-or-nothing and every result is validated, so a script or a model cannot leave a drawing broken. **[docs/FORMAT.md](docs/FORMAT.md)** has the file format, every command and operation, what stays stable between versions, and how to add kinds of object.
+
+## AI agents
+
+OpenCalque serves drawings to an agent over [MCP](https://modelcontextprotocol.io), with the tools the assistant uses: edit with operations, read, measure, check what came out wrong, and look at a picture of the result. A model with no tools can read [opencalque.com/llms.txt](https://opencalque.com/llms.txt).
+
+**The drawing open in the desktop app**: turn on *Let agents on this computer work on the open drawing* under Preferences › AI, which gives the command to run once with the real path of your app. With Claude Code:
+
+```sh
+claude mcp add opencalque-live -- "C:\Users\you\AppData\Local\Programs\OpenCalque\OpenCalque.exe" --mcp
+```
+
+**Drawings on disk**, with Node 22 or later:
+
+```sh
+claude mcp add opencalque -- npx -y opencalque mcp
+```
+
+For any other MCP client (Claude Desktop, Cursor, VS Code, Gemini CLI…), the command is the app with `--mcp`, or `npx` with `-y opencalque mcp`. Give the agent absolute paths. Edits to the open drawing appear on the canvas and are undone with `Ctrl+Z`; edits to a file are written at once, so do not have the app and an agent work on the same file ([more](docs/FORMAT.md#agents-a-file-or-the-open-drawing)). While it is on, the desktop app listens on this computer only, behind a token kept in `.opencalque/bridge.json` in your home folder: turn it off when you are not using it.
+
+## The assistant and your data
+
+The assistant (`Ctrl+J`) works with Claude (an API key, or in the desktop app the Claude Code CLI signed in on your computer), a local model through Ollama (in a browser, Ollama must be told to accept the page with `OLLAMA_ORIGINS`), or any service that speaks the OpenAI chat-completions format with tool calling.
+
+- When you send a request, the drawing goes to the provider you chose as JSON, with what you have selected. Imported pictures are left out unless the assistant asks to look at one. Pictures you attach are sent with their message, and so is a picture of the drawing when the assistant asks for one to check its work.
+- An API key is stored on your computer and sent only to its provider; the desktop app has the system encrypt it, a browser cannot.
+- The desktop app asks once before the assistant reaches a service that is not on your computer. Conversations stay on your computer until you delete them.
+- Nothing is sent anywhere unless you use the assistant or let an agent in. The rest of the app works offline.
 
 ## Run from source
 
@@ -66,401 +126,17 @@ git clone https://github.com/laurent512/opencalque.git
 cd opencalque
 pnpm install
 pnpm dev          # the desktop app, with hot reload
-```
-
-The welcome window offers a new drawing, a file, or the example: a furnished flat, which is [`examples/apartment.opencalque`](examples/apartment.opencalque).
-
-```sh
 pnpm dev:web      # the same editor in a browser
-pnpm build && pnpm start   # the built desktop app
 pnpm test         # unit tests (Vitest)
-pnpm e2e          # build the web app and drive it in a browser (Playwright; first run `pnpm exec playwright install chromium`)
-pnpm dist         # build the installer for the system you are on, into apps/desktop/dist
-pnpm notices      # rewrite THIRD-PARTY-NOTICES.txt after adding or updating a dependency
+pnpm e2e          # build the web app and drive it in a browser (Playwright)
+pnpm dist         # the installer for the system you are on, in apps/desktop/dist
 ```
-
-## What you can do
-
-**Draw**
-- Walls drawn along their middle or along either face, joined cleanly at any angle; a double-click closes a room. Extend a wall to the next one, or trim what sticks out.
-- Corners you can select and drag, with a choice of joint: mitred, rounded, cut off, or one wall running through.
-- Doors, windows, four kinds of stairs and a compass for north, each with its own parameters.
-- Lines, rectangles, ellipses and arcs, polylines straight or curved, and annotations with curved, straight or elbowed leaders.
-- Text typed in place, on several lines, bold or not, aligned left, centred or right, with fields such as `{date}` or `{page}` that fill themselves in.
-- Line weights in printed millimetres, dashed and dotted lines, arrows at the ends.
-- Exact sizes: type a length or an angle while drawing, in mm, cm, m, inches, feet, or feet and inches with fractions.
-- Dimensions with configurable ends, text and units, and chains of them along walls and their openings; a measure tool that only reads.
-
-**Organise**
-- Rooms that follow their walls, with name and area; dividers to split an open space.
-- Materials (concrete, brick, insulation, plaster, parquet…) that walls and floors are made of: each wall is of one material, drawn in its colour and hatch, and a wall of several materials is drawn as several walls side by side, a door going through them all.
-- Tables of quantities placed on the drawing that keep up to date: objects counted, floor areas by material, rooms, walls by material and thickness, doors and windows.
-- Papers: sheets at a standard format and drawing scale (A5 to A0, or the US ARCH A to E and ANSI A to E) that carry what is drawn on them.
-- Pages you can duplicate and reorder; layers; groups and reusable components. What is drawn "on every sheet" (a title, a logo, a north arrow) shows on every paper, following each sheet and its scale.
-- Shared colours: link objects to a named colour and recolour them all at once.
-- Rotate, flip, scale and nudge any selection, from handles, the keyboard or exact values; align and space evenly.
-- Repeat an object in rows and columns without multiplying objects.
-- Change what several objects have in common in one go, or copy a look from one object to others with the eyedropper.
-
-**Reuse**
-- A searchable, illustrated object library: furniture, kitchen, bathroom and electrical symbols.
-- Extensions that add new parametric objects as data, not code, so installing one is safe.
-- Any drawing can be used as a library; catalogs can be published anywhere on the web.
-
-**Bring in and take out**
-- Drop a PDF or a picture to trace it, and set its scale from one known distance.
-- Import a DXF from another CAD program: its geometry and text on their layers, blocks as groups, hatches, dimensions and leaders. A DXF laid out as a sheet, as AutoCAD's paper space and SketchUp LayOut write them, comes in as a paper at its scale.
-- Export a vector PDF at true scale, one page per paper, with a title block, its text in any script but Korean. Also SVG and DXF.
-- Export the quantities as a CSV for a spreadsheet: room areas, wall lengths and faces less openings, doors and windows by kind, floors and walls by material, the objects placed.
-
-The full inventory and roadmap are in [docs/FEATURES.md](docs/FEATURES.md).
-
-## A local CLI
-
-Everything the editor does to a drawing, a script can do too. The CLI is on npm as [`opencalque`](https://www.npmjs.com/package/opencalque): with Node 22 or later, `npx opencalque <command>` runs it with nothing else to install. From a checkout of this repository (see [Run from source](#run-from-source)), `pnpm opencalque <command>` runs the same code, as below. It is not installed with the app.
-
-```sh
-pnpm opencalque new plan.opencalque "My plan"
-pnpm opencalque apply plan.opencalque examples/studio.ops.json   # apply a JSON array of operations
-pnpm opencalque describe plan.opencalque                         # a JSON summary, good context for an AI agent
-pnpm opencalque pdf plan.opencalque --out plan.pdf               # every paper as a page, at its real size and scale
-pnpm opencalque svg plan.opencalque --out plan.svg
-pnpm opencalque dxf plan.opencalque --out plan.dxf
-pnpm opencalque import plan.opencalque ground.dxf first.dxf     # each DXF becomes a page, with its pictures
-pnpm opencalque validate plan.opencalque                          # exits 1, listing them, if opening it needs repairs
-pnpm opencalque check plan.opencalque                             # what is wrong with it, as JSON; exits 1 if anything is
-pnpm opencalque quantities plan.opencalque                        # rooms and their areas, walls, doors and objects, as JSON
-pnpm opencalque png plan.opencalque --size 2000 --out plan.png    # a page as a picture
-pnpm opencalque schema --out schema                              # JSON Schemas of documents and operations
-pnpm opencalque guide                                             # how drawings are stored and edited, written for an AI agent
-pnpm opencalque guide --type wall                                 # the JSON Schema of one type of node
-```
-
-A wall is one operation:
-
-```json
-{ "op": "add_node", "node": { "type": "wall", "parent": "page_1", "a": { "x": 0, "y": 0 }, "b": { "x": 6000, "y": 0 }, "thickness": 200 } }
-```
-
-A batch is all-or-nothing and every result is validated, so a script or a model cannot leave a drawing broken. Details are under [Operations](#operations).
-
-## AI agents
-
-OpenCalque serves drawings to an agent over [MCP](https://modelcontextprotocol.io), with the tools the assistant uses: edit with operations, read, measure, check what came out wrong, and look at a picture of the result. A model with no tools can read [opencalque.com/llms.txt](https://opencalque.com/llms.txt), which leads to a guide to the format with a complete example drawing.
-
-**The drawing open in the desktop app** needs only the app. Turn on *Let agents on this computer work on the open drawing* under Preferences › AI, which also gives the command to run once, with the real path of your app. With Claude Code it looks like this:
-
-```sh
-claude mcp add opencalque-live -- "C:\Users\you\AppData\Local\Programs\OpenCalque\OpenCalque.exe" --mcp
-```
-
-For any other MCP client, the command is the app and its one argument is `--mcp`. The app does not need to be open when you add it, only when the agent works.
-
-**Drawings on disk** need only Node 22 or later, through the package on npm:
-
-```sh
-claude mcp add opencalque -- npx -y opencalque mcp
-```
-
-For any other MCP client (Claude Desktop, Cursor, VS Code, Gemini CLI…), the command is `npx` and its arguments `-y opencalque mcp`. From a checkout, the same server is `pnpm --silent --dir /path/to/opencalque opencalque mcp`: keep `--silent`, as anything else on its output would break the protocol. `opencalque mcp --live` also reaches the open drawing. Give the agent absolute paths. It reads `read_guide` first, and asks for the schema of each type of node it uses.
-
-| | On a file | On the drawing open in the app |
-| --- | --- | --- |
-| **Turn it on** | Nothing to do | Preferences › AI › *Let agents on this computer work on the open drawing* (desktop app, off by default) |
-| **An edit** | Is written to the file at once | Appears on the canvas, and `Ctrl+Z` undoes it |
-| **Undo** | None: keep the drawing in version control, or a copy | Each edit is one step |
-| **Selection** | None | The agent is told what is selected |
-
-Do not work on a file with an agent while it is open in the app: the last to save wins. Use `--live` for that.
-
-While it is on, the desktop app listens on this computer only, on a port of its choosing, and answers only those who show the token it writes in `.opencalque/bridge.json` in your home folder. Web pages are turned away. Any program you run can read that file, so turn it off when you are not using it.
-
-## Practical workflows
-
-- **Trace an existing plan.** Drop a scan or a PDF, click two points you know the distance between, and draw over it.
-- **Describe it.** Ask the assistant for "a 5 × 4 m room with a door on the bottom wall", paste a sketch, and undo the whole request with one `Ctrl+Z`.
-- **Generate it.** Produce a plan from a script or an agent with operations, then open it to adjust by hand. The example apartment is made this way. An agent can [check and measure what it drew](#ai-agents).
-- **Furnish and annotate.** Pick symbols from the library, name the rooms, add a floor pattern, dimension the walls.
-- **Frame it and print it.** Lay an A3 at 1:50 around the plan, fill in the title block, and export a PDF on which one metre measures 20 mm.
-
-<details>
-<summary><strong>Editor guide: every tool and shortcut</strong></summary>
-
-| Action | How |
-| --- | --- |
-| Start | The welcome window offers a new drawing, a file, a recent drawing (desktop app) or the example. Switch it off there or under Preferences; bring it back from Preferences → Welcome window |
-| Menus | File, Edit, Object, View and Preferences are in the bar at the top, which in the desktop app is also the window's title bar; the tools are in the bar under the drawing. About shows the version and what is new |
-| Language | English, French, Spanish, German, Chinese (Simplified), Japanese, Korean and Turkish. The app follows your system language; change it under Preferences |
-| Panels | Panels that share a place are icons in a column down its side, a panel alone has its name at its top. Drag an icon or a name to another edge, between two panels, onto another panel to join it, or to the far left or right of the window for a column of its own; Escape gives the drag up. Close and reopen panels from View. Preferences → Reset the panel layout puts everything back |
-| Drop files | Drag a picture or a PDF from your file manager onto the drawing to trace it, a `.dxf` to add its geometry, an `.opencalque` file to open it, or an extension `.json` to install it |
-| Trace a floor plan | File → Import, and pick a PDF or a picture (PNG, JPG, WebP…). Then set its scale: click two points whose real distance you know and type that distance, in your unit (`3500` in millimetres) or with a unit after it (`350 cm`, `3.5 m`): the panel says how far apart they are now. The plan is then locked so you can draw over it |
-| Assistant | The Assistant tab on the right (`Ctrl+J`) changes the drawing from a description, such as "draw a 5 × 4 m room with a door on the bottom wall". Each request is undone with one undo. It needs an AI provider, set up in Preferences |
-| Conversations | The assistant keeps your conversations: pick one at the top of its panel, or type `/resume`. `/new` starts one, `/model` changes the model (also the list under the message), `/clear` deletes. Paste a picture (`Ctrl+V`) or use the paperclip to show it a sketch |
-| Units | Preferences → Unit: millimetres, centimetres, metres, inches, feet, or feet and inches (`7' 6 1/2"`, to the fraction of an inch you choose). A different unit can always be typed after a number (`350 cm`), and feet and inches are read however you write them (`7'6"`, `7-6`, `90"`). Rooms placed in feet or inches write their area in ft²; a room's properties change it. Preferences → Decimal mark writes numbers with a point or a comma, as your language does by default |
-| Autosave | On by default (File → Save automatically): a drawing is saved to its file a moment after each change. Save a new drawing once to give it a file |
-| Commands | `Ctrl+K` (`Cmd+K` on macOS) lists every command; type to filter, Enter to run. Click a command's shortcut there to change it, Backspace to remove it. Your shortcuts are remembered on this computer |
-| Tools | `V` select, `H` pan, `L` line (one segment, several, or closed into a polygon), `R` rectangle, `O` ellipse, `W` wall, `D` dimension, `E` rotate, `M` measure, `T` text, `I` eyedropper, `K` split, `X` trim, `C` circle, `J` extend, `Shift+F` fillet, `Shift+W` elevation or section. The plain shapes share one toolbar button; the arrow beside it lists them |
-| Toolbar | Set it up by dragging in Preferences → Toolbar, or by a right-click on it: buttons and separators moved, tools put into a button's list or taken out, anything taken out or put back. Toolbars are saved under a name and switched between there |
-| Exact sizes | While drawing, a bar above the tools shows the shape's sizes. Type a number (just start typing) to fix one, Tab to the next, Enter to draw. For a rectangle, type both and click once to place it |
-| Draw | Click the first point, click the second. Lines and walls keep chaining; `Esc` or a double-click ends. Dragging also works |
-| Curves and arcs | `Shift+L` draws a curve through the points you click. `Shift+O` draws an arc: click its two ends, then a point it goes through, or type a radius; `Shift` makes a half circle |
-| Circle | `C`, click the centre, then a point the circle goes through. Type a radius instead of the second click, or before the first: one click then places the circle by its centre |
-| Extend and fillet | `J`, then click a line, a polyline or a wall near the end to carry on: it runs to the next thing in its way, and a second click takes it on to the one after. `Shift+F`, then click two lines on the parts to keep: they meet at their corner, or are joined by an arc when a radius is typed first |
-| Offset | `Shift+X`, or the arrow beside the trim tool: a parallel copy of a line, a polyline, a curve, a rectangle, a circle or an arc. Type a distance and click the side it goes on, or click the object and let the pointer set the distance. The distance stays for the next copies |
-| Select by a box | Drag on empty space with the select tool. Dragged to the right, the box takes what is wholly inside it; dragged to the left, green and dashed, everything it touches |
-| Navigate | On a trackpad, two fingers move the view and a pinch zooms; a mouse wheel zooms, and `Shift` with it moves sideways (Preferences → Drawing → Scrolling over the drawing, to choose). Middle-drag or `Space`+drag also move it, `Shift+1` fits; a tap on `Space` goes back to selecting |
-| Snapping | Snaps to existing points, then to the grid. Rest the pointer a moment on a point (a small cross marks it): what you draw or drag then lines up with it, and with two such points (upright from one, level with the other) snaps where their guides cross. Rested on the end of a line, it also follows that line on past its end, along a dashed guide. `Shift` constrains to 45°, `Alt` turns it off |
-| Edit | Drag objects or their square handles, or type exact values in the right panel |
-| Components | Select objects, `Ctrl+Alt+K`. Place, rename, edit and delete them from the Components panel, beside Layers. The panel also lists the objects placed from the library by their settings (a radiator of 80 cm, one of 1.20 m), each with how many there are; its pencil selects them all to change them together. Double-click an instance to edit the component; every instance updates. The framed eye on a component (or right-click on an instance) goes through its instances one by one, on every page: `Alt+→` and `Alt+←` step, `Esc` stops. The button beside it makes all its instances instances of another component (two drawn twice over become one); Component, in the properties of selected instances, changes only theirs |
-| Walls | Walls that end at the same point join cleanly, at any angle. Double-click the last corner to close the walls back to the first one. A selected wall or line shows its Angle under Geometry, to a thousandth of a degree, with a note when it is nearly but not quite level or upright and a Straighten button beside it. Type an angle, or hold Alt and drag on it, to turn it |
-| Dimensions | `D`, click the two points, then click where the dimension line should sit. End markers, line, extension lines, text, font, unit and decimals are in the right panel; set them before drawing to change the defaults |
-| Measure | `M`, click two points for a live reading. Nothing is added to the drawing. The arrow beside the button, or `Shift+M`, measures an angle: click its corner, then a point along each side |
-| Text | `T`, click, and type: the text is written on the drawing as you type. Enter starts a new line; `Esc`, `Ctrl+Enter` or a click elsewhere finishes; double-click a text to change it |
-| Fields | In a text, `{date}`, `{page}`, `{page-number}`, `{pages}` and `{document}` are replaced by the drawing's own values. Insert them from Fields in the right panel |
-| Lines | Weight (as printed, 0.13 to 1.4 mm), kind of line (solid, dashed, long dashes, dotted, dash and dot) and arrows at each end are in the right panel. While a drawing tool is in use, the bar above the tools sets them for the next shapes |
-| Several objects | With several selected, the right panel shows what they have in common; a value that differs reads "Mixed", and changing it changes them all. Their Width and Height, and for walls their size from axis to axis, can be typed: what lies along the right side (or the bottom) moves, the walls across get longer, keeping their thickness and staying joined |
-| Temporary dimensions | Select a wall, a door, a window or an object: grey dimensions show how far it stands from the walls around it (face to face, or along its wall for a door). Click a number, type another and press Enter to move it there. View → Show temporary dimensions turns them off |
-| Flip | `Shift+Space` while drawing walls by a face puts them on the other side of the points clicked; while placing a door, hinges it on its other side. On a selected wall drawn by a face it moves the wall over to the other side of that face; on a selected door, it changes its hinge |
-| Eyedropper | The pipette in the Style section of the right panel, or `I`, then click an object: its colours, weight and kind of line go to the selection, or to the next shapes when nothing is selected |
-| Align | With two or more selected, Arrange in the right panel aligns them left, centre, right, top, middle or bottom; with three or more it spaces them evenly |
-| Pages | In the Pages panel: add, rename, duplicate with everything on it, move up or down |
-| Shared layers | In the Layers panel, the pages icon on a layer shows what is on it on every page: a frame, a logo, a title. It is changed on the page it was drawn on |
-| Object library | The books button in the toolbar: every parametric object and library component, pictured, with a search. Click one, then click on the drawing |
-| Elevations and sections | `Shift+W` (with the room tools), point beside a wall on the side to look from, click, then click where the view goes: an elevation of that face. Clicked away from walls, two clicks draw a section line through the plan instead, and a third puts its view down, on the side it is seen from. Click a door, a window, a socket or a unit in the view to select it; drag it there to move it along the wall, or up and down. A selected view's line on the plan has handles for its ends and its depth |
-| Switches and lights | `Shift+C` (Object menu, or Connect in the right-click menu of a switch or a light), click a switch, a dimmer, a push button, a detector or a thermostat, then each light, socket or shutter it controls: a dashed curve links them, as on an electrical plan, and follows them. Click a linked one again to unlink it. A link says what controls what, wired or not (a wireless switch, a smart plug). Lights nothing controls are marked while the tool is in use; drag the middle of a link to bow it. The object library's tables include "What controls what", a legend kept up to date |
-| Doors and windows | The Door or Window button in the toolbar, then click on a wall: it snaps on, turns to follow the wall, opens towards your cursor and cuts the opening. Drag it to slide it along the wall. Type, hinge side, width and more are in the right panel |
-| Compass | Object library → Compass (north). Turn it with the round handle above it, or type its rotation; size and letter are in the right panel |
-| Select | Click an object. A component or a library object is picked anywhere inside its outline; a plain shape with no fill by its line. A room is picked by its name, so what stands on its floor stays easy to click |
-| Arcs and curves | Draw an ellipse (`O`), then type a start and an end angle under "Arc from" and "Arc to" in the right panel: angles run clockwise from the right. Tick Curved on a polyline to make it flow through its points |
-| Repeat | Select something, Object → Repeat in rows and columns, then set how many across, how many rows and the steps under Modifiers. The copies are drawn, not made: change the object and they all follow |
-| Import DXF | File → Import, or drop the file. It must be a text (ASCII) DXF; a DWG has to be saved as DXF first. Blocks come in as groups, and a file laid out as a sheet as a paper with what its windows show. Its pictures come in only through the command line (`opencalque import`), which also makes one drawing of several DXF files, a page each |
-| Stairs | Object library → straight, L-shaped, U-shaped or spiral. `R` rotates before placing. Steps, tread, width and turn direction are in the right panel |
-| Groups | `Ctrl+G` groups the selection, `Ctrl+Shift+G` ungroups. Double-click a group to edit inside it |
-| Order | `]` to front, `[` to back, `Ctrl+]` and `Ctrl+[` one step. Also in the properties panel, the right-click menu, or drag rows in the Structure panel |
-| Right-click | On an object or the drawing, for order, grouping, copy and paste |
-| Copy and paste | `Ctrl+C`, `Ctrl+X`, `Ctrl+V`, also between drawings |
-| Paper | `F`, click a corner, pull: the standard formats (A5 to A0, or ARCH or ANSI as chosen in the bar) appear at the scale shown in the bar, upright or lying as you move; come close to one to take it, or hold `Alt` for any size. A paper moves on its own, to frame the drawing; pulling a corner changes its scale (`Alt` for any size), and is copied or duplicated with what is drawn on it; grab it by its edge or its name |
-| Wall faces | With the wall tool, the three small pictures in the bar above the tools say where the points you click lie: along the left face, the middle or the right face of the wall, as you draw it. Trace the inside of a room clockwise with "left" and the walls land outside it. The Material beside them is what the next walls are made of |
-| Extend and trim | Select a wall end (click it): Extend runs it on to the next wall, Trim cuts it back to the last wall it crossed. Object → Extend or Trim does it for every free end of the selected walls. The trim tool (`X`, beside Split) takes away the stretch of a wall, a line or a polyline you click, up to what crosses it: an end is cut back, a stretch in the middle leaves two parts |
-| Keep on course | Hold `Shift` while dragging the end of a wall or a line: it stays on the line it lies on, at any angle, shown as a dashed line across the view, and stops on the walls that line crosses. On a corner, `Shift` keeps it on the line of one of its walls. Brought near level, upright or 45° with the other end, it holds that instead: a slanting wall is set straight this way |
-| Joined walls | Moving a wall, or dragging one of its corners, stretches the walls that meet it and takes its doors and windows along. Hold `Alt` to move it alone |
-| Drag a number | Hold `Alt` over a number in the panels and drag sideways to change it; `Shift` goes ten times faster |
-| Transform | Select, then drag a corner of the box to scale or the round handle above it to turn (`Shift` for 15° steps). `Shift+R` turns a quarter, `Shift+H` and `Shift+V` flip, the arrow keys move by one grid step. Exact angles and percentages are in the right panel, under Transform |
-| Annotation | The arrow beside the text button, or `Shift+T`: click what the note is about, click where the note goes, type it. Ends (arrow, open arrow, dot, tick, none), path (curved, straight or elbow) and text size are in the right panel; drag the middle of the line to bend it |
-| Corners | Click the end of a wall to select the corner: drag it and every wall that meets there follows. In the right panel, choose how two walls are joined from small pictures: mitred, rounded, cut off, two walls with the line between them, or one running past the other. A wall's own properties show the same choice for each of its ends. A selected wall shows what its ends hold to: a filled dot where joined to another wall (which is outlined faintly), a struck-through one where it touches a wall without being joined, an orange one where it is a few millimetres short of another wall's end. Detach, in its properties, joins an end to nothing although other walls end there; Join them brings an end that nearly meets another onto it. Use the Split tool (`K`) to cut a wall, a line or a polyline in two: it shows the length either side before you click |
-| Rooms | `A`, then click inside closed walls: the room gets a tinted floor, a name and its area, and follows the walls when they move. Pick it by its name. The arrow beside the button has the divider (`Shift+A`), a dashed line that splits an open space into two rooms |
-| Patterns | Open the Fill of any closed shape and choose Pattern: lines, cross-hatch, planks, tiles, dots for concrete, zigzag for insulation, with their spacing, angle and stroke colour over the fill's colour. A room's floor takes one from Add… → Hatch under Modifiers |
-| Colours | A colour field opens a picker, the colours you picked lately, and the drawing's shared colours |
-| Shared colours | In any colour field, choose "New shared colour from this one", then link other objects to it from the same list. Change it in the Colours panel and everything linked follows. A linked colour shows its name with a link icon |
-| Crop | Select something (an object, a group, a placed component), Object → Crop: only the part inside the orange rectangle is drawn. Drag its corners to change it. Nothing is cut: switch it off or remove it under Modifiers in the right panel |
-| Extensions | Everything that comes with OpenCalque (furniture, electrical symbols, annotations) is in the object library from the start. Preferences → Extensions installs more kinds of object from a file or a web catalog, and removes them |
-| Quantities | File → Export → CSV: rooms and areas, walls and what each is made of, doors and windows, floors and walls by material, objects. Give the wall height there (it is kept on the page; a wall can have its own) to get the area of wall faces less openings |
-| Tables of quantities | In the object library, under Drawing → Tables of quantities: click a table, then click on the drawing. It counts what is on its page and keeps up to date; in the right panel choose what it counts, its columns and the words over them |
-| Walls of materials | Select a wall: in the right panel choose its Material, from the list of the drawing's (type to find one, or + to make a new one), and its Thickness. For brick lined with insulation, draw the lining as a thin wall of its own against the brick, both by the face they share (the reference line), so they stay flush; a door or window set in the brick goes through the lining too. Select several walls to give them one material |
-| Materials | Default, first in the Materials panel, is what walls are made of until given one: change its fill or hatch to change every such wall. The Materials panel: "Add common materials", or add your own, one to a row; a click on its swatch changes its fill and hatch. A room's floor takes a material in its properties, under Floor |
-| Dimension walls | Select walls, Object → Dimension the selected walls: a chain along each through its doors and windows. They are ordinary dimensions in a group; after changing the wall, delete the group and make it again |
-| Import and export | File → Import (`Ctrl+I`) takes any file the app understands: a picture or a PDF to trace, a DXF, another drawing for its components, an extension. File → Export (`Ctrl+P`) opens one window: choose PDF (tick the sheets; each paper is a page at true scale, with its title block), SVG or DXF (choose the page) |
-| Files | `Ctrl+S` save, `Ctrl+O` open, `Ctrl+Z` / `Ctrl+Shift+Z` undo and redo, `Ctrl+D` duplicate |
-
-A component library is just another `.opencalque` file: **File → Import** copies its components in.
-
-</details>
-
-## The assistant and your data
-
-The assistant can use, chosen under Preferences:
-
-- **Claude with an API key** (Anthropic).
-- **Claude through the Claude Code CLI** installed on your computer, using the account it is signed in to. Desktop app only; no API key needed.
-- **A local model through Ollama.** Nothing leaves your computer. In the desktop app this works out of the box; in a browser Ollama must be told to accept the page (`OLLAMA_ORIGINS`).
-- **Any other service** that accepts the OpenAI chat-completions format and supports tool calling.
-
-- An API key, when one is used, is stored on your computer and sent only to the provider you chose. The desktop app has the system encrypt it; a browser has no way to, so there it is unencrypted.
-- When you send a request, the drawing is sent to that provider as JSON, with what you have selected (shown above the message box, where you can leave it out). Imported pictures are left out, unless the assistant asks to look at one (for example to trace a plan), in which case that picture is sent.
-- The assistant can also ask for a picture of the drawing to check its work. That picture shows what is drawn, imported pictures included.
-- The desktop app asks once before the assistant reaches a service that is not on your computer.
-- Pictures you attach are sent with that message. Conversations are kept on your computer (without the pictures' full data) until you delete them.
-- Nothing is sent anywhere unless you use the assistant, or let an [agent](#ai-agents) in, which then decides where what it reads goes. The rest of the app works offline.
-
-## How it is organised
-
-```
-packages/core              The document model. No UI, no DOM, runs anywhere.
-packages/ext-architecture  Built-in extension: doors, windows, stairs, washbasins, bathtub, kitchen, corner sofa, radiator, compass.
-packages/warehouse         What ships besides code: the component libraries and the extensions written as data.
-packages/cli               Command-line access to the model.
-apps/web                   The editor: React + Canvas. Deployable as a static site.
-apps/desktop               Electron shell around apps/web: native file dialogs, recent files, installers.
-```
-
-Three decisions shape everything else:
-
-1. **The model is headless.** `@opencalque/core` owns the file format, validation, editing, components, hit-testing and SVG export. The editor is one client of it; the CLI is another.
-2. **The editor is a web app first.** The desktop shell only implements the small [`Platform`](apps/web/src/platform.ts) interface (open, save, unsaved-changes prompt). Hosting the editor online, or replacing Electron with Tauri, means writing another implementation of that interface.
-3. **Documents change only through operations.** An operation is plain JSON and touches one node or one layer. The UI, undo, the CLI and extensions all go through `applyOps`. This is also what makes realtime collaboration feasible later: operations can be relayed through a server and merged last-writer-wins per node.
-
-## The file format
-
-A `.opencalque` file is JSON. JSON Schemas for documents and operations are in [`schema/`](schema) (regenerate with `pnpm schema`).
-
-```jsonc
-{
-  "format": "opencalque", "version": 1, "id": "doc_…", "name": "Studio", "unit": "mm",
-  "layers": {
-    "layer_1": { "id": "layer_1", "name": "Walls", "order": "a0" }
-  },
-  "nodes": {
-    "page_1": { "id": "page_1", "type": "page", "parent": null, "order": "a0" },
-    "n_1":    { "id": "n_1", "type": "wall", "parent": "page_1", "order": "a0", "layer": "layer_1",
-                "a": { "x": 0, "y": 0 }, "b": { "x": 6000, "y": 0 }, "thickness": 200 }
-  }
-}
-```
-
-- **Units** are millimetres. X grows right, Y grows down.
-- **Nodes are a flat map.** The tree is each node's `parent` plus `order`, a fractional index that sorts as a plain string. There are no child arrays, so two people inserting into the same page never conflict.
-- **Pages and components are the containers.** Every other node belongs to one of them.
-- **Groups** are nodes too: a `group` holds other nodes (their `parent` is the group) and has no geometry of its own.
-- **Node types:** `wall`, `room`, `divider`, `line`, `polyline`, `rect`, `ellipse`, `text`, `annotation`, `dimension`, `paper`, `image`, `group`, `instance` (a placed component) and `parametric` (an object generated by an extension from `props`).
-- **Derived, not stored.** A room keeps a point and a name; its outline and area come from the walls around it. A paper holds whatever lies on it. Nothing in the file can go stale when a wall moves.
-- **Modifiers** are non-destructive: any node can carry a list such as a crop or a floor pattern, applied in order when it is drawn.
-- **Unknown parametric kinds survive.** A file that uses an extension you do not have still opens; those objects show as placeholders and are saved back untouched.
-- **It stays readable.** From 1.0, a drawing says which version of the format it is written in (`"version": 1`). The app reads that version and every older one. Properties it does not know, written by a newer version or by a script, are kept as they are and saved back. A drawing in a newer format than the app reads is refused with a message, never half-read. A drawing with a reference to something missing (a layer, a material, a parent) opens with the problem put right and a note saying so.
-- **Order keys** are keys of the [fractional-indexing](https://github.com/rocicorp/fractional-indexing) package, such as `a0` or `a1V`. Leave `order` out when adding a node and it goes on top.
-
-### What stays stable
-
-Through every 1.x version:
-
-- **Drawings.** A drawing saved by 1.0 opens in every later version, with nothing in it lost or changed in meaning. A change to the format that an older version could not read raises its `version`, and every later version brings older drawings up to date as it reads them.
-- **Extensions written as data.** An extension with `"formatVersion": 1` keeps loading; what is added to the format is optional. Its schema is [`schema/extension.schema.json`](schema/extension.schema.json).
-- **Operations.** An operation valid in 1.0 (from a script, `opencalque apply` or the assistant) stays valid and means the same; new kinds of operation may be added.
-
-One exception, in 1.2 (format version 2): what a component holds is on no layer, each placement giving its own, a placement of a component has no style, and there are no wall types any more, each wall carrying its own material, thickness, height and look. Operations that set any of these are refused. Drawings made before are brought up to date as they open, each wall type becoming a material of its name, and look as they did save in rare cases the [changelog](CHANGELOG.md) lists; one thing is lost, the layers of a wall type (its build-up), which were drawn as lines inside its walls. Drawings saved by 1.2 do not open in 1.0 and 1.1.
-
-The TypeScript packages of this repository are not published, and their code may change between versions.
-
-## Operations
-
-```json
-[
-  { "op": "add_layer", "layer": { "id": "furniture", "name": "Furniture", "color": "#2563eb" } },
-  { "op": "add_node", "node": { "type": "wall", "parent": "page_1", "a": { "x": 0, "y": 0 }, "b": { "x": 6000, "y": 0 }, "thickness": 200 } },
-  { "op": "update_node", "id": "n_1", "patch": { "thickness": 300, "name": null } },
-  { "op": "remove_node", "id": "n_1" }
-]
-```
-
-`add_node` generates `id` and `order` when omitted. `update_node` shallow-merges the patch; `null` removes a property; setting `parent` or `order` moves the node. A batch is all-or-nothing, and every result is validated, so an invalid document cannot be produced.
-
-A new document always starts with page `page_1` and layer `layer_1`, so a script can target it without reading it first.
-
-### From the command line
-
-```sh
-pnpm opencalque new plan.opencalque "My plan"
-pnpm opencalque apply plan.opencalque examples/studio.ops.json   # apply a JSON array of operations
-pnpm opencalque describe plan.opencalque                         # JSON summary, useful as context for an AI agent
-pnpm opencalque svg plan.opencalque --out plan.svg
-pnpm opencalque validate plan.opencalque
-pnpm opencalque check plan.opencalque                            # what the operations left wrong
-```
-
-`examples/studio.opencalque` was produced exactly this way from [`examples/studio.ops.json`](examples/studio.ops.json).
-
-### From code
-
-```ts
-import { applyOps, createDocument, serializeDocument } from '@opencalque/core'
-
-const doc = applyOps(createDocument('Plan'), [
-  { op: 'add_node', node: { type: 'rect', parent: 'page_1', x: 0, y: 0, width: 1200, height: 700 } },
-])
-```
-
-Documents are immutable: `applyOps` returns a new one.
-
-## The warehouse
-
-Components and extensions can be added from inside the app. What ships with it lives in [`apps/web/src/warehouse`](apps/web/src/warehouse): component libraries are ordinary `.opencalque` drawings (generated by `pnpm warehouse` from [`packages/cli/src/build-warehouse.ts`](packages/cli/src/build-warehouse.ts)), and extensions are JSON files.
-
-To publish your own, host a catalog anywhere that serves files with CORS enabled, and give people its address to paste into the warehouse:
-
-```json
-{
-  "libraries": [{ "name": "Garden", "description": "Trees and planters", "file": "garden.opencalque" }],
-  "extensions": [{ "file": "garden-objects.json" }]
-}
-```
-
-An extension in the warehouse is **data, not code**. It describes objects with shapes whose coordinates are small expressions over the object's parameters:
-
-```json
-{
-  "format": "opencalque-extension", "formatVersion": 1,
-  "id": "example.garden", "name": "Garden", "version": "1.0.0",
-  "objects": [{
-    "kind": "garden.tree", "label": "Tree",
-    "params": [{ "key": "crown", "label": "Crown", "type": "number", "default": 1500 }],
-    "draw": [
-      { "ellipse": { "cx": 0, "cy": 0, "rx": "crown / 2", "ry": "crown / 2" } },
-      { "ellipse": { "cx": 0, "cy": 0, "rx": 80, "ry": 80 } }
-    ]
-  }]
-}
-```
-
-Shapes are `path`, `ellipse`, `arc` and `text`; each can have `when` (a condition) and `repeat` (a count, with the index available as `i`). A `path` with a `radius` has its corners rounded, so a closed one stays one shape with a fill, like a cushion. Expressions support arithmetic, comparisons, `?:`, and `min max abs floor ceil round sqrt sin cos`. Text can embed values: `"{length / 1000} m"`. An `opening` makes the object cut walls like a door. The three bundled extensions are worked examples.
-
-## Writing an extension in code
-
-For anything a data-only extension cannot express (custom geometry logic, commands), write one in TypeScript. It depends only on `@opencalque/core`. It can register **parametric objects** (a list of parameters and a function that turns them into drawing primitives) and **commands** (which read the document and apply operations).
-
-```ts
-import type { Extension } from '@opencalque/core'
-
-export const columns: Extension = {
-  id: 'example.columns',
-  name: 'Columns',
-  version: '1.0.0',
-  activate(api) {
-    api.registerParametric({
-      kind: 'example.column',
-      label: 'Round column',
-      params: [{ key: 'diameter', label: 'Diameter', type: 'number', default: 300 }],
-      build: ({ diameter }) => [{ kind: 'ellipse', cx: 0, cy: 0, rx: diameter / 2, ry: diameter / 2, fill: '#d4d4d4' }],
-    })
-  },
-}
-```
-
-Because objects describe themselves as primitives (paths, ellipses, text), a new object type automatically gets rendering, selection, snapping, a properties form and SVG export. Add an `opening` function and the object also cuts and snaps to walls, and `build` is told the wall's thickness. [`packages/ext-architecture`](packages/ext-architecture/src/index.ts) is the reference.
-
-Extensions in code are compiled in: add yours where the editor loads its extensions, [`apps/web/src/extensions.ts`](apps/web/src/extensions.ts), and to [`standardRegistry`](packages/warehouse/src/index.ts), which the command line draws with. Loading them at runtime is not built yet; extensions written as data are installed at runtime, from a file or a catalog.
-
-## What is not there yet
-
-- **Installers** are not signed (see [Download](#download) for the one extra click). From 1.1.0, the Windows setup and the Linux AppImage update themselves (the new version is downloaded in the background and installed when the app closes; Preferences can turn this off). On macOS, and with the portable Windows app, the app says when a new version is out and opens its page: download it from there. Anyone on 1.0.0 downloads the next version by hand once.
-- **Release notes** and the example drawing are in English only. Recent drawings are listed in the desktop app only.
-- **Printing.** PDF export uses the standard fonts of PDF readers for Western European text, and fonts shipped with the app for other scripts, so text is close to the screen but not identical. Pictures other than JPEG and PNG are left out. A sheet cannot yet show a part of the plan at another scale.
-- **Drawing.** Arcs are made by typing angles, not yet drawn with a tool of their own. Several objects selected together are scaled in proportion only.
-- **Walls.** Curved walls are bent from straight ones; they cannot yet be drawn as arcs directly, extended, trimmed or given a dimension chain.
-- **Import.** One page of a PDF at a time. DXF import does not read binary DXF or DWG, block attributes, or angular and radial dimensions as dimensions; a hatch pattern becomes the nearest of the app's own, and a hatch filled with a picture a plain colour.
-- **Hosted version.** Accounts, cloud storage and realtime collaboration are planned; the data model is prepared for them, nothing is built.
-- **Extensions.** Those installed at runtime can add objects and modifiers as data. Extensions that add tools must be compiled in.
 
 ## Contributing
 
-Issues and pull requests are welcome. Start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): it explains the design, the rules that keep the model open (documents change only through operations, the core has no UI), and what has and has not been verified. [`CLAUDE.md`](CLAUDE.md) holds the same rules in short form for AI coding agents.
+Issues and pull requests are welcome. Start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the design, the rules that keep the model open (documents change only through operations, the core has no UI), and how a version is released. [`CLAUDE.md`](CLAUDE.md) holds the same rules in short for AI coding agents.
 
-Good first contributions: a component library for your trade, a translation, a data-only extension, or one of the items above.
-
-### Releasing a version
-
-1. Add a `## x.y.z — date` section at the top of [CHANGELOG.md](CHANGELOG.md) and set the same version in every `package.json` (a test checks they agree).
-2. Commit, then `git tag vx.y.z && git push origin main vx.y.z`.
-
-The [release workflow](.github/workflows/release.yml) builds the Windows, macOS and Linux installers and publishes a GitHub release with them, described by that section of the changelog, once all three have built. A version with a hyphen, such as `1.0.0-rc.1`, is published as a pre-release. The app shows the same notes under About.
+Good first contributions: a component library for your trade, a translation, an extension written as data ([how](docs/FORMAT.md#the-warehouse)), or one of the things [not there yet](docs/GUIDE.md#what-is-not-there-yet).
 
 ## License
 

@@ -1,6 +1,6 @@
 # OpenCalque: architecture and handoff
 
-This document is for whoever continues the project, human or AI, starting cold. It records what exists, why it is built this way, how to extend it, what is unverified, and what to do next. The [README](../README.md) covers usage and the file format from a user's point of view; this covers the inside.
+This document is for whoever continues the project, human or AI, starting cold. It records what exists, why it is built this way, how to extend it, what is unverified, and what to do next. The [README](../README.md) says what the app is and how to get it, [GUIDE.md](GUIDE.md) how to use it, and [FORMAT.md](FORMAT.md) the file format, the operations and extensions from a user's point of view; this covers the inside.
 
 Last updated: 2026-11-09, after 1.8.0, with format version 3 (elevations) (see §7 for how it is checked, and §4, "The file format and its versions"). The roadmap is in [FEATURES.md](FEATURES.md); what changed in each version is in the [changelog](../CHANGELOG.md).
 

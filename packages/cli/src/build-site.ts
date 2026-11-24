@@ -68,7 +68,8 @@ ${FITS}
 
 - [Guide for language models](${SITE}/llms-full.txt): how a drawing is stored, the operations that edit it, how to check the result, and a complete example drawing
 - [About OpenCalque](${SITE}/about/): what it does, the format, the command line and the MCP server
-- [README](${REPOSITORY}#readme): features, download, the CLI, the file format and the operations
+- [README](${REPOSITORY}#readme): features, download, the CLI and connecting an agent
+- [The file format, operations and extensions](${REPOSITORY}/blob/main/docs/FORMAT.md): how a drawing is stored, every command and operation, what stays stable between versions
 
 ## Format
 
