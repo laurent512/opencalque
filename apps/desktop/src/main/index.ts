@@ -4,6 +4,7 @@ import { cpSync, existsSync, readFileSync } from 'node:fs'
 import { appendFile, copyFile, mkdir, readdir, readFile, realpath, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, resolve } from 'node:path'
 import { agentCommand, startBridge, type Bridge } from './bridge'
+import { withExtension } from './savePath'
 import { checkForUpdate, installOnClose, installUpdate, keptOpen, listen } from './updates'
 
 // Under test, on a computer someone is working at: the window is shown, so that the page runs as it
@@ -412,12 +413,21 @@ app.whenReady().then(() => {
     let path = token
     if (!path || !granted.has(path)) {
       const win = BrowserWindow.fromWebContents(event.sender)!
-      // A filter of the file's type: the dialog shows it ("OpenCalque (*.opencalque)") and adds the extension to a name typed without one.
+      // A filter of the file's type: the dialog shows it ("OpenCalque (*.opencalque)"), and on Windows
+      // and macOS adds the extension to a name typed without one. GTK's (Linux) does neither that nor,
+      // unless told, ask before replacing a file.
       const extension = extname(suggestedName).slice(1).toLowerCase()
       const filters = extension ? [{ name: /^(opencalque|opencad)$/.test(extension) ? 'OpenCalque' : extension.toUpperCase(), extensions: [extension] }] : []
-      const result = await dialog.showSaveDialog(win, { defaultPath: suggestedName, filters })
-      if (result.canceled || !result.filePath) return null
-      path = result.filePath
+      let defaultPath = suggestedName
+      for (let asked = 0; ; asked++) {
+        const result = await dialog.showSaveDialog(win, { defaultPath, filters, properties: ['showOverwriteConfirmation'] })
+        if (result.canceled || !result.filePath) return null
+        path = withExtension(result.filePath, extension)
+        // The name with its extension added is a file there already, which the dialog did not ask
+        // about: asked again at that name, which it then asks about. Twice at most.
+        if (path === result.filePath || !existsSync(path) || asked >= 1) break
+        defaultPath = path
+      }
       granted.add(path)
     }
     await backUp(path)

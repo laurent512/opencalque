@@ -47,6 +47,7 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 ### Fixed
 - The icon of the tool in use stays white on its blue when the pointer is over it; it turned black.
 - A paper inside a group is exported as PDF: the export window lists it, and its sheet holds all that is on its page, not only what is in its group, without the other papers of the group.
+- On Linux, a drawing saved under a name typed without its extension is saved as a .opencalque file, as on Windows and macOS (an export as .pdf, .svg, .dxf or .png); it was saved under the bare name, which the file manager took for a text file. Saving over a file that is there already asks first.
 - A DXF export says in its header that it is in millimetres, as its coordinates are. It said no unit, and programs that took metres for it read the plan a thousand times too large.
 - In an extension written as data, a path that is not closed and has rounded corners keeps its two ends, rather than being rounded as if it were closed (which cut off its ends and curled it back on itself).
 
