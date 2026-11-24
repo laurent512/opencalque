@@ -3,7 +3,7 @@ import { libraryOps, pickStyle } from '../../actions'
 import { registry } from '../../extensions'
 import { t } from '../../i18n'
 import { apply, cancel, commit, layerHere, preview, select, setTool, useStore, type Placing } from '../../store'
-import { formatLength } from '../../units'
+import { formatLength, unit } from '../../units'
 import { gridStep } from '../../view'
 import { snap } from '../aim'
 import type { SizeLabel } from '../draw'
@@ -196,8 +196,8 @@ export const toolHover: Move<'idle'> = (c, _g, e, _at, world, out) => {
           : s.placing.type === 'elevation'
             ? { ...upright, type: 'elevation', ...(s.placing.sided ? facing(s.placing.line, target.p) : s.placing.line), name: s.placing.name }
             : { ...common, type: 'instance', component: library ? library.id : s.placing.component }
-    // A view comes with its automatic dimensions, what it holds: one may remove them.
-    const held: Op[] = s.placing.type === 'elevation' ? [{ op: 'add_node', node: { type: 'autodimensions', id: `${c.placed}_dimensions`, parent: c.placed, ...layerHere(s) } as NodeInput }] : []
+    // A view comes with its automatic dimensions, what it holds: one may remove them. They read in the unit the user works in, as new dimensions do.
+    const held: Op[] = s.placing.type === 'elevation' ? [{ op: 'add_node', node: { type: 'autodimensions', id: `${c.placed}_dimensions`, parent: c.placed, unit: unit(), ...layerHere(s) } as NodeInput }] : []
     out.previewed = preview([...(library?.ops ?? []), { op: 'add_node', node }, ...held])
   } else if (TWO_POINT.includes(s.tool) || s.tool === 'measure' || s.tool === 'angle' || ((s.tool === 'rotate' || s.tool === 'move') && s.selection.length > 0)) {
     out.marker = snap(c, world, e, []).marker

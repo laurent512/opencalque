@@ -1260,6 +1260,7 @@ export const ko: Record<string, string> = {
   "The sides of the doors, windows and furniture, one after the other.": "문, 창, 가구의 양옆을 차례로.",
   "End to end": "끝에서 끝까지",
   "The face from end to end, and its height.": "면의 끝에서 끝까지와 그 높이.",
+  "Unless their dimension style gives one.": "치수 스타일에 지정되지 않은 경우.",
   "Heights": "높이",
   "Of what is fixed on the face, and of a door's or a window's sill and top.": "면에 고정된 것의 높이와 문이나 창의 하단 및 상단.",
   "Automatic dimensions": "자동 치수",

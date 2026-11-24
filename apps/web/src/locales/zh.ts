@@ -1260,6 +1260,7 @@ export const zh: Record<string, string> = {
   "The sides of the doors, windows and furniture, one after the other.": "门、窗和家具的两侧，依次标注。",
   "End to end": "首尾总长",
   "The face from end to end, and its height.": "立面首尾总长及其高度。",
+  "Unless their dimension style gives one.": "除非其标注样式另有指定。",
   "Heights": "高度",
   "Of what is fixed on the face, and of a door's or a window's sill and top.": "固定在立面上的物体的高度，以及门窗的窗台和顶部高度。",
   "Automatic dimensions": "自动尺寸",

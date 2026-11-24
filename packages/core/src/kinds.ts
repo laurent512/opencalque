@@ -918,8 +918,11 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     primitives: (node, ctx) => {
       const view = node.parent ? ctx.doc.nodes[node.parent] : undefined
       if (view?.type !== 'elevation') return []
-      const measure: Measure = (a, b, offset) =>
-        dimensionPrimitives(styledDimension(ctx.doc, { id: node.id, type: 'dimension', parent: node.parent, order: node.order, a, b, offset, ...(node.dimensionStyle ? { dimensionStyle: node.dimensionStyle } : {}) }), ctx.doc.settings)
+      // Their unit is the one their style gives, else their own: choosing a style with a unit changes it.
+      const measure: Measure = (a, b, offset) => {
+        const styled = styledDimension<NodeOf<'dimension'>>(ctx.doc, { id: node.id, type: 'dimension', parent: node.parent, order: node.order, a, b, offset, ...(node.dimensionStyle ? { dimensionStyle: node.dimensionStyle } : {}) })
+        return dimensionPrimitives(styled.unit === undefined && node.unit ? { ...styled, unit: node.unit } : styled, ctx.doc.settings)
+      }
       return autoDimensionPrimitives(view, ctx.doc, ctx.registry, measure, node)
     },
     move: () => ({}),

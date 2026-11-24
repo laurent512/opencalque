@@ -1260,6 +1260,7 @@ export const de: Record<string, string> = {
   "The sides of the doors, windows and furniture, one after the other.": "Die Seiten der Türen, Fenster und Möbel, eine nach der anderen.",
   "End to end": "Von Ende zu Ende",
   "The face from end to end, and its height.": "Die Fläche von Ende zu Ende und ihre Höhe.",
+  "Unless their dimension style gives one.": "Sofern ihr Bemaßungsstil keine vorgibt.",
   "Heights": "Höhen",
   "Of what is fixed on the face, and of a door's or a window's sill and top.": "Dessen, was an der Fläche befestigt ist, und der Brüstung und Oberkante einer Tür oder eines Fensters.",
   "Automatic dimensions": "Automatische Bemaßung",

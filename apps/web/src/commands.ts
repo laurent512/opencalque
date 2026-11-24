@@ -57,6 +57,7 @@ import {
 import { registry } from './extensions'
 import { editComponent, showPage } from './navigation'
 import { apply, layerHere, redo, select, setTool, undo, useStore } from './store'
+import { unit } from './units'
 import { type Tool } from './tools'
 import { toast, useWindows } from './windows'
 import { PANELS, resetLayout, togglePanel, useDock, type PanelId } from './dock'
@@ -283,7 +284,7 @@ const STATIC: Command[] = [
     },
     run: () => {
       const { selection } = get()
-      apply([{ op: 'add_node', node: { type: 'autodimensions', parent: selection[0], ...layerHere() } }])
+      apply([{ op: 'add_node', node: { type: 'autodimensions', parent: selection[0], unit: unit(), ...layerHere() } }])
     },
   },
   { id: 'view.zoomToView', title: msg('Zoom to the view'), category: 'View', when: () => selectedType() === 'camera' || selectedType() === 'elevation', run: zoomToViewPicture },

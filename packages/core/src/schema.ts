@@ -355,6 +355,7 @@ export const NodeSchema = z
         overall: z.boolean().optional().describe('false leaves out the face from end to end and its height. Shown when left out.'),
         heights: z.boolean().optional().describe('false leaves out the heights: of what is fixed on the face, and of a door\'s or window\'s sill and top. Shown when left out.'),
         dimensionStyle: Id.optional().describe('The id of the dimension style they are drawn in (a key of the drawing\'s "dimensionStyles"). Left out, the drawing\'s default.'),
+        unit: z.enum(['mm', 'cm', 'm', 'in', 'ft', 'ft-in']).optional().describe("Unit their values are shown in, unless their dimension style gives one. Defaults to 'mm'. Coordinates stay in mm whatever this is."),
       })
       .describe(
         "The dimensions an elevation or a section draws by itself, worked out from the plan each time: one of what it holds (its parent must be an \"elevation\"), with no position of its own, drawn in the view's coordinates under its floor and beside what it measures. Remove it for none; one is put in each view the tool makes.",

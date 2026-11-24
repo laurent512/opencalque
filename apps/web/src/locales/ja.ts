@@ -1260,6 +1260,7 @@ export const ja: Record<string, string> = {
   "The sides of the doors, windows and furniture, one after the other.": "ドア、窓、家具の両端を順に。",
   "End to end": "端から端まで",
   "The face from end to end, and its height.": "面の端から端までと、その高さ。",
+  "Unless their dimension style gives one.": "寸法スタイルで指定されていない場合。",
   "Heights": "高さ",
   "Of what is fixed on the face, and of a door's or a window's sill and top.": "面に取り付けたものの高さと、ドアや窓の下端と上端。",
   "Automatic dimensions": "自動寸法",

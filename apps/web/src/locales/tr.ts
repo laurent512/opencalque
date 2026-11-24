@@ -1260,6 +1260,7 @@ export const tr: Record<string, string> = {
   "The sides of the doors, windows and furniture, one after the other.": "Kapıların, pencerelerin ve mobilyaların kenarları, art arda.",
   "End to end": "Uçtan uca",
   "The face from end to end, and its height.": "Yüzün uçtan uca uzunluğu ve yüksekliği.",
+  "Unless their dimension style gives one.": "Ölçü stilleri bir birim belirtmiyorsa.",
   "Heights": "Yükseklikler",
   "Of what is fixed on the face, and of a door's or a window's sill and top.": "Yüze sabitlenenlerin ve bir kapının ya da pencerenin denizlik ve üst kotunun.",
   "Automatic dimensions": "Otomatik ölçüler",

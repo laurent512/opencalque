@@ -162,6 +162,17 @@ describe('the automatic dimensions of a view', () => {
     expect(() => applyOps(room(), [{ op: 'add_node', node: { type: 'autodimensions', parent: 'page_1' } as never }])).toThrow(/go in an elevation/)
   })
 
+  it('are written in their unit, in mm when they give none, and in their style’s when it gives one', () => {
+    expect(texts(drawn(kitchen()))).toEqual(expect.arrayContaining(['4800', '2500']))
+    expect(texts(drawn(kitchen({ unit: 'cm' })))).toEqual(expect.arrayContaining(['480.0', '250.0']))
+    expect(texts(drawn(kitchen({ unit: 'ft-in' })))).toEqual(expect.arrayContaining([`15' 9"`]))
+    const styled = applyOps(kitchen({ unit: 'cm' }), [
+      { op: 'add_dimension_style', dimensionStyle: { id: 'metres', name: 'Metres', unit: 'm' } } as never,
+      { op: 'update_node', id: 'vvd', patch: { dimensionStyle: 'metres' } },
+    ])
+    expect(texts(drawn(styled))).toEqual(expect.arrayContaining(['4.80', '2.50']))
+  })
+
   it('are given to the views of a drawing of before 2.2 that drew them, not to one that said none', () => {
     const json = JSON.parse(JSON.stringify(room()))
     json.version = 5

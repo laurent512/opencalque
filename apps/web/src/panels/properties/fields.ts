@@ -530,6 +530,7 @@ function autoDimensionFields(doc: Document): FieldSpec[] {
     { path: 'overall', label: msg('End to end'), type: 'boolean', fallback: true, section: ROWS_OF, note: msg('The face from end to end, and its height.') },
     { path: 'heights', label: msg('Heights'), type: 'boolean', fallback: true, section: ROWS_OF, note: msg('Of what is fixed on the face, and of a door\'s or a window\'s sill and top.') },
     { path: 'dimensionStyle', label: msg('Dimension style'), type: 'string', section: ROWS_OF, options: [{ value: '', label: msg('default') }, ...styles.map((style) => ({ value: style.id, label: style.name }))] },
+    { path: 'unit', label: msg('Unit'), type: 'string', section: ROWS_OF, fallback: 'mm', options: options(['mm', 'mm'], ['cm', 'cm'], ['m', 'm'], ['in', 'in'], ['ft', 'ft'], ['ft-in', msg('ft and in')]), note: msg('Unless their dimension style gives one.') },
   ]
 }
 

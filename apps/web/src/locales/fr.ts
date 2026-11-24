@@ -1260,6 +1260,7 @@ export const fr: Record<string, string> = {
   "The sides of the doors, windows and furniture, one after the other.": "Les côtés des portes, des fenêtres et des meubles, l'un après l'autre.",
   "End to end": "D'un bout à l'autre",
   "The face from end to end, and its height.": "La face d'un bout à l'autre, et sa hauteur.",
+  "Unless their dimension style gives one.": "Sauf si leur style de cote en donne une.",
   "Heights": "Hauteurs",
   "Of what is fixed on the face, and of a door's or a window's sill and top.": "De ce qui est fixé sur la face, et de l'allège et du haut d'une porte ou d'une fenêtre.",
   "Automatic dimensions": "Cotes automatiques",
