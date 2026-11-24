@@ -96,9 +96,38 @@ describe('a tall unit of sections', () => {
     const niche = slabs.filter((s) => s.bottom === 1420 && s.top === 1800)
     // Its back and its two sides; full depth under it and over it.
     expect(niche).toHaveLength(3)
-    expect(slabs.filter((s) => s.bottom === 100 && s.top === 1420)).toHaveLength(1)
+    const under = slabs.filter((s) => s.bottom >= 100 && s.top <= 1420)
+    expect([Math.min(...under.map((s) => s.bottom)), Math.max(...under.map((s) => s.top))]).toEqual([100, 1420])
+    // The oven's window let into it, in its section (820 to 1420): glass, a dark recess behind.
+    const glass = under.filter((s) => s.role === 'glass')
+    expect(glass).toHaveLength(1)
+    expect(glass[0].bottom).toBeGreaterThan(820)
+    expect(glass[0].top).toBeLessThan(1420)
+    expect(under.filter((s) => s.finish === 'dark')).toHaveLength(1)
     // Its filler up to the ceiling: 2500, the page's walls' height.
     expect(slabs.filter((s) => s.bottom === 1800 && s.top === 2500)).toHaveLength(1)
+  })
+
+  it('shows the window of an oven or a microwave as glass in 3D, on every unit that holds one, and none on the others', () => {
+    const glassOf = (kind: string, props: Record<string, unknown>) => {
+      const doc = add(createDocument('R'), { type: 'parametric', id: 'u', kind, props, x: 0, y: 0 })
+      return massing(doc, 'page_1', registry).filter((s) => s.node === 'u' && s.role === 'glass')
+    }
+    // A base unit with an oven, the unit under a hob (an oven by default), a tall unit's microwave.
+    expect(glassOf('arch.baseunit', { fronts: 'Oven' })).toHaveLength(1)
+    expect(glassOf('arch.hob', {})).toHaveLength(1)
+    expect(glassOf('arch.tallunit', { sections: [{ type: 'Microwave', height: 400 }] })).toHaveLength(1)
+    // Doors, drawers, nothing under a hob: no glass.
+    expect(glassOf('arch.baseunit', { fronts: 'Doors' })).toHaveLength(0)
+    expect(glassOf('arch.hob', { below: 'Drawers' })).toHaveLength(0)
+    expect(glassOf('arch.hob', { below: 'None' })).toHaveLength(0)
+    // The glass flush with the unit's front, under the worktop, a dark recess behind it.
+    const doc = add(createDocument('R'), { type: 'parametric', id: 'u', kind: 'arch.baseunit', props: { fronts: 'Oven' }, x: 0, y: 0 })
+    const slabs = massing(doc, 'page_1', registry).filter((s) => s.node === 'u')
+    const [pane] = slabs.filter((s) => s.role === 'glass')
+    expect(Math.max(...pane.outline.map((p) => p.y))).toBe(Math.max(...slabs.filter((s) => s.top < 862).flatMap((s) => s.outline.map((p) => p.y))))
+    expect(pane.top).toBeLessThan(862)
+    expect(slabs.filter((s) => s.finish === 'dark')).toHaveLength(1)
   })
 
   it('scaled, has its sections scaled with it', () => {

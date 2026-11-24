@@ -1,7 +1,7 @@
 import { roundCorners, rowsOf, type KindSolid, type ParamDef, type ParametricKind, type ParamRow, type Primitive, type Vec2 } from '@opencalque/core'
-import { boxSide, door, drawer, frontsOf, FRONTS, MAX_FRONTS, microwave, oven, PLINTH, rect, unitFront, unitSide, WORKTOP } from './fronts'
+import { boxSide, door, drawer, frontsOf, FRONTS, frontWindows, MAX_FRONTS, microwave, microwaveWindow, oven, ovenWindow, PLINTH, rect, unitFront, unitSide, WORKTOP, type FrontWindow } from './fronts'
 import { atLeast, circle, clamp, count, DEPTH, HEIGHT, line, MAX_BOWLS, outline, pt, roundBox, sizedBox, THIN, WIDTH } from './shared'
-import { bodyDepth, box, cabinetSolids, disc, unitSolids } from './solids'
+import { bodyDepth, box, cabinetSolids, disc, glazedBox, unitSolids } from './solids'
 
 // Kitchen pieces stand against the wall by their top edge, as the units of the kitchen library do,
 // each in its stretch of worktop: placed side by side, they make a run of units.
@@ -89,9 +89,9 @@ const GLASS = 6
 const BOWL_DEEP = 180
 const TAP_HIGH = 300
 
-/** The unit a hob or a sink is set in, in 3D: its plinth, its body and its worktop, or the worktop alone over nothing. */
+/** The unit a hob or a sink is set in, in 3D: its plinth, its body (an oven's window let into it) and its worktop, or the worktop alone over nothing. */
 const counterSolids = (w: number, d: number, below: string): KindSolid[] =>
-  below === 'None' ? [{ outline: box(0, 0, w, d), bottom: COUNTER - WORKTOP, top: COUNTER }] : unitSolids(w, d, COUNTER, true)
+  below === 'None' ? [{ outline: box(0, 0, w, d), bottom: COUNTER - WORKTOP, top: COUNTER }] : unitSolids(w, d, COUNTER, true, frontWindows(below, 0, w, -PLINTH, -(COUNTER - WORKTOP)))
 
 /**
  * A sink in its stretch of worktop: one bowl or more, each with its drain, the tap behind them,
@@ -368,7 +368,11 @@ export const baseUnit: ParametricKind = {
     return unitFront(w, atLeast(PLINTH + 50, height), worktop !== false, (y0, y1) => frontsOf(fronts, 0, w, y0, y1, doors, drawers, hinge))
   },
   side: ({ depth, height, worktop }) => unitSide(atLeast(1, depth), atLeast(PLINTH + 50, height), worktop !== false),
-  solids: ({ width, depth, height, worktop }) => unitSolids(atLeast(1, width), atLeast(1, depth), atLeast(PLINTH + 50, height), worktop !== false),
+  // In 3D, an oven behind its fronts shows its window as glass.
+  solids: ({ width, depth, height, worktop, fronts }) => {
+    const [w, h, on] = [atLeast(1, width), atLeast(PLINTH + 50, height), worktop !== false]
+    return unitSolids(w, atLeast(1, depth), h, on, frontWindows(fronts, 0, w, -PLINTH, -(h - (on ? WORKTOP : 0))))
+  },
 }
 
 /** A length of worktop on its own: over appliances or a gap between units, or the top of an island. Its height is that of its top. */
@@ -472,6 +476,18 @@ export function laidSections(rows: ParamRow[], h: number): Laid[] {
   return laid
 }
 
+/** Where a section's front goes, from `y0` (its bottom, in front coordinates: up is negative) to `y1`: each just over the one under it, the last short of the top. */
+const sectionSpan = (laid: Laid[], i: number): [number, number] => [-laid[i].from - SECTION_GAP, i === laid.length - 1 ? -laid[i].to + SECTION_GAP : -laid[i].to]
+
+/** The windows of the appliances among a tall unit's sections, `w` wide, where `sectionFront` draws them: an oven's, a microwave's. */
+function sectionWindows(laid: Laid[], w: number): FrontWindow[] {
+  return laid.flatMap(({ row }, i) => {
+    const [y0, y1] = sectionSpan(laid, i)
+    if (y0 - y1 <= 60) return []
+    return row.type === 'Oven' ? [ovenWindow(0, w, y0, y1)] : row.type === 'Microwave' ? [microwaveWindow(0, w, y0, y1)] : []
+  })
+}
+
 /** The fronts of a section from `y0` (its bottom, in front coordinates: up is negative) to `y1`, `w` wide. */
 function sectionFront(row: ParamRow, w: number, y0: number, y1: number): Primitive[] {
   if (y0 - y1 <= 60) return []
@@ -558,7 +574,7 @@ export const tallUnit: ParametricKind = {
     const laid = laidSections(sectionsOf(props), h)
     const prims: Primitive[] = [rect(0, 0, w, -h), line([pt(0, -PLINTH), pt(w, -PLINTH)], THIN)]
     // Each front from just over the one under it up to the next, the last short of the top.
-    laid.forEach(({ row, from, to }, i) => prims.push(...sectionFront(row, w, -from - SECTION_GAP, i === laid.length - 1 ? -to + SECTION_GAP : -to)))
+    laid.forEach(({ row }, i) => prims.push(...sectionFront(row, w, ...sectionSpan(laid, i))))
     return prims
   },
   side: ({ depth, height }) => unitSide(atLeast(1, depth), atLeast(PLINTH + 100, height), false),
@@ -571,10 +587,12 @@ export const tallUnit: ParametricKind = {
     const side = Math.min(NICHE_SIDE, w / 4)
     const back = Math.min(NICHE_BACK, d / 3)
     let from = PLINTH
+    const laid = laidSections(sectionsOf(props), h)
+    const windows = sectionWindows(laid, w)
     const body = (to: number) => {
-      if (to > from) solids.push({ outline: box(0, 0, w, d), bottom: from, top: to })
+      if (to > from) solids.push(...glazedBox(w, d, from, to, windows))
     }
-    for (const section of laidSections(sectionsOf(props), h)) {
+    for (const section of laid) {
       if (section.row.type !== 'Open') continue
       body(section.from)
       solids.push(

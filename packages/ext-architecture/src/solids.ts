@@ -1,5 +1,5 @@
 import { roundCorners, type KindSolid, type Vec2 } from '@opencalque/core'
-import { OVERHANG, PLINTH, WORKTOP } from './fronts'
+import { OVERHANG, PLINTH, WORKTOP, type FrontWindow } from './fronts'
 import { pt } from './shared'
 
 /*
@@ -22,18 +22,50 @@ const SETBACK = 50
  * A kitchen unit `w` by `d`, `height` to the top of its worktop (or of itself, without one): its
  * plinth set back from the fronts, its body, and its worktop over it reaching past the fronts.
  */
-export function unitSolids(w: number, d: number, height: number, worktop: boolean): KindSolid[] {
+export function unitSolids(w: number, d: number, height: number, worktop: boolean, windows: FrontWindow[] = []): KindSolid[] {
   const top = worktop ? height - WORKTOP : height
-  return [...cabinetSolids(w, worktop ? bodyDepth(d) : d, top), ...(worktop ? [{ outline: box(0, 0, w, d), bottom: top, top: height }] : [])]
+  return [...cabinetSolids(w, worktop ? bodyDepth(d) : d, top, windows), ...(worktop ? [{ outline: box(0, 0, w, d), bottom: top, top: height }] : [])]
 }
 
-/** The body of a unit, `body` deep from its back up to `top`, over its plinth set back from its fronts. */
-export function cabinetSolids(w: number, body: number, top: number): KindSolid[] {
+/** The body of a unit, `body` deep from its back up to `top`, over its plinth set back from its fronts, the windows of its appliances let into it. */
+export function cabinetSolids(w: number, body: number, top: number, windows: FrontWindow[] = []): KindSolid[] {
   const plinth = Math.min(PLINTH, top / 2)
-  return [
-    { outline: box(0, 0, w, Math.max(20, body - SETBACK)), bottom: 0, top: plinth },
-    { outline: box(0, 0, w, body), bottom: plinth, top },
-  ]
+  return [{ outline: box(0, 0, w, Math.max(20, body - SETBACK)), bottom: 0, top: plinth }, ...glazedBox(w, body, plinth, top, windows)]
+}
+
+/** How deep the dark inside of an appliance shows behind its glass, and how thick the glass is, in mm. */
+const CAVITY = 40
+const PANE = 4
+
+/**
+ * A box `w` across and `d` deep, its front at Y = d, from `bottom` to `top` above the floor, with the
+ * windows of an oven or a microwave let into its front (in front coordinates, as its elevation draws
+ * them: Y down from the floor): behind each a shallow recess, dark, and glass across it flush with
+ * the front. A plain box, a front with no window, looked like a cupboard where the door of an oven
+ * has a window anyone, or an image model, knows it by. A window not wholly on the front is left out.
+ */
+export function glazedBox(w: number, d: number, bottom: number, top: number, windows: FrontWindow[]): KindSolid[] {
+  const panes = windows
+    .map((win) => ({ x0: Math.max(0, win.x0), x1: Math.min(w, win.x1), z0: -win.y0, z1: -win.y1 }))
+    .filter((win) => win.x1 > win.x0 && win.z1 > win.z0 && win.z0 >= bottom && win.z1 <= top)
+  if (panes.length === 0 || d <= CAVITY + PANE) return [{ outline: box(0, 0, w, d), bottom, top }]
+  // In bands between the heights where a window starts or stops; in each, across, solid between the
+  // windows it crosses and, where it crosses one, the recess's dark back and the glass in front.
+  const levels = [...new Set([bottom, top, ...panes.flatMap((p) => [p.z0, p.z1])])].sort((p, q) => p - q)
+  const slabs: KindSolid[] = []
+  for (let i = 0; i < levels.length - 1; i++) {
+    const [lo, hi] = [levels[i], levels[i + 1]]
+    const crossed = panes.filter((p) => p.z0 <= lo && p.z1 >= hi).sort((p, q) => p.x0 - q.x0)
+    let x = 0
+    for (const pane of crossed) {
+      if (pane.x0 > x) slabs.push({ outline: box(x, 0, pane.x0, d), bottom: lo, top: hi })
+      slabs.push({ outline: box(pane.x0, 0, pane.x1, d - CAVITY), bottom: lo, top: hi, finish: 'dark' })
+      slabs.push({ outline: box(pane.x0, d - PANE, pane.x1, d), bottom: lo, top: hi, finish: 'glass' })
+      x = Math.max(x, pane.x1)
+    }
+    if (x < w) slabs.push({ outline: box(x, 0, w, d), bottom: lo, top: hi })
+  }
+  return slabs
 }
 
 /** How deep the body of a unit `d` deep is under its worktop, which reaches past its fronts. */

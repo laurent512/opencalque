@@ -72,17 +72,44 @@ export function drawers(x0: number, x1: number, y0: number, y1: number, n: numbe
   return Array.from({ length: rows }, (_, i) => drawer(x0, x1, y0 - i * each - (i > 0 ? GAP / 2 : 0), y0 - (i + 1) * each + (i < rows - 1 ? GAP / 2 : 0))).flat()
 }
 
+/**
+ * The window of an appliance's door, in the same coordinates as its front: x0 to x1 across, from
+ * y0 (its bottom) up to y1. The 3D view lets glass into the unit there (`glazedBox`).
+ */
+export interface FrontWindow {
+  x0: number
+  x1: number
+  y0: number
+  y1: number
+}
+
+/** Where the window of an oven from y0 up to y1 is: under its control strip, inset from its sides. */
+export function ovenWindow(x0: number, x1: number, y0: number, y1: number): FrontWindow {
+  const strip = Math.min(70, (y0 - y1) / 6)
+  const inset = Math.min(70, (x1 - x0) / 6)
+  return { x0: x0 + inset, x1: x1 - inset, y0: y0 - inset, y1: y1 + strip + inset * 1.4 }
+}
+
 /** A built-in oven from y0 up to y1: its control strip along the top, its window, its handle across below the strip. */
 export function oven(x0: number, x1: number, y0: number, y1: number): Primitive[] {
   const strip = Math.min(70, (y0 - y1) / 6)
   const inset = Math.min(70, (x1 - x0) / 6)
+  const window = ovenWindow(x0, x1, y0, y1)
   return [
     rect(x0, y0, x1, y1),
     line([pt(x0, y1 + strip), pt(x1, y1 + strip)], THIN),
     circle(x1 - inset, y1 + strip / 2, Math.min(14, strip / 3), THIN),
-    roundBox(x0 + inset, y0 - inset, x1 - inset, y1 + strip + inset * 1.4, Math.min(30, inset / 2), THIN),
+    roundBox(window.x0, window.y0, window.x1, window.y1, Math.min(30, inset / 2), THIN),
     bar(x0 + inset, y1 + strip + inset * 0.6, x1 - inset, y1 + strip + inset * 0.6),
   ]
+}
+
+/** Where the window of a microwave from y0 up to y1 is: on its left, its controls taking the right. */
+export function microwaveWindow(x0: number, x1: number, y0: number, y1: number): FrontWindow {
+  const w = x1 - x0
+  const controls = Math.min(140, w / 4)
+  const inset = Math.min(40, w / 10, (y0 - y1) / 6)
+  return { x0: x0 + inset, x1: x1 - controls - inset / 2, y0: y0 - inset, y1: y1 + inset }
 }
 
 /** A built-in microwave from y0 up to y1: its window on the left, its controls on the right. */
@@ -90,9 +117,10 @@ export function microwave(x0: number, x1: number, y0: number, y1: number): Primi
   const w = x1 - x0
   const controls = Math.min(140, w / 4)
   const inset = Math.min(40, w / 10, (y0 - y1) / 6)
+  const window = microwaveWindow(x0, x1, y0, y1)
   return [
     rect(x0, y0, x1, y1),
-    roundBox(x0 + inset, y0 - inset, x1 - controls - inset / 2, y1 + inset, Math.min(20, inset / 2), THIN),
+    roundBox(window.x0, window.y0, window.x1, window.y1, Math.min(20, inset / 2), THIN),
     line([pt(x1 - controls, y0), pt(x1 - controls, y1)], THIN),
     circle(x1 - controls / 2, (y0 + y1) / 2, Math.min(18, controls / 4), THIN),
   ]
@@ -101,6 +129,12 @@ export function microwave(x0: number, x1: number, y0: number, y1: number): Primi
 /** What a kitchen unit holds behind its fronts, from the plinth up to the worktop. */
 export type Fronts = 'Doors' | 'Drawers' | 'Door and drawer' | 'Oven' | 'None'
 export const FRONTS: Fronts[] = ['Doors', 'Drawers', 'Door and drawer', 'Oven']
+
+/** Where the oven of a unit with fronts `layout` from y0 to y1 stands: 595 mm under the worktop, or most of it on a low one. */
+const ovenFrom = (y0: number, y1: number) => {
+  const [a, b] = [y0 - GAP, y1 + GAP]
+  return { a, b, top: b + Math.min(595, (a - b) * 0.8) }
+}
 
 /** The fronts of a unit from x0 to x1 between y0 (the top of its plinth) and y1 (under its worktop). */
 export function frontsOf(layout: string, x0: number, x1: number, y0: number, y1: number, leaves: number, rows: number, hinge?: string): Primitive[] {
@@ -112,10 +146,16 @@ export function frontsOf(layout: string, x0: number, x1: number, y0: number, y1:
   if (layout === 'Door and drawer') return [...drawer(x0, x1, b + Math.min(150, (a - b) / 3), b), ...doors(x0, x1, a, b + Math.min(150, (a - b) / 3) + GAP, leaves, hinge)]
   // An oven of 595 mm under the worktop, a drawer under it.
   if (layout === 'Oven') {
-    const top = b + Math.min(595, (a - b) * 0.8)
+    const { top } = ovenFrom(y0, y1)
     return [...oven(x0, x1, top, b), ...(a - top > GAP * 4 ? drawer(x0, x1, a, top + GAP) : [])]
   }
   return doors(x0, x1, a, b, leaves, hinge)
+}
+
+/** The windows of glass in the fronts `frontsOf` draws for `layout`: an oven's, or none. */
+export function frontWindows(layout: string, x0: number, x1: number, y0: number, y1: number): FrontWindow[] {
+  const { a, b, top } = ovenFrom(y0, y1)
+  return layout === 'Oven' && b < a ? [ovenWindow(x0, x1, top, b)] : []
 }
 
 /**
