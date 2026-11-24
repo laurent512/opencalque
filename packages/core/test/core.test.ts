@@ -463,6 +463,15 @@ describe('dxf', () => {
     expect(dxf.trimEnd().endsWith('EOF')).toBe(true)
   })
 
+  it('says in its header that it is in millimetres, as its coordinates are', () => {
+    const doc = applyOps(createDocument(), [{ op: 'add_node', node: { type: 'line', parent: 'page_1', a: { x: 0, y: 0 }, b: { x: 200, y: 0 } } }])
+    const dxf = toDXF(doc, 'page_1', registry)
+    expect(dxf.startsWith('0\nSECTION\n2\nHEADER\n')).toBe(true)
+    expect(dxf).toContain('\n9\n$INSUNITS\n70\n4\n')
+    expect(dxf).toContain('\n9\n$MEASUREMENT\n70\n1\n')
+    expect(dxf).toContain('\n11\n200\n')
+  })
+
   it('exports only the objects given, in SVG and DXF, framed alone', () => {
     const doc = applyOps(createDocument(), [
       { op: 'add_node', node: { type: 'ellipse', id: 'near', parent: 'page_1', cx: 500, cy: 500, rx: 100, ry: 100 } },

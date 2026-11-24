@@ -25,7 +25,10 @@ const dxfText = (text: string) =>
  * and pictures are not carried over.
  */
 export function toDXF(doc: Document, containerId: string, registry: Registry, options: { marks?: boolean; only?: string[] } = {}): string {
-  const out: string[] = ['0', 'SECTION', '2', 'ENTITIES']
+  // The header says the file is in millimetres ($INSUNITS 4) and metric: without it, a program
+  // takes its own default, which for some is metres, and reads the plan a thousand times too large.
+  const out: string[] = ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1009', '9', '$INSUNITS', '70', '4', '9', '$MEASUREMENT', '70', '1', '0', 'ENDSEC']
+  out.push('0', 'SECTION', '2', 'ENTITIES')
   const entity = (type: string, layer: string, codes: (string | number)[]) => out.push('0', type, '8', layer, ...codes.map(String))
   // DXF has nothing like a clip outline, so a line is cut down to the part inside every one of them.
   const line = (layer: string, a: Vec2, b: Vec2, clip: Vec2[][] = []) => {
