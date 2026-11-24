@@ -4,7 +4,7 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
-## Unreleased
+## 2.2.1 — 2026-11-24
 
 ### Improved
 - In the perspective view, the door of an oven, and of a microwave, has a window of glass with the dark inside of the oven behind it, as on its elevation, in a base unit, under a hob and in a tall unit: its front was plain, like a cupboard's, and an image model rendering the view took it for one.
