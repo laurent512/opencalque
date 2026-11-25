@@ -584,6 +584,23 @@ export const DrawingSettingsSchema = z.object({
     .describe('The grid the editor shows and snaps to, from the origin. Left out, the grid changes with the zoom (1, 5, 10, 50, 100 mm…), every tenth line darker. It is never printed or exported.'),
 })
 
+/**
+ * Settings saved under a name for a tool to draw with, picked before drawing: a wall's thickness,
+ * material and layer, or the parameters of a door or a window. Nothing drawn stays linked to them:
+ * picking one only sets the tool, as typing its values would.
+ */
+export const PresetSchema = z
+  .object({
+    id: Id,
+    name: z.string(),
+    of: z.string().describe("What they are for: 'wall', or the kind of a parametric object ('arch.door', 'arch.window')."),
+    thickness: z.number().positive().optional().describe('For a wall: its thickness, in mm.'),
+    material: Id.optional().describe("For a wall: its material, among the drawing's \"materials\". Left out, the default one."),
+    layer: Id.optional().describe('The layer what is drawn goes on, among the drawing\'s "layers". Left out, the layer in use.'),
+    props: z.record(z.string(), z.unknown()).optional().describe('For a parametric object: its parameters, as its "props". Those left out take their defaults.'),
+  })
+  .describe('Settings a tool draws with, saved under a name.')
+
 export const DocumentSchema = z
   .object({
     format: z.literal(FORMAT),
@@ -595,6 +612,7 @@ export const DocumentSchema = z
     colors: z.record(Id, SharedColorSchema).optional().describe('Shared colours by id, referred to from colour properties as "var(--<id>)".'),
     materials: z.record(Id, MaterialSchema).optional().describe('Materials by id, referred to from walls and the floors of rooms by "material".'),
     dimensionStyles: z.record(Id, DimensionStyleSchema).optional().describe('Dimension styles by id, referred to from dimensions by "dimensionStyle".'),
+    presets: z.record(Id, PresetSchema).optional().describe('Settings saved under a name for the editor\'s tools (walls, doors, windows), by id. Nothing in the drawing refers to them.'),
     assets: z.record(Id, AssetSchema).optional().describe('Embedded files by id. Large; tools that only need the drawing can ignore it.'),
     nodes: z
       .record(Id, NodeSchema)
@@ -620,3 +638,4 @@ export type NodeOf<T extends NodeType> = Extract<Node, { type: T }>
 export type ContainerNode = NodeOf<'page'> | NodeOf<'component'>
 export type Document = z.infer<typeof DocumentSchema>
 export type DrawingSettings = z.infer<typeof DrawingSettingsSchema>
+export type Preset = z.infer<typeof PresetSchema>

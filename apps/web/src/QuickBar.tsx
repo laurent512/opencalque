@@ -8,6 +8,7 @@ import { setPrefs, usePrefs } from './prefs'
 import { useStore } from './store'
 import { type Tool } from './tools'
 import { WallToolMaterial } from './panels/properties/walls'
+import { WallToolPresets } from './panels/properties/presets'
 import { JustifyPicker, scrub } from './ui'
 import { formatNumber, parseLength, parseNumber, unitSuffix } from './units'
 import { Select } from './Select'
@@ -222,6 +223,7 @@ export function QuickBar() {
             <WallToolMaterial />
           </span>
         )}
+        {tool === 'wall' && <WallToolPresets compact />}
         {FILLED.includes(tool) && (
           <FillChoice
             compact

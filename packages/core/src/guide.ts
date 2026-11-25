@@ -122,7 +122,7 @@ Call apply_operations with a list of operations:
 - remove_node: {"op":"remove_node","id":"..."}. It takes along everything inside the node; removing a component also removes its instances, and removing an object the links that join it to others.
 - add_layer, update_layer, remove_layer; add_color, update_color, remove_color; add_dimension_style, update_dimension_style, remove_dimension_style, as described above.
 - set_document: renames the drawing, and with "info" sets its project, client, address and author, which every sheet's title block shows; with "settings" sets how it writes its numbers ("system", "decimal") and lays out its title blocks ("titleBlock").
-- add_asset embeds a picture's file for an image node; it is for the app's own imports, and you will not need it.
+- add_asset embeds a picture's file for an image node; it is for the app's own imports, and you will not need it. add_preset, update_preset and remove_preset keep settings the editor's tools draw with under a name; nothing drawn refers to them, and you will not need them either.
 
 ${CHECKING}${pictures ? ` ${LOOKING}` : ''}`
 }

@@ -803,6 +803,15 @@ pdf.js is imported dynamically so it stays out of the main bundle, and its worke
 
 The **calibrate** tool reuses the measure gesture without snapping (a scan has nothing to snap to) and stores the two picked points in `store.calibration`. The right panel then asks for the real distance; `applyCalibration` scales the picture about the first point by `real / measured` and locks it. `parseLength` accepts `3500`, `350 cm`, `3.5 m` and a decimal comma.
 
+### Saved settings of the tools (`presets.ts`, `panels/properties/presets.tsx`)
+
+A person drawing with three or four kinds of wall, or of door, picks the settings of each before drawing rather than typing them every time. They are kept in the drawing (`doc.presets`, ops `add_preset` / `update_preset` / `remove_preset`), so that a drawing kept with its own is a template, and they are for one tool each (`of`: `'wall'`, or a parametric kind with `opening`). A wall's are its thickness, material and the layer in use; a door's or a window's its `props`.
+
+- **Not wall types.** Picking one only sets the tool, as typing its values would (the store's `wallThickness`, `wallMaterial` and `activeLayer`, or the `props` of `placing`): nothing drawn keeps a reference to it, and changing or removing it changes nothing drawn. Do not make them a link: wall types were taken out in format 2 (the owner's choice), and the person who asked for these wanted to draw faster, not to change walls together.
+- **The one chosen** is the one that holds what the tool is set to (`presetHeld`), worked out each time, so that no state says which was picked and goes stale when a value is typed. Saved again under the name of one the tool has, it replaces that one (`savePresetOps`).
+- **Before placing a door or a window**, Properties shows its parameters (`PlacingOpening`): the fields of one placed (`fieldsOf` on a node that is not in the drawing, those of `props` only), which write to `placing.props`, so that the object following the pointer shows them, and the next ones placed keep them until the tool is left.
+- Removing a material or a layer takes it out of the presets, as it does of walls; a preset naming one the drawing has not (pasted from elsewhere) leaves that setting of the tool as it is (`wallSettingsOf`).
+
 ### The assistant (`ai/`)
 
 The assistant edits the drawing by calling tools, in a loop that ends when the model stops asking for them.

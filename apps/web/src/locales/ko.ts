@@ -1280,4 +1280,13 @@ export const ko: Record<string, string> = {
   "The selection ({n} objects)": "선택 항목({n}개 객체)",
   "Pulling a corner of the paper changes its scale too, or its size with Alt.": "용지 모서리를 끌면 축척도 바뀌며, Alt를 누르면 크기가 바뀝니다.",
   "On this sheet": "이 용지에",
+  "Saved settings": "저장된 설정",
+  "Settings saved in this drawing, to draw with": "이 도면에 저장된, 그릴 때 쓰는 설정",
+  "None saved yet": "아직 저장된 것이 없습니다",
+  "Choose…": "선택…",
+  "Remove these saved settings. What was drawn with them stays as it is": "이 저장된 설정을 제거합니다. 이것으로 그린 것은 그대로 남습니다",
+  "Save as": "다른 이름으로 저장",
+  "Name of the settings to save": "저장할 설정의 이름",
+  "Saved with the drawing, to pick before drawing. What is drawn with them does not stay linked to them: changing it changes nothing else.": "도면과 함께 저장되며, 그리기 전에 고를 수 있습니다. 이것으로 그린 것은 설정과 연결되지 않으므로, 바꿔도 다른 것은 바뀌지 않습니다.",
+  "Set it here before placing it, then click on a wall. The next ones placed are set alike until you change tool.": "배치하기 전에 여기서 설정한 다음 벽을 클릭하세요. 도구를 바꿀 때까지 다음에 배치하는 것도 같게 설정됩니다.",
 }

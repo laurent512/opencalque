@@ -6,6 +6,9 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 
 ## Unreleased
 
+### New
+- Saved settings for the Wall, Door and Window tools, to pick before drawing. With the Wall tool, Properties has Saved settings under its thickness and material: type a name under Save as (or keep the one suggested) and Save, and the thickness, the material and the layer in use are kept under it; pick it from the list, there or in the bar above the tools, to draw with them again. A door or a window is now set up in Properties before it is placed, its width, height, sill, type and the rest, as one placed is, and its settings are saved and picked the same way; the next ones placed keep them until you change tool. They are saved with the drawing, so a drawing kept with yours is a template to start from. Nothing drawn stays linked to them: what was drawn with them changes only when you change it. Saved again under the same name, they replace the ones of that name; the bin beside the list removes the ones chosen. A drawing with saved settings opens in earlier versions, which keep them without showing them.
+
 ### Improved
 - A report sent from the app (Report a bug or suggest an idea…) whose title names an earlier report by its number, such as "#30 Answers", is added to that report on GitHub, where its answers are, rather than made a report of its own; a closed one is opened again. The link shown once it is sent goes there.
 

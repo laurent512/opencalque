@@ -345,6 +345,60 @@
         "description": "A way of drawing dimensions that belongs to the drawing. It holds the properties of a dimension that it gives a value to, under the same names, and only those. A dimension refers to it by \"dimensionStyle\" and takes what it defines; a value the dimension gives itself wins, and what the style leaves out stays the dimension's own."
       }
     },
+    "presets": {
+      "description": "Settings saved under a name for the editor's tools (walls, doors, windows), by id. Nothing in the drawing refers to them.",
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "minLength": 1
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "name": {
+            "type": "string"
+          },
+          "of": {
+            "type": "string",
+            "description": "What they are for: 'wall', or the kind of a parametric object ('arch.door', 'arch.window')."
+          },
+          "thickness": {
+            "description": "For a wall: its thickness, in mm.",
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "material": {
+            "description": "For a wall: its material, among the drawing's \"materials\". Left out, the default one.",
+            "type": "string",
+            "minLength": 1
+          },
+          "layer": {
+            "description": "The layer what is drawn goes on, among the drawing's \"layers\". Left out, the layer in use.",
+            "type": "string",
+            "minLength": 1
+          },
+          "props": {
+            "description": "For a parametric object: its parameters, as its \"props\". Those left out take their defaults.",
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "of"
+        ],
+        "additionalProperties": false,
+        "description": "Settings a tool draws with, saved under a name."
+      }
+    },
     "assets": {
       "description": "Embedded files by id. Large; tools that only need the drawing can ignore it.",
       "type": "object",

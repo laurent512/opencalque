@@ -1280,4 +1280,13 @@ export const es: Record<string, string> = {
   "The selection ({n} objects)": "La selección ({n} objetos)",
   "Pulling a corner of the paper changes its scale too, or its size with Alt.": "Arrastrar una esquina del papel también cambia su escala, o su tamaño con Alt.",
   "On this sheet": "En esta hoja",
+  "Saved settings": "Ajustes guardados",
+  "Settings saved in this drawing, to draw with": "Ajustes guardados en este dibujo, para dibujar con ellos",
+  "None saved yet": "Aún no hay ninguno guardado",
+  "Choose…": "Elegir…",
+  "Remove these saved settings. What was drawn with them stays as it is": "Quitar estos ajustes guardados. Lo dibujado con ellos queda como está",
+  "Save as": "Guardar como",
+  "Name of the settings to save": "Nombre de los ajustes que guardar",
+  "Saved with the drawing, to pick before drawing. What is drawn with them does not stay linked to them: changing it changes nothing else.": "Se guardan con el dibujo, para elegirlos antes de dibujar. Lo que se dibuja con ellos no queda ligado a ellos: cambiarlo no cambia nada más.",
+  "Set it here before placing it, then click on a wall. The next ones placed are set alike until you change tool.": "Ajústelo aquí antes de colocarlo y luego haga clic en un muro. Los siguientes se colocan igual hasta que cambie de herramienta.",
 }

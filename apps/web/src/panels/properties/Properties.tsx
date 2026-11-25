@@ -19,6 +19,7 @@ import { ModifierStack } from './modifiers'
 import { EverySheet, PaperFormat, PaperTitleBlock } from './paper'
 import { CornerPanel, WallCurve, WallEnds, WallLine, WallMaterial, WallToolMaterial } from './walls'
 import { TableSettings } from './tables'
+import { PlacingOpening, WallToolPresets } from './presets'
 import { ViewCamera, ViewDescription, ViewPicture } from './viewpoint'
 import { Select } from '../../Select'
 
@@ -352,6 +353,9 @@ export function Properties() {
   const selection = useStore((s) => s.selection)
   const tool = useStore((s) => s.tool)
   const wallThickness = useStore((s) => s.wallThickness)
+  const placing = useStore((s) => s.placing)
+  // A door or a window about to be placed is set up here, before the click that puts it on a wall.
+  const opening = tool === 'place' && placing?.type === 'parametric' ? registry.parametric.get(placing.kind) : undefined
   const nodes = selection.map((id) => doc.nodes[id]).filter(Boolean)
   const corner = useStore((s) => s.corner)
   // A corner that is no longer one (its walls were moved or undone) shows as nothing selected.
@@ -361,6 +365,8 @@ export function Properties() {
       <FoldingSections.Provider value>
         {tool === 'calibrate' ? (
           <CalibrateTool />
+        ) : opening?.opening ? (
+          <PlacingOpening kind={opening} />
         ) : onCorner ? (
           <CornerPanel at={corner} />
         ) : nodes.length > 0 ? (
@@ -383,6 +389,7 @@ export function Properties() {
               <span>{t('Material')}</span>
               <WallToolMaterial />
             </div>
+            <WallToolPresets />
             <p className="hint">{t('Type a length in the bar above the tools to draw a wall of that exact length.')}</p>
             <p className="hint">{t('Click each corner in turn. Double-click the last corner to close the walls back to the first one, or press Esc to stop.')}</p>
           </Section>

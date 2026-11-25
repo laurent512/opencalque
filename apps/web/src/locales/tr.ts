@@ -1280,4 +1280,13 @@ export const tr: Record<string, string> = {
   "The selection ({n} objects)": "Seçim ({n} nesne)",
   "Pulling a corner of the paper changes its scale too, or its size with Alt.": "Kâğıdın bir köşesini sürüklemek ölçeğini de değiştirir, Alt ile boyutunu.",
   "On this sheet": "Bu paftada",
+  "Saved settings": "Kaydedilmiş ayarlar",
+  "Settings saved in this drawing, to draw with": "Bu çizimde kaydedilmiş, çizmek için ayarlar",
+  "None saved yet": "Henüz kaydedilmiş yok",
+  "Choose…": "Seç…",
+  "Remove these saved settings. What was drawn with them stays as it is": "Bu kaydedilmiş ayarları kaldır. Bunlarla çizilenler olduğu gibi kalır",
+  "Save as": "Farklı kaydet",
+  "Name of the settings to save": "Kaydedilecek ayarların adı",
+  "Saved with the drawing, to pick before drawing. What is drawn with them does not stay linked to them: changing it changes nothing else.": "Çizimle birlikte kaydedilir, çizmeden önce seçilir. Bunlarla çizilenler onlara bağlı kalmaz: değiştirmek başka hiçbir şeyi değiştirmez.",
+  "Set it here before placing it, then click on a wall. The next ones placed are set alike until you change tool.": "Yerleştirmeden önce burada ayarlayın, sonra bir duvara tıklayın. Araç değiştirene kadar sonrakiler de aynı ayarlanır.",
 }

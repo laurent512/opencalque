@@ -13,6 +13,8 @@ import {
   MaterialSchema,
   type Material,
   NodeSchema,
+  PresetSchema,
+  type Preset,
   type Asset,
   type ContainerNode,
   type Document,
@@ -62,6 +64,9 @@ export type Op =
   | { op: 'add_material'; material: Omit<Material, 'id'> & { id?: string } }
   | { op: 'update_material'; id: string; patch: Record<string, unknown> }
   | { op: 'remove_material'; id: string }
+  | { op: 'add_preset'; preset: Omit<Preset, 'id'> & { id?: string } }
+  | { op: 'update_preset'; id: string; patch: Record<string, unknown> }
+  | { op: 'remove_preset'; id: string }
   | { op: 'add_asset'; asset: Omit<Asset, 'id'> & { id?: string } }
   | { op: 'set_document'; name?: string; info?: Record<string, string | null>; settings?: { system?: 'metric' | 'imperial' | null; decimal?: '.' | ',' | null; titleBlock?: { layout?: 'corner' | 'strip'; labels?: Record<string, string> } | null; grid?: { spacing: number; divisions?: number } | null } }
 
@@ -103,6 +108,11 @@ export const OpSchema = z.discriminatedUnion('op', [
     .describe('Adds a material: a name, and the fill and pattern it is drawn with. Walls and the floors of rooms take it with "material": "<id>".'),
   z.object({ op: z.literal('update_material'), id: z.string(), patch }).describe('Changes a material; every wall and floor made of it follows. A null in the patch removes that property.'),
   z.object({ op: z.literal('remove_material'), id: z.string() }).describe('Removes a material. Walls made of it are of the default material after; floors made of it keep its colour and pattern as their own. The default material cannot be removed.'),
+  z
+    .object({ op: z.literal('add_preset'), preset: z.looseObject({ name: z.string(), of: z.string() }) })
+    .describe("Saves settings for one of the editor's tools under a name, picked there before drawing: for 'wall', its thickness, material and layer; for a parametric kind ('arch.door', 'arch.window'), its props. Nothing drawn refers to them."),
+  z.object({ op: z.literal('update_preset'), id: z.string(), patch }).describe('Changes saved settings. A null in the patch removes that property.'),
+  z.object({ op: z.literal('remove_preset'), id: z.string() }).describe('Removes saved settings. Nothing drawn changes.'),
   z.object({ op: z.literal('update_color'), id: z.string(), patch }).describe('Changes a shared colour; everything that refers to it changes with it.'),
   z.object({ op: z.literal('remove_color'), id: z.string() }).describe('Removes a shared colour. What referred to it keeps the colour it had, as a plain colour.'),
   z
@@ -128,6 +138,17 @@ export const OpSchema = z.discriminatedUnion('op', [
 ])
 
 export class OpError extends Error {}
+
+/** Saved settings without their reference to a layer or a material that is removed. */
+function withoutPresetRef(presets: Record<string, Preset>, key: 'layer' | 'material', id: string): Record<string, Preset> {
+  return Object.fromEntries(
+    Object.entries(presets).map(([pid, preset]) => {
+      if (preset[key] !== id) return [pid, preset]
+      const { [key]: _, ...rest } = preset
+      return [pid, rest]
+    }),
+  )
+}
 
 /** The layout of a drawing's title blocks as a `set_document` gives it, checked: a layout and captions, as texts. */
 function titleLayout(value: unknown): { layout?: 'corner' | 'strip'; labels?: Record<string, string> } {
@@ -435,6 +456,8 @@ function applyOp(d: Document, op: Op, batch: Batch): void {
       const fallback = layersOf(d)[0]
       if (!fallback) throw new OpError('Cannot remove the last layer')
       for (const n of Object.values(d.nodes)) if (n.layer === op.id) d.nodes[n.id] = { ...n, layer: fallback.id }
+      // Settings saved with it draw on the layer in use after.
+      if (d.presets) d.presets = withoutPresetRef(d.presets, 'layer', op.id)
       return
     }
     case 'add_color': {
@@ -510,6 +533,8 @@ function applyOp(d: Document, op: Op, batch: Batch): void {
       if (op.id === DEFAULT_MATERIAL) throw new OpError('The default material cannot be removed: it is what walls are made of until they are given another. Change its fill or pattern instead.')
       const { [op.id]: _, ...rest } = d.materials!
       d.materials = rest
+      // Settings saved with it draw walls of the default material after, as its walls are.
+      if (d.presets) d.presets = withoutPresetRef(d.presets, 'material', op.id)
       // The walls made of it are of the default material after; a floor keeps how it looks: what the material gave it becomes its own.
       for (const n of Object.values(d.nodes)) {
         if (n.type === 'wall' && n.material === op.id) {
@@ -521,6 +546,24 @@ function applyOp(d: Document, op: Op, batch: Batch): void {
         const look = { ...(material.fill === undefined ? {} : { fill: material.fill }), ...(material.pattern === undefined ? {} : { pattern: material.pattern }) }
         d.nodes[n.id] = Object.keys(look).length > 0 ? { ...room, style: { ...look, ...room.style } } : room
       }
+      return
+    }
+    case 'add_preset': {
+      const id = op.preset.id ?? newId('preset')
+      if (d.presets?.[id]) throw new OpError(`Saved settings "${id}" already exist`)
+      d.presets = { ...d.presets, [id]: parse(PresetSchema, { ...op.preset, id }, 'saved settings') }
+      return
+    }
+    case 'update_preset': {
+      const preset = d.presets?.[op.id]
+      if (!preset) throw new OpError(`Unknown saved settings "${op.id}"`)
+      d.presets = { ...d.presets, [op.id]: parse(PresetSchema, merge(preset, op.patch, ['id']), 'saved settings') }
+      return
+    }
+    case 'remove_preset': {
+      if (!d.presets?.[op.id]) throw new OpError(`Unknown saved settings "${op.id}"`)
+      const { [op.id]: _, ...rest } = d.presets
+      d.presets = rest
       return
     }
     case 'add_asset': {
@@ -624,6 +667,12 @@ export function unknownProperties(doc: Document, ops: Op[]): string[] {
         break
       case 'add_material':
         report(`new material "${op.material.name}"`, check(MaterialSchema, { id: 'new', ...op.material }))
+        break
+      case 'add_preset':
+        report(`new saved settings "${op.preset.name}"`, check(PresetSchema, { id: 'new', ...op.preset }))
+        break
+      case 'update_preset':
+        if (doc.presets?.[op.id]) report(`saved settings "${op.id}"`, check(PresetSchema, patched(doc.presets[op.id], op.patch), Object.keys(op.patch)))
         break
       case 'update_material':
         if (doc.materials?.[op.id]) report(`material "${op.id}"`, check(MaterialSchema, patched(doc.materials[op.id], op.patch), Object.keys(op.patch)))

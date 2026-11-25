@@ -1280,4 +1280,13 @@ export const ja: Record<string, string> = {
   "The selection ({n} objects)": "選択範囲（{n} 個のオブジェクト）",
   "Pulling a corner of the paper changes its scale too, or its size with Alt.": "用紙の角をドラッグすると縮尺も変わります。Alt を押すとサイズが変わります。",
   "On this sheet": "この用紙",
+  "Saved settings": "保存した設定",
+  "Settings saved in this drawing, to draw with": "この図面に保存した、描くための設定",
+  "None saved yet": "まだ保存されていません",
+  "Choose…": "選択…",
+  "Remove these saved settings. What was drawn with them stays as it is": "この保存した設定を削除します。これで描いたものはそのまま残ります",
+  "Save as": "名前を付けて保存",
+  "Name of the settings to save": "保存する設定の名前",
+  "Saved with the drawing, to pick before drawing. What is drawn with them does not stay linked to them: changing it changes nothing else.": "図面と一緒に保存され、描く前に選べます。これで描いたものは設定とつながりません。変更しても他には何も変わりません。",
+  "Set it here before placing it, then click on a wall. The next ones placed are set alike until you change tool.": "置く前にここで設定し、壁をクリックしてください。ツールを変えるまで、次に置くものも同じ設定になります。",
 }

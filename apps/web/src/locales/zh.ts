@@ -1280,4 +1280,13 @@ export const zh: Record<string, string> = {
   "The selection ({n} objects)": "所选内容（{n} 个对象）",
   "Pulling a corner of the paper changes its scale too, or its size with Alt.": "拖动图纸的一角也会改变其比例，按住 Alt 则改变其大小。",
   "On this sheet": "在此图纸上",
+  "Saved settings": "已保存的设置",
+  "Settings saved in this drawing, to draw with": "保存在此图纸中、用于绘制的设置",
+  "None saved yet": "尚未保存任何设置",
+  "Choose…": "选择…",
+  "Remove these saved settings. What was drawn with them stays as it is": "删除这组已保存的设置。用它画出的内容保持不变",
+  "Save as": "另存为",
+  "Name of the settings to save": "要保存的设置的名称",
+  "Saved with the drawing, to pick before drawing. What is drawn with them does not stay linked to them: changing it changes nothing else.": "随图纸一起保存，在绘制前选用。用它画出的内容不会与之关联：修改它不会改变其他任何内容。",
+  "Set it here before placing it, then click on a wall. The next ones placed are set alike until you change tool.": "放置前在此设置，然后点击一面墙。在更换工具之前，接下来放置的都会是相同的设置。",
 }

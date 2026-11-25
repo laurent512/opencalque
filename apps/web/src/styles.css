@@ -1096,7 +1096,8 @@ body > .dv-tab-ghost-drag::after {
 }
 
 .field > input:not([type]),
-.field > .select {
+.field > .select,
+.preset-row > input:not([type]) {
   flex: 1;
   min-width: 48px;
   height: 24px;
@@ -1108,6 +1109,7 @@ body > .dv-tab-ghost-drag::after {
 }
 
 .field > input:not([type]):focus,
+.preset-row > input:not([type]):focus,
 .field > .select:focus-visible,
 .field > .select[aria-expanded='true'] {
   border-color: var(--accent);
@@ -1263,6 +1265,20 @@ body > .dv-tab-ghost-drag::after {
   justify-content: center;
   min-width: 28px;
   padding: 0 6px;
+}
+
+/* Saved settings of a tool: the list, or the name to save under, with its button beside it. */
+.preset-row {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.preset-row > :first-child {
+  flex: 1;
+  min-width: 0;
 }
 
 /* The stack of modifiers of the selected object */

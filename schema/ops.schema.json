@@ -370,6 +370,82 @@
         "properties": {
           "op": {
             "type": "string",
+            "const": "add_preset"
+          },
+          "preset": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "of": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "of"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "op",
+          "preset"
+        ],
+        "additionalProperties": false,
+        "description": "Saves settings for one of the editor's tools under a name, picked there before drawing: for 'wall', its thickness, material and layer; for a parametric kind ('arch.door', 'arch.window'), its props. Nothing drawn refers to them."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "update_preset"
+          },
+          "id": {
+            "type": "string"
+          },
+          "patch": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {},
+            "description": "Shallow merge patch: each key replaces that property, and a null value removes it."
+          }
+        },
+        "required": [
+          "op",
+          "id",
+          "patch"
+        ],
+        "additionalProperties": false,
+        "description": "Changes saved settings. A null in the patch removes that property."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
+            "const": "remove_preset"
+          },
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "op",
+          "id"
+        ],
+        "additionalProperties": false,
+        "description": "Removes saved settings. Nothing drawn changes."
+      },
+      {
+        "type": "object",
+        "properties": {
+          "op": {
+            "type": "string",
             "const": "update_color"
           },
           "id": {
