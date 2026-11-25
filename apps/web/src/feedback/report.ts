@@ -197,6 +197,21 @@ export function issueBody(report: Report, stored: StoredAttachments = {}): strin
 export const issueTitle = (report: Report) => inert(report.title.trim()).slice(0, LIMITS.title + 20)
 
 /**
+ * The issue a report follows up, when its title names one ("#30 Answers", "About #30"). Having no
+ * GitHub account to comment with, people answer a question by sending a new report that names
+ * its issue; the worker then posts it there, so that the exchange reads in one place. Only the
+ * title counts: a description may name other issues in passing.
+ */
+export function followedIssue(title: string): number | null {
+  const found = title.match(/#(\d{1,7})(?!\d)/)
+  const number = found ? Number(found[1]) : 0
+  return number > 0 ? number : null
+}
+
+/** A report posted as a comment on the issue it follows up: its title first, as the issue would have had it. */
+export const commentBody = (report: Report, stored: StoredAttachments = {}) => `**${issueTitle(report)}**\n\n${issueBody(report, stored)}`
+
+/**
  * GitHub's page for a new issue, filled in with the report, for when it cannot be sent from the
  * app: the person then posts it themselves, with their own account. Attachments cannot go in an
  * address, and a long description is cut to keep the address short enough for every browser.

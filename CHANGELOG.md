@@ -4,6 +4,11 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### Improved
+- A report sent from the app (Report a bug or suggest an idea…) whose title names an earlier report by its number, such as "#30 Answers", is added to that report on GitHub, where its answers are, rather than made a report of its own; a closed one is opened again. The link shown once it is sent goes there.
+
 ## 2.2.1 — 2026-11-24
 
 ### Improved

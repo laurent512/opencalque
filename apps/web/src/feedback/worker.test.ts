@@ -52,8 +52,11 @@ function env(more: Partial<Env> = {}): Env {
 
 const post = (body: unknown) => new Request('https://opencalque.com/api/feedback', { method: 'POST', body: typeof body === 'string' ? body : JSON.stringify(body) })
 
-/** Stands in for GitHub's API, recording what was asked of it. */
-function fakeGitHub() {
+/** An issue the stand-in GitHub holds, as its API describes one. */
+type FakeIssue = { number: number; state: 'open' | 'closed'; labels: { name: string }[]; pull_request?: object }
+
+/** Stands in for GitHub's API, recording what was asked of it; `issues` are those already there. */
+function fakeGitHub(issues: FakeIssue[] = []) {
   const calls: { method: string; path: string; body?: any }[] = []
   vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
     const path = new URL(url).pathname
@@ -62,6 +65,11 @@ function fakeGitHub() {
     if (path.endsWith('/installation')) return answer(200, { id: 7 })
     if (path.endsWith('/access_tokens')) return answer(201, { token: 't', expires_at: new Date(Date.now() + 3_600_000).toISOString() })
     if (path.endsWith('/issues')) return answer(201, { html_url: 'https://github.com/o/app/issues/42', number: 42 })
+    const one = path.match(/\/issues\/(\d+)(\/comments)?$/)
+    const issue = one && issues.find((i) => i.number === Number(one[1]))
+    if (issue && one[2] && init.method === 'POST') return answer(201, { html_url: `https://github.com/o/app/issues/${issue.number}#issuecomment-9` })
+    if (issue && init.method === 'GET') return answer(200, issue)
+    if (issue && init.method === 'PATCH') return answer(200, { ...issue, ...JSON.parse(init.body as string) })
     return answer(404, {})
   })
   return calls
@@ -156,6 +164,42 @@ describe('the feedback worker', () => {
     const response = await feedback(post(report), env({ FEEDBACK_LIMIT: { limit: async () => ({ success: false }) } }))
     expect(response.status).toBe(429)
     expect(calls).toEqual([])
+  })
+
+  describe('a report that names an earlier one in its title', () => {
+    const fromApp = [{ name: 'enhancement' }, { name: 'from-app' }]
+    const answers = { ...report, title: '#30 Answers to your questions', description: 'Three or four walls' }
+
+    it('is a comment on that report, which the app links', async () => {
+      const calls = fakeGitHub([{ number: 30, state: 'open', labels: fromApp }])
+      const response = await feedback(post(answers), env())
+      expect(response.status).toBe(201)
+      expect(await response.json()).toEqual({ url: 'https://github.com/o/app/issues/30#issuecomment-9', number: 30 })
+      const comment = calls.find((c) => c.path === '/repos/o/app/issues/30/comments')!
+      expect(comment.body.body.startsWith('**#30 Answers to your questions**\n\nThree or four walls')).toBe(true)
+      expect(comment.body.body).toContain('<summary>Environment</summary>')
+      expect(calls.some((c) => c.path === '/repos/o/app/issues')).toBe(false)
+      expect(calls.some((c) => c.method === 'PATCH')).toBe(false)
+    })
+
+    it('opens that report again when it was closed', async () => {
+      const calls = fakeGitHub([{ number: 30, state: 'closed', labels: fromApp }])
+      await feedback(post({ ...answers, title: 'About #30: still wrong' }), env())
+      expect(calls.find((c) => c.method === 'PATCH')).toEqual({ method: 'PATCH', path: '/repos/o/app/issues/30', body: { state: 'open' } })
+    })
+
+    it('is a new issue when what it names is not a report from the app', async () => {
+      for (const named of [
+        { number: 30, state: 'open', labels: [{ name: 'bug' }] },
+        { number: 30, state: 'open', labels: fromApp, pull_request: {} },
+        { number: 31, state: 'open', labels: fromApp },
+      ] satisfies FakeIssue[]) {
+        const calls = fakeGitHub([named])
+        expect(await (await feedback(post(answers), env())).json()).toEqual({ url: 'https://github.com/o/app/issues/42', number: 42 })
+        expect(calls.find((c) => c.path === '/repos/o/app/issues')!.body.title).toBe('#30 Answers to your questions')
+        expect(calls.some((c) => c.path.endsWith('/comments'))).toBe(false)
+      }
+    })
   })
 
   it('says it is not set up when the App’s secrets are missing', async () => {

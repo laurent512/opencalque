@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkReport, inert, issueBody, LIMITS, newIssueUrl, type Report } from './report'
+import { checkReport, followedIssue, inert, issueBody, LIMITS, newIssueUrl, type Report } from './report'
 import { withoutPaths } from './errors'
 
 const PNG = 'iVBORw0KGgo='
@@ -87,6 +87,19 @@ describe('the issue', () => {
     expect(url.searchParams.get('labels')).toBe('bug')
     expect(url.searchParams.get('body')!.length).toBeLessThan(6000)
     expect(url.searchParams.get('body')).not.toMatch(/Sent from inside|Attached/)
+  })
+})
+
+describe('a report that follows up another', () => {
+  it('names it in its title, as people answering from the app write it', () => {
+    expect(followedIssue('#30 Antworten auf Nachfrage')).toBe(30)
+    expect(followedIssue('Zu #30 Nachtrag')).toBe(30)
+    expect(followedIssue('About issue #1234: still wrong')).toBe(1234)
+    expect(followedIssue('#30, #31')).toBe(30)
+  })
+
+  it('names nothing without a number after #', () => {
+    for (const title of ['Doors in walls', 'Wall #', 'C# export', '#0', 'Room 30']) expect(followedIssue(title)).toBeNull()
   })
 })
 

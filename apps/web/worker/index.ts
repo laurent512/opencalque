@@ -12,8 +12,11 @@
  * app", for setting it up.
  */
 
-import { checkReport, issueBody, issueTitle, LABELS, LIMITS, type Report, type StoredAttachments } from '../src/feedback/report'
-import { github, installationToken } from './github'
+import { checkReport, commentBody, followedIssue, issueBody, issueTitle, LABELS, LIMITS, type Report, type StoredAttachments } from '../src/feedback/report'
+import { github, GitHubError, installationToken } from './github'
+
+/** The label every report from the app carries (`LABELS`), by which a follow-up finds its issue. */
+const FROM_APP = 'from-app'
 
 /** The part of an R2 bucket the worker uses. */
 export interface Bucket {
@@ -88,6 +91,25 @@ async function storeAttachments(env: Env, origin: string, report: Report): Promi
   }
 }
 
+/**
+ * The issue a report names in its title (`followedIssue`), when that is a report sent from the app
+ * too: the report is then a comment on it. Anything else named (an issue someone opened on GitHub,
+ * a pull request, no issue at all) gets a new issue as before, so that a report cannot be pushed
+ * onto any thread of the repository, and one whose issue cannot be read is not lost.
+ */
+async function followedUp(token: string, repository: string, report: Report): Promise<{ number: number; state: string } | null> {
+  const number = followedIssue(report.title)
+  if (!number) return null
+  try {
+    const issue = await github<{ number: number; state: string; pull_request?: unknown; labels: (string | { name?: string })[] }>(token, 'GET', `/repos/${repository}/issues/${number}`)
+    const fromApp = issue.labels.some((label) => (typeof label === 'string' ? label : label.name) === FROM_APP)
+    return fromApp && !issue.pull_request ? { number: issue.number, state: issue.state } : null
+  } catch (error) {
+    if (!(error instanceof GitHubError && error.status === 404)) console.error(error)
+    return null
+  }
+}
+
 export async function feedback(request: Request, env: Env): Promise<Response> {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
   if (request.method !== 'POST') return json(405, { error: 'Use POST' })
@@ -111,6 +133,13 @@ export async function feedback(request: Request, env: Env): Promise<Response> {
   try {
     const token = await installationToken({ id: env.GITHUB_APP_ID, key: env.GITHUB_APP_KEY }, env.FEEDBACK_REPO)
     const stored = await storeAttachments(env, new URL(request.url).origin, report)
+    const followed = await followedUp(token, env.FEEDBACK_REPO, report)
+    if (followed) {
+      const comment = await github<{ html_url: string }>(token, 'POST', `/repos/${env.FEEDBACK_REPO}/issues/${followed.number}/comments`, { body: commentBody(report, stored) })
+      // A closed report is opened again by its follow-up ("it still does not work"), so that it is read.
+      if (followed.state === 'closed') await github(token, 'PATCH', `/repos/${env.FEEDBACK_REPO}/issues/${followed.number}`, { state: 'open' }).catch((error) => console.error(error))
+      return json(201, { url: comment.html_url, number: followed.number })
+    }
     const issue = await github<{ html_url: string; number: number }>(token, 'POST', `/repos/${env.FEEDBACK_REPO}/issues`, {
       title: issueTitle(report),
       body: issueBody(report, stored),
