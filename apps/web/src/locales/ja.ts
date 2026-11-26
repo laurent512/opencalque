@@ -628,6 +628,8 @@ export const ja: Record<string, string> = {
   "Select the walls to dimension first.": "先に寸法を記入する壁を選択してください。",
   "Dimensions": "寸法",
   "Dimension the selected walls": "選択した壁に寸法を記入",
+  "Elevations of the four sides": "四方の立面",
+  "Draw the walls of the building first.": "先に建物の壁を描いてください。",
   "Quantities for a spreadsheet: room areas, walls, doors and windows": "表計算用の数量：部屋の面積、壁、建具",
   "Wall height": "壁の高さ",
   "not given": "未指定",

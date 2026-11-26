@@ -628,6 +628,8 @@ export const tr: Record<string, string> = {
   "Select the walls to dimension first.": "Önce ölçülendirilecek duvarları seçin.",
   "Dimensions": "Ölçüler",
   "Dimension the selected walls": "Seçili duvarları ölçülendir",
+  "Elevations of the four sides": "Dört cephenin görünüşleri",
+  "Draw the walls of the building first.": "Önce binanın duvarlarını çizin.",
   "Quantities for a spreadsheet: room areas, walls, doors and windows": "Bir hesap tablosu için metrajlar: oda alanları, duvarlar, kapılar ve pencereler",
   "Wall height": "Duvar yüksekliği",
   "not given": "verilmedi",

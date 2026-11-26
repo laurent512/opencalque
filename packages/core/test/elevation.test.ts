@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdit, applyOps, createDocument, depthPatch, elevationHeightOps, elevationItemAt, elevationMovePatch, elevationPrimitives, FORMAT_VERSION, NewerFormatError, parseDocument, Registry, serializeDocument, shownInElevations, splitWallOps, transformOps, wallFaceAt, type Document, type NodeOf, type Op, type Primitive } from '../src'
+import { applyEdit, applyOps, createDocument, depthPatch, elevationWall, farSide, sideViews, elevationHeightOps, elevationItemAt, elevationMovePatch, elevationPrimitives, FORMAT_VERSION, NewerFormatError, parseDocument, Registry, serializeDocument, shownInElevations, splitWallOps, transformOps, wallFaceAt, type Document, type NodeOf, type Op, type Primitive } from '../src'
 import { viewNodes, viewOps, type ViewSpec } from './view-nodes'
 
 /*
@@ -425,5 +425,57 @@ describe('elevations look at the face as it is drawn', () => {
       { op: 'update_node', id: 'w', patch: { a: { x: 500, y: 0 } } },
     ])
     expect(line(moved)).toEqual([[600, 1100], [6000, 1100]])
+  })
+})
+
+describe('the four sides of a building', () => {
+  /** A room of 5 by 3 m, its walls 200 thick on their lines, a window in its bottom wall 2 m along, and a wall inside it. */
+  const house = (): Document =>
+    applyOps(
+      createDocument('Plan'),
+      [
+        { type: 'wall', id: 'top', a: { x: 0, y: 0 }, b: { x: 5000, y: 0 }, thickness: 200 },
+        { type: 'wall', id: 'right', a: { x: 5000, y: 0 }, b: { x: 5000, y: 3000 }, thickness: 200 },
+        { type: 'wall', id: 'bottom', a: { x: 0, y: 3000 }, b: { x: 5000, y: 3000 }, thickness: 200 },
+        { type: 'wall', id: 'left', a: { x: 0, y: 0 }, b: { x: 0, y: 3000 }, thickness: 200 },
+        { type: 'wall', id: 'inside', a: { x: 2500, y: 0 }, b: { x: 2500, y: 3000 }, thickness: 100 },
+        { type: 'parametric', id: 'window', kind: 'test.window', props: {}, x: 2000, y: 3000 },
+      ].map((node): Op => ({ op: 'add_node', node: { parent: 'page_1', ...node } as never })),
+    )
+  const withViews = (doc: Document) =>
+    applyOps(
+      doc,
+      sideViews(doc, 'page_1').map(({ side, ...view }): Op => ({ op: 'add_node', node: { type: 'elevation', id: `${side}View`, parent: 'page_1', ...view } as never })),
+    )
+
+  it('are seen from outside, 1 m out from the walls, each across the whole building and drawn beyond its line', () => {
+    const views = sideViews(house(), 'page_1')
+    expect(views).toEqual([
+      { side: 'top', a: { x: 5100, y: -1100 }, b: { x: -100, y: -1100 }, depth: 5200, x: -100, y: -4100 },
+      { side: 'right', a: { x: 6100, y: 3100 }, b: { x: 6100, y: -100 }, depth: 7200, x: 9100, y: 2750 },
+      { side: 'bottom', a: { x: -100, y: 4100 }, b: { x: 5100, y: 4100 }, depth: 5200, x: -100, y: 9600 },
+      { side: 'left', a: { x: -1100, y: -100 }, b: { x: -1100, y: 3100 }, depth: 7200, x: -7300, y: 2750 },
+    ])
+    // Each sees from outside towards the building, and is an elevation of no one face: its far side is past the building.
+    for (const view of views) {
+      const [far] = farSide(view)
+      const middle = { x: 2500, y: 1500 }
+      expect(Math.hypot(far.x - middle.x, far.y - middle.y)).toBeGreaterThan(Math.hypot(view.a.x - middle.x, view.a.y - middle.y) - 1)
+      expect(elevationWall(house(), { ...view, parent: 'page_1' })).toBeNull()
+    }
+    expect(sideViews(house(), 'page_1', [])).toEqual([])
+  })
+
+  it('draw the outside face of their side from corner to corner, with its window, and hide what is behind it', () => {
+    const doc = withViews(house())
+    const drawn = (id: string) => boxes(elevationPrimitives(doc.nodes[id] as NodeOf<'elevation'>, doc, registry))
+    // Below the plan, its floor at y = 9600: the outside face 5.2 m wide and 2.5 m high, and the window 1.2 m high.
+    expect(drawn('bottomView')).toContainEqual([-100, 7100, 5100, 9600])
+    expect(drawn('bottomView')).toContainEqual([2000, 8400, 3000, 9600])
+    // From above, what is behind the top wall (the room's far wall and its window, the wall inside) is drawn first,
+    // and the outside face of the top wall last, filled, over all of it.
+    const top = drawn('topView')
+    expect(top.at(-1)).toEqual([-100, -6600, 5100, -4100])
+    expect(top.every(([x0, y0, x1, y1]) => x0 >= -100 && x1 <= 5100 && y0 >= -6600 && y1 <= -4100)).toBe(true)
   })
 })

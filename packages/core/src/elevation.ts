@@ -1,5 +1,5 @@
 import { isVisible, leavesOf, rootOf } from './document'
-import { applyTransform, dist, norm, perp, sub, unionBounds, type Bounds, type Vec2 } from './geometry'
+import { applyTransform, boundsOfPoints, dist, norm, perp, sub, unionBounds, type Bounds, type Vec2 } from './geometry'
 import type { Op } from './ops'
 import { primitiveBounds, transformPrimitive, type Primitive } from './primitives'
 import type { ParametricKind, Registry } from './registry'
@@ -310,6 +310,42 @@ export function viewOfFace(face: { a: Vec2; b: Vec2 }, depth = ELEVATION_DEPTH):
   const n = viewer(face.a, face.b)
   const out = (p: Vec2) => ({ x: tidy(p.x + n.x * depth), y: tidy(p.y + n.y * depth) })
   return { a: out(face.a), b: out(face.b), depth }
+}
+
+/** How far beyond its line the view of a side of a building is put down: room for the line's arrows and the view's dimensions. */
+const SIDE_GAP = 3000
+
+/** A side of a building, as the plan is seen on the page: its top, right, bottom and left. */
+export type BuildingSide = 'top' | 'right' | 'bottom' | 'left'
+
+/**
+ * The views of the four sides of what `walls` build (left out, every wall of the plan of `parent`
+ * that the plan shows), seen from outside, clockwise from the top of the page: for each, its line
+ * `ELEVATION_DEPTH` out from the box round the walls' outlines, as long as the building is on that
+ * side, seeing across all of it to as far beyond (so that its far side is on no face: it is no
+ * elevation of one wall, but sees every face of that side, set back or not); and where it is drawn
+ * (`x`, `y`, its floor under `a`), beyond its line, on that side of the plan: in line with the plan
+ * above and below it, level with its middle left and right of it, as high as the highest wall.
+ * None when no wall has an outline.
+ */
+export function sideViews(doc: Document, parent: string, walls: Wall[] = wallsIn(doc, parent).filter((wall) => shownOnPlan(doc, wall))): { side: BuildingSide; a: Vec2; b: Vec2; depth: number; x: number; y: number }[] {
+  let box: Bounds | null = null
+  for (const wall of walls) box = unionBounds(box, boundsOfPoints(wallOutline(wall, doc)))
+  if (!box || walls.length === 0) return []
+  const { minX, minY, maxX, maxY } = box
+  const height = Math.max(...walls.map((wall) => heightOf(doc, wall)))
+  const [wide, deep] = [maxX - minX, maxY - minY]
+  const out = ELEVATION_DEPTH
+  const middle = (minY + maxY) / 2 + height / 2
+  const views = [
+    // Seen from above the page, `a` on the right: whoever looks from there has the right of the plan on their left.
+    { side: 'top' as const, a: { x: maxX, y: minY - out }, b: { x: minX, y: minY - out }, depth: deep + 2 * out, x: minX, y: minY - out - SIDE_GAP },
+    { side: 'right' as const, a: { x: maxX + out, y: maxY }, b: { x: maxX + out, y: minY }, depth: wide + 2 * out, x: maxX + out + SIDE_GAP, y: middle },
+    { side: 'bottom' as const, a: { x: minX, y: maxY + out }, b: { x: maxX, y: maxY + out }, depth: deep + 2 * out, x: minX, y: maxY + out + SIDE_GAP + height },
+    { side: 'left' as const, a: { x: minX - out, y: minY }, b: { x: minX - out, y: maxY }, depth: wide + 2 * out, x: minX - out - SIDE_GAP - deep, y: middle },
+  ]
+  const tidied = (p: Vec2) => ({ x: tidy(p.x), y: tidy(p.y) })
+  return views.map((view) => ({ ...view, a: tidied(view.a), b: tidied(view.b), depth: tidy(view.depth), x: tidy(view.x), y: tidy(view.y) }))
 }
 
 /**

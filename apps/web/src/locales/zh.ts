@@ -628,6 +628,8 @@ export const zh: Record<string, string> = {
   "Select the walls to dimension first.": "请先选择要标注的墙。",
   "Dimensions": "尺寸标注",
   "Dimension the selected walls": "标注所选的墙",
+  "Elevations of the four sides": "四个方向的立面",
+  "Draw the walls of the building first.": "请先画出建筑的墙。",
   "Quantities for a spreadsheet: room areas, walls, doors and windows": "导出工程量到电子表格：房间面积、墙、门窗",
   "Wall height": "墙高",
   "not given": "未指定",

@@ -628,6 +628,8 @@ export const fr: Record<string, string> = {
   "Select the walls to dimension first.": "Sélectionnez d’abord les murs à coter.",
   "Dimensions": "Cotes",
   "Dimension the selected walls": "Coter les murs sélectionnés",
+  "Elevations of the four sides": "Élévations des quatre côtés",
+  "Draw the walls of the building first.": "Dessinez d’abord les murs du bâtiment.",
   "Quantities for a spreadsheet: room areas, walls, doors and windows": "Quantités pour un tableur : surfaces des pièces, murs, portes et fenêtres",
   "Wall height": "Hauteur des murs",
   "not given": "non renseignée",

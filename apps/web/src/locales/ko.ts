@@ -628,6 +628,8 @@ export const ko: Record<string, string> = {
   "Select the walls to dimension first.": "치수를 기입할 벽을 먼저 선택하세요.",
   "Dimensions": "치수",
   "Dimension the selected walls": "선택한 벽에 치수 기입",
+  "Elevations of the four sides": "네 면의 입면",
+  "Draw the walls of the building first.": "먼저 건물의 벽을 그리세요.",
   "Quantities for a spreadsheet: room areas, walls, doors and windows": "스프레드시트용 물량: 방 면적, 벽, 문과 창",
   "Wall height": "벽 높이",
   "not given": "지정 안 됨",

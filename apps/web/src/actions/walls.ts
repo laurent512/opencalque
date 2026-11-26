@@ -1,13 +1,14 @@
-import { applyOps, dimensionChainOps, extendWallOps, flipWallOps, newId, splitWallOps, trimWallOps, wallContains, wallEndsAt, wallMiddle, type Node, type Op } from '@opencalque/core'
+import { applyOps, dimensionChainOps, extendWallOps, flipWallOps, newId, sideViews, splitWallOps, trimWallOps, wallContains, wallEndsAt, wallMiddle, wallsIn, type Node, type NodeInput, type Op } from '@opencalque/core'
 import { drawing } from '../canvas/drawing'
 import { flipPatch } from '../canvas/flips'
 import { registry } from '../extensions'
 import { t } from '../i18n'
-import { apply, selectCorner, useStore } from '../store'
+import { apply, layerHere, select, selectCorner, useStore } from '../store'
+import { unit } from '../units'
 import { toast } from '../windows'
 import { dimensionToolLook } from './edit'
 
-/* What is done to the selected walls: dimension them, split one, extend or trim them, turn them round, flip them over. */
+/* What is done to the selected walls: dimension them, split one, extend or trim them, turn them round, flip them over, see the building they make from its four sides. */
 
 const get = useStore.getState
 
@@ -18,6 +19,31 @@ export function dimensionWalls(): void {
   if (walls.length === 0) return toast(t('Select the walls to dimension first.'))
   apply(dimensionChainOps(doc, walls, registry, dimensionToolLook(), t('Dimensions')))
 }
+
+/**
+ * The elevations of the four sides of the building, seen from outside (`sideViews`): of the
+ * selected walls, else of every wall of the plan. Each comes as one the Elevation or section tool
+ * makes, named after the views already there and with its automatic dimensions; they are put
+ * down round the plan, in one step, and selected, to be moved or set up.
+ */
+export function elevateSides(): void {
+  const { doc, scope, selection } = get()
+  const chosen = selection.flatMap((id) => (doc.nodes[id]?.type === 'wall' ? [doc.nodes[id] as Extract<Node, { type: 'wall' }>] : []))
+  const views = sideViews(doc, scope, chosen.length > 0 ? chosen : undefined)
+  if (views.length === 0) return toast(t('Draw the walls of the building first.'))
+  const before = Object.values(doc.nodes).filter((node) => node.type === 'elevation').length
+  const ids = views.map(() => newId())
+  apply(
+    views.flatMap(({ side: _, ...line }, i): Op[] => [
+      { op: 'add_node', node: { id: ids[i], type: 'elevation', parent: scope, ...layerHere(), name: t('Elevation {n}', { n: String(before + i + 1) }), ...line } as NodeInput },
+      { op: 'add_node', node: { id: `${ids[i]}_dimensions`, type: 'autodimensions', parent: ids[i], unit: unit(), ...layerHere() } as NodeInput },
+    ]),
+  )
+  select(ids)
+}
+
+/** Whether the plan being edited has walls to see the sides of. */
+export const canElevateSides = () => wallsIn(get().doc, get().scope).length > 0
 
 /** The walls an extend or a trim is about, and which of their ends: the selected wall end, or else every free end of the selected walls. */
 function wallsToFit(): { walls: Extract<Node, { type: 'wall' }>[]; end?: 'a' | 'b' } {
