@@ -169,6 +169,7 @@ Not ranked within an area.
 
 **Drawing and editing**
 - Rich text; angular and radius dimensions; dimensions that follow what they measure.
+- Dimensions written as DIN 1356-1 has them, in metres from 1 m and centimetres below, the millimetres raised (2,01⁵, 36⁵), as a unit of dimension styles; a chain of dimensions made by drawing a line across walls, through every face and opening it crosses (asked for in #38).
 - ~~Extend and fillet for plain lines~~ (done); fillet for polylines and walls; extending to circles and arcs; boolean operations on shapes.
 - Construction lines: endless lines through two points to draw against, never printed (asked for in #17).
 - Smart guides while drawing and resizing; snapping to tangents and the quarter points of circles.
@@ -176,7 +177,7 @@ Not ranked within an area.
 - ~~Lock aspect ratio; non-uniform scaling~~ (done for rectangles and ellipses; a selection of several is stretched by a size typed, scaled in proportion by its corners); ~~numeric move and copy~~ (done: the Move tool takes a length and an angle, and Ctrl leaves copies).
 
 **Architecture**
-- Columns, beams, slabs, roofs in plan; curtain walls.
+- Columns, beams, slabs, roofs in plan (roofs seen in elevations too, made from the walls or drawn, asked for in #39); curtain walls.
 - Curved walls drawn directly with the wall tool, extended and trimmed, and dimensioned along their curve.
 - ~~Schedules of doors, windows and rooms placed on a sheet~~ (done, with floors, walls and materials); a table of each wall or each door one by one, with a mark drawn beside each on the plan.
 - Walls of materials: a command that lays a lining against a face of the selected wall; walls laid against one another moved together.
