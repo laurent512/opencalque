@@ -1933,6 +1933,54 @@ button.crumb.ahead:hover {
   font-weight: 600;
 }
 
+/* A new answer to a report sent from here, in the bottom right corner until read or dismissed (`AnswerNotice`). */
+.answer-notice {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: min(360px, calc(100vw - 32px));
+  padding: 10px 8px 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 18%);
+  animation: answer-notice-in 0.2s ease-out;
+}
+
+@keyframes answer-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.answer-notice-icon {
+  flex: none;
+  color: var(--accent);
+}
+
+.answer-notice-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.answer-notice-text span {
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.answer-notice .pill {
+  flex: none;
+}
+
 .toast {
   bottom: 72px;
   background: var(--note);

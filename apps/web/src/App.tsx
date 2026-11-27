@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { About } from './About'
 import { Feedback } from './Feedback'
-import { checkAnswers } from './feedback/mine'
+import { watchAnswers } from './feedback/mine'
+import { AnswerNotice } from './feedback/AnswerNotice'
 import { DrawingSettingsWindow } from './DrawingSettingsWindow'
 import { startUp } from './actions'
 import { startAutosave } from './autosave'
@@ -97,7 +98,7 @@ export function App() {
   }, [])
   useEffect(startAutosave, [])
   useEffect(startRecovery, [])
-  useEffect(() => void checkAnswers(), [])
+  useEffect(watchAnswers, [])
   useEffect(watchScrubKey, [])
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)
@@ -123,6 +124,7 @@ export function App() {
       <DrawingSettingsWindow />
       <About />
       <Feedback />
+      <AnswerNotice />
       <QuestionWindow />
       <DropTarget />
     </div>

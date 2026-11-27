@@ -1,6 +1,4 @@
 import { create } from 'zustand'
-import { t } from '../i18n'
-import { toast } from '../windows'
 import { SAMPLE_REPORTS } from './samples'
 import { readThread } from './send'
 import type { Thread } from './thread'
@@ -33,17 +31,19 @@ interface Mine {
   checked: number
   /** Development only: reports made up, listed while none was sent from here (`samples.ts`); never stored. */
   samples: MyReport[]
+  /** Reports with a new answer the corner notice tells of (`AnswerNotice`), until it is read or dismissed; never stored. */
+  announced: number[]
 }
 
 const STORAGE_KEY = 'opencalque.reports'
 /** Reports kept; older ones are forgotten. */
 const KEPT = 50
-/** Reports whose answers are looked for at start, newest first. */
+/** Reports whose answers are looked for, newest first. */
 const CHECKED = 10
-/** How long after looking for answers the app looks again at start. */
-const CHECK_EVERY = 6 * 3_600_000
+/** How often the app looks for answers, at start and while it is open. */
+const CHECK_EVERY = 3_600_000
 
-function load(): Omit<Mine, 'samples'> {
+function load(): Pick<Mine, 'reports' | 'checked'> {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
     const reports = Array.isArray(stored.reports) ? stored.reports.filter((r: MyReport) => r && Number.isInteger(r.number) && typeof r.key === 'string' && typeof r.url === 'string') : []
@@ -53,7 +53,7 @@ function load(): Omit<Mine, 'samples'> {
   }
 }
 
-export const useMyReports = create<Mine>(() => ({ ...load(), samples: import.meta.env.DEV ? SAMPLE_REPORTS : [] }))
+export const useMyReports = create<Mine>(() => ({ ...load(), samples: import.meta.env.DEV ? SAMPLE_REPORTS : [], announced: [] }))
 
 /** The reports the Feedback window lists: those sent from here, or the examples in development while there are none. */
 export const listed = (mine: Mine) => (mine.reports.length > 0 ? mine.reports : mine.samples)
@@ -81,26 +81,42 @@ export const unread = (report: MyReport) => report.answers > report.seen
 function update(number: number, thread: Thread, seen: boolean): void {
   const answers = answersIn(thread)
   const now = (r: MyReport) => (r.number === number ? { ...r, title: thread.title, answers, seen: seen ? answers : r.seen, closed: thread.state === 'closed' } : r)
-  useMyReports.setState((mine) => ({ reports: mine.reports.map(now), samples: mine.samples.map(now) }))
+  useMyReports.setState((mine) => ({
+    reports: mine.reports.map(now),
+    samples: mine.samples.map(now),
+    ...(seen && { announced: mine.announced.filter((n) => n !== number) }),
+  }))
 }
 
 /** The person has read the thread: its answers are no longer new. */
 export const read = (number: number, thread: Thread) => update(number, thread, true)
 
+/** The corner notice is let go: the reports keep their mark in the Feedback window's list. */
+export const dismissAnswers = () => useMyReports.setState({ announced: [] })
+
 /**
- * Looks for new answers to the reports sent from here, at most every few hours, and says so when
- * there are. Nothing is said when the server cannot be reached.
+ * Looks for new answers to the reports sent from here, at most every hour, and has the corner
+ * notice tell of those it finds. Nothing is said when the server cannot be reached.
  */
 export async function checkAnswers(now = Date.now()): Promise<void> {
-  const { reports, checked } = useMyReports.getState()
+  const { reports, checked, samples } = useMyReports.getState()
+  // In development, before any report was sent, the examples' unread answers are told of, to see the notice.
+  if (reports.length === 0 && samples.some(unread)) return useMyReports.setState({ announced: samples.filter(unread).map((r) => r.number) })
   if (reports.length === 0 || now - checked < CHECK_EVERY) return
   useMyReports.setState({ checked: now })
-  const answered: MyReport[] = []
+  const answered: number[] = []
   for (const report of reports.slice(0, CHECKED)) {
     const thread = await readThread(report.number, report.key)
     if ('status' in thread) continue
-    if (answersIn(thread) > report.answers) answered.push(report)
+    if (answersIn(thread) > report.answers) answered.push(report.number)
     update(report.number, thread, false)
   }
-  if (answered.length > 0) toast(t('There is a new answer to your report “{title}”: see Feedback, in the Preferences menu.', { title: answered[0].title }))
+  if (answered.length > 0) useMyReports.setState((mine) => ({ announced: [...new Set([...mine.announced, ...answered])] }))
+}
+
+/** Looks for answers now, then every hour while the app is open; returns what stops it. */
+export function watchAnswers(): () => void {
+  void checkAnswers()
+  const timer = setInterval(() => void checkAnswers(), CHECK_EVERY)
+  return () => clearInterval(timer)
 }
