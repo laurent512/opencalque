@@ -985,7 +985,7 @@ test('has the furniture and the electrical symbols from the start, which are not
   await page.keyboard.press('Escape')
   // Preferences › Extensions lists only what was added: nothing here.
   await page.keyboard.press('Control+k')
-  await page.keyboard.type('Extensions…')
+  await page.keyboard.type('Extensions')
   await page.keyboard.press('Enter')
   await expect(page.locator('.prefs-extensions')).toContainText('No extension added')
   await expect(page.locator('.prefs-extensions .warehouse-row')).toHaveCount(0)

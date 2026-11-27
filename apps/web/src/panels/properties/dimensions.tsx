@@ -24,7 +24,7 @@ function DimensionStyleChoice(props: { value: string; label: string; onChange: (
           value={props.value}
           placeholder={t('Mixed')}
           onChange={props.onChange}
-          options={[{ value: '', label: t('No style') }, ...Object.values(styles ?? {}).map((style) => ({ value: style.id, label: style.name })), { value: 'new', label: t('New style from this dimension…') }]}
+          options={[{ value: '', label: t('No style') }, ...Object.values(styles ?? {}).map((style) => ({ value: style.id, label: style.name })), { value: 'new', label: t('New style from this dimension') }]}
         />
       </label>
       {props.value !== '' && props.value !== 'mixed' && <p className="hint">{t('It takes what its style defines, shown with a link. A value set here instead is an exception, and the arrow beside it gives it back to the style.')}</p>}

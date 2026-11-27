@@ -351,7 +351,7 @@ function Components({ libraries }: { libraries: Library[] }) {
             <details className="warehouse-web">
               <summary className="warehouse-section">
                 <Globe size={13} />
-                <span className="warehouse-section-name">{t('From the web…')}</span>
+                <span className="warehouse-section-name">{t('From the web')}</span>
               </summary>
               <CatalogAddress bare />
             </details>

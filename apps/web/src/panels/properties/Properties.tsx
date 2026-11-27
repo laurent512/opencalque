@@ -64,7 +64,7 @@ function Controls({ node }: { node: Node }) {
           ))
         )}
         <button className="text-button" onClick={() => executeById('tool.connect')}>
-          {gives ? t('Connect lights…') : t('Connect a switch…')}
+          {gives ? t('Connect lights') : t('Connect a switch')}
         </button>
       </div>
     </div>
@@ -192,7 +192,7 @@ function Selection({ nodes }: { nodes: Node[] }) {
     single && node.type === 'image' && (
       <Fragment key="scale">
         <button className="text-button" onClick={() => executeById('tool.calibrate')}>
-          {t('Set its scale again…')}
+          {t('Set its scale again')}
         </button>
         <p className="hint">{t('Click two points on the picture whose real distance you know, then type that distance. The picture is resized to match.')}</p>
       </Fragment>

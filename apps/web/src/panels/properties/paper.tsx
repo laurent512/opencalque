@@ -163,12 +163,12 @@ export function EverySheet({ node, update }: { node: Extract<Node, { type: 'pape
         <YesNo value={!node.plain} label={t('Show it here')} onChange={(on) => update(() => ({ plain: on ? null : true }))} />
       </div>
       <button className="text-button" title={about} onClick={() => openComponent(common.id)}>
-        {t('Edit what is on every sheet…')}
+        {t('Edit what is on every sheet')}
       </button>
     </>
   ) : (
     <button className="text-button" title={about} onClick={start}>
-      {t('Draw something for every sheet…')}
+      {t('Draw something for every sheet')}
     </button>
   )
 }

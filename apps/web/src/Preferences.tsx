@@ -722,7 +722,7 @@ export function Preferences() {
   const open = useWindows((s) => s.preferencesOpen)
   const asked = useWindows((s) => s.preferencesPage)
   const [current, setCurrent] = useState(PAGES[0][0])
-  // A command that opens Preferences on a given page (Extensions…) says which, once.
+  // A command that opens Preferences on a given page (Extensions) says which, once.
   useEffect(() => {
     if (!asked) return
     setCurrent(asked)

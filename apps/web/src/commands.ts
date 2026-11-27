@@ -179,7 +179,7 @@ const STATIC: Command[] = [
   { id: 'file.saveAs', title: msg('Save as…'), category: 'File', keys: ['Mod+Shift+S'], global: true, interrupts: true, run: () => saveDocument(true) },
   { id: 'file.autosave', title: msg('Save automatically'), category: 'File', checked: () => prefs().autosave, run: () => setPrefs({ autosave: !prefs().autosave }) },
   { id: 'file.import', title: msg('Import…'), category: 'File', keys: ['Mod+I'], global: true, interrupts: true, keywords: 'pdf picture image dxf library components extension plan', run: importFile },
-  { id: 'file.drawingSettings', title: msg('Drawing settings…'), category: 'File', global: true, interrupts: true, keywords: 'units decimal comma square feet metres project client address author', run: () => useWindows.setState({ drawingSettingsOpen: true }) },
+  { id: 'file.drawingSettings', title: msg('Drawing settings'), category: 'File', global: true, interrupts: true, keywords: 'units decimal comma square feet metres project client address author', run: () => useWindows.setState({ drawingSettingsOpen: true }) },
   { id: 'file.export', title: msg('Export…'), category: 'File', keys: ['Mod+P', 'Mod+E'], global: true, interrupts: true, keywords: 'pdf svg dxf print', run: () => useWindows.setState({ exportOpen: true, exportSelection: false }) },
   // From the right-click menu: what is selected, papers as their sheets in a PDF, anything else alone in a picture.
   { id: 'file.exportSelection', title: msg('Export the selection…'), category: 'File', when: () => get().selection.length > 0, run: () => useWindows.setState({ exportOpen: true, exportSelection: true }) },
@@ -321,10 +321,10 @@ const STATIC: Command[] = [
   panel('properties'),
   panel('assistant', ['Mod+J']),
   { id: 'view.resetLayout', title: msg('Reset the panel layout'), category: 'View', run: resetLayout },
-  { id: 'help.welcome', title: msg('Welcome window…'), category: 'General', global: true, run: () => useWindows.setState({ welcomeOpen: true }) },
-  { id: 'help.feedback', title: msg('Feedback…'), category: 'General', keywords: 'report bug idea issue problem feature request answer reply', global: true, run: () => useWindows.setState({ feedbackOpen: true }) },
-  { id: 'help.about', title: msg('About OpenCalque and what is new…'), category: 'General', global: true, run: () => useWindows.setState({ aboutOpen: true }) },
-  { id: 'prefs.open', title: msg('Preferences…'), category: 'General', keys: ['Mod+,'], global: true, run: () => useWindows.setState({ preferencesOpen: true }) },
+  { id: 'help.welcome', title: msg('Welcome window'), category: 'General', global: true, run: () => useWindows.setState({ welcomeOpen: true }) },
+  { id: 'help.feedback', title: msg('Feedback'), category: 'General', keywords: 'report bug idea issue problem feature request answer reply', global: true, run: () => useWindows.setState({ feedbackOpen: true }) },
+  { id: 'help.about', title: msg('About OpenCalque and what is new'), category: 'General', global: true, run: () => useWindows.setState({ aboutOpen: true }) },
+  { id: 'prefs.open', title: msg('Preferences'), category: 'General', keys: ['Mod+,'], global: true, run: () => useWindows.setState({ preferencesOpen: true }) },
   { id: 'view.zoomOut', title: msg('Zoom out'), category: 'View', keys: ['-', 'Mod+-'], run: () => zoomBy(0.8) },
 
   tool('select', msg('Select'), 'V'),
@@ -384,9 +384,9 @@ const STATIC: Command[] = [
   tool('connect', msg('Connect switches to lights'), 'Shift+C'),
   { id: 'tool.calibrate', title: msg('Set the scale of an imported plan'), category: 'Tools', run: () => setTool('calibrate') },
 
-  { id: 'warehouse.components', title: msg('Object library…'), category: 'Insert', global: true, run: () => useWindows.setState({ warehouse: 'components' }) },
-  { id: 'prefs.toolbar', title: msg('Customise the toolbar…'), category: 'General', global: true, run: () => useWindows.setState({ preferencesOpen: true, preferencesPage: 'toolbar' }) },
-  { id: 'warehouse.extensions', title: msg('Extensions…'), category: 'General', global: true, run: () => useWindows.setState({ preferencesOpen: true, preferencesPage: 'extensions' }) },
+  { id: 'warehouse.components', title: msg('Object library'), category: 'Insert', global: true, run: () => useWindows.setState({ warehouse: 'components' }) },
+  { id: 'prefs.toolbar', title: msg('Customise the toolbar'), category: 'General', global: true, run: () => useWindows.setState({ preferencesOpen: true, preferencesPage: 'toolbar' }) },
+  { id: 'warehouse.extensions', title: msg('Extensions'), category: 'General', global: true, run: () => useWindows.setState({ preferencesOpen: true, preferencesPage: 'extensions' }) },
   { id: 'page.add', title: msg('Add page'), category: 'Pages', run: addPage },
   { id: 'layer.add', title: msg('Add layer'), category: 'Layers', run: () => apply([{ op: 'add_layer', layer: { name: t('Layer {n}', { n: Object.keys(get().doc.layers).length + 1 }) } }]) },
 ]
@@ -394,7 +394,7 @@ const STATIC: Command[] = [
 const update = useUpdate.getState
 
 const UPDATES: Command[] = [
-  { id: 'app.checkUpdate', title: msg('Check for a new version…'), category: 'General', keywords: 'update upgrade', run: checkForUpdate },
+  { id: 'app.checkUpdate', title: msg('Check for a new version'), category: 'General', keywords: 'update upgrade', run: checkForUpdate },
   { id: 'app.installUpdate', title: msg('Restart to install the new version'), category: 'General', keywords: 'update upgrade', when: () => update().status === 'ready', run: () => platform.installUpdate?.() },
   {
     id: 'app.downloadUpdate',

@@ -36,6 +36,7 @@ The owner works at the computer tests run on: no test may put a window in front 
 - Every text the user sees goes through `t()` from `apps/web/src/i18n.ts` (or `msg()` in tables built at import), written in English, and gets an entry in each file under `apps/web/src/locales/`. `pnpm test` fails if a language is missing one.
 - To show or toggle a panel, import from `apps/web/src/dock.ts`, never from `Layout.tsx`.
 - Every list of choices is a `Select` (`apps/web/src/Select.tsx`), never a `<select>` of the system's (the owner's choice).
+- A menu item or a button ends with "…" only when it asks for something before it acts: a file, a format, a destination (Open…, Export…). One that opens a window, or acts at once, has none (the owner's choice). Hints in empty fields and texts of work in progress keep theirs.
 - Anything only the desktop app can do goes through an optional capability on `Platform` and is checked for (`platform.claudeCli`), so the web build keeps working.
 - Every user-triggerable action is a command in `apps/web/src/commands.ts`. Do not add keyboard handling elsewhere (the canvas keeps only Escape, Enter and Space).
 - What a tool does on the canvas is a gesture in `apps/web/src/canvas/gestures/` (`PRESSES`, `MOVES`, `RELEASES` in `index.ts`); `CanvasView.tsx` only dispatches. The windows over the editor and the toast are `useWindows` (`windows.ts`), the extensions in use `registry` and `useExtensions` (`extensions.ts`); neither belongs in the store.
