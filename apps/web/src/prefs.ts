@@ -131,7 +131,7 @@ const DEFAULTS: Prefs = {
   foldedSections: [],
   keepProportions: false,
   exportMarks: false,
-  perspective: { look: 'lines', preset: '', style: '', light: '' },
+  perspective: { look: 'clay', preset: '', style: '', light: '' },
   scroll: 'auto',
   toolbar: TOOLBAR_DEFAULT,
   savedToolbars: [],

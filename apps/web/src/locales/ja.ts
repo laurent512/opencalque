@@ -1147,7 +1147,6 @@ export const ja: Record<string, string> = {
   "Thank you. Your report is on GitHub, where the answers will be written:": "ありがとうございます。報告は GitHub に投稿されました。回答はこちらに書かれます：",
   "New answer to your report": "報告に新しい回答があります",
   "New answers to {count} of your reports": "{count} 件の報告に新しい回答があります",
-  "Read": "読む",
   "Dismiss": "閉じる",
   "The reports you send from here will be listed here, with the answers to them.": "ここから送った報告は、回答とともにここに表示されます。",
   "Feedback": "フィードバック",

@@ -1977,8 +1977,14 @@ button.crumb.ahead:hover {
   white-space: nowrap;
 }
 
-.answer-notice .pill {
-  flex: none;
+.answer-notice {
+  cursor: pointer;
+}
+
+.answer-notice:hover,
+.answer-notice:focus-visible {
+  border-color: var(--accent);
+  outline: none;
 }
 
 .toast {

@@ -1147,7 +1147,6 @@ export const tr: Record<string, string> = {
   "Thank you. Your report is on GitHub, where the answers will be written:": "Teşekkürler. Bildiriminiz GitHub’da; yanıtlar orada yazılacak:",
   "New answer to your report": "Bildiriminize yeni yanıt",
   "New answers to {count} of your reports": "{count} bildiriminize yeni yanıtlar",
-  "Read": "Oku",
   "Dismiss": "Kapat",
   "The reports you send from here will be listed here, with the answers to them.": "Buradan gönderdiğiniz bildirimler, yanıtlarıyla birlikte burada listelenecek.",
   "Feedback": "Geri bildirim",

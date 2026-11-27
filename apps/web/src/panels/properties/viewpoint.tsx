@@ -18,9 +18,10 @@ import { LIGHTS, lightWords, STYLES, styleWords } from '../../perspective/wishes
  * model with the picture. The view itself is on the plan, in a frame of its own (`ViewFrames`).
  */
 
+/** Shaded first, and the default (`prefs.ts`): what a viewpoint is set up to show at first glance; lines next. */
 const LOOKS: { value: Look; label: string }[] = [
-  { value: 'lines', label: msg('Lines') },
   { value: 'clay', label: msg('Shaded') },
+  { value: 'lines', label: msg('Lines') },
   { value: 'depth', label: msg('Depth') },
 ]
 /** The long side of a picture saved or copied, in pixels; drawn twice as large, then made smaller, for smooth lines. */

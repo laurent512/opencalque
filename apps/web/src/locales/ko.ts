@@ -1147,7 +1147,6 @@ export const ko: Record<string, string> = {
   "Thank you. Your report is on GitHub, where the answers will be written:": "감사합니다. 신고가 GitHub에 올라갔으며, 답변도 그곳에 작성됩니다:",
   "New answer to your report": "신고에 새 답변이 있습니다",
   "New answers to {count} of your reports": "신고 {count}개에 새 답변이 있습니다",
-  "Read": "읽기",
   "Dismiss": "닫기",
   "The reports you send from here will be listed here, with the answers to them.": "여기서 보낸 신고가 답변과 함께 여기에 표시됩니다.",
   "Feedback": "피드백",

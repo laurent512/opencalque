@@ -1147,7 +1147,6 @@ export const es: Record<string, string> = {
   "Thank you. Your report is on GitHub, where the answers will be written:": "Gracias. Tu informe está en GitHub, donde se escribirán las respuestas:",
   "New answer to your report": "Respuesta nueva a tu informe",
   "New answers to {count} of your reports": "Respuestas nuevas a {count} de tus informes",
-  "Read": "Leer",
   "Dismiss": "Descartar",
   "The reports you send from here will be listed here, with the answers to them.": "Los informes que envíes desde aquí aparecerán aquí, con sus respuestas.",
   "Feedback": "Comentarios",

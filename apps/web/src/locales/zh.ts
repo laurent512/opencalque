@@ -1147,7 +1147,6 @@ export const zh: Record<string, string> = {
   "Thank you. Your report is on GitHub, where the answers will be written:": "谢谢。您的报告已发布到 GitHub，回复也会写在那里：",
   "New answer to your report": "您的报告有新回复",
   "New answers to {count} of your reports": "您的 {count} 份报告有新回复",
-  "Read": "阅读",
   "Dismiss": "忽略",
   "The reports you send from here will be listed here, with the answers to them.": "从这里发送的报告会连同回复列在这里。",
   "Feedback": "反馈",
