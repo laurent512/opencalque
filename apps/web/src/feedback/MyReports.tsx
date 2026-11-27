@@ -1,12 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react'
-import { Plus } from 'lucide-react'
+import { useContext, useEffect, useRef, useState, type ReactNode } from 'react'
+import { Play, Plus } from 'lucide-react'
 import { language, t } from '../i18n'
 import { listed, read, unread, useMyReports, type MyReport } from './mine'
-import { readThread, sendReply } from './send'
+import { CaptureButtons, MediaTiles, ShowContext, type Media } from './Attachments'
+import { LIMITS } from './report'
+import { isReportFile, loadReportFile, readThread, sendReply } from './send'
 import { blocks, inlines, REPLY_LIMIT, type Block, type Inline, type Speaker, type Thread } from './thread'
-
-/** What is being written to each report, kept while the app is open, as the new report's text is. */
-const drafts = new Map<number, string>()
 
 const when = (at: string | number) => {
   const date = new Date(at)
@@ -33,12 +32,12 @@ export function ReportList({ selected, onSelect }: { selected: number | null; on
       <ul className="feedback-reports">
         {reports.map((r) => (
           <li key={r.number}>
-            <button className={`feedback-pick${selected === r.number ? ' active' : ''}`} aria-current={selected === r.number} onClick={() => onSelect(r.number)}>
+            <button className={`feedback-pick${selected === r.number ? ' active' : ''}`} aria-current={selected === r.number} title={r.title} onClick={() => onSelect(r.number)}>
               <span className="feedback-report-title">{r.title}</span>
               <span className="feedback-report-meta">
                 #{r.number} · {when(r.sent)}
               </span>
-              {unread(r) && <span className="feedback-new">{t('New answer')}</span>}
+              {unread(r) && <span className="feedback-new" role="img" aria-label={t('New answer')} />}
             </button>
           </li>
         ))}
@@ -48,15 +47,28 @@ export function ReportList({ selected, onSelect }: { selected: number | null; on
 }
 
 /**
- * A report sent from here: what was written on it, the answers, and a reply, posted under the
- * report on GitHub by the site's worker with the report's key.
+ * A report sent from here: what was written on it and the answers, scrolled above, and the reply
+ * below, kept in sight, with the pictures and recordings attached to it. The reply is posted under
+ * the report on GitHub by the site's worker with the report's key. What is written and attached is
+ * kept by the window (`Feedback.tsx`), so that closing it loses nothing.
  */
-export function ReportThread({ report }: { report: MyReport }) {
+export function ReportThread(props: {
+  report: MyReport
+  text: string
+  onText: (text: string) => void
+  media: Media
+  onMedia: (media: Media) => void
+  onCapture: (recording: boolean) => void
+  onSent: () => void
+  captureError: string | null
+}) {
+  const { report, text, onText, media, onMedia, onCapture, onSent, captureError } = props
+  const show = useContext(ShowContext)
   const [thread, setThread] = useState<Thread | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
-  const [text, setText] = useState(drafts.get(report.number) ?? '')
   const [sending, setSending] = useState(false)
   const [notSent, setNotSent] = useState<string | null>(null)
+  const log = useRef<HTMLDivElement>(null)
 
   const load = async () => {
     const got = await readThread(report.number, report.key)
@@ -68,18 +80,42 @@ export function ReportThread({ report }: { report: MyReport }) {
   useEffect(() => {
     void load()
   }, [report.number])
+  // The last messages are the ones to read: the thread opens at its end and stays there as it grows
+  // (messages come, pictures and recordings load), unless the person scrolled up to read.
+  const atEnd = useRef(true)
+  useEffect(() => {
+    const area = log.current
+    if (!area) return
+    const toEnd = () => {
+      if (atEnd.current) area.scrollTop = area.scrollHeight
+    }
+    const scrolled = () => {
+      atEnd.current = area.scrollTop + area.clientHeight >= area.scrollHeight - 8
+    }
+    const grown = new ResizeObserver(toEnd)
+    for (const child of area.children) grown.observe(child)
+    area.addEventListener('scroll', scrolled, { passive: true })
+    toEnd()
+    return () => {
+      grown.disconnect()
+      area.removeEventListener('scroll', scrolled)
+    }
+  }, [thread])
 
-  const write = (value: string) => {
-    setText(value)
-    drafts.set(report.number, value)
-  }
+  const empty = !text.trim() && media.pictures.length === 0 && media.clips.length === 0
   const send = async () => {
+    const sending = {
+      ...(media.pictures.length > 0 && { pictures: media.pictures.map((p) => p.base64) }),
+      ...(media.clips.length > 0 && { recordings: media.clips.map((c) => c.recording) }),
+    }
+    if (JSON.stringify(sending).length + text.length > LIMITS.body) return setNotSent(t('What is attached is too large to send together: take something out.'))
     setSending(true)
     setNotSent(null)
-    const sent = await sendReply(report.number, report.key, text)
+    const sent = await sendReply(report.number, report.key, text, sending)
     setSending(false)
     if ('status' in sent) return setNotSent(t('Your reply could not be sent: {reason}', { reason: reason(sent) }))
-    write('')
+    onSent()
+    atEnd.current = true
     await load()
   }
 
@@ -91,39 +127,40 @@ export function ReportThread({ report }: { report: MyReport }) {
           {t('See it on GitHub')}
         </a>
       </div>
-      {failed && (
-        <p className="feedback-failed" role="alert">
-          {failed}
-        </p>
-      )}
-      {!thread && !failed && <p className="hint">{t('Loading…')}</p>}
-      {thread?.entries.map((entry, i) => (
-        <article key={i} className={`feedback-entry ${entry.from}`}>
-          <header>
-            <strong>{who(entry.from, entry.name)}</strong> <span>{when(entry.at)}</span>
-          </header>
-          <Markdown text={entry.text} />
-        </article>
-      ))}
+      <div className="feedback-log" ref={log}>
+        {failed && (
+          <p className="feedback-failed" role="alert">
+            {failed}
+          </p>
+        )}
+        {!thread && !failed && <p className="hint">{t('Loading…')}</p>}
+        {thread?.entries.map((entry, i) => (
+          <article key={i} className={`feedback-entry ${entry.from}`}>
+            <header>
+              <strong>{who(entry.from, entry.name)}</strong> <span>{when(entry.at)}</span>
+            </header>
+            <Markdown text={entry.text} />
+          </article>
+        ))}
+        {thread?.state === 'closed' && <p className="hint">{t('This report is closed. A reply opens it again.')}</p>}
+      </div>
       {thread && (
-        <>
-          {thread.state === 'closed' && <p className="hint">{t('This report is closed. A reply opens it again.')}</p>}
-          <label className="feedback-field">
-            <span>{t('Your reply')}</span>
-            <textarea rows={5} value={text} maxLength={REPLY_LIMIT} onChange={(e) => write(e.target.value)} />
-          </label>
-          <p className="hint">{t('Your reply will be public, under your report on GitHub.')}</p>
-          {notSent && (
+        <div className="feedback-composer">
+          <textarea rows={3} value={text} maxLength={REPLY_LIMIT} aria-label={t('Your reply')} placeholder={t('Your reply')} onChange={(e) => onText(e.target.value)} />
+          <MediaTiles media={media} onChange={onMedia} onShow={show} />
+          {(notSent || captureError) && (
             <p className="feedback-failed" role="alert">
-              {notSent}
+              {notSent ?? captureError}
             </p>
           )}
-          <div className="feedback-actions">
-            <button className="pill active" disabled={!text.trim() || sending} onClick={send}>
+          <div className="feedback-composer-row">
+            <CaptureButtons media={media} onCapture={onCapture} />
+            <span className="hint">{t('Your reply will be public, under your report on GitHub.')}</span>
+            <button className="pill active" disabled={empty || sending} onClick={send}>
               {sending ? t('Sending…') : t('Send')}
             </button>
           </div>
-        </>
+        </div>
       )}
     </section>
   )
@@ -171,16 +208,55 @@ function inline(part: Inline, i: number): ReactNode {
     case 'code':
       return <code key={i}>{part.text}</code>
     case 'link':
+      if (RECORDING.test(part.href) && isReportFile(part.href)) return <ReportFile key={i} href={part.href} video />
       return (
         <a key={i} href={part.href} target="_blank" rel="noreferrer">
           {part.children.map(inline)}
         </a>
       )
     case 'picture':
+      if (isReportFile(part.href)) return <ReportFile key={i} href={part.href} video={false} />
       return (
         <a key={i} href={part.href} target="_blank" rel="noreferrer">
           {t('Picture')}
         </a>
       )
   }
+}
+
+/** The name the worker gives a recording attached to a report or a reply. */
+const RECORDING = /\/recording-\d\.(webm|mp4)$/
+
+/**
+ * A picture or a recording attached to a report or a reply, loaded from the site into memory
+ * (`loadReportFile`): a picture as a thumbnail, a recording as a tile; either opens over the
+ * window. A link to it while it loads, or when it cannot be loaded.
+ */
+function ReportFile({ href, video }: { href: string; video: boolean }) {
+  const show = useContext(ShowContext)
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    let current = true
+    void loadReportFile(href).then((loaded) => current && setUrl(loaded))
+    return () => {
+      current = false
+    }
+  }, [href])
+  if (!url) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer">
+        {video ? t('Play') : t('Picture')}
+      </a>
+    )
+  }
+  return (
+    <button className={`feedback-attached${video ? ' video' : ''}`} title={video ? t('Play') : t('Show')} onClick={() => show({ url, video })}>
+      {video ? <video src={url} muted preload="metadata" /> : <img alt={t('Picture')} src={url} />}
+      {video && (
+        <span className="feedback-play">
+          <Play size={12} />
+        </span>
+      )}
+    </button>
+  )
 }

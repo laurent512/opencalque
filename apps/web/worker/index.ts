@@ -17,7 +17,7 @@
  * kept, in the bucket (`keys/<number>`).
  */
 
-import { checkReport, commentBody, followedIssue, issueBody, issueTitle, LABELS, LIMITS, type Report, type StoredAttachments } from '../src/feedback/report'
+import { attachedSection, checkMedia, checkReport, commentBody, followedIssue, issueBody, issueTitle, LABELS, LIMITS, type Report, type StoredAttachments } from '../src/feedback/report'
 import { readable, REPLY_KEY, REPLY_LIMIT, replyBody, speakerOf, THREAD_COMMENTS, type Thread } from '../src/feedback/thread'
 import { github, GitHubError, installationToken } from './github'
 
@@ -73,7 +73,7 @@ function folder(now: Date): string {
   return `${now.toISOString().slice(0, 10)}-${random}`
 }
 
-async function storeAttachments(env: Env, origin: string, report: Report): Promise<StoredAttachments> {
+async function storeAttachments(env: Env, origin: string, report: Pick<Report, 'drawing' | 'pictures' | 'recordings'>): Promise<StoredAttachments> {
   if (!report.drawing && !report.pictures && !report.recordings) return {}
   if (!env.FEEDBACK_FILES) return { missing: 'The person attached files, but this server keeps none.' }
   try {
@@ -241,18 +241,22 @@ export async function thread(request: Request, env: Env): Promise<Response> {
   }
 }
 
-/** The person's reply, posted on their report, which it opens again if it was closed. */
+/** The person's reply, with the pictures and recordings they attached, posted on their report, which it opens again if it was closed. */
 export async function reply(request: Request, env: Env): Promise<Response> {
-  const asked = await keyed(request, env, env.FEEDBACK_LIMIT, REPLY_LIMIT * 4 + 1_000)
+  const asked = await keyed(request, env, env.FEEDBACK_LIMIT, LIMITS.body)
   if (asked instanceof Response) return asked
-  const text = asked.input.text
-  if (typeof text !== 'string' || !text.trim()) return json(400, { error: 'The reply is empty' })
+  const text = asked.input.text ?? ''
+  if (typeof text !== 'string') return json(400, { error: 'text must be text' })
   if (text.length > REPLY_LIMIT) return json(413, { error: `A reply is at most ${REPLY_LIMIT} characters` })
+  const media = checkMedia(asked.input)
+  if (typeof media === 'string') return json(400, { error: media })
+  if (!text.trim() && !media.pictures && !media.recordings) return json(400, { error: 'The reply is empty' })
   try {
     const token = await installationToken({ id: env.GITHUB_APP_ID!, key: env.GITHUB_APP_KEY! }, env.FEEDBACK_REPO)
     const issue = await github<Issue>(token, 'GET', `/repos/${env.FEEDBACK_REPO}/issues/${asked.number}`)
     if (!isFromApp(issue)) return json(404, { error: 'No such report' })
-    const comment = await github<{ html_url: string }>(token, 'POST', `/repos/${env.FEEDBACK_REPO}/issues/${asked.number}/comments`, { body: replyBody(text) })
+    const stored = await storeAttachments(env, new URL(request.url).origin, media)
+    const comment = await github<{ html_url: string }>(token, 'POST', `/repos/${env.FEEDBACK_REPO}/issues/${asked.number}/comments`, { body: replyBody(text, attachedSection(media, stored)) })
     // As for a follow-up: "it still does not work" on a closed report is read only if it is open.
     if (issue.state === 'closed') await github(token, 'PATCH', `/repos/${env.FEEDBACK_REPO}/issues/${asked.number}`, { state: 'open' }).catch((error) => console.error(error))
     return json(201, { url: comment.html_url })

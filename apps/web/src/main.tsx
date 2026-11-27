@@ -10,6 +10,7 @@ import { keepKeysIn, usePrefs } from './prefs'
 import { loadExtensions, registry, useExtensions } from './extensions'
 import { loadDocument } from './store'
 import { startTheme } from './theme'
+import { startScrollbars } from './scrollbars'
 import { startAgentBridge } from './ai/bridge'
 import { startUpdates } from './updates'
 import { noteUncaughtErrors } from './feedback/errors'
@@ -21,6 +22,8 @@ noteUncaughtErrors()
 loadExtensions()
 setLanguage(usePrefs.getState().language, registry.translations)
 startTheme()
+// Before the app, so that the thumbs hear a press before the menus do (`scrollbars.ts`).
+startScrollbars()
 startUpdates()
 startAgentBridge()
 if (platform.secrets) void keepKeysIn(platform.secrets)

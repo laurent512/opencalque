@@ -117,6 +117,22 @@ export function checkReport(input: unknown): Report | string {
     if (!d || !text(d.name) || !text(d.content) || d.name.length > 200) return 'drawing must have a name and a content'
     if (d.content.length > LIMITS.drawing) return 'The drawing is too large to attach'
   }
+  const media = checkMedia(r)
+  if (typeof media === 'string') return media
+  return {
+    kind: r.kind,
+    title: r.title.trim(),
+    description: r.description,
+    ...(text(r.expected) && r.expected.trim() && { expected: r.expected }),
+    environment: Object.fromEntries(environment) as Record<string, string>,
+    ...(Array.isArray(r.errors) && r.errors.length > 0 && { errors: r.errors as string[] }),
+    ...(r.drawing !== undefined && { drawing: r.drawing as Report['drawing'] }),
+    ...media,
+  }
+}
+
+/** The pictures and recordings sent with a report or a reply, checked, or what is wrong with them. */
+export function checkMedia(r: Record<string, unknown>): Pick<Report, 'pictures' | 'recordings'> | string {
   // 1.13 sent one picture, as `screenshot`.
   const pictures = [...(r.screenshot !== undefined ? [r.screenshot] : []), ...(Array.isArray(r.pictures) ? r.pictures : [])]
   if (r.pictures !== undefined && !Array.isArray(r.pictures)) return 'pictures must be a list'
@@ -133,13 +149,6 @@ export function checkReport(input: unknown): Report | string {
     }
   }
   return {
-    kind: r.kind,
-    title: r.title.trim(),
-    description: r.description,
-    ...(text(r.expected) && r.expected.trim() && { expected: r.expected }),
-    environment: Object.fromEntries(environment) as Record<string, string>,
-    ...(Array.isArray(r.errors) && r.errors.length > 0 && { errors: r.errors as string[] }),
-    ...(r.drawing !== undefined && { drawing: r.drawing as Report['drawing'] }),
     ...(pictures.length > 0 && { pictures: pictures as string[] }),
     ...(Array.isArray(r.recordings) && r.recordings.length > 0 && { recordings: (r.recordings as Recording[]).map(({ type, content, seconds }) => ({ type, content, seconds })) }),
   }
@@ -173,10 +182,8 @@ export interface StoredAttachments {
   missing?: string
 }
 
-/** The issue's text, in English, as maintainers read it. */
-export function issueBody(report: Report, stored: StoredAttachments = {}): string {
-  const parts: string[] = [report.description.trim() ? inert(report.description.trim()) : '_No description._']
-  if (report.expected?.trim()) parts.push(`### Expected\n\n${inert(report.expected.trim())}`)
+/** What was attached, as an issue or a reply lists it: pictures shown, recordings and the drawing linked. Empty when nothing was. */
+export function attachedSection(report: Pick<Report, 'drawing' | 'recordings'>, stored: StoredAttachments): string {
   const attached: string[] = []
   stored.pictures?.forEach((url, i) => attached.push(`![Picture ${i + 1} taken in the app](${url})`))
   if (stored.recordings?.length) {
@@ -185,7 +192,15 @@ export function issueBody(report: Report, stored: StoredAttachments = {}): strin
   }
   if (stored.drawing) attached.push(`- Drawing: [${cell(report.drawing?.name ?? 'drawing.opencalque')}](${stored.drawing})`)
   if (stored.missing) attached.push(`_${stored.missing}_`)
-  if (attached.length > 0) parts.push(`### Attached\n\n${attached.join('\n\n')}`)
+  return attached.length > 0 ? `### Attached\n\n${attached.join('\n\n')}` : ''
+}
+
+/** The issue's text, in English, as maintainers read it. */
+export function issueBody(report: Report, stored: StoredAttachments = {}): string {
+  const parts: string[] = [report.description.trim() ? inert(report.description.trim()) : '_No description._']
+  if (report.expected?.trim()) parts.push(`### Expected\n\n${inert(report.expected.trim())}`)
+  const attached = attachedSection(report, stored)
+  if (attached) parts.push(attached)
   if (report.errors?.length) parts.push(`### Recent errors\n\n${fenced(report.errors.join('\n\n'))}`)
   const rows = Object.entries(report.environment).map(([label, value]) => `| ${cell(label)} | ${cell(value)} |`)
   if (rows.length > 0) parts.push(`<details><summary>Environment</summary>\n\n| | |\n|---|---|\n${rows.join('\n')}\n\n</details>`)

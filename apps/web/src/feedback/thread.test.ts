@@ -9,6 +9,8 @@ describe('what the person reads of their thread', () => {
     const named = commentBody({ kind: 'idea', title: '#30 Antworten', description: 'Ja', environment: {} })
     expect(readable(named)).toBe('**#30 Antworten**\n\nJa')
     expect(readable(replyBody('Thanks, it works'))).toBe('Thanks, it works')
+    // What was attached shows for itself, without a heading over it.
+    expect(readable(replyBody('', '### Attached\n\n![Picture 1 taken in the app](https://x/picture-1.png)'))).toBe('![Picture 1 taken in the app](https://x/picture-1.png)')
   })
 
   it('shows a name written with @ as it was typed', () => {

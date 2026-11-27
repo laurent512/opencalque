@@ -4,7 +4,7 @@ import { usePrefs } from '../prefs'
 import { VERSION } from '../release'
 import { sessionSeconds } from './errors'
 import type { Report } from './report'
-import { SAMPLE_KEY, sampleReply, sampleThread } from './samples'
+import { isSampleFile, SAMPLE_KEY, sampleFile, sampleReply, sampleThread } from './samples'
 import type { Thread } from './thread'
 
 /**
@@ -86,8 +86,36 @@ export async function readThread(number: number, key: string): Promise<Thread | 
   return answer
 }
 
-/** Posts the person's reply under their report. */
-export async function sendReply(number: number, key: string, text: string): Promise<{ url: string } | Failed> {
-  if (import.meta.env.DEV && key === SAMPLE_KEY) return sampleReply(number, text)
-  return post<{ url: string }>(`${FEEDBACK_URL}/reply`, { number, key, text })
+/** What a reply carries besides its text. */
+export type ReplyMedia = Pick<Report, 'pictures' | 'recordings'>
+
+/** Posts the person's reply under their report, with the pictures and recordings they attached. */
+export async function sendReply(number: number, key: string, text: string, media: ReplyMedia = {}): Promise<{ url: string } | Failed> {
+  if (import.meta.env.DEV && key === SAMPLE_KEY) return sampleReply(number, text, media)
+  return post<{ url: string }>(`${FEEDBACK_URL}/reply`, { number, key, text, ...media })
+}
+
+/** Where the files attached to reports are served (`/api/feedback/files/` of the worker). */
+const FILES = `${FEEDBACK_URL}/files/`
+
+/** Whether `url` is a file attached to a report, which the app may load to show it. */
+export const isReportFile = (url: string) => url.startsWith(FILES) && !url.slice(FILES.length).includes('..')
+
+const loaded = new Map<string, Promise<string | null>>()
+
+/**
+ * A file attached to a report, loaded to be shown in the app: the address of a copy of it in
+ * memory (`blob:`, which the page may show, where it shows nothing from other sites), or null when
+ * it cannot be had. Each file is loaded once.
+ */
+export function loadReportFile(url: string): Promise<string | null> {
+  if (!isReportFile(url)) return Promise.resolve(null)
+  let found = loaded.get(url)
+  if (!found) {
+    found = (import.meta.env.DEV && isSampleFile(url) ? sampleFile(url) : fetch(url).then((r) => (r.ok ? r.blob() : null)))
+      .then((blob) => (blob ? URL.createObjectURL(blob) : null))
+      .catch(() => null)
+    loaded.set(url, found)
+  }
+  return found
 }

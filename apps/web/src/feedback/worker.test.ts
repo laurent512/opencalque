@@ -276,6 +276,21 @@ describe('the feedback worker', () => {
       expect(held.comments).toHaveLength(1)
     })
 
+    it('keeps the pictures and recordings of a reply, and shows them in it', async () => {
+      const { answer, settings, files, calls } = await sent()
+      const png = 'iVBORw0KGgo='
+      const response = await reply(at('reply', { number: 42, key: answer.key, text: '', pictures: [png], recordings: [{ type: 'video/webm', content: 'GkXfo59ChoEBQg==', seconds: 4 }] }), settings)
+      expect(response.status).toBe(201)
+      const names = [...files.keys()].filter((name) => !name.startsWith('keys/'))
+      expect(names).toEqual([expect.stringMatching(/\/picture-1\.png$/), expect.stringMatching(/\/recording-1\.webm$/)])
+      const body = calls.find((c) => c.method === 'POST' && c.path.endsWith('/comments'))!.body.body as string
+      expect(body).toContain(`![Picture 1 taken in the app](https://opencalque.com/api/feedback/files/${names[0]})`)
+      expect(body).toContain(`- Recording 1 (4 s): [recording-1.webm](https://opencalque.com/api/feedback/files/${names[1]})`)
+      expect(body).toContain(REPLY_MARK)
+      // A picture that is not one is refused.
+      expect((await reply(at('reply', { number: 42, key: answer.key, text: 'see', pictures: ['bm90IGEgcG5n'] }), settings)).status).toBe(400)
+    })
+
     it('refuses anyone without the key, before reaching GitHub', async () => {
       const { answer, settings, calls } = await sent()
       const other = answer.key.replace(/^./, (c: string) => (c === '0' ? '1' : '0'))

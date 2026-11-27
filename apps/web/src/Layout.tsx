@@ -6,7 +6,6 @@ import { PANELS, registerDock, useDock, type PanelId } from './dock'
 import { Guard } from './Guard'
 import { t } from './i18n'
 import { PanelHeadSlot, useHeadSlots } from './panelHead'
-import { ScrollThumb } from './ScrollThumb'
 import { IconButton } from './ui'
 import { AssistantPanel } from './panels/AssistantPanel'
 import { Colors, Components, Layers, Objects, Pages } from './panels/LeftPanel'
@@ -112,7 +111,6 @@ function GroupHead({ panels, activePanel }: IDockviewHeaderActionsProps) {
  */
 function PanelFrame({ id, api, scrolls, children }: { id: PanelId; api: DockviewPanelApi; scrolls: boolean; children: ReactNode }) {
   const [own, setOwn] = useState<HTMLElement | null>(null)
-  const [scroller, setScroller] = useState<HTMLDivElement | null>(null)
   const alone = useDock((s) => s.alone.includes(id))
   const shared = useHeadSlots((slots) => slots[id] ?? null)
   return (
@@ -129,10 +127,9 @@ function PanelFrame({ id, api, scrolls, children }: { id: PanelId; api: Dockview
       <PanelHeadSlot.Provider value={alone ? shared : own}>
         {scrolls ? (
           <div className="panel-scroll">
-            <div ref={setScroller} className="dock-panel">
+            <div className="dock-panel">
               <Guard area={title(id)}>{children}</Guard>
             </div>
-            <ScrollThumb of={scroller} />
           </div>
         ) : (
           <div className="panel-fill">

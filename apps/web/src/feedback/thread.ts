@@ -43,9 +43,9 @@ export const THREAD_COMMENTS = 100
 export const REPLY_MARK = '<!-- opencalque:reporter -->'
 const REPLY_NOTE = '_Written in OpenCalque by the person who sent this report._'
 
-/** A reply as posted on GitHub: inert like a report, then a line saying who wrote it. */
-export function replyBody(text: string): string {
-  return `${inert(text.trim())}\n\n${REPLY_NOTE}\n${REPLY_MARK}`
+/** A reply as posted on GitHub: inert like a report, what was attached (`attachedSection`), then a line saying who wrote it. */
+export function replyBody(text: string, attached = ''): string {
+  return [inert(text.trim()), attached, `${REPLY_NOTE}\n${REPLY_MARK}`].filter(Boolean).join('\n\n')
 }
 
 /** The roles GitHub gives the project's own people on its issues. */
@@ -64,10 +64,12 @@ export function readable(body: string | null | undefined): string {
   return (body ?? '')
     .replace(/<details>[^]*?<\/details>/g, '')
     .replace(/<!--[^]*?-->/g, '')
+    // The pictures and recordings show for themselves.
+    .replace(/^### Attached$/gm, '')
     .replace(/^_Sent from inside OpenCalque[^\n]*_$/gm, '')
     .replace(/^_Written in OpenCalque by the person[^\n]*_$/gm, '')
     .replace(/^_Sent from the app with this issue[^\n]*_$/gm, '')
-    .replace(/@​/g, '@')
+    .replace(/@\u200b/g, '@')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }

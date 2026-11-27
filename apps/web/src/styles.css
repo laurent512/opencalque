@@ -31,6 +31,16 @@
   color: var(--text);
 }
 
+/* The system's scrollbars are off everywhere: they took a strip of what scrolls and moved everything
+   beside them as they came and went. The app lays its own over what scrolls (`scrollbars.ts`). */
+* {
+  scrollbar-width: none;
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
 /* The dark theme changes only the colours above; `theme.ts` sets the attribute. */
 :root[data-theme='dark'] {
   --bg: #2c2c2c;
@@ -540,9 +550,7 @@ body > .dv-tab-ghost-drag::after {
   min-height: 0;
 }
 
-/* What a panel shows scrolls under a thumb laid over its right edge (`ScrollThumb`), not the
-   system's scrollbar, which kept a strip of the panel for itself; nothing moves sideways when the
-   panel grows short enough to scroll. */
+/* What a panel shows scrolls under the app's thumb (`scrollbars.ts`), as everything does. */
 .panel-scroll {
   position: relative;
   display: flex;
@@ -561,19 +569,18 @@ body > .dv-tab-ghost-drag::after {
 /* The Properties panel's own box scrolls nothing: the panel does. */
 .dock-panel .panel-body {
   overflow: visible;
-  scrollbar-gutter: auto;
 }
 
+/* The app's scrollbars (`scrollbars.ts`): one thumb a direction, laid over the edge of whatever
+   scrolls, above everything. The element is a strip easy to grab; the bar it shows is thinner and
+   thickens under the pointer. */
 .scroll-thumb {
-  position: absolute;
-  right: 2px;
-  z-index: 2;
-  width: 6px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--text) 30%, transparent);
+  position: fixed;
+  z-index: 100000;
   opacity: 0;
-  transition: opacity 0.2s, width 0.1s;
+  transition: opacity 0.2s;
   pointer-events: none;
+  touch-action: none;
 }
 
 .scroll-thumb.awake {
@@ -581,10 +588,41 @@ body > .dv-tab-ghost-drag::after {
   pointer-events: auto;
 }
 
-.scroll-thumb:hover,
-.scroll-thumb.dragging {
-  width: 8px;
+.scroll-thumb::after {
+  position: absolute;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text) 30%, transparent);
+  content: '';
+  transition: width 0.1s, height 0.1s, background-color 0.1s;
+}
+
+.scroll-thumb.vertical::after {
+  top: 0;
+  right: 2px;
+  bottom: 0;
+  width: 6px;
+}
+
+.scroll-thumb.horizontal::after {
+  right: 0;
+  bottom: 2px;
+  left: 0;
+  height: 6px;
+}
+
+.scroll-thumb:hover::after,
+.scroll-thumb.dragging::after {
   background: color-mix(in srgb, var(--text) 45%, transparent);
+}
+
+.scroll-thumb.vertical:hover::after,
+.scroll-thumb.vertical.dragging::after {
+  width: 8px;
+}
+
+.scroll-thumb.horizontal:hover::after,
+.scroll-thumb.horizontal.dragging::after {
+  height: 8px;
 }
 
 /* Top bar */
@@ -680,7 +718,6 @@ body > .dv-tab-ghost-drag::after {
 .panel-body {
   flex: 1;
   overflow-y: auto;
-  scrollbar-gutter: stable;
 }
 
 .tabs {
@@ -2017,9 +2054,6 @@ button.crumb.ahead:hover {
   width: min(520px, calc(100vw - 32px));
   max-height: 76vh;
   overflow-y: auto;
-  /* The room of a scrollbar is kept on both sides: content that grows past the height moves
-     nothing sideways, and stays centred where there is none. */
-  scrollbar-gutter: stable both-edges;
   border-radius: 12px;
   background: var(--bg);
   box-shadow: 0 16px 48px rgb(0 0 0 / 28%);
@@ -2066,9 +2100,6 @@ button.crumb.ahead:hover {
   height: min(600px, 84vh);
   max-height: none;
   overflow: hidden;
-  /* Its pages scroll inside it, each keeping its own room (`.prefs-content`); the window kept an
-     empty strip down each side, where the grey of the menu stopped short of its edge. */
-  scrollbar-gutter: auto;
 }
 
 .prefs-nav {
@@ -2124,8 +2155,6 @@ button.crumb.ahead:hover {
   min-height: 0;
   padding: 12px 24px 20px;
   overflow-y: auto;
-  /* From a short page to a long one, the scrollbar's room is kept: the settings do not move sideways. */
-  scrollbar-gutter: stable;
 }
 
 .prefs-content .pref-row > .faint {
@@ -2764,12 +2793,13 @@ button.feedback-thumb:focus-visible {
 }
 
 .feedback-pick {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   gap: 2px 8px;
   width: 100%;
-  padding: 8px;
+  padding: 8px 18px 8px 8px;
   border: 0;
   border-radius: 5px;
   background: none;
@@ -2794,10 +2824,13 @@ button.feedback-thumb:focus-visible {
   font-weight: 600;
 }
 
+/* One line each, cut with "…"; the whole title shows under the pointer. */
 .feedback-report-title {
   flex: 1 1 100%;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .feedback-report-meta {
@@ -2805,19 +2838,124 @@ button.feedback-thumb:focus-visible {
   font-size: 11px;
 }
 
+/* A report with an answer not yet read. */
 .feedback-new {
-  padding: 0 6px;
-  border-radius: 8px;
+  position: absolute;
+  top: 12px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
   background: var(--accent);
-  color: #fff;
-  font-size: 11px;
+}
+
+/* A report opened: its messages scroll, and the reply stays in sight below them. */
+.with-reports .feedback-main {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog .feedback-thread {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+  border-top: 0;
 }
 
 .feedback-thread-head {
   display: flex;
+  flex: none;
   justify-content: space-between;
   align-items: baseline;
   gap: 12px;
+  padding: 2px 20px 0;
+}
+
+.feedback-log {
+  flex: 1;
+  min-height: 0;
+  padding: 0 20px 4px;
+  overflow-y: auto;
+}
+
+.feedback-composer {
+  flex: none;
+  padding: 10px 20px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.feedback-composer textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-height: 30vh;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.feedback-composer textarea:focus {
+  border-color: var(--accent);
+}
+
+.feedback-composer .feedback-tiles {
+  margin: 8px 0 0;
+}
+
+.feedback-composer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.feedback-composer-row .pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dialog .feedback-composer-row .hint {
+  flex: 1;
+  min-width: 120px;
+  margin: 0 4px;
+  font-size: 11px;
+}
+
+.feedback-composer-row .pill.active {
+  padding: 6px 18px;
+}
+
+/* A picture or a recording in a message, opened over the window by a click. */
+.feedback-attached {
+  position: relative;
+  display: inline-block;
+  margin: 4px 6px 0 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--hover);
+  vertical-align: top;
+  cursor: zoom-in;
+}
+
+.feedback-attached.video {
+  cursor: pointer;
+}
+
+.feedback-attached img,
+.feedback-attached video {
+  display: block;
+  max-width: 240px;
+  max-height: 150px;
 }
 
 .feedback-thread-head a {
@@ -3262,7 +3400,6 @@ button.feedback-thumb:focus-visible {
   padding: 8px;
   border-right: 1px solid var(--border);
   overflow-y: auto;
-  scrollbar-gutter: stable;
 }
 
 .warehouse-sections h5 {
@@ -3433,7 +3570,6 @@ button.feedback-thumb:focus-visible {
   gap: 10px;
   padding: 4px 16px 16px;
   overflow-y: auto;
-  scrollbar-gutter: stable;
 }
 
 .warehouse-card {
@@ -3530,7 +3666,6 @@ button.feedback-thumb:focus-visible {
   flex: 1;
   padding: 0 16px;
   overflow-y: auto;
-  scrollbar-gutter: stable;
 }
 
 .warehouse-row {
@@ -4001,7 +4136,6 @@ button.feedback-thumb:focus-visible {
   min-height: 0;
   padding: 6px 24px 20px;
   overflow-y: auto;
-  scrollbar-gutter: stable;
   border-top: 1px solid var(--border);
 }
 

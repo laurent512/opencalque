@@ -23,7 +23,6 @@ import { useStore } from '../store'
 import { IconButton, labelOf } from '../ui'
 import { useWindows } from '../windows'
 import { Select } from '../Select'
-import { ScrollThumb } from '../ScrollThumb'
 
 const EXAMPLES = [
   msg('Draw a 5 × 4 m room with a door on the bottom wall'),
@@ -86,8 +85,6 @@ export function AssistantPanel() {
   const selectionKey = useStore((s) => (s.corner ? `${s.corner.x},${s.corner.y}` : s.selection.join(',')))
   useEffect(() => setWithSelection(true), [selectionKey])
   const end = useRef<HTMLDivElement>(null)
-  // The conversation scrolls under a thumb of the app's, as the panels do (`ScrollThumb`).
-  const [log, setLog] = useState<HTMLDivElement | null>(null)
   const filePicker = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -184,7 +181,7 @@ export function AssistantPanel() {
       </div>
 
       <div className="panel-scroll">
-        <div ref={setLog} className="assistant-log">
+        <div className="assistant-log">
           {entries.length === 0 &&
             EXAMPLES.map((example) => (
               <button key={example} className="assistant-example" onClick={() => send(t(example))}>
@@ -200,7 +197,6 @@ export function AssistantPanel() {
           {busy && <div className="assistant-entry activity">{t('Working…')}</div>}
           <div ref={end} />
         </div>
-        <ScrollThumb of={log} />
       </div>
 
       <form

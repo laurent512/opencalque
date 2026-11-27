@@ -87,9 +87,9 @@ test('sends a bug report from the welcome window, with the drawing and a picture
   expect(width / height).toBeCloseTo(500 / 400, 1)
 
   // Sent, the form starts again empty.
-  await form.getByRole('button', { name: 'Done' }).click()
+  await form.getByRole('button', { name: 'Close' }).click()
   await page.keyboard.press('Control+k')
-  await page.keyboard.type('Feedback')
+  await page.locator('.palette input').fill('Feedback')
   await page.keyboard.press('Enter')
   await expect(form.getByLabel('Title')).toHaveValue('')
 })
@@ -99,7 +99,7 @@ test('offers to post the report on GitHub when it cannot be sent, and keeps what
   await answerReports(page, 503, { error: 'Reports are not set up on this server' })
   await openEditor(page)
   await page.keyboard.press('Control+k')
-  await page.keyboard.type('Feedback')
+  await page.locator('.palette input').fill('Feedback')
   await page.keyboard.press('Enter')
   const form = page.locator('.dialog.feedback')
   // The two kinds are tabs of one width: going from one to the other moves nothing.
@@ -127,7 +127,7 @@ test('records an area of the app while it is used, and sends the recording', asy
   const sent = await answerReports(page, 201, { url: 'https://github.com/laurent512/opencalque/issues/43', number: 43 })
   await openEditor(page)
   await page.keyboard.press('Control+k')
-  await page.keyboard.type('Feedback')
+  await page.locator('.palette input').fill('Feedback')
   await page.keyboard.press('Enter')
   const form = page.locator('.dialog.feedback')
   await form.getByLabel('Title').fill('The rectangle tool')
@@ -179,12 +179,19 @@ test('lists the reports sent from here beside a new one, with their answers, and
   })
   await openEditor(page)
   await page.keyboard.press('Control+k')
-  await page.keyboard.type('Feedback')
+  await page.locator('.palette input').fill('Feedback')
   await page.keyboard.press('Enter')
   const form = page.locator('.dialog.feedback')
   // Nothing sent from here yet: the list says what will be there.
   await expect(form.locator('.feedback-side')).toContainText('The reports you send from here will be listed here')
   await form.getByLabel('Title').fill('Wall types')
+  // Closed by mistake: what was written is there again when it opens.
+  await form.getByRole('button', { name: 'Close' }).click()
+  await expect(form).toHaveCount(0)
+  await page.keyboard.press('Control+k')
+  await page.locator('.palette input').fill('Feedback')
+  await page.keyboard.press('Enter')
+  await expect(form.getByLabel('Title')).toHaveValue('Wall types')
   await form.getByRole('button', { name: 'Send' }).click()
   await expect(form).toContainText('You will find the answers here too')
   // Esc closes the window, though the button that had the focus went away with the form.
@@ -192,7 +199,7 @@ test('lists the reports sent from here beside a new one, with their answers, and
   await expect(form).toHaveCount(0)
 
   await page.keyboard.press('Control+k')
-  await page.keyboard.type('Feedback')
+  await page.locator('.palette input').fill('Feedback')
   await page.keyboard.press('Enter')
   const side = form.locator('.feedback-side')
   await expect(side.getByRole('button', { name: 'New report' })).toHaveAttribute('aria-current', 'true')
@@ -217,7 +224,7 @@ test('lists the reports sent from here beside a new one, with their answers, and
   await page.reload()
   await expect(page.locator('#splash:not(.leaving)')).toHaveCount(0)
   await page.keyboard.press('Control+k')
-  await page.keyboard.type('Feedback')
+  await page.locator('.palette input').fill('Feedback')
   await page.keyboard.press('Enter')
   await form.locator('.feedback-side').getByRole('button', { name: /Wall types/ }).click()
   await expect(form.locator('.feedback-entry')).toHaveCount(3)
