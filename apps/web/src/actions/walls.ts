@@ -21,7 +21,7 @@ export function dimensionWalls(): void {
 }
 
 /**
- * Views put down in one step, each as one the Elevation or section tool makes: named after the
+ * Views put down in one step, each as one the Elevation tool makes: named after the
  * views already there, with its automatic dimensions; then selected, to be moved or set up.
  */
 export function putViews(views: { a: Vec2; b: Vec2; depth: number; x: number; y: number }[]): void {

@@ -22,6 +22,16 @@ describe('searching the commands', () => {
     expect(titles(searchCommands([browse, placed], 'place component'))).toEqual([placed.title, browse.title])
   })
 
+  it('finds a command by its keywords in the user’s language too', () => {
+    const elevation = command('Elevation', 'Tools', 'section cut')
+    expect(matchesCommand(elevation, 'section')).toBe(true)
+    setLanguage('fr')
+    expect(matchesCommand(elevation, 'coupe')).toBe(true)
+    expect(matchesCommand(elevation, 'élévation')).toBe(true)
+    setLanguage('de')
+    expect(matchesCommand(elevation, 'schnitt')).toBe(true)
+  })
+
   it('ranks a whole word, then the start of a word, then the inside of one', () => {
     const inside = command('Unlock', 'View')
     const start = command('Locked layers', 'View')

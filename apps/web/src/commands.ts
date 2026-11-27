@@ -98,7 +98,7 @@ export interface Command {
   interrupts?: boolean
   /** For a command that switches something on and off: whether it is on. */
   checked?(): boolean
-  /** Extra words the palette search matches, for titles that are built already translated. */
+  /** Extra words the palette search matches, for titles that are built already translated; in their translation too, where they have one. */
   keywords?: string
 }
 
@@ -151,7 +151,7 @@ function storeOverrides(overrides: Record<string, string[]>): void {
   }
 }
 
-const tool = (id: Tool, title: string, key: string): Command => ({ id: `tool.${id}`, title, category: 'Tools', keys: [key], run: () => setTool(id) })
+const tool = (id: Tool, title: string, key: string, keywords?: string): Command => ({ id: `tool.${id}`, title, category: 'Tools', keys: [key], ...(keywords && { keywords }), run: () => setTool(id) })
 
 /** The categories commands are grouped under, listed here so that their names get translated. */
 export const CATEGORIES = [msg('General'), msg('File'), msg('Edit'), msg('Components'), msg('View'), msg('Panels'), msg('Tools'), msg('Pages'), msg('Layers'), msg('Insert'), msg('Extensions')]
@@ -379,7 +379,8 @@ const STATIC: Command[] = [
   tool('paper', msg('Paper'), 'F'),
   tool('room', msg('Room'), 'A'),
   tool('divider', msg('Room divider'), 'Shift+A'),
-  tool('elevation', msg('Elevation or section'), 'Shift+W'),
+  // It makes sections too: found by that word, in the user's language as well (`matchesCommand`).
+  tool('elevation', msg('Elevation'), 'Shift+W', msg('section cut')),
   tool('camera', msg('Viewpoint'), 'Shift+P'),
   tool('connect', msg('Connect switches to lights'), 'Shift+C'),
   { id: 'tool.calibrate', title: msg('Set the scale of an imported plan'), category: 'Tools', run: () => setTool('calibrate') },

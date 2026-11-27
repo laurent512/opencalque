@@ -73,7 +73,7 @@ export const ICONS: Record<Exclude<Tool, 'calibrate' | 'place'>, [title: string,
   paper: [msg('Paper: a sheet that frames what goes on one page'), StickyNote],
   room: [msg('Room: name the space inside closed walls'), SquareDashed],
   divider: [msg('Room divider: separates two rooms where there is no wall'), SeparatorVertical],
-  elevation: [msg('Elevation or section: the face of a wall seen from in front, or a cut along a line, drawn from the plan'), ScanEye],
+  elevation: [msg('Elevation: the face of a wall seen from in front, the walls of a room, a side of the building, or a section along a line, drawn from the plan'), ScanEye],
   camera: [msg('Viewpoint: where you stand and the way you look, for a picture of the room in perspective'), Camera],
   connect: [msg('Connect: click a switch, then the lights and sockets it controls'), Cable],
 }

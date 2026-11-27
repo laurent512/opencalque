@@ -9,7 +9,7 @@ type Searched = Pick<Command, 'title' | 'category' | 'keywords'>
  * names match too, whatever the language, so a shortcut learned from documentation still works.
  */
 export function matchesCommand(command: Searched, query: string): boolean {
-  const text = searchable(`${t(command.category)} ${t(command.title)} ${command.category} ${command.title} ${command.keywords ?? ''}`)
+  const text = searchable(`${t(command.category)} ${t(command.title)} ${command.category} ${command.title} ${command.keywords ?? ''} ${command.keywords ? t(command.keywords) : ''}`)
   return searchable(query).split(/\s+/).every((word) => text.includes(word))
 }
 
@@ -28,7 +28,7 @@ function closeness(word: string, words: string[]): number {
  */
 function relevance(command: Searched, query: string[]): number {
   const title = wordsOf(t(command.title))
-  const rest = wordsOf(`${command.title} ${t(command.category)} ${command.category} ${command.keywords ?? ''}`)
+  const rest = wordsOf(`${command.title} ${t(command.category)} ${command.category} ${command.keywords ?? ''} ${command.keywords ? t(command.keywords) : ''}`)
   return query.reduce((total, word) => total + Math.max(2 * closeness(word, title), closeness(word, rest)), 0)
 }
 
