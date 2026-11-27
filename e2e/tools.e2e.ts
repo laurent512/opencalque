@@ -872,6 +872,40 @@ test('draws the elevations of every wall of a room clicked inside, and of a side
   await expect.poll(async () => (await views()).length).toBe(9)
 })
 
+test('moves every selected view when one of their pictures is dragged', async ({ page }) => {
+  const at = await blank(page)
+  for (const [from, to] of [[[0, 0], [4000, 0]], [[4000, 0], [4000, 3000]], [[4000, 3000], [0, 3000]], [[0, 3000], [0, 0]]] as [number, number][][]) {
+    await page.keyboard.press('w')
+    await click(page, at(...from))
+    await click(page, at(...to))
+    await page.keyboard.press('Escape')
+  }
+  // A cupboard against the top wall, which two of the views show.
+  await page.keyboard.press('Shift+W')
+  await click(page, at(2000, 1500))
+  const views = async () => (await saved(page)).filter((n) => n.type === 'elevation')
+  await expect.poll(async () => (await views()).length).toBe(4)
+  const before = await views()
+  await page.keyboard.press('Shift+1')
+  await page.screenshot({ path: test.info().outputPath('four-views.png') })
+  // Dragged by the middle of the second picture, a face of a wall drawn there: all four move.
+  const picture = (await page.locator('.view-label').nth(1).boundingBox())!
+  const middle = { x: picture.x + picture.width / 2, y: picture.y + picture.height / 2 }
+  await drag(page, middle, { x: middle.x + 40, y: middle.y + 40 })
+  const offsets = async (from: Saved[]) => (await views()).map((view, i) => `${Math.round(view.x - from[i].x)},${Math.round(view.y - from[i].y)}`)
+  const once = await offsets(before)
+  expect(new Set(once).size).toBe(1)
+  expect(once[0]).not.toBe('0,0')
+  // Dragged by the name of one of them, as well.
+  const moved = await views()
+  const name = (await page.locator('.view-label .view-frame-name').nth(2).boundingBox())!
+  const on = { x: name.x + name.width / 2, y: name.y + name.height / 2 }
+  await drag(page, on, { x: on.x - 30, y: on.y + 20 })
+  const twice = await offsets(moved)
+  expect(new Set(twice).size).toBe(1)
+  expect(twice[0]).not.toBe('0,0')
+})
+
 /** A wall 4 m long along y = 0 with a socket on its lower face, 2 m along, and an elevation of that face (its line 1 m in front of it) drawn with its floor at y = 6000. */
 /** Selects the elevation by its name, so that a click in it then takes what it shows. */
 const openView = (page: Page) => page.locator('.view-label .view-frame-name').click()

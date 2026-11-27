@@ -16,6 +16,9 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 - Every list, window and menu that scrolls has the thin scrollbar of the panels, laid over its edge and shown while the pointer is over it or it scrolls, instead of the system's: nothing moves sideways any more when a scrollbar comes or goes.
 - A report sent from the app (Feedback) whose title names an earlier report by its number, such as "#30 Answers", is added to that report on GitHub, where its answers are, rather than made a report of its own; a closed one is opened again. The link shown once it is sent goes there.
 
+### Fixed
+- Dragging the name of a view selected with other things moves them all, as dragging any of them on the drawing does, not that view alone.
+
 ## 2.2.1 — 2026-11-24
 
 ### Improved

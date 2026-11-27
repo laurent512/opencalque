@@ -1,6 +1,6 @@
 import { useMemo, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Lock } from 'lucide-react'
-import { boundsOf, buildScene, coveredInScene, dist, isLocked, isVisible, keptViewPatch, leavesOf, moveViewEnd, nodePrimitives, rootOf, viewScale, type Bounds, type Document, type NodeOf, type Vec2 } from '@opencalque/core'
+import { boundsOf, buildScene, coveredInScene, dist, isLocked, isVisible, keptViewPatch, leavesOf, moveOps, moveViewEnd, nodePrimitives, rootOf, viewScale, wallFollowOps, type Bounds, type Document, type NodeOf, type Op, type Vec2 } from '@opencalque/core'
 import { registry } from '../extensions'
 import { t } from '../i18n'
 import { commit, preview, select, useStore } from '../store'
@@ -85,11 +85,13 @@ function Label(props: { node: NodeOf<'elevation'>; box: Bounds; at: { left: numb
   const locked = useStore((s) => isLocked(s.doc, s.doc.nodes[node.id] ?? node))
 
   /** Follows a drag from a press, in millimetres of the drawing, as one step of undo. */
-  const drag = (e: ReactPointerEvent<HTMLElement>, patch: (dx: number, dy: number, shift: boolean) => Record<string, unknown>) => {
+  const drag = (e: ReactPointerEvent<HTMLElement>, patch: (dx: number, dy: number, shift: boolean) => Record<string, unknown>) =>
+    dragOps(e, (dx, dy, shift) => [{ op: 'update_node', id: node.id, patch: patch(dx, dy, shift) }])
+  const dragOps = (e: ReactPointerEvent<HTMLElement>, ops: (dx: number, dy: number, shift: boolean) => Op[]) => {
     const start = { x: e.clientX, y: e.clientY }
     const target = e.currentTarget
     target.setPointerCapture(e.pointerId)
-    const move = (event: PointerEvent) => preview([{ op: 'update_node', id: node.id, patch: patch((event.clientX - start.x) / zoom, (event.clientY - start.y) / zoom, event.shiftKey) }])
+    const move = (event: PointerEvent) => preview(ops((event.clientX - start.x) / zoom, (event.clientY - start.y) / zoom, event.shiftKey))
     const up = () => {
       target.removeEventListener('pointermove', move)
       target.removeEventListener('pointerup', up)
@@ -102,12 +104,21 @@ function Label(props: { node: NodeOf<'elevation'>; box: Bounds; at: { left: numb
   }
 
   // Its name: a press selects it; dragged, it moves where it is drawn (its line stays on the plan).
+  // Selected with other things, it takes them all along, as a drag of anything selected does.
   const pressName = (e: ReactPointerEvent<HTMLElement>) => {
     if (e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
     if (!active) select([node.id])
     if (locked) return
+    const { doc, selection } = useStore.getState()
+    if (active && selection.length > 1 && selection.includes(node.id)) {
+      const nodes = selection.flatMap((id) => (doc.nodes[id] && !isLocked(doc, doc.nodes[id]) ? [doc.nodes[id]] : []))
+      return dragOps(e, (dx, dy) => {
+        const d = { x: Math.round(dx), y: Math.round(dy) }
+        return [...nodes.flatMap((n) => moveOps(doc, n, d)), ...wallFollowOps(doc, nodes, d, registry)]
+      })
+    }
     drag(e, (dx, dy) => ({ x: Math.round(node.x + dx), y: Math.round(node.y + dy) }))
   }
 
