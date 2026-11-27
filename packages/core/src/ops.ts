@@ -371,7 +371,7 @@ function checkNode(d: Document, node: Node): void {
   }
   // A view's automatic dimensions are its own: they go in a view only.
   if (node.type === 'autodimensions' && (node.parent === null || d.nodes[node.parent]?.type !== 'elevation')) throw new OpError(`Node ${node.id}: automatic dimensions go in an elevation or section (their parent), which they dimension`)
-  if ((node.type === 'autodimensions' || node.type === 'plandimensions') && node.dimensionStyle !== undefined && !d.dimensionStyles?.[node.dimensionStyle]) throw new OpError(`Unknown dimension style "${node.dimensionStyle}"`)
+  if (node.type === 'autodimensions' && node.dimensionStyle !== undefined && !d.dimensionStyles?.[node.dimensionStyle]) throw new OpError(`Unknown dimension style "${node.dimensionStyle}"`)
   // A viewpoint looks at the plan of its page, where its view is shown: inside a component it would see nothing and show nowhere.
   if (node.type === 'camera' && root.type === 'component') throw new OpError(`Node ${node.id}: a viewpoint goes on a page, not in a component: it looks at the plan of its page`)
   if (node.layer !== undefined && root.type === 'component') {

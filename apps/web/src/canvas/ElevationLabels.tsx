@@ -66,10 +66,22 @@ export function ElevationLabels() {
       {views.map(({ node, box }) => {
         const at = { left: box.minX * view.zoom + view.x, top: box.minY * view.zoom + view.y, width: (box.maxX - box.minX) * view.zoom, height: (box.maxY - box.minY) * view.zoom }
         if (at.left > viewport.width || at.top > viewport.height || at.left + at.width < 0 || at.top + at.height < 0) return null
-        return <Label key={node.id} node={node} box={box} at={at} active={selection.includes(node.id)} covered={covered.has(node.id)} passive={drawing} zoom={view.zoom} />
+        const taken = takenWith(doc, scope, node.id)
+        return <Label key={node.id} node={node} taken={taken} box={box} at={at} active={selection.includes(taken)} covered={covered.has(node.id)} passive={drawing} zoom={view.zoom} />
       })}
     </>
   )
+}
+
+/**
+ * What a press on a view's name takes, as a click on the drawing does: the group it is in (the
+ * views of a room, the four sides), its outermost below what is being edited; the view itself when
+ * it is in none.
+ */
+function takenWith(doc: Document, scope: string, id: string): string {
+  let taken = id
+  for (let parent = doc.nodes[id]?.parent; parent && parent !== scope && doc.nodes[parent]?.type === 'group'; parent = doc.nodes[parent]?.parent) taken = parent
+  return taken
 }
 
 /** How high and how wide, at most, a view's name is, in pixels, at the top left corner of what it draws. */
@@ -80,8 +92,8 @@ export function nameBox(box: Bounds, zoom: number): Bounds {
   return { minX: box.minX, maxX: Math.min(box.maxX, box.minX + NAME_ROOM.width / zoom), minY: box.minY - NAME_ROOM.height / zoom, maxY: box.minY + NAME_ROOM.height / zoom }
 }
 
-function Label(props: { node: NodeOf<'elevation'>; box: Bounds; at: { left: number; top: number; width: number; height: number }; active: boolean; covered: boolean; passive: boolean; zoom: number }) {
-  const { node, box, at, active, zoom } = props
+function Label(props: { node: NodeOf<'elevation'>; taken: string; box: Bounds; at: { left: number; top: number; width: number; height: number }; active: boolean; covered: boolean; passive: boolean; zoom: number }) {
+  const { node, taken, box, at, active, zoom } = props
   const locked = useStore((s) => isLocked(s.doc, s.doc.nodes[node.id] ?? node))
 
   /** Follows a drag from a press, in millimetres of the drawing, as one step of undo. */
@@ -109,11 +121,13 @@ function Label(props: { node: NodeOf<'elevation'>; box: Bounds; at: { left: numb
     if (e.button !== 0) return
     e.preventDefault()
     e.stopPropagation()
-    if (!active) select([node.id])
+    if (!active) select([taken])
     if (locked) return
     const { doc, selection } = useStore.getState()
-    if (active && selection.length > 1 && selection.includes(node.id)) {
-      const nodes = selection.flatMap((id) => (doc.nodes[id] && !isLocked(doc, doc.nodes[id]) ? [doc.nodes[id]] : []))
+    // Its group, or several things selected with it: they move together, as on the drawing.
+    const moving = active ? selection : [taken]
+    if (moving.length > 1 || taken !== node.id) {
+      const nodes = moving.flatMap((id) => (doc.nodes[id] && !isLocked(doc, doc.nodes[id]) ? [doc.nodes[id]] : []))
       return dragOps(e, (dx, dy) => {
         const d = { x: Math.round(dx), y: Math.round(dy) }
         return [...nodes.flatMap((n) => moveOps(doc, n, d)), ...wallFollowOps(doc, nodes, d, registry)]
@@ -155,7 +169,7 @@ function Label(props: { node: NodeOf<'elevation'>; box: Bounds; at: { left: numb
   const openMenu = (e: ReactMouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!active) select([node.id])
+    if (!active) select([taken])
     useStore.setState({ contextMenu: { x: e.clientX, y: e.clientY }, menuPoint: null })
   }
 

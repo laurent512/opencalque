@@ -2,7 +2,6 @@ import { childrenOf, isVisible, rootOf } from './document'
 import { add, applyTransform, besidePath, centroid, dist, inverseTransform, len, mid, norm, parallelPath, perp, rotate, scale, sub, type Bounds, type Vec2, ellipseArc, smoothPoints, unionBounds } from './geometry'
 import { fadeColor, resolveColor } from './colors'
 import { DIMENSION_MARKER_SIZE, DIMENSION_TEXT_SIZE, styledDimension } from './dimensions'
-import { planDimensions } from './plandimensions'
 import { fillFields } from './fields'
 import { formatFeetInches } from './imperial'
 import { applyModifiers, movedModifiers, HATCH_INK, HATCH_WEIGHT, patternStrokes } from './modifiers'
@@ -932,18 +931,6 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
       }
       return autoDimensionPrimitives(view, ctx.doc, ctx.registry, measure, node)
     },
-    move: () => ({}),
-    transform: () => ({}),
-  },
-  plandimensions: {
-    // The dimensions its plan draws by itself round its building (`planDimensions`), from its walls
-    // each time, in the drawing's way of writing numbers and its dimension style, as dimensions
-    // are; it has no place of its own to move.
-    primitives: (node, ctx) =>
-      planDimensions(ctx.doc, node, ctx.registry).flatMap(({ a, b, offset }) => {
-        const styled = styledDimension<NodeOf<'dimension'>>(ctx.doc, { id: node.id, type: 'dimension', parent: node.parent, order: node.order, a, b, offset, ...(node.dimensionStyle ? { dimensionStyle: node.dimensionStyle } : {}) })
-        return dimensionPrimitives(styled.unit === undefined && node.unit ? { ...styled, unit: node.unit } : styled, ctx.doc.settings)
-      }),
     move: () => ({}),
     transform: () => ({}),
   },

@@ -29,7 +29,7 @@ import { lockedAmong, pointedAt, titleAt } from './picking'
 import { get, local, reset, syncStep, type Canvas, type Move, type Release, type Shown } from './runtime'
 import { wheelMove, type WheelStream } from './wheel'
 import { connectStart } from './gestures/connect'
-import { boxLabels, paperLabel, polyline, unframedOnly, sizes, snapName, wallOps } from './shapes'
+import { boxLabels, paperLabel, polyline, roomsOnly, sizes, snapName, wallOps } from './shapes'
 
 /**
  * The drawing area. It works out what to show from the store, paints it (`draw.ts`), and hands
@@ -333,7 +333,7 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), inViewSplits: inViewGrips.flatMap(({ item, splits }) => splits.map((y) => ({ box: item.box, y }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !unframedOnly(doc, selection) && !lockedAmong(doc, selection), boxless: unframedOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines, flips }, showGrid, palette, around, grid)
+    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), inViewSplits: inViewGrips.flatMap(({ item, splits }) => splits.map((y) => ({ box: item.box, y }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines, flips }, showGrid, palette, around, grid)
   }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, grid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines, flips, inViews, inViewGrips, viewLines, drawnHandles])
 
   // Lets the quick bar finish the shape in progress with the sizes typed there.
@@ -376,7 +376,7 @@ export function CanvasView() {
       if (s.tool !== 'select' || c.gesture.kind !== 'idle') return reset(c)
       const under = titleAt(c, at) ?? hitTest(c.scene, world, 5 / s.view.zoom)
       // Anywhere in the box around the selection is a click on the selection, not beside it. Rooms have none: their floor is not clickable.
-      const bounds = unframedOnly(s.doc, s.selection) ? null : sceneBounds(c.scene.filter((item) => s.selection.includes(item.id)))
+      const bounds = roomsOnly(s.doc, s.selection) ? null : sceneBounds(c.scene.filter((item) => s.selection.includes(item.id)))
       const box = bounds && (c.ownBox ?? boundsFrame(bounds))
       const onSelection = !under && box !== null && frameContains(box, world, 6 / s.view.zoom)
       if (!onSelection && (under ? !s.selection.includes(under.id) : s.selection.length > 0)) select(under ? [under.id] : [])

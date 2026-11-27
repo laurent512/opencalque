@@ -5,7 +5,7 @@ import { boxGrips, viewArrow } from './draw'
 import { flipArrowAt, flipArrows, type FlipArrow } from './flips'
 import { END_POINT, FACE_MIN } from './gesture'
 import { get, type BoxFrame, type Canvas } from './runtime'
-import { faceOf, resizeCursor, unframedOnly } from './shapes'
+import { faceOf, resizeCursor, roomsOnly } from './shapes'
 
 /* What is under the pointer: the grips of the selection, wall corners, faces and ends, the names of papers. */
 
@@ -157,7 +157,7 @@ export function lineUp(c: Canvas, nodes: Node[]): { moving: Alignable | null; ot
  */
 export function gripBox(c: Canvas): ResizeFrame | null {
   const s = get()
-  if (s.tool !== 'select' || s.selection.length === 0 || lockedAmong(s.doc, s.selection) || (s.selection.length === 1 && (c.handles.length > 0 || c.frame)) || unframedOnly(s.doc, s.selection)) return null
+  if (s.tool !== 'select' || s.selection.length === 0 || lockedAmong(s.doc, s.selection) || (s.selection.length === 1 && (c.handles.length > 0 || c.frame)) || roomsOnly(s.doc, s.selection)) return null
   if (c.ownBox) return c.ownBox
   const bounds = sceneBounds(c.scene.filter((item) => s.selection.includes(item.id)))
   return bounds && boundsFrame(bounds)

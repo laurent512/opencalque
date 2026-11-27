@@ -54,7 +54,8 @@ Last updated: 2026-11-11 (after 1.8.0).
 - **Materials**: the drawing's materials (concrete, brick, insulation, plaster, floor finishes), each with a fill and a hatch, and a default one for walls of no material that cannot be deleted. A wall is of one material, drawn in its look; walls of one material are drawn as one, with a line between walls of different materials; a wall of several materials is several walls side by side, a door or window going through them all. A room's floor may be of a material.
 - **Tables of quantities** placed on the drawing, kept up to date: the objects placed, floor areas by material, rooms, walls by material and thickness, doors and windows; columns and their words chosen per table.
 - **Dimension chains** along a wall through its doors and windows, made on demand.
-- **Dimensions of the plan** (Object › Dimension the plan): round the building, drawn by themselves from its walls and kept up to date; on each side the whole from end to end, the outer walls piece by piece with their doors and windows, both or nothing (by default the whole above and on the left, the pieces below and on the right).
+- **Dimensions that follow** what they measure: an end on a corner of a wall, an end of one, a side of a door or window or a point of an object moves with it.
+- **Dimensions of the plan** (Object › Dimension the plan): round the building, in a group, the whole above and on the left, the outer walls piece by piece with their doors and windows below and on the right.
 - **Quantities** exported as CSV: room areas, wall lengths, faces less openings and volumes, doors and windows by kind, floors and walls by material, the objects placed.
 - **Modifiers**: non-destructive changes to how an object is drawn, stacked and applied in order, that can be switched off or removed at any time: crop, hatch, and repeat (copies in rows and columns); extensions can add more.
 - Text can be bold and aligned left, centred or right.
@@ -138,7 +139,7 @@ Agreed with the owner in October 2026. The first was built straight away.
 - ~~Corners as selectable nodes, joint types~~ (done)
 - ~~Reusable wall types with thickness, fill and layers~~ (done, then taken out in 1.2: each wall carries its own material); ~~walls of materials~~ (done; layers inside a wall were tried and taken out for walls side by side, each of one material)
 - ~~Curved walls~~ (done: bent from a straight wall; not yet drawn as an arc with the wall tool, extended or trimmed, or given a dimension chain)
-- ~~Automatic dimensions for a run of walls~~ (done, not live); ~~dimensions of the whole plan that follow the walls~~ (done); dimensions of a single wall that follow it
+- ~~Automatic dimensions for a run of walls~~ (done); ~~dimensions that follow the wall~~ (done, by position)
 - IFC export (walls, slabs from rooms, openings), now that walls have heights and types
 
 **Sheets and output**

@@ -1,6 +1,6 @@
 import { canSplit, hitTest, newId, outerFaces, outerSide, roomAt, roomFaces, roomViews, snapMountToWall, snapOpeningToWall, splitOps, splitPlace, trimOps, trimPlace, viewOfFace, wallFaceAt, wallSides, type Document, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
 import { libraryOps, pickStyle } from '../../actions'
-import { elevateSides, putViews } from '../../actions/walls'
+import { elevateSides, putViews, roomViewsName } from '../../actions/walls'
 import { registry } from '../../extensions'
 import { t } from '../../i18n'
 import { apply, cancel, commit, layerHere, preview, select, setTool, useStore, type Placing } from '../../store'
@@ -80,7 +80,7 @@ export const elevationDown: Press = (c, e, at, world) => {
     const room = roomViews(doc, s.scope, world)
     if (room.length > 0) {
       setTool('select')
-      return putViews(room)
+      return putViews(room, roomViewsName(world))
     }
   }
   sectionDown(c, e, at, world)

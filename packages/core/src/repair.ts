@@ -134,7 +134,7 @@ export function repairDocument(input: Document): { doc: Document; repairs: strin
       set(rest)
       repairs.push(`Wall "${node.id}" was of material "${node.material}", which does not exist; it is of the default material.`)
     }
-    if ((node.type === 'dimension' || node.type === 'autodimensions' || node.type === 'plandimensions') && node.dimensionStyle !== undefined && !doc.dimensionStyles?.[node.dimensionStyle]) {
+    if ((node.type === 'dimension' || node.type === 'autodimensions') && node.dimensionStyle !== undefined && !doc.dimensionStyles?.[node.dimensionStyle]) {
       const { dimensionStyle: _, ...rest } = node
       set(rest)
       repairs.push(`Dimension "${node.id}" was in dimension style "${node.dimensionStyle}", which does not exist; it keeps the look it gives itself.`)

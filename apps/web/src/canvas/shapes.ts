@@ -119,12 +119,11 @@ export function currentStyle(closed = false): { style?: Style } {
 }
 
 /**
- * Whether what is selected is only things with nothing of their own to scale or turn: rooms, which
- * are their walls' (only a room's name is moved; nor is a press on its floor a press on it: the
- * floor is not clickable, so that what is on it is), and the dimensions a plan draws round its
- * building, which are worked out from its walls. The box around them has no grips.
+ * Whether what is selected is only rooms. A room is its walls' and has nothing of its own to scale
+ * or turn (only its name, which is moved), so the box around it has no grips; nor is a press in
+ * it, on its floor, a press on it: the floor is not clickable, so that what is on it is.
  */
-export const unframedOnly = (doc: Document, selection: string[]) => selection.length > 0 && selection.every((id) => doc.nodes[id]?.type === 'room' || doc.nodes[id]?.type === 'plandimensions')
+export const roomsOnly = (doc: Document, selection: string[]) => selection.length > 0 && selection.every((id) => doc.nodes[id]?.type === 'room')
 
 /** The pointer that says a drag resizes along `d`, whichever way that points. */
 export function resizeCursor(d: Vec2): string {

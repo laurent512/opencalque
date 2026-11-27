@@ -334,7 +334,7 @@ test('puts a room in the space walls close, and another in the part a divider sp
   await expect.poll(async () => (await rooms()).map((n) => [n.name, n.x, n.y])).toEqual([['Room 01', 2000, 1500]])
 })
 
-test('dimensions the plan round its building, once', async ({ page }) => {
+test('dimensions the plan round its building with dimensions of its own, in a group, that follow the walls', async ({ page }) => {
   const at = await blank(page)
   await page.keyboard.press('w')
   for (const [x, y] of [[0, 0], [4000, 0], [4000, 3000], [0, 3000], [0, 0]]) await click(page, at(x, y))
@@ -342,17 +342,19 @@ test('dimensions the plan round its building, once', async ({ page }) => {
   await page.keyboard.press('Control+k')
   await page.locator('.palette input').fill('Dimension the plan')
   await page.keyboard.press('Enter')
-  await expect.poll(async () => (await saved(page)).filter((n) => n.type === 'plandimensions').length).toBe(1)
-  // Selected, to set up in Properties: what each side shows.
-  await expect(page.locator('.field', { has: page.locator('span:text-is("Bottom")') })).toBeVisible()
-  await page.keyboard.press('Shift+1')
-  await page.screenshot({ path: test.info().outputPath('plan-dimensions.png') })
-  // Once there, the command does not add more to this plan.
+  const nodes = async () => saved(page)
+  await expect.poll(async () => (await nodes()).filter((n) => n.type === 'dimension').length).toBe(4)
+  const group = (await nodes()).find((n) => n.type === 'group' && n.name === 'Dimensions of the plan')!
+  expect((await nodes()).filter((n) => n.type === 'dimension').every((n) => n.parent === group.id)).toBe(true)
+  await expect(objectRows(page).filter({ hasText: 'Dimensions of the plan' })).toHaveClass(/selected/)
+  // The right wall dragged 1 m to the right: the dimension above, from corner to corner, follows.
   await page.keyboard.press('Escape')
-  await page.keyboard.press('Control+k')
-  await page.locator('.palette input').fill('Dimension the plan')
-  await page.keyboard.press('Enter')
-  expect((await saved(page)).filter((n) => n.type === 'plandimensions')).toHaveLength(1)
+  await drag(page, at(4000, 1500), at(5000, 1500))
+  const right = async () => (await nodes()).find((n) => n.type === 'wall' && n.a.x === n.b.x && n.a.x > 3000)!.a.x
+  await expect.poll(right).toBeGreaterThan(4500)
+  // From the outer face of the left wall to that of the right one, wherever it went.
+  const width = (await right()) + 100 - -100
+  expect((await nodes()).filter((n) => n.type === 'dimension' && n.a.y === n.b.y && n.a.y < 0).map((n) => Math.round(Math.abs(n.b.x - n.a.x)))).toEqual([Math.round(width)])
 })
 
 test('cuts a wall in two with the split tool', async ({ page }) => {
@@ -896,7 +898,11 @@ test('draws the elevations of every wall of a room clicked inside, and of a side
   await page.screenshot({ path: test.info().outputPath('room-lit.png') })
   await click(page, at(2000, 1500))
   await expect.poll(async () => (await views()).length).toBe(4)
-  await expect(objectRows(page).filter({ hasText: /^Elevation [1-4]$/ }).first()).toHaveClass(/selected/)
+  // In a group named after the room (put in by itself when the walls closed), the group selected.
+  const group = async (name: string) => (await saved(page)).find((n) => n.type === 'group' && n.name === name)
+  const room = (await group('Elevations – Room 01'))!
+  expect((await views()).every((view) => view.parent === room.id)).toBe(true)
+  await expect(objectRows(page).filter({ hasText: 'Elevations – Room 01' })).toHaveClass(/selected/)
   for (const view of await views()) expect(view.depth).toBe(1000)
   // Beside the outer face of the bottom wall: the bottom side of the building, seen from outside.
   await page.keyboard.press('Shift+W')
@@ -913,6 +919,9 @@ test('draws the elevations of every wall of a room clicked inside, and of a side
   await click(page, at(2000, 3300))
   await page.keyboard.up('Shift')
   await expect.poll(async () => (await views()).length).toBe(9)
+  // The four together, in a group of their own; the one side alone, in none.
+  const sides = (await group('Façades'))!
+  expect((await views()).filter((view) => view.parent === sides.id)).toHaveLength(4)
 })
 
 test('moves every selected view when one of their pictures is dragged', async ({ page }) => {

@@ -1,6 +1,7 @@
 import { applyOps, type Op } from './ops'
 import type { Registry } from './registry'
 import type { Document } from './schema'
+import { dimensionFollowOps } from './dimensionfollow'
 import { elevationFollowOps } from './elevation'
 import { mountFollowOps, openingFollowOps } from './walls/follow'
 import { childrenOf } from './document'
@@ -11,7 +12,8 @@ import { dot } from './walls/course'
 /**
  * `ops` applied to `doc`, with what follows from them: the doors and windows of the walls they
  * changed, what is fixed on their faces and the elevations of those faces, put back on them
- * (`openingFollowOps`, `mountFollowOps`, `elevationFollowOps`), so that no edit of a wall has to see to them.
+ * (`openingFollowOps`, `mountFollowOps`, `elevationFollowOps`), and the ends of the dimensions on
+ * the points that moved (`dimensionFollowOps`), so that no edit of a wall has to see to them.
  * Whatever edits a drawing for someone (the editor, the assistant, the CLI, an outside agent) comes
  * through here, so that one list of operations makes one drawing wherever it is applied. `applyOps`
  * alone does what the operations say and nothing more.
@@ -24,8 +26,11 @@ export function applyEdit(doc: Document, ops: Op[], registry: Registry): { doc: 
   // What views hold, kept over what it measures once their lines are where they go.
   const moved = [...changed, ...follow.flatMap((op) => (op.op === 'update_node' ? [op.id] : []))]
   const held = moved.length > 0 ? viewContentFollowOps(doc, followed, moved) : []
-  const all = [...follow, ...held]
-  return all.length > 0 ? { doc: held.length > 0 ? applyOps(followed, held) : followed, ops: [...ops, ...all] } : { doc: next, ops }
+  const kept = held.length > 0 ? applyOps(followed, held) : followed
+  // The dimensions on points of what moved, last, once everything that follows has.
+  const measured = dimensionFollowOps(doc, kept, [...moved, ...held.flatMap((op) => (op.op === 'update_node' ? [op.id] : []))], registry)
+  const all = [...follow, ...held, ...measured]
+  return all.length > 0 ? { doc: measured.length > 0 ? applyOps(kept, measured) : kept, ops: [...ops, ...all] } : { doc: next, ops }
 }
 
 /**

@@ -1,4 +1,4 @@
-import { applyOps, dimensionChainOps, extendWallOps, flipWallOps, newId, sideViews, splitWallOps, trimWallOps, wallContains, wallEndsAt, wallMiddle, wallsIn, type BuildingSide, type Node, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
+import { applyOps, dimensionChainOps, extendWallOps, flipWallOps, newId, planDimensions, roomAt, sideViews, splitWallOps, trimWallOps, wallContains, wallEndsAt, wallMiddle, wallsIn, type BuildingSide, type Node, type NodeInput, type NodeOf, type Op, type Vec2 } from '@opencalque/core'
 import { drawing } from '../canvas/drawing'
 import { flipPatch } from '../canvas/flips'
 import { registry } from '../extensions'
@@ -21,21 +21,54 @@ export function dimensionWalls(): void {
 }
 
 /**
- * Views put down in one step, each as one the Elevation tool makes: named after the
- * views already there, with its automatic dimensions; then selected, to be moved or set up.
+ * Views put down in one step, each as one the Elevation tool makes: named after the views already
+ * there, with its automatic dimensions; in a group named `group` when given (the views of a room,
+ * the four sides), to be moved and found together. Then selected, the group or the views.
  */
-export function putViews(views: { a: Vec2; b: Vec2; depth: number; x: number; y: number }[]): void {
+export function putViews(views: { a: Vec2; b: Vec2; depth: number; x: number; y: number }[], group?: string): void {
   const { doc, scope } = get()
   const before = Object.values(doc.nodes).filter((node) => node.type === 'elevation').length
   const ids = views.map(() => newId())
-  apply(
-    views.flatMap((line, i): Op[] => [
-      { op: 'add_node', node: { id: ids[i], type: 'elevation', parent: scope, ...layerHere(), name: t('Elevation {n}', { n: String(before + i + 1) }), ...line } as NodeInput },
+  const holder = group ? newId() : null
+  const done = apply([
+    ...(holder ? [{ op: 'add_node', node: { id: holder, type: 'group', parent: scope, ...layerHere(), name: group } as NodeInput } as Op] : []),
+    ...views.flatMap((line, i): Op[] => [
+      { op: 'add_node', node: { id: ids[i], type: 'elevation', parent: holder ?? scope, ...layerHere(), name: t('Elevation {n}', { n: String(before + i + 1) }), ...line } as NodeInput },
       { op: 'add_node', node: { id: `${ids[i]}_dimensions`, type: 'autodimensions', parent: ids[i], unit: unit(), ...layerHere() } as NodeInput },
     ]),
-  )
-  select(ids)
+  ])
+  if (done) select(holder ? [holder] : ids)
 }
+
+/** The name of the group of the views of the room at `p`: after the room there, if it has one. */
+export function roomViewsName(p: Vec2): string {
+  const { doc, scope } = get()
+  const space = roomAt(doc, scope, p)
+  const room = space ? Object.values(doc.nodes).find((node): node is NodeOf<'room'> => node.type === 'room' && roomAt(doc, scope, node) === space) : undefined
+  return room?.name ? t('Elevations – {room}', { room: room.name }) : t('Elevations of the room')
+}
+
+/**
+ * The dimensions of the plan being edited, round its building (`planDimensions`): ordinary
+ * dimensions, in a group, drawn as the Dimension tool draws them, their ends on the corners of
+ * the walls and the sides of the doors and windows, so that they follow them
+ * (`dimensionFollowOps`). Selected, the group, to be moved, or taken apart to change one.
+ */
+export function dimensionPlan(): void {
+  const { doc, scope } = get()
+  const lines = planDimensions(doc, scope, registry)
+  if (lines.length === 0) return toast(t('Draw the walls of the building first.'))
+  const group = newId()
+  const look = dimensionToolLook()
+  const done = apply([
+    { op: 'add_node', node: { id: group, type: 'group', parent: scope, ...layerHere(), name: t('Dimensions of the plan') } as NodeInput },
+    ...lines.map((line): Op => ({ op: 'add_node', node: { ...look, type: 'dimension', parent: group, ...layerHere(), ...line } as NodeInput })),
+  ])
+  if (done) select([group])
+}
+
+/** Whether the plan being edited has walls to dimension. */
+export const canDimensionPlan = () => wallsIn(get().doc, get().scope).length > 0
 
 /**
  * The elevations of the sides of the building, seen from outside (`sideViews`), put down round
@@ -47,23 +80,10 @@ export function elevateSides(side?: BuildingSide): void {
   const chosen = selection.flatMap((id) => (doc.nodes[id]?.type === 'wall' ? [doc.nodes[id] as Extract<Node, { type: 'wall' }>] : []))
   const views = sideViews(doc, scope, chosen.length > 0 ? chosen : undefined).filter((view) => !side || view.side === side)
   if (views.length === 0) return toast(t('Draw the walls of the building first.'))
-  putViews(views.map(({ side: _, ...line }) => line))
-}
-
-/**
- * The dimensions of the plan round its building, drawn by themselves from its walls and kept up
- * to date (`plandimensions`): added to the plan being edited, once, and selected, to choose in
- * Properties what each side shows.
- */
-export function dimensionPlan(): void {
-  const id = newId()
-  if (apply([{ op: 'add_node', node: { id, type: 'plandimensions', parent: get().scope, unit: unit(), ...layerHere() } as NodeInput }])) select([id])
-}
-
-/** Whether the plan being edited has walls, and no dimensions of its own yet. */
-export const canDimensionPlan = () => {
-  const { doc, scope } = get()
-  return wallsIn(doc, scope).length > 0 && !Object.values(doc.nodes).some((node) => node.type === 'plandimensions' && node.parent === scope)
+  putViews(
+    views.map(({ side: _, ...line }) => line),
+    side ? undefined : t('Façades'),
+  )
 }
 
 /** Whether the plan being edited has walls to see the sides of. */
