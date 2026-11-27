@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { SAMPLE_REPORTS } from './samples'
 import { readThread } from './send'
 import type { Thread } from './thread'
 
@@ -29,8 +28,6 @@ interface Mine {
   reports: MyReport[]
   /** When the answers were last looked for at start. */
   checked: number
-  /** Development only: reports made up, listed while none was sent from here (`samples.ts`); never stored. */
-  samples: MyReport[]
   /** Reports with a new answer the corner notice tells of (`AnswerNotice`), until it is read or dismissed; never stored. */
   announced: number[]
 }
@@ -53,10 +50,10 @@ function load(): Pick<Mine, 'reports' | 'checked'> {
   }
 }
 
-export const useMyReports = create<Mine>(() => ({ ...load(), samples: import.meta.env.DEV ? SAMPLE_REPORTS : [], announced: [] }))
+export const useMyReports = create<Mine>(() => ({ ...load(), announced: [] }))
 
-/** The reports the Feedback window lists: those sent from here, or the examples in development while there are none. */
-export const listed = (mine: Mine) => (mine.reports.length > 0 ? mine.reports : mine.samples)
+/** The reports the Feedback window lists: those sent from here. */
+export const listed = (mine: Mine) => mine.reports
 
 useMyReports.subscribe(({ reports, checked }) => {
   try {
@@ -83,7 +80,6 @@ function update(number: number, thread: Thread, seen: boolean): void {
   const now = (r: MyReport) => (r.number === number ? { ...r, title: thread.title, answers, seen: seen ? answers : r.seen, closed: thread.state === 'closed' } : r)
   useMyReports.setState((mine) => ({
     reports: mine.reports.map(now),
-    samples: mine.samples.map(now),
     ...(seen && { announced: mine.announced.filter((n) => n !== number) }),
   }))
 }
@@ -99,9 +95,7 @@ export const dismissAnswers = () => useMyReports.setState({ announced: [] })
  * notice tell of those it finds. Nothing is said when the server cannot be reached.
  */
 export async function checkAnswers(now = Date.now()): Promise<void> {
-  const { reports, checked, samples } = useMyReports.getState()
-  // In development, before any report was sent, the examples' unread answers are told of, to see the notice.
-  if (reports.length === 0 && samples.some(unread)) return useMyReports.setState({ announced: samples.filter(unread).map((r) => r.number) })
+  const { reports, checked } = useMyReports.getState()
   if (reports.length === 0 || now - checked < CHECK_EVERY) return
   useMyReports.setState({ checked: now })
   const answered: number[] = []

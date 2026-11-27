@@ -4,7 +4,6 @@ import { usePrefs } from '../prefs'
 import { VERSION } from '../release'
 import { sessionSeconds } from './errors'
 import type { Report } from './report'
-import { isSampleFile, SAMPLE_KEY, sampleFile, sampleReply, sampleThread } from './samples'
 import type { Thread } from './thread'
 
 /**
@@ -80,7 +79,6 @@ export async function sendReport(report: Report): Promise<Sent> {
 
 /** A report this device sent, with the answers to it, read with its key. */
 export async function readThread(number: number, key: string): Promise<Thread | Failed> {
-  if (import.meta.env.DEV && key === SAMPLE_KEY) return sampleThread(number)
   const answer = await post<Thread>(`${FEEDBACK_URL}/thread`, { number, key })
   if (!('status' in answer) && !Array.isArray(answer.entries)) return { error: 'The server sent no thread', status: 502 }
   return answer
@@ -91,7 +89,6 @@ export type ReplyMedia = Pick<Report, 'pictures' | 'recordings'>
 
 /** Posts the person's reply under their report, with the pictures and recordings they attached. */
 export async function sendReply(number: number, key: string, text: string, media: ReplyMedia = {}): Promise<{ url: string } | Failed> {
-  if (import.meta.env.DEV && key === SAMPLE_KEY) return sampleReply(number, text, media)
   return post<{ url: string }>(`${FEEDBACK_URL}/reply`, { number, key, text, ...media })
 }
 
@@ -112,7 +109,8 @@ export function loadReportFile(url: string): Promise<string | null> {
   if (!isReportFile(url)) return Promise.resolve(null)
   let found = loaded.get(url)
   if (!found) {
-    found = (import.meta.env.DEV && isSampleFile(url) ? sampleFile(url) : fetch(url).then((r) => (r.ok ? r.blob() : null)))
+    found = fetch(url)
+      .then((r) => (r.ok ? r.blob() : null))
       .then((blob) => (blob ? URL.createObjectURL(blob) : null))
       .catch(() => null)
     loaded.set(url, found)
