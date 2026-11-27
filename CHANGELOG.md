@@ -4,7 +4,7 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
-## Unreleased
+## 2.3.0 — 2026-11-27
 
 ### New
 - Splines: the Spline tool (`Shift+B`, beside the Curved line) draws a curve that the points you click pull, as CAD programs draw a spline by its control points: it starts on the first point and ends on the last, passing near the others, and its points, joined by a dashed line while it is selected, are dragged to shape it. A line or a curve is made one with Make it a spline its points pull, and back with Straighten the line. A drawing with a spline is saved in a new version of the format, which earlier versions of the app refuse to open, saying so.
