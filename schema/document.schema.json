@@ -10,7 +10,7 @@
     },
     "version": {
       "type": "number",
-      "const": 6
+      "const": 7
     },
     "id": {
       "type": "string",
@@ -2742,7 +2742,7 @@
               "y"
             ],
             "additionalProperties": false,
-            "description": "An elevation or a section: a cut along its line on the plan, from a to b, seen from the right of that line (as it runs from a to b, which is below a line drawn from left to right, since Y grows downward), so that a is on the left of the view, looking beyond it up to depth; drawn from the plan each time it is drawn, at (x, y), the point of the floor under a, heights going up from there. What the line crosses is drawn cut through (walls, above and below the doors and windows they are cut at); beyond it, up to depth, the faces turned towards it with their doors, windows and what is fixed on them at its height, the furniture, and the walls in the way. A line whose far side (depth beyond it) lies on the face of a wall makes an elevation of that wall, and follows the wall when the wall changes: usually 1000 in front of the face, with depth 1000. One across the plan makes a section. The line is shown on the plan in the editor, to place it, and never printed; an elevation (a line that crosses no wall) is marked on the plan by a printed symbol, a circle with a triangle pointing the way it looks and the number its name ends with, the elevations of a room's walls sharing one under the room's name. Moving the view moves where it is drawn; moving it with the walls it looks at moves its line too. It holds what is drawn on it as its children (dimension, text, annotation, line, polyline, rect, ellipse), in its own coordinates: x along its line from a, y up from its floor (negative), in mm of the plan, drawn at (x, y) and its scale, so that a dimension says the real length."
+            "description": "An elevation or a section: a cut along its line on the plan, from a to b, seen from the right of that line (as it runs from a to b, which is below a line drawn from left to right, since Y grows downward), so that a is on the left of the view, looking beyond it up to depth; drawn from the plan each time it is drawn, at (x, y), the point of the floor under a, heights going up from there. What the line crosses is drawn cut through (walls, above and below the doors and windows they are cut at); beyond it, up to depth, the faces turned towards it with their doors, windows and what is fixed on them at its height, the furniture, and the walls in the way. A line whose far side (depth beyond it) lies on the face of a wall makes an elevation of that wall, and follows the wall when the wall changes: usually 1000 in front of the face, with depth 1000. One across the plan makes a section. The line is shown on the plan in the editor, to place it, and never printed; an elevation (a line crossing no wall) gets a printed marker there, numbered as its name ends. Moving the view moves where it is drawn; moving it with the walls it looks at moves its line too. It holds what is drawn on it as its children (dimension, text, annotation, line, polyline, rect, ellipse), in its own coordinates: x along its line from a, y up from its floor (negative), in mm of the plan, drawn at (x, y) and its scale, so that a dimension says the real length."
           },
           {
             "type": "object",
@@ -2960,6 +2960,247 @@
             ],
             "additionalProperties": false,
             "description": "The dimensions an elevation or a section draws by itself, worked out from the plan each time: one of what it holds (its parent must be an \"elevation\"), with no position of its own, drawn in the view's coordinates under its floor and beside what it measures. Remove it for none; one is put in each view the tool makes."
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string"
+              },
+              "parent": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Id of the page, component or group this node is directly inside. Null for pages and components."
+              },
+              "order": {
+                "type": "string",
+                "description": "Fractional index giving the z-order among siblings (plain string comparison, later = on top). A key of the fractional-indexing package, such as \"a0\", \"a1\" or \"a0V\"; leave it out when adding a node to put it on top."
+              },
+              "layer": {
+                "description": "Id of the layer the node is on. A node inside a component has none: what a component holds is drawn on the layer of each of its instances.",
+                "type": "string",
+                "minLength": 1
+              },
+              "visible": {
+                "description": "Defaults to true.",
+                "type": "boolean"
+              },
+              "locked": {
+                "description": "Defaults to false.",
+                "type": "boolean"
+              },
+              "style": {
+                "description": "Overrides the look of a node. Unset values fall back to the node kind, then the layer color. An instance has none: it looks as its component is drawn.",
+                "type": "object",
+                "properties": {
+                  "stroke": {
+                    "description": "CSS color of lines and text, or 'none'. Any colour property may instead be a shared colour, \"var(--<id>)\", or \"var(--layer)\": the colour of the node's layer.",
+                    "type": "string"
+                  },
+                  "strokeWidth": {
+                    "description": "Line weight in screen pixels (does not scale with zoom). On paper one pixel prints as 0.25 mm, so 2 is a 0.5 mm line.",
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "fill": {
+                    "description": "CSS fill color, or 'none', a shared colour \"var(--<id>)\", or \"var(--layer)\" to fill with the colour of the node's layer.",
+                    "type": "string"
+                  },
+                  "pattern": {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "description": "Which pattern: 'Lines', 'Cross', 'Planks', 'Tiles', 'Dots' or 'Zigzag'; 'None' for no pattern where one would otherwise be taken from a material."
+                      },
+                      "spacing": {
+                        "description": "Distance between its strokes, in mm. Each pattern has its own when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "angle": {
+                        "description": "Degrees its strokes are turned by. Each pattern has its own when not given.",
+                        "type": "number"
+                      },
+                      "stroke": {
+                        "description": "The colour of its strokes. A CSS colour or a shared colour reference.",
+                        "type": "string"
+                      },
+                      "strokeWidth": {
+                        "description": "The weight of its strokes, in screen pixels as in a style. 0.6 when not given.",
+                        "type": "number",
+                        "exclusiveMinimum": 0
+                      },
+                      "opacity": {
+                        "description": "How opaque its strokes are, from 0 (not at all) to 1 (the default), on top of the opacity of their colour.",
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                      }
+                    },
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "A pattern of strokes drawn over a fill, inside each closed shape: the hatching that tells a material, or a floor."
+                  },
+                  "dash": {
+                    "description": "Dash pattern in screen pixels.",
+                    "type": "array",
+                    "items": {
+                      "type": "number",
+                      "exclusiveMinimum": 0
+                    }
+                  }
+                },
+                "additionalProperties": false
+              },
+              "modifiers": {
+                "description": "Modifiers applied to what this node draws, one after the other in this order. On a group or an instance they apply to everything it holds.",
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "The kind of modifier: 'crop', or one registered by an extension. Unknown kinds are kept and skipped."
+                    },
+                    "enabled": {
+                      "description": "Defaults to true. A modifier that is switched off stays in the list.",
+                      "type": "boolean"
+                    },
+                    "params": {
+                      "description": "Parameters of the kind. Missing ones use the kind defaults.",
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "frame": {
+                      "description": "Where the modifier sits on the drawing: positions among its parameters are relative to it. It follows the node when the node is moved, turned or scaled.",
+                      "type": "object",
+                      "properties": {
+                        "x": {
+                          "type": "number"
+                        },
+                        "y": {
+                          "type": "number"
+                        },
+                        "rotation": {
+                          "type": "number"
+                        },
+                        "flipX": {
+                          "type": "boolean"
+                        },
+                        "scale": {
+                          "type": "number",
+                          "exclusiveMinimum": 0
+                        }
+                      },
+                      "required": [
+                        "x",
+                        "y"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "additionalProperties": false,
+                  "description": "A non-destructive change to how a node is drawn; the node itself is not altered. 'crop' shows only what is inside the rectangle that starts at its frame and has params.width and params.height."
+                }
+              },
+              "meta": {
+                "description": "Free-form data for extensions and tools.",
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "type": {
+                "type": "string",
+                "const": "plandimensions"
+              },
+              "top": {
+                "description": "What its top side shows: 'overall', the building from end to end; 'detailed', its outer walls piece by piece with the sides of their doors and windows; 'both', the detailed row nearer and the overall one beyond; 'none'. Left out, 'overall'.",
+                "type": "string",
+                "enum": [
+                  "overall",
+                  "detailed",
+                  "both",
+                  "none"
+                ]
+              },
+              "right": {
+                "description": "What its right side shows: 'overall', the building from end to end; 'detailed', its outer walls piece by piece with the sides of their doors and windows; 'both', the detailed row nearer and the overall one beyond; 'none'. Left out, 'detailed'.",
+                "type": "string",
+                "enum": [
+                  "overall",
+                  "detailed",
+                  "both",
+                  "none"
+                ]
+              },
+              "bottom": {
+                "description": "What its bottom side shows: 'overall', the building from end to end; 'detailed', its outer walls piece by piece with the sides of their doors and windows; 'both', the detailed row nearer and the overall one beyond; 'none'. Left out, 'detailed'.",
+                "type": "string",
+                "enum": [
+                  "overall",
+                  "detailed",
+                  "both",
+                  "none"
+                ]
+              },
+              "left": {
+                "description": "What its left side shows: 'overall', the building from end to end; 'detailed', its outer walls piece by piece with the sides of their doors and windows; 'both', the detailed row nearer and the overall one beyond; 'none'. Left out, 'overall'.",
+                "type": "string",
+                "enum": [
+                  "overall",
+                  "detailed",
+                  "both",
+                  "none"
+                ]
+              },
+              "dimensionStyle": {
+                "description": "The id of the dimension style they are drawn in (a key of the drawing's \"dimensionStyles\"). Left out, the drawing's default.",
+                "type": "string",
+                "minLength": 1
+              },
+              "unit": {
+                "description": "Unit their values are shown in, unless their dimension style gives one. Defaults to 'mm'. Coordinates stay in mm whatever this is.",
+                "type": "string",
+                "enum": [
+                  "mm",
+                  "cm",
+                  "m",
+                  "in",
+                  "ft",
+                  "ft-in"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "parent",
+              "order",
+              "type"
+            ],
+            "additionalProperties": false,
+            "description": "The dimensions of the plan of its parent (a page or a group), drawn by themselves round the building and worked out from its walls each time, so that they follow every change: on each side (top, right, bottom, left of the page), the building from end to end, its outer walls piece by piece with the sides of their doors and windows, both or nothing. No position of its own: its rows are 800 mm out from the box round the walls, the next 600 further. One per plan is enough. Version 7."
           },
           {
             "type": "object",

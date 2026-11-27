@@ -534,8 +534,24 @@ function autoDimensionFields(doc: Document): FieldSpec[] {
   ]
 }
 
+/** The dimensions a plan draws by itself round its building: what each side shows, and how they are written. */
+function planDimensionFields(doc: Document): FieldSpec[] {
+  const SIDES = msg('Dimensions drawn')
+  const styles = Object.values(doc.dimensionStyles ?? {})
+  const rows = options(['overall', msg('End to end')], ['detailed', msg('Wall by wall, with the openings')], ['both', msg('Both')], ['none', msg('None')])
+  return [
+    { path: 'top', label: msg('Top'), type: 'string', section: SIDES, fallback: 'overall', options: rows },
+    { path: 'left', label: msg('Left'), type: 'string', section: SIDES, fallback: 'overall', options: rows },
+    { path: 'bottom', label: msg('Bottom'), type: 'string', section: SIDES, fallback: 'detailed', options: rows },
+    { path: 'right', label: msg('Right'), type: 'string', section: SIDES, fallback: 'detailed', options: rows, note: msg('Worked out from the walls each time: they follow every change. The detailed row is nearer the building, the overall one beyond it.') },
+    { path: 'dimensionStyle', label: msg('Dimension style'), type: 'string', section: SIDES, options: [{ value: '', label: msg('default') }, ...styles.map((style) => ({ value: style.id, label: style.name }))] },
+    { path: 'unit', label: msg('Unit'), type: 'string', section: SIDES, fallback: 'mm', options: options(['mm', 'mm'], ['cm', 'cm'], ['m', 'm'], ['in', 'in'], ['ft', 'ft'], ['ft-in', msg('ft and in')]), note: msg('Unless their dimension style gives one.') },
+  ]
+}
+
 export function fieldsOf(node: Node, doc: Document): FieldSpec[] {
-  const fields = node.type === 'room' ? roomFields(node, doc) : node.type === 'link' ? linkFields(node, doc) : node.type === 'autodimensions' ? autoDimensionFields(doc) : (FIELDS[node.type] ?? [])
+  const fields =
+    node.type === 'room' ? roomFields(node, doc) : node.type === 'link' ? linkFields(node, doc) : node.type === 'autodimensions' ? autoDimensionFields(doc) : node.type === 'plandimensions' ? planDimensionFields(doc) : (FIELDS[node.type] ?? [])
   // What every placed object has, first: where it is (X, Y, and Z, its height above the floor),
   // how it is turned, and how large it is (W, D, H). What is its own comes after.
   const [x, y, rotation] = PLACEMENT

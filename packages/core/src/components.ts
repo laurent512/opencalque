@@ -189,7 +189,7 @@ export function transplantOps(
         ops.push({ op: 'add_asset', asset })
       }
       // So does the dimension style it is drawn in, which keeps its id as well.
-      const dimensionStyle = (child.type === 'dimension' || child.type === 'autodimensions') && child.dimensionStyle ? source.dimensionStyles?.[child.dimensionStyle] : undefined
+      const dimensionStyle = (child.type === 'dimension' || child.type === 'autodimensions' || child.type === 'plandimensions') && child.dimensionStyle ? source.dimensionStyles?.[child.dimensionStyle] : undefined
       // So does the material of a wall or of a floor, which keeps its id too.
       const materials = [child.type === 'wall' || child.type === 'room' ? child.material : undefined].flatMap((id) => (id && source.materials?.[id] ? [source.materials[id]] : []))
       // So does a shared colour it, its style or its materials refer to, which also keeps its id.

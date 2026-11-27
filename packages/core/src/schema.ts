@@ -6,7 +6,14 @@ z.config({ jitless: true })
 export const FORMAT = 'opencalque'
 /** What `format` was before the project was renamed. Such drawings are still read. */
 export const FORMER_FORMAT = 'opencad'
-export const FORMAT_VERSION = 6
+export const FORMAT_VERSION = 7
+
+/** What a side of a plan's own dimensions (`plandimensions`) shows. */
+const sideRows = (side: 'top' | 'right' | 'bottom' | 'left') =>
+  z
+    .enum(['overall', 'detailed', 'both', 'none'])
+    .optional()
+    .describe(`What its ${side} side shows: 'overall', the building from end to end; 'detailed', its outer walls piece by piece with the sides of their doors and windows; 'both', the detailed row nearer and the overall one beyond; 'none'. Left out, '${side === 'top' || side === 'left' ? 'overall' : 'detailed'}'.`)
 
 const Id = z.string().min(1)
 
@@ -344,7 +351,7 @@ export const NodeSchema = z
         walls: z.boolean().optional().describe('false leaves out the walls in front of the faces it sees, to see all of them: those its line cuts, and those in the way (a wall at an angle within what it sees). Shown when left out, all plain grey.'),
       })
       .describe(
-        "An elevation or a section: a cut along its line on the plan, from a to b, seen from the right of that line (as it runs from a to b, which is below a line drawn from left to right, since Y grows downward), so that a is on the left of the view, looking beyond it up to depth; drawn from the plan each time it is drawn, at (x, y), the point of the floor under a, heights going up from there. What the line crosses is drawn cut through (walls, above and below the doors and windows they are cut at); beyond it, up to depth, the faces turned towards it with their doors, windows and what is fixed on them at its height, the furniture, and the walls in the way. A line whose far side (depth beyond it) lies on the face of a wall makes an elevation of that wall, and follows the wall when the wall changes: usually 1000 in front of the face, with depth 1000. One across the plan makes a section. The line is shown on the plan in the editor, to place it, and never printed; an elevation (a line that crosses no wall) is marked on the plan by a printed symbol, a circle with a triangle pointing the way it looks and the number its name ends with, the elevations of a room's walls sharing one under the room's name. Moving the view moves where it is drawn; moving it with the walls it looks at moves its line too. It holds what is drawn on it as its children (dimension, text, annotation, line, polyline, rect, ellipse), in its own coordinates: x along its line from a, y up from its floor (negative), in mm of the plan, drawn at (x, y) and its scale, so that a dimension says the real length.",
+        "An elevation or a section: a cut along its line on the plan, from a to b, seen from the right of that line (as it runs from a to b, which is below a line drawn from left to right, since Y grows downward), so that a is on the left of the view, looking beyond it up to depth; drawn from the plan each time it is drawn, at (x, y), the point of the floor under a, heights going up from there. What the line crosses is drawn cut through (walls, above and below the doors and windows they are cut at); beyond it, up to depth, the faces turned towards it with their doors, windows and what is fixed on them at its height, the furniture, and the walls in the way. A line whose far side (depth beyond it) lies on the face of a wall makes an elevation of that wall, and follows the wall when the wall changes: usually 1000 in front of the face, with depth 1000. One across the plan makes a section. The line is shown on the plan in the editor, to place it, and never printed; an elevation (a line crossing no wall) gets a printed marker there, numbered as its name ends. Moving the view moves where it is drawn; moving it with the walls it looks at moves its line too. It holds what is drawn on it as its children (dimension, text, annotation, line, polyline, rect, ellipse), in its own coordinates: x along its line from a, y up from its floor (negative), in mm of the plan, drawn at (x, y) and its scale, so that a dimension says the real length.",
       ),
     z
       .object({
@@ -359,6 +366,20 @@ export const NodeSchema = z
       })
       .describe(
         "The dimensions an elevation or a section draws by itself, worked out from the plan each time: one of what it holds (its parent must be an \"elevation\"), with no position of its own, drawn in the view's coordinates under its floor and beside what it measures. Remove it for none; one is put in each view the tool makes.",
+      ),
+    z
+      .object({
+        ...base,
+        type: z.literal('plandimensions'),
+        top: sideRows('top'),
+        right: sideRows('right'),
+        bottom: sideRows('bottom'),
+        left: sideRows('left'),
+        dimensionStyle: Id.optional().describe('The id of the dimension style they are drawn in (a key of the drawing\'s "dimensionStyles"). Left out, the drawing\'s default.'),
+        unit: z.enum(['mm', 'cm', 'm', 'in', 'ft', 'ft-in']).optional().describe("Unit their values are shown in, unless their dimension style gives one. Defaults to 'mm'. Coordinates stay in mm whatever this is."),
+      })
+      .describe(
+        'The dimensions of the plan of its parent (a page or a group), drawn by themselves round the building and worked out from its walls each time, so that they follow every change: on each side (top, right, bottom, left of the page), the building from end to end, its outer walls piece by piece with the sides of their doors and windows, both or nothing. No position of its own: its rows are 800 mm out from the box round the walls, the next 600 further. One per plan is enough. Version 7.',
       ),
     z
       .object({

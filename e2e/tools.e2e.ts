@@ -334,6 +334,27 @@ test('puts a room in the space walls close, and another in the part a divider sp
   await expect.poll(async () => (await rooms()).map((n) => [n.name, n.x, n.y])).toEqual([['Room 01', 2000, 1500]])
 })
 
+test('dimensions the plan round its building, once', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('w')
+  for (const [x, y] of [[0, 0], [4000, 0], [4000, 3000], [0, 3000], [0, 0]]) await click(page, at(x, y))
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Control+k')
+  await page.locator('.palette input').fill('Dimension the plan')
+  await page.keyboard.press('Enter')
+  await expect.poll(async () => (await saved(page)).filter((n) => n.type === 'plandimensions').length).toBe(1)
+  // Selected, to set up in Properties: what each side shows.
+  await expect(page.locator('.field', { has: page.locator('span:text-is("Bottom")') })).toBeVisible()
+  await page.keyboard.press('Shift+1')
+  await page.screenshot({ path: test.info().outputPath('plan-dimensions.png') })
+  // Once there, the command does not add more to this plan.
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('Control+k')
+  await page.locator('.palette input').fill('Dimension the plan')
+  await page.keyboard.press('Enter')
+  expect((await saved(page)).filter((n) => n.type === 'plandimensions')).toHaveLength(1)
+})
+
 test('cuts a wall in two with the split tool', async ({ page }) => {
   const at = await blank(page)
   await drawWall(page, [320, 220], [720, 220])

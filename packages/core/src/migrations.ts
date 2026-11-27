@@ -399,4 +399,6 @@ export const MIGRATIONS: ((doc: Raw) => Raw)[] = [
   withOfficeChairs,
   // Version 6 brings viewpoints (the `camera` node type), and views that hold their line.
   withLinesInViews,
+  // Version 7 brings the dimensions a plan draws by itself round its building (the `plandimensions` node type). Nothing else changes.
+  (doc) => doc,
 ]

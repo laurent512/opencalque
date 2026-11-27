@@ -50,6 +50,22 @@ export function elevateSides(side?: BuildingSide): void {
   putViews(views.map(({ side: _, ...line }) => line))
 }
 
+/**
+ * The dimensions of the plan round its building, drawn by themselves from its walls and kept up
+ * to date (`plandimensions`): added to the plan being edited, once, and selected, to choose in
+ * Properties what each side shows.
+ */
+export function dimensionPlan(): void {
+  const id = newId()
+  if (apply([{ op: 'add_node', node: { id, type: 'plandimensions', parent: get().scope, unit: unit(), ...layerHere() } as NodeInput }])) select([id])
+}
+
+/** Whether the plan being edited has walls, and no dimensions of its own yet. */
+export const canDimensionPlan = () => {
+  const { doc, scope } = get()
+  return wallsIn(doc, scope).length > 0 && !Object.values(doc.nodes).some((node) => node.type === 'plandimensions' && node.parent === scope)
+}
+
 /** Whether the plan being edited has walls to see the sides of. */
 export const canElevateSides = () => wallsIn(get().doc, get().scope).length > 0
 
