@@ -13,7 +13,7 @@ import type { Registry } from './registry'
 import { DEFAULT_MATERIAL, type Asset, type Document, type DrawingSettings, type Node, type NodeOf, type NodeType, type WallEdge } from './schema'
 import { DEFAULT_PAPER_SCALE, paperFormat, paperSheet } from './papers'
 import { regionPerimeter, roomAt } from './rooms'
-import { autoDimensionPrimitives, drawElevationsWith, elevationPrimitives, keptViewPatch, lineHere, moveViewCorner, moveViewEdge, moveViewEnd, seenArea, viewPlacement, type Measure } from './elevation'
+import { autoDimensionPrimitives, drawElevationsWith, elevationPrimitives, keptViewPatch, lineHere, lookedAt, markerPrimitives, moveViewCorner, moveViewEdge, moveViewEnd, seenArea, viewMarkers, viewPlacement, type Measure } from './elevation'
 import { tablePrimitives } from './tables'
 import { cameraEdges, cameraPrimitives, fovThrough, frameHeight, markTip } from './camera'
 import { bendThrough, linkMiddle, linkPrimitives } from './networks'
@@ -877,14 +877,20 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     // What it holds (its dimensions, its notes, `VIEW_CONTENTS`) is in its own coordinates, put where
     // it is drawn and as large (`viewPlacement`): a dimension says the real length, and goes with it.
     primitives: (node, ctx) => {
-      if (ctx.mark) return viewLinePrimitives(node).map((p) => ({ ...p, screen: true }))
+      // On its plan, its line (on screen only) and, for an elevation, the marker printed there (`viewMarkers`).
+      const onPlan = () => {
+        const plan = lookedAt(ctx.doc, node)
+        const marker = plan ? viewMarkers(ctx.doc, plan).get(node.id) : undefined
+        return [...viewLinePrimitives(node).map((p) => ({ ...p, screen: true })), ...(marker ? markerPrimitives(marker) : [])]
+      }
+      if (ctx.mark) return onPlan()
       const drawn = elevationPrimitives(node, ctx.doc, ctx.registry)
       if (ctx.bare) return drawn
       const placing = viewPlacement(node)
       const held = childrenOf(ctx.doc, node.id)
         .filter((child) => isVisible(ctx.doc, child))
         .flatMap((child) => nodePrimitives(child, { ...ctx, depth: ctx.depth + 1 }).map((p) => transformPrimitive(p, placing)))
-      return [...drawn, ...held, ...(lineHere(ctx.doc, node) ? viewLinePrimitives(node).map((p) => ({ ...p, screen: true })) : [])]
+      return [...drawn, ...held, ...(lineHere(ctx.doc, node) ? onPlan() : [])]
     },
     // Moved, it is drawn elsewhere; what it shows is set by its line (moved with the plan, `elevationFollowOps`).
     move: moveXY,

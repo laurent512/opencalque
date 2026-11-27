@@ -4,7 +4,7 @@ import type { Op } from './ops'
 import { primitiveBounds, transformPrimitive, type Primitive } from './primitives'
 import type { ParametricKind, Registry } from './registry'
 import { leavesOf as everythingIn } from './document'
-import { roomAt, roomRegions, type Region } from './rooms'
+import { middleOf, roomAt, roomRegions, type Region } from './rooms'
 import type { Document, Node, NodeOf } from './schema'
 import { courseOf, cross, distToBody, dot, middleAcross, tidy, wallContains, wallSides, type Wall } from './walls/course'
 import { followAlong } from './walls/follow'
@@ -465,6 +465,104 @@ export function outerFaces(doc: Document, parent: string): (WallFace & { side: B
     byParent.set(parent, found)
   }
   return found
+}
+
+/** How wide the symbol marking an elevation on its plan is, in mm: as large as a grid line's bubble is, nearly. */
+export const MARKER = 500
+
+/** Where a view's line is sampled to tell a section, whose line crosses a wall, from an elevation, whose line crosses none. */
+const SECTION_SAMPLES = 40
+
+/** Whether a view's line crosses a wall: a section, which is marked by its own line, not by a marker. */
+function crossesWall(doc: Document, view: Elevation): boolean {
+  const walls = wallsIn(doc, lookedAt(doc, view) ?? view.parent)
+  // Its ends left out: the line of a room's elevation runs from wall to wall, touching them.
+  for (let i = 1; i < SECTION_SAMPLES; i++) {
+    const p = { x: view.a.x + ((view.b.x - view.a.x) * i) / SECTION_SAMPLES, y: view.a.y + ((view.b.y - view.a.y) * i) / SECTION_SAMPLES }
+    if (walls.some((wall) => wallContains(wall, p))) return true
+  }
+  return false
+}
+
+/** The symbol marking elevations on their plan: where, and each view it marks, the way it looks and its number. */
+export interface ViewMarker {
+  centre: Vec2
+  looks: { way: Vec2; label: string }[]
+}
+
+/** A view's number on its marker: the one its name ends with ("Elevation 3"), else its place among the views of the plan. */
+function markerLabel(view: Elevation, index: number): string {
+  return view.name?.match(/(\d+)\s*$/)?.[1] ?? String(index + 1)
+}
+
+const markerCache = new WeakMap<Document['nodes'], Map<string, Map<string, ViewMarker>>>()
+
+/**
+ * The markers of the elevations that look at the plan of `planId`, by the view that draws each:
+ * one at the middle of each line, pointing the way it looks; the interior elevations of a room
+ * (views of faces of the walls round it, their lines inside it) share one, under the room's name,
+ * with a triangle for each. Sections, whose lines cross walls, have none.
+ */
+export function viewMarkers(doc: Document, planId: string): Map<string, ViewMarker> {
+  let byPlan = markerCache.get(doc.nodes)
+  if (!byPlan) markerCache.set(doc.nodes, (byPlan = new Map()))
+  const kept = byPlan.get(planId)
+  if (kept) return kept
+  const views = Object.values(doc.nodes)
+    .filter((node): node is Elevation => node.type === 'elevation' && lookedAt(doc, node) === planId)
+    .sort((one, other) => (one.order < other.order ? -1 : one.order > other.order ? 1 : one.id < other.id ? -1 : 1))
+  const out = new Map<string, ViewMarker>()
+  const rooms = new Map<Region, Elevation[]>()
+  const marked = views.flatMap((view, index) => {
+    if (dist(view.a, view.b) < 1e-6 || crossesWall(doc, view)) return []
+    const look = { label: markerLabel(view, index), way: viewer(view.b, view.a) }
+    const room = elevationWall(doc, lineOf(doc, view)) ? roomAt(doc, planId, { x: (view.a.x + view.b.x) / 2, y: (view.a.y + view.b.y) / 2 }) : null
+    if (room) rooms.set(room, [...(rooms.get(room) ?? []), view])
+    return [{ view, look, room }]
+  })
+  for (const { view, look, room } of marked) {
+    const together = room ? rooms.get(room)! : []
+    if (together.length > 1) {
+      if (together[0] !== view) continue
+      const looks = marked.filter((m) => m.room === room).map((m) => m.look)
+      out.set(view.id, { centre: roomMarkerAt(doc, planId, room!), looks })
+    } else out.set(view.id, { centre: { x: (view.a.x + view.b.x) / 2, y: (view.a.y + view.b.y) / 2 }, looks: [look] })
+  }
+  byPlan.set(planId, out)
+  return out
+}
+
+/** Where the marker of a room's interior elevations goes: under the room's name and area, else in its middle. */
+function roomMarkerAt(doc: Document, planId: string, region: Region): Vec2 {
+  const room = everythingIn(doc, planId).find((node): node is NodeOf<'room'> => node.type === 'room' && roomAt(doc, planId, node) === region)
+  if (!room) return middleOf(region)
+  const lines = 1 + (room.showArea === false ? 0 : 1) + (room.showPerimeter ? 1 : 0)
+  const size = room.size ?? 250
+  return { x: room.x, y: tidy(room.y + (lines - 1) * size * 1.3 + size * 0.6 + MARKER * 0.95) }
+}
+
+/** The symbol of a marker: a circle, a filled triangle on it pointing each way it looks, and the views' numbers inside. */
+export function markerPrimitives(marker: ViewMarker): Primitive[] {
+  const { centre: c, looks } = marker
+  const one = looks.length === 1
+  // Shared by several views, it is larger, its triangles narrower, each number in its quarter by its triangle.
+  const r = (one ? MARKER : MARKER * 1.3) / 2
+  const spread = one ? 0.9 : 0.5
+  const at = (way: Vec2, along: number, across: number) => {
+    const side = perp(way)
+    return { x: c.x + way.x * along + side.x * across, y: c.y + way.y * along + side.y * across }
+  }
+  return [
+    { kind: 'ellipse', cx: c.x, cy: c.y, rx: r, ry: r, fill: '#ffffff', aside: true },
+    ...looks.flatMap(({ way, label }): Primitive[] => {
+      const spot = one ? c : at(way, r * 0.5, 0)
+      const size = one ? r * 0.9 : r * 0.42
+      return [
+        { kind: 'path', points: [at(way, r * (one ? 1.65 : 1.5), 0), at(way, r * Math.cos(spread), r * Math.sin(spread)), at(way, r * Math.cos(spread), -r * Math.sin(spread))], closed: true, fill: 'stroke', aside: true },
+        { kind: 'text', x: spot.x, y: spot.y + size * 0.35, text: label, size, align: 'center', aside: true },
+      ]
+    }),
+  ]
 }
 
 /** Room left below the views already put down for their dimensions, in mm at their scale. */

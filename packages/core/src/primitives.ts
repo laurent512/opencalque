@@ -63,6 +63,11 @@ export interface PrimStyle {
    * an elevation (ARCHITECTURE §10, "Views").
    */
   screen?: boolean
+  /**
+   * Drawn and printed with its node, but not part of its box (`buildScene`): the symbol marking an
+   * elevation on its plan, far from where the view is drawn, which its box is.
+   */
+  aside?: boolean
 }
 
 /** A scene as it is printed and exported: without what is drawn only to work with (`screen`). */

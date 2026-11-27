@@ -38,8 +38,9 @@ export interface SceneItem {
 function itemOf(node: Node, doc: Document, registry: Registry, prims: Primitive[]): SceneItem {
   const held = node.type === 'group' ? leavesOf(doc, node.id).filter((leaf) => isVisible(doc, leaf)) : [node]
   const area = held.flatMap((leaf) => openingArea(doc, leaf, registry) ?? [])
-  // A view's line on the plan, drawn only to work with, is not part of its box, which is its drawing: picked by it, the view is not taken by a box drawn round the plan.
-  const boxed = prims.some((p) => p.screen) && prims.some((p) => !p.screen) ? prims.filter((p) => !p.screen) : prims
+  // A view's line on the plan, drawn only to work with, and its marker there (`aside`) are not part of its box, which is its drawing: picked by them, the view is not taken by a box drawn round the plan.
+  const solid = prims.filter((p) => !p.screen && !p.aside)
+  const boxed = solid.length > 0 && solid.length < prims.length ? solid : prims
   const bounds = area.reduce((b, outline) => unionBounds(b, boundsOfPoints(outline)), boundsOf(boxed))
   const reach = boxed !== prims ? unionBounds(bounds, boundsOf(prims)) : null
   return { id: node.id, node, prims, bounds, ...(reach ? { reach } : {}), locked: isLocked(doc, node), ...(area.length > 0 ? { area } : {}) }

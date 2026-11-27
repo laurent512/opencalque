@@ -26,7 +26,7 @@ export function viewBoxes(doc: Document, pageId: string): { node: NodeOf<'elevat
     const ctx = { doc, registry, depth: 0 }
     boxes = leavesOf(doc, pageId).flatMap((node) => {
       if (node.type !== 'elevation' || !isVisible(doc, node)) return []
-      const box = boundsOf(nodePrimitives(node, ctx).filter((p) => !p.screen))
+      const box = boundsOf(nodePrimitives(node, ctx).filter((p) => !p.screen && !p.aside))
       return box ? [{ node, box }] : []
     })
     byPage.set(pageId, boxes)

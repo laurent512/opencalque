@@ -24,7 +24,8 @@ const wall = (id: string, a: [number, number], b: [number, number], extra: Recor
 const room = (): Document => add(createDocument('Room'), wall('n', [0, 0], [5000, 0]), wall('e', [5000, 0], [5000, 4000]), wall('s', [5000, 4000], [0, 4000]), wall('w', [0, 4000], [0, 0]))
 /** An elevation of the inside of the north wall, from the corner at x = 100: its line 1 m in front of the face, its far side on it; drawn so that x in the view is x on the plan. */
 const north = { type: 'elevation', id: 'v', a: { x: 100, y: 1100 }, b: { x: 4900, y: 1100 }, depth: 1000, x: 100, y: 10000 }
-const drawn = (doc: Document, id = 'vv') => nodePrimitives(doc.nodes[id], { doc, registry, depth: 0 })
+/** What a view draws, without its marker on the plan, which these tests are not about. */
+const drawn = (doc: Document, id = 'vv') => nodePrimitives(doc.nodes[id], { doc, registry, depth: 0 }).filter((p) => !p.aside)
 const texts = (prims: Primitive[]) => prims.flatMap((p) => (p.kind === 'text' ? [p.text] : []))
 const boxes = (prims: Primitive[]) =>
   prims.flatMap((p) => {

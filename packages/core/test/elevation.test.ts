@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdit, applyOps, createDocument, depthPatch, elevationWall, farSide, sideViews, elevationHeightOps, elevationItemAt, elevationMovePatch, elevationPrimitives, FORMAT_VERSION, NewerFormatError, parseDocument, Registry, serializeDocument, shownInElevations, splitWallOps, transformOps, wallFaceAt, roomFaces, roomViews, outerSide, outerFaces, type Document, type NodeOf, type Op, type Primitive } from '../src'
+import { applyEdit, applyOps, createDocument, depthPatch, elevationWall, farSide, sideViews, elevationHeightOps, elevationItemAt, elevationMovePatch, elevationPrimitives, FORMAT_VERSION, NewerFormatError, parseDocument, Registry, serializeDocument, shownInElevations, splitWallOps, transformOps, wallFaceAt, roomFaces, roomViews, outerSide, outerFaces, viewMarkers, markerPrimitives, buildScene, printedScene, type Document, type NodeOf, type Op, type Primitive } from '../src'
 import { viewNodes, viewOps, type ViewSpec } from './view-nodes'
 
 /*
@@ -495,6 +495,61 @@ describe('a room, and the outside, under the elevation tool', () => {
     const below = applyOps(doc, [{ op: 'add_node', node: { type: 'elevation', id: 'old', parent: 'page_1', ...views[0] } as never }])
     expect(roomViews(below, 'page_1', { x: 1000, y: 1500 })[0].y).toBeGreaterThan(views[0].y + 1500)
     expect(roomViews(doc, 'page_1', { x: -2000, y: 1500 })).toEqual([])
+  })
+})
+
+describe('the markers of elevations on their plan', () => {
+  const house = (): Document =>
+    applyOps(
+      createDocument('Plan'),
+      [
+        { type: 'wall', id: 'top', a: { x: 0, y: 0 }, b: { x: 5000, y: 0 }, thickness: 200 },
+        { type: 'wall', id: 'right', a: { x: 5000, y: 0 }, b: { x: 5000, y: 3000 }, thickness: 200 },
+        { type: 'wall', id: 'bottom', a: { x: 0, y: 3000 }, b: { x: 5000, y: 3000 }, thickness: 200 },
+        { type: 'wall', id: 'left', a: { x: 0, y: 0 }, b: { x: 0, y: 3000 }, thickness: 200 },
+        { type: 'room', id: 'room', name: 'Living', x: 2500, y: 1500 },
+      ].map((node): Op => ({ op: 'add_node', node: { parent: 'page_1', ...node } as never })),
+    )
+  const views = (doc: Document, list: { a: { x: number; y: number }; b: { x: number; y: number }; depth: number; x: number; y: number }[], name = 'Elevation') =>
+    applyOps(doc, list.map((view, i): Op => ({ op: 'add_node', node: { type: 'elevation', id: `v${i + 1}`, parent: 'page_1', name: `${name} ${i + 1}`, ...view } as never })))
+
+  it('gives each elevation of a face its own, in the middle of its line, pointing at the face, with its number', () => {
+    const doc = views(house(), [{ a: { x: 1000, y: 1100 }, b: { x: 4000, y: 1100 }, depth: 1000, x: 0, y: 8000 }])
+    const markers = viewMarkers(doc, 'page_1')
+    expect([...markers.keys()]).toEqual(['v1'])
+    const { centre, looks } = markers.get('v1')!
+    expect(centre).toEqual({ x: 2500, y: 1100 })
+    // Its line runs left to right, 1 m below the top wall: it looks up, at the wall.
+    expect(looks).toHaveLength(1)
+    expect(looks[0].label).toBe('1')
+    expect(looks[0].way.y).toBeCloseTo(-1)
+  })
+
+  it('gives the interior elevations of a room one, under the room’s name, with a triangle and a number for each', () => {
+    const doc = views(house(), roomViews(house(), 'page_1', { x: 2500, y: 1500 }))
+    const markers = [...viewMarkers(doc, 'page_1').values()]
+    expect(markers).toHaveLength(1)
+    expect(markers[0].looks.map((look) => look.label).sort()).toEqual(['1', '2', '3', '4'])
+    expect(markers[0].centre.x).toBe(2500)
+    expect(markers[0].centre.y).toBeGreaterThan(1500 + 250)
+    // A circle, and a triangle and a number for each, all printed but none part of the view's box.
+    const prims = markerPrimitives(markers[0])
+    expect(prims).toHaveLength(9)
+    expect(prims.every((p) => p.aside)).toBe(true)
+  })
+
+  it('gives a section, whose line crosses a wall, none', () => {
+    const doc = views(house(), [{ a: { x: -1000, y: 1500 }, b: { x: 6000, y: 1500 }, depth: 3000, x: 0, y: 8000 }], 'Section')
+    expect(viewMarkers(doc, 'page_1').size).toBe(0)
+  })
+
+  it('is printed with the plan, and leaves the view’s box its picture', () => {
+    const doc = views(house(), [{ a: { x: 1000, y: 1100 }, b: { x: 4000, y: 1100 }, depth: 1000, x: 0, y: 8000 }])
+    const scene = buildScene(doc, 'page_1', registry)
+    const view = scene.find((item) => item.id === 'v1')!
+    expect(view.bounds!.minY).toBeGreaterThan(5000)
+    const printed = printedScene(scene).find((item) => item.id === 'v1')!
+    expect(printed.prims.some((p) => p.kind === 'ellipse' && p.cx === 2500 && p.cy === 1100)).toBe(true)
   })
 })
 
