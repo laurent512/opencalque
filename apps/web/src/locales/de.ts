@@ -1068,6 +1068,7 @@ export const de: Record<string, string> = {
   "Elevation": "Ansicht",
   "Elevation {n}": "Ansicht {n}",
   "Click where the view goes": "Klicken Sie, wo die Ansicht hinkommt",
+  "Click where the views go": "Klicken, wo die Ansichten hinkommen",
   "Drag the side to make it wider or narrower: the other side stays where it is": "Seite ziehen, um es breiter oder schmaler zu machen: die andere Seite bleibt, wo sie ist",
   "Drag the bottom up or down: its top stays where it is": "Unterkante nach oben oder unten ziehen: die Oberkante bleibt, wo sie ist",
   "Drag the top up or down to change its height": "Oberkante nach oben oder unten ziehen, um die Höhe zu ändern",

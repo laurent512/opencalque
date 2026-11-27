@@ -286,7 +286,7 @@ function Hints() {
   const measured = useStore((s) => s.calibration !== null)
   const opening = useStore((s) => s.placing?.type === 'parametric' && Boolean(registry.parametric.get(s.placing.kind)?.opening))
   const mounted = useStore((s) => s.placing?.type === 'parametric' && Boolean(registry.parametric.get(s.placing.kind)?.mount))
-  const view = useStore((s) => (s.placing?.type === 'elevation' ? (s.placing.sided ? 'section' : 'elevation') : null))
+  const view = useStore((s) => (s.placing?.type === 'elevation' ? (s.placing.sided ? 'section' : 'elevation') : s.placing?.type === 'views' ? 'views' : null))
   // Whether Shift+Space would flip something: the wall tool drawing by a face, a door being placed.
   const flips = useStore((s) => (s.tool === 'wall' ? s.wallJustify !== 'center' : canFlipSide()))
   // With the select tool, a preview in progress is an object being moved, reshaped, scaled or turned.

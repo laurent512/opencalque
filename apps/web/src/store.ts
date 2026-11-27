@@ -28,6 +28,11 @@ export type Placing = (
    * side of its line it is put down on is the side it is seen from.
    */
   | { type: 'elevation'; name: string; line: { a: Vec2; b: Vec2; depth?: number }; sided?: boolean }
+  /**
+   * Views put down together, in a group named `name` (the elevations of a room's walls): each its
+   * line, and where it is drawn from the pointer (`x`, `y`), so that they keep their row.
+   */
+  | { type: 'views'; name: string; views: { a: Vec2; b: Vec2; depth: number; x: number; y: number }[] }
 ) & { carried?: boolean }
 
 /**

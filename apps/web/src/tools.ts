@@ -29,7 +29,7 @@ export type Hint = [key: string, text: string]
  * shown that cannot be used yet. Each hint is a key and what it does; an empty key is a plain
  * instruction, and the first one is always the next thing to do.
  */
-export function hintsFor(tool: Tool, step: number, opening: boolean, selected = false, flips = false, mounted = false, view: 'elevation' | 'section' | null = null): Hint[] {
+export function hintsFor(tool: Tool, step: number, opening: boolean, selected = false, flips = false, mounted = false, view: 'elevation' | 'section' | 'views' | null = null): Hint[] {
   const free: Hint = ['Alt', t('ignores the grid and snapping')]
   // What measures the drawing never takes a point from the grid (MEASURING in canvas/gesture.ts).
   const unsnapped: Hint = ['Alt', t('ignores snapping')]
@@ -112,6 +112,7 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
       return step === 0 ? [['', t('Click where the grid line starts, at its bubble')], rested] : [['', t('Click where it ends')], typed, angles, free, ['', t('the next one takes the next letter or number')]]
     case 'place':
       if (view === 'section') return [['', t('Click where the view goes, on the side the section is seen from')], ['Esc', t('cancels')]]
+      if (view === 'views') return [['', t('Click where the views go')], ['Esc', t('cancels')]]
       if (view) return [['', t('Click where the view goes')], ['Esc', t('cancels')]]
       if (opening) return [['', t('Click a wall to place it')], ['R', t('rotates')], ...flip(t('hinges it on its other side')), ['Alt', t('places it freely, off walls and grid')]]
       // What is fixed on walls goes on a face, turned to stand out of it: R would be undone at once.

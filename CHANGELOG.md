@@ -4,6 +4,11 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
+## Unreleased
+
+### Improved
+- The elevations of a room's walls follow the pointer, in their row, to be put down where you click, instead of being put down below the whole plan, often far from where you were looking.
+
 ## 2.3.0 — 2026-11-27
 
 ### New

@@ -1068,6 +1068,7 @@ export const tr: Record<string, string> = {
   "Elevation": "Görünüş",
   "Elevation {n}": "Görünüş {n}",
   "Click where the view goes": "Görünüşün gideceği yere tıklayın",
+  "Click where the views go": "Görünümlerin gideceği yere tıklayın",
   "Drag the side to make it wider or narrower: the other side stays where it is": "Genişletmek veya daraltmak için kenarı sürükleyin: diğer kenar yerinde kalır",
   "Drag the bottom up or down: its top stays where it is": "Alt kenarı yukarı veya aşağı sürükleyin: üst kenar yerinde kalır",
   "Drag the top up or down to change its height": "Yüksekliğini değiştirmek için üst kenarını yukarı veya aşağı sürükleyin",

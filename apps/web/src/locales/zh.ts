@@ -1068,6 +1068,7 @@ export const zh: Record<string, string> = {
   "Elevation": "立面",
   "Elevation {n}": "立面 {n}",
   "Click where the view goes": "点击放置视图的位置",
+  "Click where the views go": "点击放置这些视图的位置",
   "Drag the side to make it wider or narrower: the other side stays where it is": "拖动侧边以加宽或变窄：另一侧保持不动",
   "Drag the bottom up or down: its top stays where it is": "上下拖动底边：顶边保持不动",
   "Drag the top up or down to change its height": "上下拖动顶边以改变高度",

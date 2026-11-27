@@ -915,11 +915,22 @@ test('draws the elevations of every wall of a room clicked inside, and of a side
   const views = async () => (await saved(page)).filter((n) => n.type === 'elevation')
   await page.keyboard.press('Shift+W')
   await expect(page.locator('.hint-bar')).toContainText('inside a room, of each of its walls')
-  // Inside the room: a view of each of its four walls, seen from inside, put down at once and selected.
+  // Inside the room: a view of each of its four walls, seen from inside, in a row that follows the
+  // pointer, to be put down where one is looking, and selected.
   await page.mouse.move(at(2000, 1500).x, at(2000, 1500).y)
   await page.screenshot({ path: test.info().outputPath('room-lit.png') })
   await click(page, at(2000, 1500))
+  await expect(page.locator('.hint-bar')).toContainText('Click where the views go')
+  await page.mouse.move(at(0, -500).x, at(0, -500).y, { steps: 4 })
+  await click(page, at(0, -500))
   await expect.poll(async () => (await views()).length).toBe(4)
+  // The first where it was clicked, its floor there; the others in a row to its right.
+  const row = await views()
+  expect(row[0]).toMatchObject({ x: 0, y: -500 })
+  for (let i = 1; i < row.length; i++) {
+    expect(row[i].y).toBe(-500)
+    expect(row[i].x).toBeGreaterThan(row[i - 1].x)
+  }
   // In a group named after the room (put in by itself when the walls closed), the group selected.
   const group = async (name: string) => (await saved(page)).find((n) => n.type === 'group' && n.name === name)
   const room = (await group('Elevations – Room 01'))!
@@ -957,6 +968,7 @@ test('moves every selected view when one of their pictures is dragged', async ({
   // A cupboard against the top wall, which two of the views show.
   await page.keyboard.press('Shift+W')
   await click(page, at(2000, 1500))
+  await click(page, at(0, -500))
   const views = async () => (await saved(page)).filter((n) => n.type === 'elevation')
   await expect.poll(async () => (await views()).length).toBe(4)
   const before = await views()

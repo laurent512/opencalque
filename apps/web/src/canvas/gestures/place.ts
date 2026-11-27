@@ -1,6 +1,6 @@
 import { canSplit, hitTest, newId, outerFaces, outerSide, roomAt, roomFaces, roomViews, snapMountToWall, snapOpeningToWall, splitOps, splitPlace, trimOps, trimPlace, viewOfFace, wallFaceAt, wallSides, type Document, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
 import { libraryOps, pickStyle } from '../../actions'
-import { elevateSides, putViews, roomViewsName } from '../../actions/walls'
+import { elevateSides, roomViewsName } from '../../actions/walls'
 import { registry } from '../../extensions'
 import { t } from '../../i18n'
 import { apply, cancel, commit, layerHere, preview, select, setTool, useStore, type Placing } from '../../store'
@@ -29,12 +29,13 @@ export const eyedropperDown: Press = (c, _e, _at, world) => {
 /**
  * What follows the pointer is put down, and the next one follows it. A library's component comes
  * in with the first: the next ones are placements of that same one, not further copies. A table of
- * quantities, or an elevation, is put down once, and selected, to be set up.
+ * quantities, an elevation, or the group of a room's elevations, is put down once, and selected,
+ * to be set up.
  */
 export const placeDown: Press = (c) => {
   const { base, placing } = get()
   if (!base) return
-  if (placing?.type === 'table' || placing?.type === 'elevation') {
+  if (placing?.type === 'table' || placing?.type === 'elevation' || placing?.type === 'views') {
     const id = c.placed
     commit()
     setTool('select')
@@ -57,9 +58,9 @@ function facing<T extends { a: Vec2; b: Vec2 }>(view: T, p: Vec2): T {
 /**
  * The tool of views. A click beside an inner face of a wall makes an elevation of it, seen from
  * that side, which then follows the pointer to be put down; beside an outer face, the elevation of
- * that whole side of the building (`sideViews`), and with Shift of all four; inside a room, an
- * elevation of each of its walls (`roomViews`). Those are put down at once, round or below the plan,
- * and selected. A click elsewhere starts a section line, which the next click ends, wherever it is,
+ * that whole side of the building (`sideViews`), and with Shift of all four, put down at once round
+ * the plan, and selected; inside a room, an elevation of each of its walls (`roomViews`), in a row
+ * that follows the pointer to be put down where one is looking, not below the whole plan. A click elsewhere starts a section line, which the next click ends, wherever it is,
  * and whose view is put down on the side of its line it is seen from.
  */
 export const elevationDown: Press = (c, e, at, world) => {
@@ -79,8 +80,10 @@ export const elevationDown: Press = (c, e, at, world) => {
     }
     const room = roomViews(doc, s.scope, world)
     if (room.length > 0) {
-      setTool('select')
-      return putViews(room, roomViewsName(world))
+      // Their row as `roomViews` lays it out, from the floor of the first under the pointer.
+      const views = room.map((view) => ({ ...view, x: view.x - room[0].x, y: view.y - room[0].y }))
+      setTool('place', { type: 'views', name: roomViewsName(world), views })
+      return
     }
   }
   sectionDown(c, e, at, world)
@@ -191,7 +194,19 @@ export const toolHover: Move<'idle'> = (c, _g, e, _at, world, out) => {
     else if (face) out.face = [[face.a, face.b]]
     else if (room.length > 0) out.face = room.map((f) => [f.a, f.b])
     else out.marker = snap(c, world, e, []).marker
-  } else if (s.tool === 'place' && s.placing) {
+  } else if (s.tool === 'place' && s.placing?.type === 'views') {
+    // A room's elevations, in a group, their row from the pointer; each with its automatic dimensions.
+    const target = snap(c, world, e, [c.placed])
+    out.marker = target.marker
+    const before = count(s.base ?? s.doc, 'elevation')
+    out.previewed = preview([
+      { op: 'add_node', node: { id: c.placed, type: 'group', parent: s.scope, ...layerHere(s), name: s.placing.name } as NodeInput },
+      ...s.placing.views.flatMap(({ x, y, ...line }, i): Op[] => [
+        { op: 'add_node', node: { id: `${c.placed}_${i}`, type: 'elevation', parent: c.placed, ...layerHere(s), name: t('Elevation {n}', { n: String(before + i + 1) }), ...line, x: target.p.x + x, y: target.p.y + y } as NodeInput },
+        { op: 'add_node', node: { id: `${c.placed}_${i}_dimensions`, type: 'autodimensions', parent: `${c.placed}_${i}`, unit: unit(), ...layerHere(s) } as NodeInput },
+      ]),
+    ])
+  } else if (s.tool === 'place' && s.placing && s.placing.type !== 'views') {
     const target = snap(c, world, e, [c.placed])
     out.marker = target.marker
     const common = { id: c.placed, rotation: s.placingRotation, parent: s.scope, ...layerHere(s), x: target.p.x, y: target.p.y }

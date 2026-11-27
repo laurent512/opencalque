@@ -1068,6 +1068,7 @@ export const ja: Record<string, string> = {
   "Elevation": "立面",
   "Elevation {n}": "立面 {n}",
   "Click where the view goes": "ビューを置く位置をクリック",
+  "Click where the views go": "ビューを置く場所をクリック",
   "Drag the side to make it wider or narrower: the other side stays where it is": "辺をドラッグして幅を変更：反対側の辺はそのまま",
   "Drag the bottom up or down: its top stays where it is": "下端を上下にドラッグ：上端はそのまま",
   "Drag the top up or down to change its height": "上端を上下にドラッグして高さを変更",

@@ -1068,6 +1068,7 @@ export const fr: Record<string, string> = {
   "Elevation": "Élévation",
   "Elevation {n}": "Élévation {n}",
   "Click where the view goes": "Cliquez là où va la vue",
+  "Click where the views go": "Cliquez là où vont les vues",
   "Drag the side to make it wider or narrower: the other side stays where it is": "Tirez le côté pour l’élargir ou le rétrécir : l’autre côté reste en place",
   "Drag the bottom up or down: its top stays where it is": "Tirez le bas vers le haut ou le bas : le haut reste en place",
   "Drag the top up or down to change its height": "Tirez le haut vers le haut ou le bas pour changer sa hauteur",

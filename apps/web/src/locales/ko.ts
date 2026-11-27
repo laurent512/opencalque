@@ -1068,6 +1068,7 @@ export const ko: Record<string, string> = {
   "Elevation": "입면",
   "Elevation {n}": "입면 {n}",
   "Click where the view goes": "뷰를 놓을 곳을 클릭",
+  "Click where the views go": "뷰를 놓을 곳을 클릭",
   "Drag the side to make it wider or narrower: the other side stays where it is": "변을 끌어 넓히거나 좁힙니다: 반대쪽 변은 그대로입니다",
   "Drag the bottom up or down: its top stays where it is": "아랫변을 위아래로 끌기: 윗변은 그대로입니다",
   "Drag the top up or down to change its height": "윗변을 위아래로 끌어 높이를 바꿉니다",
