@@ -1,3 +1,4 @@
+import { span } from './perf'
 import ClipperLib from 'clipper-lib'
 import { leavesOf, rootOf } from './document'
 import { distToSegment, pointInPolygon, type Vec2 } from './geometry'
@@ -184,6 +185,10 @@ function reshapesSpaces(before: Document, after: Document, ops: Op[]): boolean {
  */
 export function roomsAfterEdit(before: Document, after: Document, parentId: string, ops: Op[]): { moved: { id: string; x: number; y: number }[]; spots: Vec2[] } {
   if (!reshapesSpaces(before, after, ops)) return { moved: [], spots: [] }
+  return span('rooms put in by themselves', () => roomsFollowing(before, after, parentId))
+}
+
+function roomsFollowing(before: Document, after: Document, parentId: string): { moved: { id: string; x: number; y: number }[]; spots: Vec2[] } {
   const spaces = roomRegions(after, parentId).filter((region) => region.area >= LEAST_ROOM)
   // The middle of a space is found only for the spaces looked at, at most once each.
   const found = new Map<Region, Vec2>()

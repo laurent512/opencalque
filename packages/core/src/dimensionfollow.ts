@@ -17,6 +17,13 @@ import { wallOpenings } from './walls/openings'
 import { wallOutline } from './walls/outline'
 import { wallsIn } from './walls/spatial'
 
+/**
+ * What a dimension on the plan measures, and so whose points are looked at: not a view, a sheet, a
+ * table, a text or another dimension, whose drawing would be worked out twice for nothing at every
+ * step of a drag (a view's picture is its whole elevation).
+ */
+const MEASURED = new Set(['wall', 'parametric', 'instance', 'line', 'polyline', 'rect', 'ellipse', 'gridline', 'divider'])
+
 /** How near a point of what moved a dimension's end must be, in mm, to be on it. */
 const ON_POINT = 0.5
 
@@ -68,7 +75,7 @@ export function dimensionFollowOps(before: Document, after: Document, changed: I
   const looked = new Set<string>()
   for (const id of moved) {
     const [was, now] = [before.nodes[id], after.nodes[id]]
-    if (!was || !now || was.type !== now.type) continue
+    if (!was || !now || was.type !== now.type || !MEASURED.has(now.type)) continue
     looked.add(id)
     if (now.type === 'wall' && was.type === 'wall') {
       for (const other of wallsIn(after, now.parent)) if (meets(other, was) || meets(other, now)) looked.add(other.id)

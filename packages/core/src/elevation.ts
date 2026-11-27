@@ -1,3 +1,4 @@
+import { count, span } from './perf'
 import { isVisible, leavesOf, rootOf } from './document'
 import { applyTransform, boundsOfPoints, dist, norm, perp, pointInPolygon, sub, unionBounds, type Bounds, type Vec2 } from './geometry'
 import type { Op } from './ops'
@@ -507,6 +508,10 @@ const markerCache = new WeakMap<Document['nodes'], Map<string, Map<string, ViewM
  * with a triangle for each. Sections, whose lines cross walls, have none.
  */
 export function viewMarkers(doc: Document, planId: string): Map<string, ViewMarker> {
+  return span('view markers', () => markersOf(doc, planId))
+}
+
+function markersOf(doc: Document, planId: string): Map<string, ViewMarker> {
   let byPlan = markerCache.get(doc.nodes)
   if (!byPlan) markerCache.set(doc.nodes, (byPlan = new Map()))
   const kept = byPlan.get(planId)
@@ -972,7 +977,9 @@ function laid(view: Elevation, doc: Document, registry: Registry): Laid {
   const { x: _x, y: _y, scale: _scale, name: _name, order: _order, ...seeing } = view
   const key = JSON.stringify(seeing)
   const last = lastLaid.get(view.id)
-  found = last && last.registry === registry && last.key === key && unchangedFor(last.doc, doc, view) ? last.laid : layoutAtPlanScale({ ...view, x: 0, y: 0 }, doc, registry)
+  const keep = last && last.registry === registry && last.key === key && span('view: unchanged?', () => unchangedFor(last.doc, doc, view))
+  count(keep ? 'view kept' : 'view laid out again')
+  found = keep ? last.laid : span('view: lay out', () => layoutAtPlanScale({ ...view, x: 0, y: 0 }, doc, registry))
   views.set(view, found)
   lastLaid.set(view.id, { doc, registry, key, laid: found })
   return found

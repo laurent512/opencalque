@@ -5,6 +5,8 @@
  */
 interface Host {
   crypto: { getRandomValues<T extends Uint8Array>(array: T): T }
+  /** What the profiler times spans with (`perf.ts`). */
+  performance: { now(): number }
 }
 
 export const host = globalThis as unknown as Host

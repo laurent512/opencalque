@@ -7,6 +7,7 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 ## Unreleased
 
 ### New
+- A performance monitor (View › Performance monitor, or the command list): frames a second, what each part of the app takes, and the slowest moments, with a report to copy and send when something is slow.
 - Dimensions follow what they measure: a dimension whose end is on a corner of a wall, an end of one, a side of a door or window or a point of an object keeps it there as that moves, the walls meeting a wall moved included.
 - Dimension the whole plan, in the Properties of the Dimension tool (or Dimension the plan in the command list), puts down dimensions round the building, in a group: the whole above and on the left, the outer walls piece by piece with the sides of their doors and windows below and on the right. They are dimensions like any other, to move, take out or change one by one, and they follow the walls.
 - The elevations a click makes of a room's walls come in a group named after the room (Elevations – Living room), and the four sides of the building made together in one named Façades: moved, hidden or found in Structure as one.
@@ -17,6 +18,7 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 - Reports sent from the app can be followed in it: Report a bug or suggest an idea… becomes Feedback (Preferences menu), one window where a list down the side holds a new report and the reports sent from this computer or browser. Each opens with the answers written to it on GitHub and a box to reply, without a GitHub account; the reply appears under the report on GitHub, and opens it again if it was closed. The app looks for answers when it starts and every hour while it is open, and tells of a new one in the top right corner, opened by a click on it, until it is read or dismissed. Reports sent before this version are not listed. A reply can carry pictures and recordings of the app, as a report does, and the pictures and recordings of a report and its replies show in it. The reply stays at the foot of the window while the messages scroll above it. Closing the window keeps what was being written and attached, to a new report and to each reply. Esc closes the window wherever the focus was.
 
 ### Improved
+- Dragging a view, and most edits on a large plan, are much smoother: what an edit leaves alone is no longer drawn again (a plan whose floors are groups of walls and rooms redraws none of them while a view is dragged), and the drawing is worked out once for the whole screen rather than three times.
 - A viewpoint's view is shaded at first, Lines coming second in its choices.
 - Drawing and moving walls stays smooth on a plan with many elevations: a view is worked out again only when something it can show changes near what it sees, not at every move of the pointer.
 - A room's Properties are in three parts, each label short enough to read whole: its label (position, size, colour), what is shown under its name (area, perimeter), and its floor.

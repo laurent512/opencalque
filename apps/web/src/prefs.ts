@@ -38,6 +38,8 @@ export interface Prefs {
   showClearances: boolean
   /** Put a room, with its name and area, in each space walls close as they are drawn (`roomsAfterEdit`). */
   autoRooms: boolean
+  /** The performance monitor open (`PerfMonitor.tsx`), and what the app does measured meanwhile. */
+  perfMonitor: boolean
   /** While editing inside a group: the rest of the drawing shown faded around it, to see and snap to, or not shown. */
   editGroups: Surroundings
   /** The same, while editing a component gone into by one of its placements. */
@@ -124,6 +126,7 @@ const DEFAULTS: Prefs = {
   snapToObjects: true,
   showClearances: true,
   autoRooms: true,
+  perfMonitor: false,
   editGroups: 'faded',
   editComponents: 'alone',
   agentBridge: false,

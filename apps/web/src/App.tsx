@@ -3,6 +3,7 @@ import { About } from './About'
 import { Feedback } from './Feedback'
 import { watchAnswers } from './feedback/mine'
 import { AnswerNotice } from './feedback/AnswerNotice'
+import { PerfMonitor } from './PerfMonitor'
 import { DrawingSettingsWindow } from './DrawingSettingsWindow'
 import { startUp } from './actions'
 import { startAutosave } from './autosave'
@@ -125,6 +126,7 @@ export function App() {
       <About />
       <Feedback />
       <AnswerNotice />
+      <PerfMonitor />
       <QuestionWindow />
       <DropTarget />
     </div>

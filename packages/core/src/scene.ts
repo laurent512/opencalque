@@ -1,3 +1,4 @@
+import { count, profiling, span } from './perf'
 import { childrenOf, isLocked, isVisible, leavesOf } from './document'
 import { applyTransform, boundsContain, boundsContainPoint, boundsOfPoints, boundsTouch, pointInPolygon, unionBounds, type Bounds, type Vec2 } from './geometry'
 import { drawnSolid, kindOf, nodePrimitives, objectBacking, PAPER_EDGE, PAPER_FILL } from './kinds'
@@ -83,11 +84,86 @@ export function coveredInScene(scene: SceneItem[], id: string, box: Bounds): boo
   return false
 }
 
-export function buildScene(doc: Document, containerId: string, registry: Registry): SceneItem[] {
+export function buildScene(doc: Document, containerId: string, registry: Registry, previous?: { doc: Document; scene: SceneItem[] }): SceneItem[] {
+  return span('scene', () => sceneOf(doc, containerId, registry, previous))
+}
+
+/**
+ * What else in the drawing each type of thing is drawn from, by type: a wall from the walls it
+ * meets, a room from the walls and dividers round it, a door or anything placed from the wall it is
+ * in or against; a sheet from the pages, sheets and components it shows names of; a text from the
+ * pages it may name; a link from what it joins; a table of quantities from what it counts. Not
+ * listed: drawn from itself alone. A view is drawn from all of the plan it looks at (`ANYTHING`).
+ */
+const WALLS = ['wall', 'divider', 'parametric']
+const DRAWN_FROM: Record<string, string[]> = {
+  wall: WALLS,
+  room: WALLS,
+  divider: WALLS,
+  parametric: WALLS,
+  paper: ['page', 'paper', 'component'],
+  text: ['page'],
+  link: ['parametric', 'instance'],
+  // What it counts: walls, floors, doors and windows, objects placed, and what holds or hides them.
+  table: ['wall', 'divider', 'room', 'parametric', 'instance', 'group', 'component', 'page', 'paper'],
+}
+const ANYTHING = new Set(['elevation', 'camera', 'autodimensions'])
+
+/** The types of the nodes that differ between two states of the drawing, the one before and the one after alike. */
+function changedTypes(before: Document, after: Document): Set<string> {
+  const types = new Set<string>()
+  for (const id of Object.keys(after.nodes)) {
+    const [was, now] = [before.nodes[id], after.nodes[id]]
+    if (was !== now) {
+      types.add(now.type)
+      if (was) types.add(was.type)
+    }
+  }
+  for (const id of Object.keys(before.nodes)) if (!after.nodes[id]) types.add(before.nodes[id].type)
+  return types
+}
+
+/**
+ * Whether the item of `node` in the scene of `before` is still right in `after`: the drawing's
+ * settings, layers, styles, materials and the rest as they were; the node, all it holds and the
+ * components it places the same objects (the drawing is immutable: what an edit leaves alone is
+ * the same object); and nothing of a type they are drawn from changed (`DRAWN_FROM`, `changed`).
+ */
+function keepsItem(before: Document, after: Document, node: Node, changed: Set<string>): boolean {
+  if (before.nodes[node.id] !== node) return false
+  const seen = new Set<string>()
+  const same = (id: string): boolean => {
+    if (seen.has(id)) return true
+    seen.add(id)
+    const now = after.nodes[id]
+    if (!now || before.nodes[id] !== now || ANYTHING.has(now.type)) return false
+    if (DRAWN_FROM[now.type]?.some((type) => changed.has(type))) return false
+    if (now.type === 'instance' && !same(now.component)) return false
+    return childrenOf(after, id).every((child) => same(child.id)) && childrenOf(before, id).length === childrenOf(after, id).length
+  }
+  return same(node.id)
+}
+
+/** Whether all but the nodes of two states of the drawing are the same: settings, layers, styles, materials, colours. */
+const sameSettings = (before: Document, after: Document) => Object.keys(after).every((key) => key === 'nodes' || (before as Record<string, unknown>)[key] === (after as Record<string, unknown>)[key])
+
+function sceneOf(doc: Document, containerId: string, registry: Registry, previous?: { doc: Document; scene: SceneItem[] }): SceneItem[] {
   const ctx = { doc, registry, depth: 0 }
+  // Kept only on the same page or group as it was: locked or hidden since, what it holds is not.
+  const before = previous && previous.doc.nodes[containerId] === doc.nodes[containerId] && sameSettings(previous.doc, doc) ? new Map(previous.scene.map((item) => [item.id, item])) : undefined
+  const changed = before ? changedTypes(previous!.doc, doc) : new Set<string>()
+  // Each thing measured by its type (`draw wall`, `draw group`…), what it holds within it.
   const items = childrenOf(doc, containerId)
     .filter((node) => isVisible(doc, node))
-    .map((node) => itemOf(node, doc, registry, nodePrimitives(node, ctx)))
+    .map((node) => {
+      const kept = before?.get(node.id)
+      if (kept && keepsItem(previous!.doc, doc, node, changed)) {
+        count('scene: kept as it was')
+        return kept
+      }
+      const draw = () => itemOf(node, doc, registry, nodePrimitives(node, ctx))
+      return profiling() ? span(`draw ${node.type}`, draw) : draw()
+    })
   // The marks of the views shown on other pages that look at this one: on top, to be found.
   const foreign = viewsLookingAt(doc, containerId)
     .filter((node) => isVisible(doc, node))

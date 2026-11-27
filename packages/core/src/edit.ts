@@ -1,3 +1,4 @@
+import { span } from './perf'
 import { applyOps, type Op } from './ops'
 import type { Registry } from './registry'
 import type { Document } from './schema'
@@ -19,16 +20,27 @@ import { dot } from './walls/course'
  * alone does what the operations say and nothing more.
  */
 export function applyEdit(doc: Document, ops: Op[], registry: Registry): { doc: Document; ops: Op[] } {
-  const next = applyOps(doc, ops)
+  return span('edit', () => editOf(doc, ops, registry))
+}
+
+function editOf(doc: Document, ops: Op[], registry: Registry): { doc: Document; ops: Op[] } {
+  const next = span('edit: apply operations', () => applyOps(doc, ops))
   const changed = ops.flatMap((op) => (op.op === 'update_node' ? [op.id] : []))
-  const follow = changed.length > 0 ? [...openingFollowOps(doc, next, changed, registry), ...mountFollowOps(doc, next, changed, registry), ...elevationFollowOps(doc, next, changed)] : []
+  const follow =
+    changed.length > 0
+      ? [
+          ...span('edit: doors and windows follow', () => openingFollowOps(doc, next, changed, registry)),
+          ...span('edit: fixtures follow', () => mountFollowOps(doc, next, changed, registry)),
+          ...span('edit: views follow', () => elevationFollowOps(doc, next, changed)),
+        ]
+      : []
   const followed = follow.length > 0 ? applyOps(next, follow) : next
   // What views hold, kept over what it measures once their lines are where they go.
   const moved = [...changed, ...follow.flatMap((op) => (op.op === 'update_node' ? [op.id] : []))]
   const held = moved.length > 0 ? viewContentFollowOps(doc, followed, moved) : []
   const kept = held.length > 0 ? applyOps(followed, held) : followed
   // The dimensions on points of what moved, last, once everything that follows has.
-  const measured = dimensionFollowOps(doc, kept, [...moved, ...held.flatMap((op) => (op.op === 'update_node' ? [op.id] : []))], registry)
+  const measured = span('edit: dimensions follow', () => dimensionFollowOps(doc, kept, [...moved, ...held.flatMap((op) => (op.op === 'update_node' ? [op.id] : []))], registry))
   const all = [...follow, ...held, ...measured]
   return all.length > 0 ? { doc: measured.length > 0 ? applyOps(kept, measured) : kept, ops: [...ops, ...all] } : { doc: next, ops }
 }

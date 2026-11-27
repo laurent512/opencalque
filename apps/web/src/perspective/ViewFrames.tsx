@@ -1,3 +1,4 @@
+import { sceneOf } from '../scenes'
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Lock } from 'lucide-react'
 import { buildScene, coveredInScene, fovOf, hitTest, isLocked, isVisible, leavesOf, lookAround, solidAt, stepAside, type Camera } from '@opencalque/core'
@@ -121,7 +122,7 @@ export function ViewFrames() {
   const [held, setHeld] = useState<{ camera: string; picked: string } | null>(null)
   const frames = useMemo(() => framesOf(doc, cameras), [doc, cameras])
   // What is stacked over a view hides its frame, as it hides its picture; and where its name is, its name.
-  const scene = useMemo(() => (cameras.length > 0 ? buildScene(doc, scope, registry) : []), [doc, scope, cameras])
+  const scene = useMemo(() => (cameras.length > 0 ? sceneOf(doc, scope) : []), [doc, scope, cameras])
   const covered = useMemo(() => {
     const out = new Map<string, { frame: boolean; name: boolean }>()
     for (const camera of cameras) {

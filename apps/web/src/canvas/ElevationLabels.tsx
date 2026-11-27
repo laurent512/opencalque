@@ -1,10 +1,11 @@
 import { useMemo, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Lock } from 'lucide-react'
-import { boundsOf, buildScene, coveredInScene, dist, isLocked, isVisible, keptViewPatch, leavesOf, moveOps, moveViewEnd, nodePrimitives, rootOf, viewScale, wallFollowOps, type Bounds, type Document, type NodeOf, type Op, type Vec2 } from '@opencalque/core'
+import { boundsOf, buildScene, coveredInScene, span, dist, isLocked, isVisible, keptViewPatch, leavesOf, moveOps, moveViewEnd, nodePrimitives, rootOf, viewScale, wallFollowOps, type Bounds, type Document, type NodeOf, type Op, type Vec2 } from '@opencalque/core'
 import { registry } from '../extensions'
 import { t } from '../i18n'
 import { commit, preview, select, useStore } from '../store'
 import { labelOf } from '../ui'
+import { sceneOf } from '../scenes'
 import { editComponent } from '../navigation'
 
 /*
@@ -57,10 +58,10 @@ export function ElevationLabels() {
   const views = useMemo(() => {
     const page = rootOf(doc, scope)
     // Inside a view, what is shown is in its coordinates, not the page's.
-    return page && page.type === 'page' && doc.nodes[scope]?.type !== 'elevation' ? viewBoxes(doc, page.id) : []
+    return page && page.type === 'page' && doc.nodes[scope]?.type !== 'elevation' ? span('view labels: boxes', () => viewBoxes(doc, page.id)) : []
   }, [doc, scope])
   // What is stacked over a view where its name is hides its name, as it hides its drawing.
-  const scene = useMemo(() => (views.length > 0 ? buildScene(doc, rootOf(doc, scope)!.id, registry) : []), [doc, scope, views])
+  const scene = useMemo(() => (views.length > 0 ? sceneOf(doc, rootOf(doc, scope)!.id) : []), [doc, scope, views])
   const covered = useMemo(() => new Set(views.filter(({ node, box }) => coveredInScene(scene, node.id, nameBox(box, view.zoom))).map(({ node }) => node.id)), [scene, views, view.zoom])
   return (
     <>

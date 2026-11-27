@@ -1933,6 +1933,83 @@ button.crumb.ahead:hover {
   font-weight: 600;
 }
 
+/* The performance monitor (`PerfMonitor.tsx`): small, over the bottom left of the drawing, out of the way. */
+.perf-monitor {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  z-index: 900;
+  width: 380px;
+  max-height: 60vh;
+  padding: 8px 10px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 18%);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+}
+
+.perf-monitor header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.perf-monitor header strong {
+  flex: 1;
+}
+
+.perf-monitor .hint {
+  margin: 4px 0;
+  color: var(--muted);
+}
+
+.perf-monitor table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.perf-monitor th {
+  color: var(--muted);
+  font-weight: normal;
+  text-align: right;
+}
+
+.perf-monitor th:first-child,
+.perf-monitor td:first-child {
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+
+.perf-monitor td {
+  padding: 1px 4px;
+  text-align: right;
+}
+
+.perf-monitor .perf-slow {
+  color: var(--danger-text);
+}
+
+.perf-monitor h4 {
+  margin: 8px 0 2px;
+}
+
+.perf-monitor ul {
+  margin: 0;
+  padding-left: 14px;
+}
+
+.perf-counted {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
 /* A new answer to a report sent from here, in the top right corner under the menu bar, until read or dismissed (`AnswerNotice`). */
 .answer-notice {
   position: fixed;

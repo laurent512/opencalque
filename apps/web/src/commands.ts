@@ -322,6 +322,7 @@ const STATIC: Command[] = [
   panel('properties'),
   panel('assistant', ['Mod+J']),
   { id: 'view.resetLayout', title: msg('Reset the panel layout'), category: 'View', run: resetLayout },
+  { id: 'view.performance', title: msg('Performance monitor'), category: 'View', keywords: 'profiler slow speed debug frames', checked: () => prefs().perfMonitor, run: () => setPrefs({ perfMonitor: !prefs().perfMonitor }) },
   { id: 'help.welcome', title: msg('Welcome window'), category: 'General', global: true, run: () => useWindows.setState({ welcomeOpen: true }) },
   { id: 'help.feedback', title: msg('Feedback'), category: 'General', keywords: 'report bug idea issue problem feature request answer reply', global: true, run: () => useWindows.setState({ feedbackOpen: true }) },
   { id: 'help.about', title: msg('About OpenCalque and what is new'), category: 'General', global: true, run: () => useWindows.setState({ aboutOpen: true }) },

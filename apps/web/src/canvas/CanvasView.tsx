@@ -1,3 +1,5 @@
+import { keepScene, keptScene } from '../scenes'
+import { span } from '@opencalque/core'
 import { useWindows } from '../windows'
 import { stopBrowsing } from '../actions/instances'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -81,8 +83,11 @@ export function CanvasView() {
   const built = useRef<{ doc: typeof doc; scope: string; version: number; scene: ReturnType<typeof buildScene> } | null>(null)
   const scene = useMemo(() => {
     const last = built.current
-    const kept = last && last.scope === scope && last.version === extensionsVersion ? sceneAfterViewpoints(last.doc, last.scene, doc, scope, registry) : null
-    const made = kept ?? buildScene(doc, scope, registry)
+    // Kept already when something else on screen needed it first (`scenes.ts`); kept for them otherwise.
+    const kept = keptScene(doc, scope) ?? (last && last.scope === scope && last.version === extensionsVersion ? sceneAfterViewpoints(last.doc, last.scene, doc, scope, registry) : null)
+    // What did not change since the last scene is taken from it (`keepsItem`): a drag redraws what it moves.
+    const made = kept ?? buildScene(doc, scope, registry, last && last.scope === scope && last.version === extensionsVersion ? { doc: last.doc, scene: last.scene } : undefined)
+    keepScene(doc, scope, made)
     built.current = { doc, scope, version: extensionsVersion, scene: made }
     return made
   }, [doc, scope, extensionsVersion])
@@ -333,7 +338,7 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), inViewSplits: inViewGrips.flatMap(({ item, splits }) => splits.map((y) => ({ box: item.box, y }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines, flips }, showGrid, palette, around, grid)
+    span('paint canvas', () => drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), inViewSplits: inViewGrips.flatMap(({ item, splits }) => splits.map((y) => ({ box: item.box, y }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines, flips }, showGrid, palette, around, grid))
   }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, grid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines, flips, inViews, inViewGrips, viewLines, drawnHandles])
 
   // Lets the quick bar finish the shape in progress with the sizes typed there.

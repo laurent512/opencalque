@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { applyEdit, applyOps, createDocument, holdsChildren, layerIn, layersOf, newId, pagesOf, roomsAfterEdit, type Document, type NodeInput, type NodeOf, type Op, type Pattern, type Vec2, wallEndsAt } from '@opencalque/core'
+import { applyEdit, applyOps, span, createDocument, holdsChildren, layerIn, layersOf, newId, pagesOf, roomsAfterEdit, type Document, type NodeInput, type NodeOf, type Op, type Pattern, type Vec2, wallEndsAt } from '@opencalque/core'
 import { registry } from './extensions'
 import { t } from './i18n'
 import { usePrefs } from './prefs'
@@ -284,6 +284,10 @@ export function keep(ops: Op[]): boolean {
  * back the walls and their room.
  */
 function applied(doc: Document, ops: Op[]): { doc: Document; ops: Op[] } {
+  return span('editor: edit', () => appliedNow(doc, ops))
+}
+
+function appliedNow(doc: Document, ops: Op[]): { doc: Document; ops: Op[] } {
   const done = applyEdit(doc, ops, registry)
   if (!usePrefs.getState().autoRooms) return done
   const s = get()
