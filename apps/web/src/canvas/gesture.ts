@@ -89,7 +89,7 @@ export interface Keys {
   shiftKey: boolean
 }
 
-export const TWO_POINT: Tool[] = ['line', 'curve', 'arc', 'wall', 'divider', 'camera', 'dimension', 'annotation', 'gridline', 'rect', 'ellipse', 'circle', 'paper']
+export const TWO_POINT: Tool[] = ['line', 'curve', 'spline', 'arc', 'wall', 'divider', 'camera', 'dimension', 'annotation', 'gridline', 'rect', 'ellipse', 'circle', 'paper']
 /** The tools that measure what is drawn: their points snap to it, never to the grid. A dimension's line is still placed by grid steps. */
 export const MEASURING: Tool[] = ['dimension', 'measure', 'angle']
 /** Tools whose two typed sizes are a width and a height. */

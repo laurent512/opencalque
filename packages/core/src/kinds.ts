@@ -1,5 +1,5 @@
 import { childrenOf, isVisible, rootOf } from './document'
-import { add, applyTransform, besidePath, centroid, dist, inverseTransform, len, mid, norm, parallelPath, perp, rotate, scale, sub, type Bounds, type Vec2, ellipseArc, smoothPoints, unionBounds } from './geometry'
+import { add, applyTransform, besidePath, centroid, curveOf, dist, inverseTransform, len, mid, norm, parallelPath, perp, rotate, scale, sub, type Bounds, type Vec2, ellipseArc, unionBounds } from './geometry'
 import { fadeColor, resolveColor } from './colors'
 import { DIMENSION_MARKER_SIZE, DIMENSION_TEXT_SIZE, styledDimension } from './dimensions'
 import { fillFields } from './fields'
@@ -792,17 +792,18 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     beside: (node, p) => besidePath([node.a, node.b], false, p),
   },
   polyline: {
-    primitives: (node) => [{ kind: 'path', points: node.smooth ? smoothPoints(node.points, node.closed) : node.points, closed: node.closed }, ...(node.closed ? [] : endMarkers(node.points, node))],
+    primitives: (node) => [{ kind: 'path', points: curveOf(node.points, node.closed, node.smooth), closed: node.closed }, ...(node.closed ? [] : endMarkers(node.points, node))],
     move: (node, d) => ({ points: node.points.map((p) => add(p, d)) }),
     handles: (node) => node.points,
     moveHandle: (node, index, p) => ({ points: node.points.map((q, i) => (i === index ? p : q)) }),
     transform: (node, t) => ({ points: node.points.map((p) => t.point(p)), ...markerSize(node, t) }),
+    // A spline's copy is the spline its points offset pull: its points moved out as a straight line's are.
     parallel: (node, distance) => {
-      const points = parallelPath(node.points, !!node.closed, distance, node.smooth)
+      const points = parallelPath(node.points, !!node.closed, distance, node.smooth === true)
       return points && { points }
     },
-    beside: (node, p) => besidePath(node.smooth ? smoothPoints(node.points, node.closed) : node.points, !!node.closed, p),
-    centre: (node) => (node.closed ? centroid(node.smooth ? smoothPoints(node.points, true) : node.points) : null),
+    beside: (node, p) => besidePath(curveOf(node.points, node.closed, node.smooth), !!node.closed, p),
+    centre: (node) => (node.closed ? centroid(curveOf(node.points, true, node.smooth)) : null),
   },
   rect: {
     primitives: (node) => [{ kind: 'path', points: rectCorners(node), closed: true }],

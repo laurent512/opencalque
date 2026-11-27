@@ -10,7 +10,7 @@
     },
     "version": {
       "type": "number",
-      "const": 6
+      "const": 7
     },
     "id": {
       "type": "string",
@@ -1482,8 +1482,16 @@
                 "type": "boolean"
               },
               "smooth": {
-                "description": "Drawn as a curve flowing through the points instead of straight segments.",
-                "type": "boolean"
+                "description": "true: drawn as a curve flowing through the points instead of straight segments. 'spline' (version 7): the points are the control points of a curve they pull (a clamped cubic B-spline): it starts on the first and ends on the last, passing near the others; closed, it loops through none.",
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "string",
+                    "const": "spline"
+                  }
+                ]
               },
               "startMarker": {
                 "description": "Symbol at the first point of an open polyline. Defaults to 'none'.",

@@ -210,6 +210,56 @@ export function smoothPoints(points: Vec2[], closed = false, steps = 12): Vec2[]
 }
 
 /**
+ * A curve its points pull, as the control points of a cubic B-spline, as the points to draw it
+ * with: open, it starts on the first point and ends on the last, the curve leaving each end towards
+ * the next point and passing near the others (clamped, as CAD programs draw a spline by its control
+ * points); closed, it loops smoothly all round, through none of them. With three points it is a
+ * quadratic curve; with two, the straight line between them. `steps` to each stretch of it.
+ */
+export function splinePoints(points: Vec2[], closed = false, steps = 16): Vec2[] {
+  const n = points.length
+  if (n < 3) return points
+  const out: Vec2[] = []
+  if (closed) {
+    // A periodic uniform cubic: each stretch drawn from four points in turn round the loop.
+    const at = (i: number) => points[((i % n) + n) % n]
+    for (let i = 0; i < n; i++) {
+      const [p0, p1, p2, p3] = [at(i - 1), at(i), at(i + 1), at(i + 2)]
+      for (let k = 0; k < steps; k++) {
+        const t = k / steps
+        const b = [(1 - t) ** 3 / 6, (3 * t ** 3 - 6 * t ** 2 + 4) / 6, (-3 * t ** 3 + 3 * t ** 2 + 3 * t + 1) / 6, t ** 3 / 6]
+        out.push({ x: b[0] * p0.x + b[1] * p1.x + b[2] * p2.x + b[3] * p3.x, y: b[0] * p0.y + b[1] * p1.y + b[2] * p2.y + b[3] * p3.y })
+      }
+    }
+    return out
+  }
+  // Clamped: its knots repeated at both ends as often as its degree, so that it starts and ends on its end points.
+  const degree = Math.min(3, n - 1)
+  const spans = n - degree
+  const knots = [...Array(degree).fill(0), ...Array.from({ length: spans + 1 }, (_, i) => i), ...Array(degree).fill(spans)]
+  // De Boor's way: the point at `u` from the points of the stretch it is in.
+  const pointAt = (u: number): Vec2 => {
+    const span = Math.min(spans - 1, Math.floor(u)) + degree
+    const d = points.slice(span - degree, span + 1).map((p) => ({ ...p }))
+    for (let r = 1; r <= degree; r++) {
+      for (let j = degree; j >= r; j--) {
+        const i = j + span - degree
+        const alpha = (u - knots[i]) / (knots[i + degree + 1 - r] - knots[i])
+        d[j] = { x: (1 - alpha) * d[j - 1].x + alpha * d[j].x, y: (1 - alpha) * d[j - 1].y + alpha * d[j].y }
+      }
+    }
+    return d[degree]
+  }
+  for (let s = 0; s < spans; s++) for (let k = 0; k < steps; k++) out.push(pointAt(s + k / steps))
+  out.push(points[n - 1])
+  return out
+}
+
+/** The points a polyline is drawn through: its own, a curve through them (`smooth`), or the spline they pull (`'spline'`). */
+export const curveOf = (points: Vec2[], closed: boolean | undefined, smooth: boolean | 'spline' | undefined): Vec2[] =>
+  smooth === 'spline' ? splinePoints(points, closed) : smooth ? smoothPoints(points, closed) : points
+
+/**
  * The points of a path with its corners rounded: each corner becomes an arc of `radius` (the same
  * for every corner, or one per point in a list) touching the two sides it joins. A corner takes at
  * most half of a side it shares with another corner, so a radius too large for its sides is made

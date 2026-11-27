@@ -57,6 +57,8 @@ From 1.0 on:
 - **Extensions written as data.** An extension with `"formatVersion": 1` keeps loading; what is added to the format is optional. Its schema is [`schema/extension.schema.json`](../schema/extension.schema.json).
 - **Operations.** An operation valid in 1.0 (from a script, `opencalque apply` or the assistant) stays valid and means the same; new kinds of operation may be added.
 
+Format version 7 (2.3) brings splines pulled by their points (a `polyline` whose `smooth` is `'spline'`): a drawing with one is saved as version 7, which 2.2 and earlier refuse to open, saying so; one without stays of the version it needs.
+
 One exception, in 1.2 (format version 2): what a component holds is on no layer, each placement giving its own, a placement of a component has no style, and there are no wall types any more, each wall carrying its own material, thickness, height and look. Operations that set any of these are refused. Drawings made before are brought up to date as they open, each wall type becoming a material of its name, and look as they did save in rare cases the [changelog](../CHANGELOG.md) lists; one thing is lost, the layers of a wall type (its build-up), which were drawn as lines inside its walls. Drawings saved by 1.2 do not open in 1.0 and 1.1.
 
 The TypeScript packages of this repository are not published, and their code may change between versions.

@@ -38,6 +38,7 @@ export const PRESSES: Partial<Record<Tool, Press>> = {
   calibrate: measureDown,
   line: lineDown,
   curve: lineDown,
+  spline: lineDown,
 }
 /** The tools that draw by two points (and a dimension's third), and any not listed above. */
 export const DRAW_PRESS: Press = drawDown

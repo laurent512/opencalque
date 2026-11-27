@@ -399,4 +399,6 @@ export const MIGRATIONS: ((doc: Raw) => Raw)[] = [
   withOfficeChairs,
   // Version 6 brings viewpoints (the `camera` node type), and views that hold their line.
   withLinesInViews,
+  // Version 7 brings splines pulled by their points (a polyline's `smooth` of 'spline'). Nothing else changes.
+  (doc) => doc,
 ]

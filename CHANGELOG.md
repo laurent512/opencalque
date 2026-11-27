@@ -7,6 +7,7 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 ## Unreleased
 
 ### New
+- Splines: the Spline tool (`Shift+B`, beside the Curved line) draws a curve that the points you click pull, as CAD programs draw a spline by its control points: it starts on the first point and ends on the last, passing near the others, and its points, joined by a dashed line while it is selected, are dragged to shape it. A line or a curve is made one with Make it a spline its points pull, and back with Straighten the line. A drawing with a spline is saved in a new version of the format, which earlier versions of the app refuse to open, saying so.
 - A performance monitor (View › Performance monitor, or the command list): frames a second, what each part of the app takes, and the slowest moments, with a report to copy and send when something is slow.
 - Dimensions follow what they measure: a dimension whose end is on a corner of a wall, an end of one, a side of a door or window or a point of an object keeps it there as that moves, the walls meeting a wall moved included.
 - Dimension the whole plan, in the Properties of the Dimension tool (or Dimension the plan in the command list), puts down dimensions round the building, in a group: the whole above and on the left, the outer walls piece by piece with the sides of their doors and windows below and on the right. They are dimensions like any other, to move, take out or change one by one, and they follow the walls.

@@ -2280,7 +2280,7 @@ test('zooms and switches the grid, snapping and temporary dimensions from the vi
   expect(prefs).toMatchObject({ showGrid: false, showClearances: false })
 
   // The paper is drawn from the shapes' list, as a rectangle is.
-  await page.getByRole('button', { name: /^Line, Curved line, Arc/ }).click()
+  await page.getByRole('button', { name: /^Line, Curved line, Spline, Arc/ }).click()
   await page.getByRole('menuitem', { name: /^Paper/ }).click()
   await expect(page.locator('.toolbar .icon-button.active')).toHaveAttribute('title', /^Paper/)
 })
@@ -2612,14 +2612,14 @@ test('sets up the floating toolbar by dragging in Preferences, opened by a right
   const row = (name: string) => page.locator('.toolbar-item-row', { has: page.locator('.toolbar-item-name', { hasText: new RegExp(`^${name}$`) }) }).first()
   const top = { x: 0.3, y: 0.1 }
   // The shapes are a list, shown open under its button.
-  await expect(row('List of 7 tools')).toBeVisible()
+  await expect(row('List of 8 tools')).toBeVisible()
   // Dragged onto what is not in the toolbar, the wall tool leaves it.
   await drag(row('Wall'), page.locator('.toolbar-palette'))
   await expect(button('Wall')).toHaveCount(0)
   // Dragged out of the list of shapes, before the door: a button of its own.
   await drag(row('Line'), row('Door'), top)
   await expect(button('Line')).toHaveCount(1)
-  await expect(row('List of 6 tools')).toBeVisible()
+  await expect(row('List of 7 tools')).toBeVisible()
   // Dragged onto the middle of the select tool, pan joins it in a list.
   await drag(row('Pan'), row('Select'))
   await expect(row('List of 2 tools')).toBeVisible()

@@ -6,7 +6,7 @@ z.config({ jitless: true })
 export const FORMAT = 'opencalque'
 /** What `format` was before the project was renamed. Such drawings are still read. */
 export const FORMER_FORMAT = 'opencad'
-export const FORMAT_VERSION = 6
+export const FORMAT_VERSION = 7
 
 const Id = z.string().min(1)
 
@@ -238,7 +238,10 @@ export const NodeSchema = z
         type: z.literal('polyline'),
         points: z.array(Vec2Schema).min(2),
         closed: z.boolean().optional(),
-        smooth: z.boolean().optional().describe('Drawn as a curve flowing through the points instead of straight segments.'),
+        smooth: z
+          .union([z.boolean(), z.literal('spline')])
+          .optional()
+          .describe("true: drawn as a curve flowing through the points instead of straight segments. 'spline' (version 7): the points are the control points of a curve they pull (a clamped cubic B-spline): it starts on the first and ends on the last, passing near the others; closed, it loops through none."),
         startMarker: tip.describe("Symbol at the first point of an open polyline. Defaults to 'none'."),
         endMarker: tip.describe("Symbol at its last point. Defaults to 'none'."),
         markerSize,

@@ -357,6 +357,28 @@ test('dimensions the plan round its building with dimensions of its own, in a gr
   expect((await nodes()).filter((n) => n.type === 'dimension' && n.a.y === n.b.y && n.a.y < 0).map((n) => Math.round(Math.abs(n.b.x - n.a.x)))).toEqual([Math.round(width)])
 })
 
+test('draws a spline its points pull, shows its control points when selected, and makes it of a line', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('Shift+B')
+  await expect(page.locator('.hint-bar')).toContainText('Click where the spline starts')
+  for (const [x, y] of [[0, 0], [1000, -1500], [2500, 1500], [4000, 0]]) await click(page, at(x, y))
+  await page.keyboard.press('Enter')
+  const splines = async () => (await saved(page)).filter((n) => n.type === 'polyline')
+  await expect.poll(async () => (await splines()).map((n) => [n.smooth, n.points.length])).toEqual([['spline', 4]])
+  await page.keyboard.press('Escape')
+  await click(page, at(0, 0))
+  await page.screenshot({ path: test.info().outputPath('spline.png') })
+  // Straightened, and made a spline again, from the command list.
+  await page.keyboard.press('Control+k')
+  await page.locator('.palette input').fill('Straighten the line')
+  await page.keyboard.press('Enter')
+  await expect.poll(async () => (await splines())[0].smooth).toBeUndefined()
+  await page.keyboard.press('Control+k')
+  await page.locator('.palette input').fill('Make it a spline')
+  await page.keyboard.press('Enter')
+  await expect.poll(async () => (await splines())[0].smooth).toBe('spline')
+})
+
 test('cuts a wall in two with the split tool', async ({ page }) => {
   const at = await blank(page)
   await drawWall(page, [320, 220], [720, 220])

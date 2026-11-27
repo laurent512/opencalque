@@ -5,11 +5,11 @@ import { t } from './i18n'
  * each step of using one (`hintsFor`). What a tool does on the drawing is in `canvas/gestures/`
  * (`PRESSES`, and the gestures it starts); its command and shortcut are in `commands.ts` (`tool(…)`).
  */
-export type Tool = 'select' | 'hand' | 'line' | 'curve' | 'arc' | 'rect' | 'ellipse' | 'circle' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'extend' | 'fillet' | 'offset' | 'rotate' | 'move' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'elevation' | 'camera' | 'connect' | 'place'
+export type Tool = 'select' | 'hand' | 'line' | 'curve' | 'spline' | 'arc' | 'rect' | 'ellipse' | 'circle' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'extend' | 'fillet' | 'offset' | 'rotate' | 'move' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'elevation' | 'camera' | 'connect' | 'place'
 
 /** The plain shapes, which share one toolbar button. */
 // A paper is drawn as a rectangle is, by its corners: it is offered with the shapes.
-export const SHAPE_TOOLS: Tool[] = ['line', 'curve', 'arc', 'rect', 'ellipse', 'circle', 'paper']
+export const SHAPE_TOOLS: Tool[] = ['line', 'curve', 'spline', 'arc', 'rect', 'ellipse', 'circle', 'paper']
 /** The tools for naming spaces, and for the views of their walls, which share another. */
 export const ROOM_TOOLS: Tool[] = ['room', 'divider', 'elevation', 'camera']
 /** The tools for writing on the drawing, which share a third. */
@@ -62,9 +62,10 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
       return step === 0 ? [['', t('Click where the divider starts, on a wall')]] : [['', t('Click where it ends, on the wall opposite')], angles, held, free, ['Esc', t('finishes')]]
     case 'line':
     case 'curve':
-      // One segment is a line, several a polyline; closed, a shape that can be filled.
-      if (step === 0) return [['', tool === 'curve' ? t('Click where the curve starts') : t('Click where the line starts')], rested]
-      return [['', step === 1 && tool === 'line' ? t('Click where it ends') : t('Click the next point')], typed, angles, held, free, ...(step >= 3 ? [['', t('Double-click, or click the first point, to close the shape')] as Hint] : []), ['Esc', t('finishes')]]
+    case 'spline':
+      // One segment is a line, several a polyline; closed, a shape that can be filled. A spline's points pull its curve.
+      if (step === 0) return [['', tool === 'spline' ? t('Click where the spline starts') : tool === 'curve' ? t('Click where the curve starts') : t('Click where the line starts')], rested]
+      return [['', step === 1 && tool === 'line' ? t('Click where it ends') : tool === 'spline' ? t('Click the next point that pulls the curve') : t('Click the next point')], typed, angles, held, free, ...(step >= 3 ? [['', t('Double-click, or click the first point, to close the shape')] as Hint] : []), ['Esc', t('finishes')]]
     case 'arc':
       if (step === 0) return [['', t('Click where the arc starts')], rested]
       if (step === 1) return [['', t('Click where the arc ends')], typed, angles, free, ['Esc', t('cancels')]]

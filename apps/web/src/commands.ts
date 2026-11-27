@@ -41,6 +41,7 @@ import {
   canClosePolylines,
   canOpenPolylines,
   canCurvePolylines,
+  canSplinePolylines,
   canStraightenPolylines,
   setPolylines,
   splitWall,
@@ -116,7 +117,7 @@ const browsing = () => useWindows.getState().browsing !== null
 /** One parametric object or one table of quantities selected: what can be made into the shapes it draws. */
 const onlyVectorizable = () => get().selection.length === 1 && ['parametric', 'table'].includes(get().doc.nodes[get().selection[0]]?.type ?? '')
 /** A line, a wall or a divider has its first point and is waiting for the next. */
-const drawingLine = () => get().drawStep > 0 && ['line', 'curve', 'wall', 'divider', 'move'].includes(get().tool)
+const drawingLine = () => get().drawStep > 0 && ['line', 'curve', 'spline', 'wall', 'divider', 'move'].includes(get().tool)
 /** Something is being dragged with the select tool: moved, or reshaped by one of its points. */
 const dragging = () => get().tool === 'select' && get().base !== null && !get().editingText
 const canHold = () => drawingLine() || dragging()
@@ -237,6 +238,7 @@ const STATIC: Command[] = [
   { id: 'shape.close', title: msg('Close the shape'), category: 'Edit', keywords: 'polygon polyline join', when: canClosePolylines, run: () => setPolylines({ closed: true }) },
   { id: 'shape.open', title: msg('Open the shape'), category: 'Edit', keywords: 'polygon polyline', when: canOpenPolylines, run: () => setPolylines({ closed: null }) },
   { id: 'shape.curve', title: msg('Curve the line through its points'), category: 'Edit', keywords: 'smooth spline round polyline', when: canCurvePolylines, run: () => setPolylines({ smooth: true }) },
+  { id: 'shape.spline', title: msg('Make it a spline its points pull'), category: 'Edit', keywords: 'spline nurbs bspline control points curve', when: canSplinePolylines, run: () => setPolylines({ smooth: 'spline' }) },
   { id: 'shape.straighten', title: msg('Straighten the line between its points'), category: 'Edit', keywords: 'straight sharp polyline', when: canStraightenPolylines, run: () => setPolylines({ smooth: null }) },
   { id: 'wall.dimension', title: msg('Dimension the selected walls'), category: 'Edit', keywords: 'chain dimensions openings', when: canFitWalls, run: dimensionWalls },
   { id: 'wall.dimensionPlan', title: msg('Dimension the plan'), category: 'Edit', keywords: 'automatic dimensions overall building outside', when: canDimensionPlan, run: dimensionPlan },
@@ -333,6 +335,7 @@ const STATIC: Command[] = [
   tool('hand', msg('Pan'), 'H'),
   tool('line', msg('Line'), 'L'),
   tool('curve', msg('Curved line'), 'Shift+L'),
+  tool('spline', msg('Spline'), 'Shift+B'),
   tool('arc', msg('Arc'), 'Shift+O'),
   // Listed before the rectangle tool so that R rotates while an object is being placed.
   {

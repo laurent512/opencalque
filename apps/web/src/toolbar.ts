@@ -30,6 +30,7 @@ import {
   Triangle,
   Type,
   Undo2,
+  Waypoints,
   type LucideIcon,
 } from 'lucide-react'
 import { Arc, GridLine, Offset } from './icons'
@@ -51,6 +52,7 @@ export const ICONS: Record<Exclude<Tool, 'calibrate' | 'place'>, [title: string,
   hand: [msg('Pan'), Hand],
   line: [msg('Line'), Minus],
   curve: [msg('Curved line: flows through the points you click'), Spline],
+  spline: [msg('Spline: a curve the points you click pull, as in CAD programs'), Waypoints],
   arc: [msg('Arc: click its two ends, then a point it goes through'), Arc],
   rect: [msg('Rectangle'), Square],
   ellipse: [msg('Ellipse'), Circle],

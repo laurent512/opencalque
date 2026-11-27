@@ -150,6 +150,8 @@ export interface Overlay {
   smart?: MoveGuides
   /** A line of a wall pointed at in the properties panel, in world coordinates. */
   edgeHover?: Vec2[][]
+  /** The points of each selected spline joined in turn, thin and dashed: what pulls its curve, to see which point to drag. */
+  controls?: { points: Vec2[]; closed: boolean }[]
   /** The face of the selected wall that a press would drag, or that is being dragged, to change its thickness, as its stretches. */
   face?: Vec2[][]
   /** The boxes in which elevations show what is selected on the plan: the same objects, seen from in front. */
@@ -813,6 +815,25 @@ export function drawScene(
       ctx.fill()
       ctx.stroke()
     }
+  }
+  // A selected spline's control polygon, under its points.
+  if (overlay.controls?.length) {
+    ctx.save()
+    ctx.strokeStyle = ACCENT
+    ctx.globalAlpha = 0.6
+    ctx.lineWidth = 1
+    ctx.setLineDash([4, 3])
+    for (const { points, closed } of overlay.controls) {
+      ctx.beginPath()
+      points.forEach((point, i) => {
+        const p = toScreen(point)
+        if (i === 0) ctx.moveTo(p.x, p.y)
+        else ctx.lineTo(p.x, p.y)
+      })
+      if (closed) ctx.closePath()
+      ctx.stroke()
+    }
+    ctx.restore()
   }
   // The points of an object (the ends of a line or a wall, the corners of a shape) are round and
   // a little larger than the square grips of a selection box, which scale rather than move a point.

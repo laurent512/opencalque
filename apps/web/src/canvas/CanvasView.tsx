@@ -202,6 +202,14 @@ export function CanvasView() {
     })]
   }, [doc, selection, scene, scope, viewHover])
   // A view's line ends are dragged by their arrows, and the edges of what it sees anywhere along them: only its corners are drawn as points.
+  // A selected spline shows the points that pull it joined in turn (`controls`).
+  const controls = useMemo(
+    () => selection.flatMap((id) => {
+      const node = doc.nodes[id]
+      return node?.type === 'polyline' && node.smooth === 'spline' ? [{ points: node.points, closed: !!node.closed }] : []
+    }),
+    [selection, doc],
+  )
   const drawnHandles = useMemo(() => (selection.length === 1 && doc.nodes[selection[0]]?.type === 'elevation' && handles.length === 10 ? handles.slice(3, 7) : handles), [handles, selection, doc])
   const selectionLabels = useMemo((): SizeLabel[] => {
     const node = tool === 'select' && selection.length === 1 ? doc.nodes[selection[0]] : undefined
@@ -338,7 +346,7 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    span('paint canvas', () => drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), inViewSplits: inViewGrips.flatMap(({ item, splits }) => splits.map((y) => ({ box: item.box, y }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines, flips }, showGrid, palette, around, grid))
+    span('paint canvas', () => drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), inViewSplits: inViewGrips.flatMap(({ item, splits }) => splits.map((y) => ({ box: item.box, y }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines, flips, controls }, showGrid, palette, around, grid))
   }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, grid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines, flips, inViews, inViewGrips, viewLines, drawnHandles])
 
   // Lets the quick bar finish the shape in progress with the sizes typed there.
@@ -441,7 +449,7 @@ export function CanvasView() {
     const s = get()
     const line = c.endedLine
     const drawn = line && s.doc.nodes[line.id]
-    if ((s.tool === 'line' || s.tool === 'curve') && line && drawn?.type === 'polyline' && performance.now() - line.time < 1500 && c.gesture.kind === 'idle') {
+    if ((s.tool === 'line' || s.tool === 'curve' || s.tool === 'spline') && line && drawn?.type === 'polyline' && performance.now() - line.time < 1500 && c.gesture.kind === 'idle') {
       // The line ended by the second click of this double-click: close it into a shape.
       c.endedLine = null
       apply([{ op: 'update_node', id: line.id, patch: { closed: true } }])

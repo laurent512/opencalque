@@ -237,8 +237,8 @@ describe('copied and pasted', () => {
 describe('in a file', () => {
   it('make a drawing of version 4, which says the version before while it has none, for the versions before them', () => {
     // Version 5 came after them, with the office chair apart from the desk: a drawing without desks
-    // does not need it; and 6 with viewpoints, which it has none of.
-    expect(FORMAT_VERSION).toBe(6)
+    // does not need it; 6 with viewpoints, which it has none of; and 7 with splines.
+    expect(FORMAT_VERSION).toBe(7)
     expect(JSON.parse(serializeDocument(linked())).version).toBe(4)
     expect(JSON.parse(serializeDocument(room())).version).toBe(2)
     expect(parseDocument(JSON.parse(serializeDocument(linked()))).nodes.l1).toEqual(linked().nodes.l1)

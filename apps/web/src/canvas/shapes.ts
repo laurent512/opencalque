@@ -87,7 +87,7 @@ export function sizes(tool: Tool, start: Vec2, p: Vec2): { live: { a: number; b:
   const length: SizeLabel = { at: { x: (start.x + p.x) / 2, y: (start.y + p.y) / 2 }, dx: up.x * 16, dy: up.y * 16, text: formatLength(len(d)), rotation: turn }
   // The way from one point of a curve or an arc to the next is not the way the line drawn goes, nor
   // is a circle's radius: they have no angle to show.
-  const straight = tool !== 'curve' && tool !== 'arc' && tool !== 'circle'
+  const straight = tool !== 'curve' && tool !== 'spline' && tool !== 'arc' && tool !== 'circle'
   return { live: { a: len(d), b: angle }, labels: [length], ...(straight ? { angle: { at: start, degrees: angle } } : {}) }
 }
 
@@ -238,7 +238,7 @@ export const axisOf = (from: Vec2, to: Vec2): Overlay['axis'] => {
 /** The polyline the line tool makes from the points clicked, or the curve through them that the curve tool makes. */
 export const polyline = (id: string, points: Vec2[], closed: boolean): NodeInput => {
   const { scope, tool } = get()
-  return { id, type: 'polyline', parent: scope, ...layerHere(), points, closed, ...(tool === 'curve' ? { smooth: true } : {}), ...currentStyle(closed) }
+  return { id, type: 'polyline', parent: scope, ...layerHere(), points, closed, ...(tool === 'curve' ? { smooth: true } : tool === 'spline' ? { smooth: 'spline' as const } : {}), ...currentStyle(closed) }
 }
 
 /** The arc from `a` to `b` through `p`: an ellipse with a start and an end angle. Three points in line make a line. */

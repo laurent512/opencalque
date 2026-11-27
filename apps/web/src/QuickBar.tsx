@@ -56,8 +56,8 @@ const SIZES: Partial<Record<Tool, Size[]>> = {
  * make closed shapes, which take its fill too (the line tool closes a polygon). Line weights and
  * kinds of line are set afterwards, in the properties.
  */
-const INKED: Tool[] = ['rect', 'ellipse', 'circle', 'line', 'curve', 'arc', 'wall', 'gridline']
-const FILLED: Tool[] = ['rect', 'ellipse', 'circle', 'line', 'curve']
+const INKED: Tool[] = ['rect', 'ellipse', 'circle', 'line', 'curve', 'spline', 'arc', 'wall', 'gridline']
+const FILLED: Tool[] = ['rect', 'ellipse', 'circle', 'line', 'curve', 'spline']
 
 /**
  * One size of the shape being drawn. It follows the pointer until a value is typed into it; a

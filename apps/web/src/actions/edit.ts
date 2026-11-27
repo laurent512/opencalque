@@ -144,10 +144,11 @@ const selectedPolylines = () => {
 }
 export const canClosePolylines = () => selectedPolylines().some((n) => !n.closed && n.points.length >= 3)
 export const canOpenPolylines = () => selectedPolylines().some((n) => n.closed)
-export const canCurvePolylines = () => selectedPolylines().some((n) => !n.smooth)
-export const canStraightenPolylines = () => selectedPolylines().some((n) => n.smooth)
+export const canCurvePolylines = () => selectedPolylines().some((n) => n.smooth !== true)
+export const canSplinePolylines = () => selectedPolylines().some((n) => n.smooth !== 'spline')
+export const canStraightenPolylines = () => selectedPolylines().some((n) => !!n.smooth)
 /** Closes or opens the selected polylines, or curves or straightens them; null takes the property away. */
-export function setPolylines(patch: { closed?: true | null; smooth?: true | null }): void {
+export function setPolylines(patch: { closed?: true | null; smooth?: true | 'spline' | null }): void {
   apply(selectedPolylines().map((n): Op => ({ op: 'update_node', id: n.id, patch })))
 }
 
