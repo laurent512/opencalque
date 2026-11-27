@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { t } from '../i18n'
 import { toast } from '../windows'
+import { SAMPLE_REPORTS } from './samples'
 import { readThread } from './send'
 import type { Thread } from './thread'
 
@@ -30,6 +31,8 @@ interface Mine {
   reports: MyReport[]
   /** When the answers were last looked for at start. */
   checked: number
+  /** Development only: reports made up, listed while none was sent from here (`samples.ts`); never stored. */
+  samples: MyReport[]
 }
 
 const STORAGE_KEY = 'opencalque.reports'
@@ -40,7 +43,7 @@ const CHECKED = 10
 /** How long after looking for answers the app looks again at start. */
 const CHECK_EVERY = 6 * 3_600_000
 
-function load(): Mine {
+function load(): Omit<Mine, 'samples'> {
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
     const reports = Array.isArray(stored.reports) ? stored.reports.filter((r: MyReport) => r && Number.isInteger(r.number) && typeof r.key === 'string' && typeof r.url === 'string') : []
@@ -50,11 +53,14 @@ function load(): Mine {
   }
 }
 
-export const useMyReports = create<Mine>(load)
+export const useMyReports = create<Mine>(() => ({ ...load(), samples: import.meta.env.DEV ? SAMPLE_REPORTS : [] }))
 
-useMyReports.subscribe((mine) => {
+/** The reports the Feedback window lists: those sent from here, or the examples in development while there are none. */
+export const listed = (mine: Mine) => (mine.reports.length > 0 ? mine.reports : mine.samples)
+
+useMyReports.subscribe(({ reports, checked }) => {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(mine))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ reports, checked }))
   } catch {
     // Storage is full or unavailable: the reports are still on GitHub, through the link shown when they were sent.
   }
@@ -74,9 +80,8 @@ export const unread = (report: MyReport) => report.answers > report.seen
 
 function update(number: number, thread: Thread, seen: boolean): void {
   const answers = answersIn(thread)
-  useMyReports.setState((mine) => ({
-    reports: mine.reports.map((r) => (r.number === number ? { ...r, title: thread.title, answers, seen: seen ? answers : r.seen, closed: thread.state === 'closed' } : r)),
-  }))
+  const now = (r: MyReport) => (r.number === number ? { ...r, title: thread.title, answers, seen: seen ? answers : r.seen, closed: thread.state === 'closed' } : r)
+  useMyReports.setState((mine) => ({ reports: mine.reports.map(now), samples: mine.samples.map(now) }))
 }
 
 /** The person has read the thread: its answers are no longer new. */

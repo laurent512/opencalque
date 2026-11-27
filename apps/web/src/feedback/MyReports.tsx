@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Plus } from 'lucide-react'
 import { language, t } from '../i18n'
-import { read, unread, useMyReports, type MyReport } from './mine'
+import { listed, read, unread, useMyReports, type MyReport } from './mine'
 import { readThread, sendReply } from './send'
 import { blocks, inlines, REPLY_LIMIT, type Block, type Inline, type Speaker, type Thread } from './thread'
 
@@ -22,7 +22,7 @@ const reason = (failed: { error: string; status: number }) =>
  * newest first, those with an answer not yet read marked.
  */
 export function ReportList({ selected, onSelect }: { selected: number | null; onSelect: (report: number | null) => void }) {
-  const reports = useMyReports((s) => s.reports)
+  const reports = useMyReports(listed)
   return (
     <nav className="feedback-side" aria-label={t('Your reports')}>
       <button className={`feedback-pick new${selected === null ? ' active' : ''}`} aria-current={selected === null} onClick={() => onSelect(null)}>

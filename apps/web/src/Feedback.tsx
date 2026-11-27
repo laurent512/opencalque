@@ -11,7 +11,7 @@ import { AreaPicker, boxOf, RecordingBar } from './feedback/AreaPicker'
 import { canCapture, canRecord, openSource, pictureOf, record, type Area, type Recorded, type Recorder, type Source } from './feedback/capture'
 import { LIMITS, newIssueUrl, type Report, type ReportKind } from './feedback/report'
 import { environment, sendReport } from './feedback/send'
-import { remember, useMyReports } from './feedback/mine'
+import { listed, remember, useMyReports } from './feedback/mine'
 import { ReportList, ReportThread } from './feedback/MyReports'
 
 const close = () => useWindows.setState({ feedbackOpen: false })
@@ -47,7 +47,7 @@ let ids = 0
 export function Feedback() {
   const open = useWindows((s) => s.feedbackOpen)
   const selected = useWindows((s) => s.feedbackReport)
-  const mine = useMyReports((s) => s.reports)
+  const mine = useMyReports(listed)
   const opened = mine.find((r) => r.number === selected)
   const box = useRef<HTMLDivElement>(null)
   const [kind, setKind] = useState<ReportKind>('bug')

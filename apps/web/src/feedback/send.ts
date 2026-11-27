@@ -4,6 +4,7 @@ import { usePrefs } from '../prefs'
 import { VERSION } from '../release'
 import { sessionSeconds } from './errors'
 import type { Report } from './report'
+import { SAMPLE_KEY, sampleReply, sampleThread } from './samples'
 import type { Thread } from './thread'
 
 /**
@@ -79,6 +80,7 @@ export async function sendReport(report: Report): Promise<Sent> {
 
 /** A report this device sent, with the answers to it, read with its key. */
 export async function readThread(number: number, key: string): Promise<Thread | Failed> {
+  if (import.meta.env.DEV && key === SAMPLE_KEY) return sampleThread(number)
   const answer = await post<Thread>(`${FEEDBACK_URL}/thread`, { number, key })
   if (!('status' in answer) && !Array.isArray(answer.entries)) return { error: 'The server sent no thread', status: 502 }
   return answer
@@ -86,5 +88,6 @@ export async function readThread(number: number, key: string): Promise<Thread | 
 
 /** Posts the person's reply under their report. */
 export async function sendReply(number: number, key: string, text: string): Promise<{ url: string } | Failed> {
+  if (import.meta.env.DEV && key === SAMPLE_KEY) return sampleReply(number, text)
   return post<{ url: string }>(`${FEEDBACK_URL}/reply`, { number, key, text })
 }

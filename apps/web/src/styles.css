@@ -2382,7 +2382,7 @@ button.crumb.ahead:hover {
   display: flex;
   flex-direction: column;
   width: min(860px, calc(100vw - 32px));
-  height: min(680px, 88vh);
+  height: min(580px, 86vh);
   overflow: hidden;
 }
 
