@@ -5,6 +5,7 @@ import { registry } from '../extensions'
 import { t } from '../i18n'
 import { commit, preview, select, useStore } from '../store'
 import { labelOf } from '../ui'
+import { editComponent } from '../navigation'
 
 /*
  * The elevations and sections of the page, each with a label as a 3D view has (ARCHITECTURE §10,
@@ -136,6 +137,15 @@ function Label(props: { node: NodeOf<'elevation'>; taken: string; box: Bounds; a
     drag(e, (dx, dy) => ({ x: Math.round(node.x + dx), y: Math.round(node.y + dy) }))
   }
 
+  // Double-clicked, as on the drawing: into the group it is in (the views of a room), the view
+  // selected there; a view in no group, into the view, to draw on it.
+  const enter = () => {
+    if (taken !== node.id && node.parent) {
+      editComponent(node.parent)
+      select([node.id])
+    } else editComponent(node.id)
+  }
+
   // A corner: drawn larger or smaller, the corner across staying where it is.
   const pressCorner = (corner: Corner) => (e: ReactPointerEvent<HTMLElement>) => {
     if (e.button !== 0) return
@@ -175,7 +185,7 @@ function Label(props: { node: NodeOf<'elevation'>; taken: string; box: Bounds; a
 
   return (
     <div className={`view-label${active ? ' active' : ''}${props.covered && !active ? ' covered' : ''}${locked ? ' locked' : ''}${props.passive ? ' passive' : ''}`} style={at}>
-      <div className="view-frame-name" title={locked ? t('Locked: click to select the view; unlock it in Properties to move it') : t('Click to select the view, drag to move it on the plan')} onPointerDown={pressName} onContextMenu={openMenu}>
+      <div className="view-frame-name" title={locked ? t('Locked: click to select the view; unlock it in Properties to move it') : t('Click to select the view, drag to move it on the plan')} onPointerDown={pressName} onDoubleClick={enter} onContextMenu={openMenu}>
         {locked && <Lock size={10} aria-hidden />}
         {labelOf(useStore.getState().doc, node)}
       </div>

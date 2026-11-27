@@ -1,7 +1,8 @@
 import { applyOps, dimensionStylePatch, newDimensionStyle, styledDimension, type Document, type NodeOf, type Node, type Op, newId } from '@opencalque/core'
 import { showPanel } from '../../dock'
 import { t } from '../../i18n'
-import { apply, useStore } from '../../store'
+import { apply, setTool, useStore } from '../../store'
+import { executeById } from '../../commands'
 import { Section } from '../../ui'
 import { unit } from '../../units'
 import { Sections, type Update } from './FieldRow'
@@ -85,6 +86,19 @@ export function DimensionTool() {
       <Section title={t('Dimension tool')}>
         <p className="hint">{t('Click two points, then click again to set how far the dimension line stands off. These settings apply to the dimensions you draw next.')}</p>
         <DimensionStyleChoice value={style} label={t('Dimension style')} onChange={give} />
+      </Section>
+      {/* What the tool does to the whole plan at once, beside what it draws one at a time. */}
+      <Section title={t('Dimension the plan')}>
+        <p className="hint">{t('Dimensions round the building, in a group: the whole above and on the left, the walls piece by piece with their doors and windows below and on the right. Dimensions like any other, that follow the walls.')}</p>
+        <button
+          className="text-button"
+          onClick={() => {
+            setTool('select')
+            executeById('wall.dimensionPlan')
+          }}
+        >
+          {t('Dimension the whole plan')}
+        </button>
       </Section>
       <Sections node={node} fields={DIMENSION.filter((f) => f.section)} update={update} />
     </>

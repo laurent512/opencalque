@@ -72,8 +72,8 @@ export const canDimensionPlan = () => wallsIn(get().doc, get().scope).length > 0
 
 /**
  * The elevations of the sides of the building, seen from outside (`sideViews`), put down round
- * the plan: of the selected walls, else of every wall of the plan; all four, or the one `side`
- * (the Elevation tool, on an outer face).
+ * the plan, as the Elevation tool makes them beside an outer face: the one `side`, or all four
+ * (with Shift); of the selected walls, else of every wall of the plan.
  */
 export function elevateSides(side?: BuildingSide): void {
   const { doc, scope, selection } = get()
@@ -86,8 +86,6 @@ export function elevateSides(side?: BuildingSide): void {
   )
 }
 
-/** Whether the plan being edited has walls to see the sides of. */
-export const canElevateSides = () => wallsIn(get().doc, get().scope).length > 0
 
 /** The walls an extend or a trim is about, and which of their ends: the selected wall end, or else every free end of the selected walls. */
 function wallsToFit(): { walls: Extract<Node, { type: 'wall' }>[]; end?: 'a' | 'b' } {

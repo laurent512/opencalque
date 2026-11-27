@@ -339,9 +339,9 @@ test('dimensions the plan round its building with dimensions of its own, in a gr
   await page.keyboard.press('w')
   for (const [x, y] of [[0, 0], [4000, 0], [4000, 3000], [0, 3000], [0, 0]]) await click(page, at(x, y))
   await page.keyboard.press('Escape')
-  await page.keyboard.press('Control+k')
-  await page.locator('.palette input').fill('Dimension the plan')
-  await page.keyboard.press('Enter')
+  // From the Dimension tool, in its Properties.
+  await page.keyboard.press('d')
+  await page.getByRole('button', { name: 'Dimension the whole plan' }).click()
   const nodes = async () => saved(page)
   await expect.poll(async () => (await nodes()).filter((n) => n.type === 'dimension').length).toBe(4)
   const group = (await nodes()).find((n) => n.type === 'group' && n.name === 'Dimensions of the plan')!
@@ -956,6 +956,9 @@ test('moves every selected view when one of their pictures is dragged', async ({
   const twice = await offsets(moved)
   expect(new Set(twice).size).toBe(1)
   expect(twice[0]).not.toBe('0,0')
+  // Double-clicked by its name, a view goes into the group of the room's views, itself selected there.
+  await page.locator('.view-label .view-frame-name').first().dblclick()
+  await expect(objectRows(page).filter({ hasText: /^Elevation [1-4]$/ }).and(page.locator('.selected'))).toHaveCount(1)
 })
 
 /** A wall 4 m long along y = 0 with a socket on its lower face, 2 m along, and an elevation of that face (its line 1 m in front of it) drawn with its floor at y = 6000. */
