@@ -1174,7 +1174,6 @@ export const zh: Record<string, string> = {
   "See it on GitHub": "在 GitHub 上查看",
   "This report is closed. A reply opens it again.": "此报告已关闭。回复会重新打开它。",
   "Your reply": "您的回复",
-  "Your reply will be public, under your report on GitHub.": "您的回复将公开显示在 GitHub 上您的报告下方。",
   "You": "您",
   "Sent from the app": "从应用发送",
   "Something does not work": "有功能不正常",

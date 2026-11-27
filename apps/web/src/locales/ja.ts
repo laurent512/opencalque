@@ -1174,7 +1174,6 @@ export const ja: Record<string, string> = {
   "See it on GitHub": "GitHub で見る",
   "This report is closed. A reply opens it again.": "この報告はクローズされています。返信すると再オープンされます。",
   "Your reply": "返信",
-  "Your reply will be public, under your report on GitHub.": "返信は公開され、GitHub のあなたの報告の下に表示されます。",
   "You": "あなた",
   "Sent from the app": "アプリから送信",
   "Something does not work": "うまく動かない",

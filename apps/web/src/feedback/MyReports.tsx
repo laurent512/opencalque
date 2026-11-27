@@ -155,7 +155,6 @@ export function ReportThread(props: {
           )}
           <div className="feedback-composer-row">
             <CaptureButtons media={media} onCapture={onCapture} />
-            <span className="hint">{t('Your reply will be public, under your report on GitHub.')}</span>
             <button className="pill active" disabled={empty || sending} onClick={send}>
               {sending ? t('Sending…') : t('Send')}
             </button>

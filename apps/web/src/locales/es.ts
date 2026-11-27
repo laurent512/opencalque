@@ -1174,7 +1174,6 @@ export const es: Record<string, string> = {
   "See it on GitHub": "Ver en GitHub",
   "This report is closed. A reply opens it again.": "Este informe está cerrado. Una respuesta lo vuelve a abrir.",
   "Your reply": "Tu respuesta",
-  "Your reply will be public, under your report on GitHub.": "Tu respuesta será pública, bajo tu informe en GitHub.",
   "You": "Tú",
   "Sent from the app": "Enviado desde la aplicación",
   "Something does not work": "Algo no funciona",

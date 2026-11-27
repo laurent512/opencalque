@@ -3053,14 +3053,8 @@ button.feedback-thumb:focus-visible {
   gap: 6px;
 }
 
-.dialog .feedback-composer-row .hint {
-  flex: 1;
-  min-width: 120px;
-  margin: 0 4px;
-  font-size: 11px;
-}
-
 .feedback-composer-row .pill.active {
+  margin-left: auto;
   padding: 6px 18px;
 }
 

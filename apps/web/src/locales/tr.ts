@@ -1174,7 +1174,6 @@ export const tr: Record<string, string> = {
   "See it on GitHub": "GitHub’da gör",
   "This report is closed. A reply opens it again.": "Bu bildirim kapatıldı. Bir yanıt onu yeniden açar.",
   "Your reply": "Yanıtınız",
-  "Your reply will be public, under your report on GitHub.": "Yanıtınız GitHub’da bildiriminizin altında herkese açık olacak.",
   "You": "Siz",
   "Sent from the app": "Uygulamadan gönderildi",
   "Something does not work": "Bir şey çalışmıyor",

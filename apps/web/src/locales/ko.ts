@@ -1174,7 +1174,6 @@ export const ko: Record<string, string> = {
   "See it on GitHub": "GitHub에서 보기",
   "This report is closed. A reply opens it again.": "이 신고는 닫혔습니다. 답장하면 다시 열립니다.",
   "Your reply": "내 답장",
-  "Your reply will be public, under your report on GitHub.": "답장은 GitHub의 신고 아래에 공개됩니다.",
   "You": "나",
   "Sent from the app": "앱에서 보냄",
   "Something does not work": "제대로 동작하지 않음",
