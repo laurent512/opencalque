@@ -1933,11 +1933,11 @@ button.crumb.ahead:hover {
   font-weight: 600;
 }
 
-/* A new answer to a report sent from here, in the bottom right corner until read or dismissed (`AnswerNotice`). */
+/* A new answer to a report sent from here, in the top right corner under the menu bar, until read or dismissed (`AnswerNotice`). */
 .answer-notice {
   position: fixed;
+  top: 48px;
   right: 16px;
-  bottom: 16px;
   z-index: 900;
   display: flex;
   align-items: center;
@@ -1954,7 +1954,7 @@ button.crumb.ahead:hover {
 @keyframes answer-notice-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(-8px);
   }
 }
 

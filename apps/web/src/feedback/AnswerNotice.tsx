@@ -4,7 +4,7 @@ import { useWindows } from '../windows'
 import { dismissAnswers, listed, useMyReports } from './mine'
 
 /**
- * The notice in the bottom right corner that a report sent from here has a new answer: it stays
+ * The notice in the top right corner, under the menu bar, that a report sent from here has a new answer: it stays
  * until it is read (Read opens the report in the Feedback window) or dismissed, and is not shown
  * while the Feedback window is open. Dismissed, the report keeps its mark in the window's list.
  */
