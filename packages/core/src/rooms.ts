@@ -1,7 +1,8 @@
 import ClipperLib from 'clipper-lib'
 import { leavesOf, rootOf } from './document'
-import { pointInPolygon, type Vec2 } from './geometry'
-import type { Document, NodeOf } from './schema'
+import { distToSegment, pointInPolygon, type Vec2 } from './geometry'
+import type { Op } from './ops'
+import type { Document, Node, NodeOf } from './schema'
 import { wallOutline } from './walls'
 
 /**
@@ -114,4 +115,106 @@ export function roomAt(doc: Document, parentId: string | null, p: Vec2): Region 
     if (!found || region.area < found.area) found = region
   }
   return found
+}
+
+/** How near the edge of its space a room's point is on it, in mm: its name and area would be drawn across a wall or a divider. */
+const EDGE = 100
+
+const nearEdge = (p: Vec2, region: Region) => [region.outline, ...region.holes].some((ring) => ring.some((q, i) => distToSegment(p, q, ring[(i + 1) % ring.length]) < EDGE))
+
+/** Spaces smaller than this, in square millimetres (a shaft, the gap between two walls), get no room of themselves. */
+export const LEAST_ROOM = 1_000_000
+
+const inRegion = (p: Vec2, region: Region) => pointInPolygon(p, region.outline) && !region.holes.some((hole) => pointInPolygon(p, hole))
+
+/** Points a grid of so many per side looks among for the middle of a space. */
+const SEARCH = 24
+
+/**
+ * A point well inside a space, where its name and area are written: of a grid over it, the point
+ * inside farthest from its outline and its holes (the middle of a rectangle, the wider arm of an L).
+ */
+export function middleOf(region: Region): Vec2 {
+  const edges = [region.outline, ...region.holes].flatMap((ring) => ring.map((p, i) => [p, ring[(i + 1) % ring.length]] as const))
+  const xs = region.outline.map((p) => p.x)
+  const ys = region.outline.map((p) => p.y)
+  const [minX, maxX, minY, maxY] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
+  const found: { p: Vec2; clear: number }[] = []
+  for (let i = 0; i <= SEARCH; i++) {
+    for (let j = 0; j <= SEARCH; j++) {
+      const p = { x: minX + ((maxX - minX) * i) / SEARCH, y: minY + ((maxY - minY) * j) / SEARCH }
+      if (inRegion(p, region)) found.push({ p, clear: Math.min(...edges.map(([a, b]) => distToSegment(p, a, b))) })
+    }
+  }
+  if (found.length === 0) return { x: Math.round(region.outline[0].x), y: Math.round(region.outline[0].y) }
+  // Of the points nearly as far from every side as the farthest, the one nearest the middle of the box:
+  // in a rectangle, its middle, not the first point of the line across it that is as far from its long sides.
+  const most = Math.max(...found.map((f) => f.clear))
+  const middle = { x: (minX + maxX) / 2, y: (minY + maxY) / 2 }
+  const best = found.filter((f) => f.clear >= most * 0.95).reduce((a, b) => (Math.hypot(b.p.x - middle.x, b.p.y - middle.y) < Math.hypot(a.p.x - middle.x, a.p.y - middle.y) ? b : a)).p
+  return { x: Math.round(best.x), y: Math.round(best.y) }
+}
+
+const roomsIn = (doc: Document, parentId: string): NodeOf<'room'>[] => {
+  const root = rootOf(doc, parentId)
+  return root ? leavesOf(doc, root.id).filter((n): n is NodeOf<'room'> => n.type === 'room') : []
+}
+
+/** Whether an edit made by `ops` touched what bounds spaces: walls and dividers. */
+function reshapesSpaces(before: Document, after: Document, ops: Op[]): boolean {
+  const bounding = (node: Node | undefined) => node?.type === 'wall' || node?.type === 'divider'
+  return ops.some((op) => {
+    if (op.op === 'add_node') return bounding(op.node as Node)
+    const id = 'id' in op && typeof op.id === 'string' ? op.id : null
+    return id !== null && (bounding(before.nodes[id]) || bounding(after.nodes[id]))
+  })
+}
+
+/**
+ * What follows for rooms from an edit (`ops`, from `before` to `after`) on the plan of `parentId`,
+ * when rooms are put in by themselves:
+ * - `moved`: a room the edit covered (its point now on a wall or a divider, in no space, or within
+ *   `EDGE` of the edge of its space, where it was clear of it before) goes to the middle
+ *   (`middleOf`) of the largest space without another room that its space now holds;
+ * - `spots`: a room goes in each space of at least `LEAST_ROOM` that holds none and that the edit
+ *   closed (no space was there before), or split off a space whose room is now in another one (a
+ *   wall or a divider drawn across a room).
+ * A space left without a room otherwise (its room deleted) stays so. Nothing when the edit touched
+ * no wall or divider.
+ */
+export function roomsAfterEdit(before: Document, after: Document, parentId: string, ops: Op[]): { moved: { id: string; x: number; y: number }[]; spots: Vec2[] } {
+  if (!reshapesSpaces(before, after, ops)) return { moved: [], spots: [] }
+  const spaces = roomRegions(after, parentId).filter((region) => region.area >= LEAST_ROOM)
+  const middles = new Map(spaces.map((region) => [region, middleOf(region)]))
+  // A point is a space's when that is the smallest space it is in: a space with another inside it is not that one's.
+  const spaceOf = (p: Vec2) => roomAt(after, parentId, p)
+  const rooms = roomsIn(after, parentId)
+  const at = new Map(rooms.map((room) => [room.id, { x: room.x, y: room.y } as Vec2]))
+  const roomed = (region: Region) => [...at.values()].some((p) => spaceOf(p) === region)
+
+  const moved: { id: string; x: number; y: number }[] = []
+  for (const room of rooms) {
+    const now = spaceOf(room)
+    const then = (before.nodes[room.id] as NodeOf<'room'> | undefined) ?? room
+    const was = roomAt(before, parentId, then)
+    if (!was || (now && (!nearEdge(room, now) || nearEdge(then, was)))) continue
+    const others = (region: Region) => [...at].some(([id, p]) => id !== room.id && spaceOf(p) === region)
+    const free = spaces.filter((region) => inRegion(middles.get(region)!, was) && spaceOf(middles.get(region)!) === region && !others(region))
+    if (free.length === 0) continue
+    const largest = free.reduce((a, b) => (b.area > a.area ? b : a))
+    const p = middles.get(largest)!
+    at.set(room.id, p)
+    moved.push({ id: room.id, x: p.x, y: p.y })
+  }
+
+  const roomsBefore = roomsIn(before, parentId)
+  const spots: Vec2[] = []
+  for (const region of spaces) {
+    const p = middles.get(region)!
+    if (roomed(region) || spaceOf(p) !== region) continue
+    const was = roomAt(before, parentId, p)
+    const split = was && roomsBefore.some((room) => inRegion(room, was) && at.has(room.id) && spaceOf(at.get(room.id)!) !== null)
+    if (!was || split) spots.push(p)
+  }
+  return { moved, spots }
 }

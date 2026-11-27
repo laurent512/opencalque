@@ -1,6 +1,8 @@
 import { create } from 'zustand'
-import { applyEdit, createDocument, holdsChildren, layerIn, layersOf, pagesOf, type Document, type NodeInput, type NodeOf, type Op, type Pattern, type Vec2, wallEndsAt } from '@opencalque/core'
+import { applyEdit, applyOps, createDocument, holdsChildren, layerIn, layersOf, newId, pagesOf, roomsAfterEdit, type Document, type NodeInput, type NodeOf, type Op, type Pattern, type Vec2, wallEndsAt } from '@opencalque/core'
 import { registry } from './extensions'
+import { t } from './i18n'
+import { usePrefs } from './prefs'
 import type { StoredFile } from './platform'
 import type { Tool } from './tools'
 import type { View } from './view'
@@ -275,8 +277,26 @@ export function keep(ops: Op[]): boolean {
   return true
 }
 
-/** `ops` applied to `doc`, with what follows from them (`applyEdit`). */
-const applied = (doc: Document, ops: Op[]) => applyEdit(doc, ops, registry)
+/**
+ * `ops` applied to `doc`, with what follows from them (`applyEdit`), and, unless the person turned
+ * it off, a room in each space the edit closed and a room it covered moved off the wall
+ * (`roomsAfterEdit`), named as the Room tool names them: in the same step, so that one undo takes
+ * back the walls and their room.
+ */
+function applied(doc: Document, ops: Op[]): { doc: Document; ops: Op[] } {
+  const done = applyEdit(doc, ops, registry)
+  if (!usePrefs.getState().autoRooms) return done
+  const s = get()
+  const { moved, spots } = roomsAfterEdit(doc, done.doc, s.scope, done.ops)
+  if (spots.length === 0 && moved.length === 0) return done
+  const count = Object.values(done.doc.nodes).filter((n) => n.type === 'room').length
+  const layer = layerHere({ doc: done.doc, scope: s.scope, activeLayer: s.activeLayer })
+  const rooms = spots.map(
+    (p, i): Op => ({ op: 'add_node', node: { id: newId(), type: 'room', parent: s.scope, ...layer, name: t('Room {n}', { n: String(count + i + 1).padStart(2, '0') }), x: p.x, y: p.y } as NodeInput }),
+  )
+  const follow: Op[] = [...moved.map(({ id, x, y }): Op => ({ op: 'update_node', id, patch: { x, y } })), ...rooms]
+  return { doc: applyOps(done.doc, follow), ops: [...done.ops, ...follow] }
+}
 
 /**
  * Applies operations as one undoable step, or throws when one fails. During a gesture they go on

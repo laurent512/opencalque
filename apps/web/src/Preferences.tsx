@@ -343,6 +343,14 @@ function DrawingSettings() {
           }
         />
       </Section>
+      <Section title={t('Rooms')}>
+        <Toggle
+          label={t('Add a room when walls close a space')}
+          checked={prefs.autoRooms}
+          onChange={(autoRooms) => setPrefs({ autoRooms })}
+          hint={<p className="hint">{t('With its name and area, as the Room tool puts one. Spaces smaller than a square metre are left out, and a room deleted is not put back.')}</p>}
+        />
+      </Section>
       <Section title={t('Groups and components')}>
         <Setting label={t('Editing inside a group')}>
           <Select

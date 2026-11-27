@@ -36,6 +36,8 @@ export interface Prefs {
   snapToObjects: boolean
   /** Show how far the one object selected stands from the walls around it, as dimensions to type into. */
   showClearances: boolean
+  /** Put a room, with its name and area, in each space walls close as they are drawn (`roomsAfterEdit`). */
+  autoRooms: boolean
   /** While editing inside a group: the rest of the drawing shown faded around it, to see and snap to, or not shown. */
   editGroups: Surroundings
   /** The same, while editing a component gone into by one of its placements. */
@@ -121,6 +123,7 @@ const DEFAULTS: Prefs = {
   snapToGrid: true,
   snapToObjects: true,
   showClearances: true,
+  autoRooms: true,
   editGroups: 'faded',
   editComponents: 'alone',
   agentBridge: false,

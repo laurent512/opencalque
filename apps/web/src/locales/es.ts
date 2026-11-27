@@ -54,6 +54,8 @@ export const es: Record<string, string> = {
   "Drawing": "Dibujo",
   "Show the grid": "Mostrar la cuadrícula",
   "Snap to the grid": "Ajustar a la cuadrícula",
+  "Add a room when walls close a space": "Añadir una habitación cuando los muros cierran un espacio",
+  "With its name and area, as the Room tool puts one. Spaces smaller than a square metre are left out, and a room deleted is not put back.": "Con su nombre y su superficie, como la pone la herramienta Habitación. Los espacios de menos de un metro cuadrado se omiten, y una habitación borrada no se vuelve a poner.",
   "Keyboard shortcuts": "Atajos de teclado",
   "Reset all shortcuts": "Restablecer todos los atajos",
   "Select": "Seleccionar",

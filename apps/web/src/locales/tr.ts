@@ -54,6 +54,8 @@ export const tr: Record<string, string> = {
   "Drawing": "Çizim",
   "Show the grid": "Izgarayı göster",
   "Snap to the grid": "Izgaraya yakala",
+  "Add a room when walls close a space": "Duvarlar bir alanı kapattığında oda ekle",
+  "With its name and area, as the Room tool puts one. Spaces smaller than a square metre are left out, and a room deleted is not put back.": "Oda aracının koyduğu gibi, adı ve alanıyla. Bir metrekareden küçük alanlar atlanır, silinen bir oda geri konmaz.",
   "Keyboard shortcuts": "Klavye kısayolları",
   "Reset all shortcuts": "Tüm kısayolları sıfırla",
   "Select": "Seç",

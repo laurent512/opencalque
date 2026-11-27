@@ -54,6 +54,8 @@ export const de: Record<string, string> = {
   "Drawing": "Zeichnung",
   "Show the grid": "Raster anzeigen",
   "Snap to the grid": "Am Raster ausrichten",
+  "Add a room when walls close a space": "Einen Raum anlegen, wenn Wände einen Bereich schließen",
+  "With its name and area, as the Room tool puts one. Spaces smaller than a square metre are left out, and a room deleted is not put back.": "Mit Name und Fläche, wie das Raum-Werkzeug ihn anlegt. Bereiche unter einem Quadratmeter werden ausgelassen, und ein gelöschter Raum wird nicht wieder angelegt.",
   "Keyboard shortcuts": "Tastenkürzel",
   "Reset all shortcuts": "Alle Kürzel zurücksetzen",
   "Select": "Auswählen",

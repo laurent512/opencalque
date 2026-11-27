@@ -54,6 +54,8 @@ export const zh: Record<string, string> = {
   "Drawing": "绘图",
   "Show the grid": "显示网格",
   "Snap to the grid": "捕捉到网格",
+  "Add a room when walls close a space": "墙体围合空间时添加房间",
+  "With its name and area, as the Room tool puts one. Spaces smaller than a square metre are left out, and a room deleted is not put back.": "与房间工具一样，带名称和面积。小于一平方米的空间不添加，已删除的房间不会再添加。",
   "Keyboard shortcuts": "键盘快捷键",
   "Reset all shortcuts": "重置所有快捷键",
   "Select": "选择",

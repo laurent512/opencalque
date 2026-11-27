@@ -54,6 +54,8 @@ export const fr: Record<string, string> = {
   "Drawing": "Dessin",
   "Show the grid": "Afficher la grille",
   "Snap to the grid": "Aimanter à la grille",
+  "Add a room when walls close a space": "Ajouter une pièce quand des murs ferment un espace",
+  "With its name and area, as the Room tool puts one. Spaces smaller than a square metre are left out, and a room deleted is not put back.": "Avec son nom et sa surface, comme l’outil Pièce la pose. Les espaces de moins d’un mètre carré sont laissés de côté, et une pièce supprimée n’est pas remise.",
   "Keyboard shortcuts": "Raccourcis clavier",
   "Reset all shortcuts": "Réinitialiser tous les raccourcis",
   "Select": "Sélectionner",

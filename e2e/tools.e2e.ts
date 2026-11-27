@@ -14,8 +14,8 @@ failOnErrors()
 type Saved = { type: string; [key: string]: any }
 
 /** Where a point of a blank drawing is on the page. */
-async function blank(page: Page): Promise<(x: number, y: number) => { x: number; y: number }> {
-  await startWith(page)
+async function blank(page: Page, prefs: Record<string, unknown> = {}): Promise<(x: number, y: number) => { x: number; y: number }> {
+  await startWith(page, prefs)
   await recordSaves(page)
   await openEditor(page)
   const box = (await canvas(page).boundingBox())!
@@ -291,7 +291,8 @@ test('draws on the grid set in the drawing settings, every 455 mm for the Japane
 })
 
 test('names the rooms that closed walls make, and splits one with a divider', async ({ page }) => {
-  const at = await blank(page)
+  // The Room tool, rooms not being put in by themselves.
+  const at = await blank(page, { autoRooms: false })
   await page.keyboard.press('w')
   for (const [x, y] of [[0, 0], [4000, 0], [4000, 3000], [0, 3000], [0, 0]]) await click(page, at(x, y))
   await page.keyboard.press('Shift+A')
@@ -310,6 +311,27 @@ test('names the rooms that closed walls make, and splits one with a divider', as
     [1000, 1500],
     [3000, 1500],
   ])
+})
+
+test('puts a room in the space walls close, and another in the part a divider splits off, in the same step', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('w')
+  for (const [x, y] of [[0, 0], [4000, 0], [4000, 3000], [0, 3000], [0, 0]]) await click(page, at(x, y))
+  await page.keyboard.press('Escape')
+  const rooms = async () => (await saved(page)).filter((n) => n.type === 'room')
+  await expect.poll(async () => (await rooms()).map((n) => [n.name, n.x, n.y])).toEqual([['Room 01', 2000, 1500]])
+  // A divider down the middle, over the room: it moves into one half, and the other gets a room of its own.
+  await page.keyboard.press('Shift+A')
+  await click(page, at(2000, 0))
+  await click(page, at(2000, 3000))
+  await page.keyboard.press('Escape')
+  await expect.poll(async () => (await rooms()).length).toBe(2)
+  const [one, two] = await rooms()
+  expect(Math.sign(one.x - 2000) * Math.sign(two.x - 2000)).toBe(-1)
+  expect(two.name).toBe('Room 02')
+  // One undo takes back the divider and the room it made.
+  await page.keyboard.press('Control+z')
+  await expect.poll(async () => (await rooms()).map((n) => [n.name, n.x, n.y])).toEqual([['Room 01', 2000, 1500]])
 })
 
 test('cuts a wall in two with the split tool', async ({ page }) => {

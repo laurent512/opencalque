@@ -54,6 +54,8 @@ export const ja: Record<string, string> = {
   "Drawing": "作図",
   "Show the grid": "グリッドを表示",
   "Snap to the grid": "グリッドにスナップ",
+  "Add a room when walls close a space": "壁で囲まれた空間に部屋を追加する",
+  "With its name and area, as the Room tool puts one. Spaces smaller than a square metre are left out, and a room deleted is not put back.": "部屋ツールと同じく、名前と面積付きで追加します。1 平方メートル未満の空間は除き、削除した部屋は戻しません。",
   "Keyboard shortcuts": "キーボードショートカット",
   "Reset all shortcuts": "すべてのショートカットをリセット",
   "Select": "選択",

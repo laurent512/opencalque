@@ -54,6 +54,8 @@ export const ko: Record<string, string> = {
   "Drawing": "제도",
   "Show the grid": "그리드 표시",
   "Snap to the grid": "그리드에 스냅",
+  "Add a room when walls close a space": "벽이 공간을 닫으면 방 추가",
+  "With its name and area, as the Room tool puts one. Spaces smaller than a square metre are left out, and a room deleted is not put back.": "방 도구처럼 이름과 면적을 넣어 추가합니다. 1제곱미터보다 작은 공간은 제외하며, 삭제한 방은 다시 넣지 않습니다.",
   "Keyboard shortcuts": "키보드 단축키",
   "Reset all shortcuts": "모든 단축키 초기화",
   "Select": "선택",
