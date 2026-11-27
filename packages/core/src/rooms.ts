@@ -185,12 +185,16 @@ function reshapesSpaces(before: Document, after: Document, ops: Op[]): boolean {
 export function roomsAfterEdit(before: Document, after: Document, parentId: string, ops: Op[]): { moved: { id: string; x: number; y: number }[]; spots: Vec2[] } {
   if (!reshapesSpaces(before, after, ops)) return { moved: [], spots: [] }
   const spaces = roomRegions(after, parentId).filter((region) => region.area >= LEAST_ROOM)
-  const middles = new Map(spaces.map((region) => [region, middleOf(region)]))
+  // The middle of a space is found only for the spaces looked at, at most once each.
+  const found = new Map<Region, Vec2>()
+  const middles = { get: (region: Region) => found.get(region) ?? found.set(region, middleOf(region)).get(region) }
   // A point is a space's when that is the smallest space it is in: a space with another inside it is not that one's.
   const spaceOf = (p: Vec2) => roomAt(after, parentId, p)
   const rooms = roomsIn(after, parentId)
   const at = new Map(rooms.map((room) => [room.id, { x: room.x, y: room.y } as Vec2]))
-  const roomed = (region: Region) => [...at.values()].some((p) => spaceOf(p) === region)
+  // The space each room is in, looked up once, and again for a room moved.
+  const inside = new Map(rooms.map((room) => [room.id, spaceOf(room)]))
+  const roomed = (region: Region) => [...inside.values()].some((space) => space === region)
 
   const moved: { id: string; x: number; y: number }[] = []
   for (const room of rooms) {
@@ -198,12 +202,13 @@ export function roomsAfterEdit(before: Document, after: Document, parentId: stri
     const then = (before.nodes[room.id] as NodeOf<'room'> | undefined) ?? room
     const was = roomAt(before, parentId, then)
     if (!was || (now && (!nearEdge(room, now) || nearEdge(then, was)))) continue
-    const others = (region: Region) => [...at].some(([id, p]) => id !== room.id && spaceOf(p) === region)
+    const others = (region: Region) => [...inside].some(([id, space]) => id !== room.id && space === region)
     const free = spaces.filter((region) => inRegion(middles.get(region)!, was) && spaceOf(middles.get(region)!) === region && !others(region))
     if (free.length === 0) continue
     const largest = free.reduce((a, b) => (b.area > a.area ? b : a))
     const p = middles.get(largest)!
     at.set(room.id, p)
+    inside.set(room.id, largest)
     moved.push({ id: room.id, x: p.x, y: p.y })
   }
 
@@ -213,7 +218,7 @@ export function roomsAfterEdit(before: Document, after: Document, parentId: stri
     const p = middles.get(region)!
     if (roomed(region) || spaceOf(p) !== region) continue
     const was = roomAt(before, parentId, p)
-    const split = was && roomsBefore.some((room) => inRegion(room, was) && at.has(room.id) && spaceOf(at.get(room.id)!) !== null)
+    const split = was && roomsBefore.some((room) => inRegion(room, was) && inside.has(room.id) && inside.get(room.id) !== null)
     if (!was || split) spots.push(p)
   }
   return { moved, spots }

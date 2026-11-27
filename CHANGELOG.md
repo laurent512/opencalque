@@ -15,12 +15,16 @@ heading per version, then `### New`, `### Improved` or `### Fixed` with one line
 - Reports sent from the app can be followed in it: Report a bug or suggest an idea… becomes Feedback (Preferences menu), one window where a list down the side holds a new report and the reports sent from this computer or browser. Each opens with the answers written to it on GitHub and a box to reply, without a GitHub account; the reply appears under the report on GitHub, and opens it again if it was closed. The app looks for answers when it starts and every hour while it is open, and tells of a new one in the top right corner, with a button to read it, until it is read or dismissed. Reports sent before this version are not listed. A reply can carry pictures and recordings of the app, as a report does, and the pictures and recordings of a report and its replies show in it. The reply stays at the foot of the window while the messages scroll above it. Closing the window keeps what was being written and attached, to a new report and to each reply. Esc closes the window wherever the focus was.
 
 ### Improved
+- Drawing and moving walls stays smooth on a plan with many elevations: a view is worked out again only when something it can show changes near what it sees, not at every move of the pointer.
+- A room's Properties are in three parts, each label short enough to read whole: its label (position, size, colour), what is shown under its name (area, perimeter), and its floor.
+- The marker of a room's elevations gives the views that look the same way (two walls of an L-shaped room) one triangle, their numbers together, instead of triangles on top of each other; and an elevation's marker can be left off the plan (Marker on the plan, in its Properties).
 - The Elevation or section tool is called Elevation. It still draws sections, and the command list finds it by "section" too, in the language of the app.
 - Menu items and buttons that open a window, or do what they say at once, lose the "…" after their name (Preferences, Feedback, Object library, Drawing settings…); it stays on those that ask for something first, a file or a format (Open…, Save as…, Export…, Import…).
 - Every list, window and menu that scrolls has the thin scrollbar of the panels, laid over its edge and shown while the pointer is over it or it scrolls, instead of the system's: nothing moves sideways any more when a scrollbar comes or goes.
 - A report sent from the app (Feedback) whose title names an earlier report by its number, such as "#30 Answers", is added to that report on GitHub, where its answers are, rather than made a report of its own; a closed one is opened again. The link shown once it is sent goes there.
 
 ### Fixed
+- Dragging several selected views by what one of them shows (a drawer, a door) moves them all, rather than picking that object.
 - Dragging the name of a view selected with other things moves them all, as dragging any of them on the drawing does, not that view alone.
 
 ## 2.2.1 — 2026-11-24

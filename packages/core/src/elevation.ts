@@ -470,6 +470,9 @@ export function outerFaces(doc: Document, parent: string): (WallFace & { side: B
 /** How wide the symbol marking an elevation on its plan is, in mm: as large as a grid line's bubble is, nearly. */
 export const MARKER = 500
 
+/** How alike two ways a room's views look must be (the cosine of the angle between them, 40°) to share one triangle of its marker. */
+const SAME_WAY = Math.cos((40 * Math.PI) / 180)
+
 /** Where a view's line is sampled to tell a section, whose line crosses a wall, from an elevation, whose line crosses none. */
 const SECTION_SAMPLES = 40
 
@@ -514,7 +517,7 @@ export function viewMarkers(doc: Document, planId: string): Map<string, ViewMark
   const out = new Map<string, ViewMarker>()
   const rooms = new Map<Region, Elevation[]>()
   const marked = views.flatMap((view, index) => {
-    if (dist(view.a, view.b) < 1e-6 || crossesWall(doc, view)) return []
+    if (view.marker === false || dist(view.a, view.b) < 1e-6 || crossesWall(doc, view)) return []
     const look = { label: markerLabel(view, index), way: viewer(view.b, view.a) }
     const room = elevationWall(doc, lineOf(doc, view)) ? roomAt(doc, planId, { x: (view.a.x + view.b.x) / 2, y: (view.a.y + view.b.y) / 2 }) : null
     if (room) rooms.set(room, [...(rooms.get(room) ?? []), view])
@@ -524,7 +527,13 @@ export function viewMarkers(doc: Document, planId: string): Map<string, ViewMark
     const together = room ? rooms.get(room)! : []
     if (together.length > 1) {
       if (together[0] !== view) continue
-      const looks = marked.filter((m) => m.room === room).map((m) => m.look)
+      // Views that look about the same way (two walls of an L facing alike) share a triangle, their numbers together.
+      const looks: { way: Vec2; label: string }[] = []
+      for (const { look } of marked.filter((m) => m.room === room)) {
+        const same = looks.find((other) => dot(other.way, look.way) > SAME_WAY)
+        if (same) same.label = `${same.label}, ${look.label}`
+        else looks.push({ ...look })
+      }
       out.set(view.id, { centre: roomMarkerAt(doc, planId, room!), looks })
     } else out.set(view.id, { centre: { x: (view.a.x + view.b.x) / 2, y: (view.a.y + view.b.y) / 2 }, looks: [look] })
   }
@@ -556,7 +565,8 @@ export function markerPrimitives(marker: ViewMarker): Primitive[] {
     { kind: 'ellipse', cx: c.x, cy: c.y, rx: r, ry: r, fill: '#ffffff', aside: true },
     ...looks.flatMap(({ way, label }): Primitive[] => {
       const spot = one ? c : at(way, r * 0.5, 0)
-      const size = one ? r * 0.9 : r * 0.42
+      // Several numbers in one quarter are written smaller, to fit.
+      const size = (one ? r * 0.9 : r * 0.42) * Math.min(1, 2 / Math.max(2, label.length))
       return [
         { kind: 'path', points: [at(way, r * (one ? 1.65 : 1.5), 0), at(way, r * Math.cos(spread), r * Math.sin(spread)), at(way, r * Math.cos(spread), -r * Math.sin(spread))], closed: true, fill: 'stroke', aside: true },
         { kind: 'text', x: spot.x, y: spot.y + size * 0.35, text: label, size, align: 'center', aside: true },
@@ -946,12 +956,65 @@ interface Laid {
 
 /** Each view's layout in its own coordinates, kept with each state of the drawing: its drawing and its automatic dimensions both read it. */
 const laidOut = new WeakMap<Document['nodes'], WeakMap<Elevation, Laid>>()
+/**
+ * Each view's last layout, by its id, with the drawing it was made from: kept across edits that
+ * change nothing it can show (`unchangedFor`), so that drawing a wall across the plan does not lay
+ * out again, at every move of the pointer, every view of a face far from it.
+ */
+const lastLaid = new Map<string, { doc: Document; registry: Registry; key: string; laid: Laid }>()
+
 function laid(view: Elevation, doc: Document, registry: Registry): Laid {
   let views = laidOut.get(doc.nodes)
   if (!views) laidOut.set(doc.nodes, (views = new WeakMap()))
   let found = views.get(view)
-  if (!found) views.set(view, (found = layoutAtPlanScale({ ...view, x: 0, y: 0 }, doc, registry)))
+  if (found) return found
+  // What of the view itself its layout depends on: all but where it is drawn, how large, and its name.
+  const { x: _x, y: _y, scale: _scale, name: _name, order: _order, ...seeing } = view
+  const key = JSON.stringify(seeing)
+  const last = lastLaid.get(view.id)
+  found = last && last.registry === registry && last.key === key && unchangedFor(last.doc, doc, view) ? last.laid : layoutAtPlanScale({ ...view, x: 0, y: 0 }, doc, registry)
+  views.set(view, found)
+  lastLaid.set(view.id, { doc, registry, key, laid: found })
   return found
+}
+
+/** What an elevation can show: walls, what is set in them or fixed on them, what stands in front; groups and components, which hold them. */
+const SHOWN_IN_VIEWS = new Set(['wall', 'parametric', 'instance', 'group', 'component'])
+/** How far from where it is placed an object may reach, in mm, for a view to be told it changed: a run of kitchen units, a wide sofa. */
+const OBJECT_REACH = 8000
+
+/**
+ * Whether going from `before` to `after` changes nothing `view` shows: the drawing's settings,
+ * layers, materials and the rest as they were, and every node that changed of a kind views do not
+ * show, on another page, or (a wall, an object) out of reach of what the view sees. A group or a
+ * component that changed counts as near, as what it holds may be anywhere.
+ */
+function unchangedFor(before: Document, after: Document, view: Elevation): boolean {
+  if (before === after) return true
+  for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
+    if (key !== 'nodes' && (before as Record<string, unknown>)[key] !== (after as Record<string, unknown>)[key]) return false
+  }
+  const plan = lookedAt(after, view)
+  const seen = boundsOfPoints(seenArea(view))
+  if (!seen) return false
+  const near = (box: Bounds) => box.minX <= seen.maxX && box.maxX >= seen.minX && box.minY <= seen.maxY && box.maxY >= seen.minY
+  const shows = (node: Node | undefined, doc: Document): boolean => {
+    if (!node || !SHOWN_IN_VIEWS.has(node.type)) return false
+    const root = rootOf(doc, node.parent ?? node.id)
+    if (root?.type === 'component' || node.type === 'component' || node.type === 'group') return true
+    if (root?.id !== plan) return false
+    if (node.type === 'wall') {
+      const reach = node.thickness + Math.abs(node.bulge ?? 0) + ON_FACE
+      return near({ minX: Math.min(node.a.x, node.b.x) - reach, maxX: Math.max(node.a.x, node.b.x) + reach, minY: Math.min(node.a.y, node.b.y) - reach, maxY: Math.max(node.a.y, node.b.y) + reach })
+    }
+    const at = node as unknown as Vec2
+    return near({ minX: at.x - OBJECT_REACH, maxX: at.x + OBJECT_REACH, minY: at.y - OBJECT_REACH, maxY: at.y + OBJECT_REACH })
+  }
+  for (const id of new Set([...Object.keys(before.nodes), ...Object.keys(after.nodes)])) {
+    const [was, now] = [before.nodes[id], after.nodes[id]]
+    if (was !== now && (shows(was, before) || shows(now, after))) return false
+  }
+  return true
 }
 
 /**

@@ -348,6 +348,7 @@ export const NodeSchema = z
         x: z.number(),
         y: z.number(),
         scale: z.number().positive().max(20).optional().describe('How much larger than the plan it is drawn, about (x, y): 2 draws it twice as large (at 1:50 on a sheet at 1:100). Its dimensions still say the real lengths. Defaults to 1.'),
+        marker: z.boolean().optional().describe('false leaves its marker off the plan (for an elevation, the printed symbol pointing the way it looks). Shown when left out.'),
         walls: z.boolean().optional().describe('false leaves out the walls in front of the faces it sees, to see all of them: those its line cuts, and those in the way (a wall at an angle within what it sees). Shown when left out, all plain grey.'),
       })
       .describe(

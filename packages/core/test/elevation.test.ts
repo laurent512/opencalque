@@ -498,6 +498,19 @@ describe('a room, and the outside, under the elevation tool', () => {
   })
 })
 
+describe('a view kept from one edit to the next', () => {
+  it('is laid out again for a change near what it sees, after one far from it', () => {
+    const doc = plan()
+    const before = boxes(view(doc))
+    // A wall far away: nothing it shows changes.
+    const far = applyOps(doc, [{ op: 'add_node', node: { type: 'wall', id: 'far', parent: 'page_1', a: { x: 40000, y: 40000 }, b: { x: 45000, y: 40000 }, thickness: 200 } as never }])
+    expect(boxes(view(far))).toEqual(before)
+    // Then the face it looks at made shorter: it shows the new face.
+    const near = applyOps(far, [{ op: 'update_node', id: 'w', patch: { b: { x: 3000, y: 0 } } }])
+    expect(boxes(view(near))).not.toEqual(before)
+  })
+})
+
 describe('the markers of elevations on their plan', () => {
   const house = (): Document =>
     applyOps(
@@ -536,6 +549,30 @@ describe('the markers of elevations on their plan', () => {
     const prims = markerPrimitives(markers[0])
     expect(prims).toHaveLength(9)
     expect(prims.every((p) => p.aside)).toBe(true)
+  })
+
+  it('gives the views of an L-shaped room that look alike one triangle, their numbers together', () => {
+    // An L: six walls, two of them facing up, two facing left.
+    const corners: [number, number][] = [[0, 0], [3000, 0], [3000, 2000], [6000, 2000], [6000, 5000], [0, 5000]]
+    const ell = applyOps(
+      createDocument('Plan'),
+      corners.map((p, i): Op => {
+        const q = corners[(i + 1) % corners.length]
+        return { op: 'add_node', node: { type: 'wall', id: `w${i}`, parent: 'page_1', a: { x: p[0], y: p[1] }, b: { x: q[0], y: q[1] }, thickness: 200 } as never }
+      }),
+    )
+    const doc = views(ell, roomViews(ell, 'page_1', { x: 1500, y: 3500 }))
+    const [marker] = [...viewMarkers(doc, 'page_1').values()]
+    expect(marker.looks).toHaveLength(4)
+    expect(marker.looks.map((look) => look.label).filter((label) => label.includes(','))).toHaveLength(2)
+  })
+
+  it('leaves off the plan the marker of a view that says so, and its triangle in a room’s', () => {
+    const one = views(house(), [{ a: { x: 1000, y: 1100 }, b: { x: 4000, y: 1100 }, depth: 1000, x: 0, y: 8000 }])
+    expect(viewMarkers(applyOps(one, [{ op: 'update_node', id: 'v1', patch: { marker: false } }]), 'page_1').size).toBe(0)
+    const room = views(house(), roomViews(house(), 'page_1', { x: 2500, y: 1500 }))
+    const less = applyOps(room, [{ op: 'update_node', id: 'v2', patch: { marker: false } }])
+    expect([...viewMarkers(less, 'page_1').values()][0].looks).toHaveLength(3)
   })
 
   it('gives a section, whose line crosses a wall, none', () => {

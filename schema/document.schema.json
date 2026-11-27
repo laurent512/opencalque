@@ -2726,6 +2726,10 @@
                 "exclusiveMinimum": 0,
                 "maximum": 20
               },
+              "marker": {
+                "description": "false leaves its marker off the plan (for an elevation, the printed symbol pointing the way it looks). Shown when left out.",
+                "type": "boolean"
+              },
               "walls": {
                 "description": "false leaves out the walls in front of the faces it sees, to see all of them: those its line cuts, and those in the way (a wall at an angle within what it sees). Shown when left out, all plain grey.",
                 "type": "boolean"

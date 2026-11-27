@@ -164,6 +164,12 @@ export const selectDown: Press = (c, e, at, world) => {
     useStore.setState({ wallFace: 'drag' })
     return
   }
+  // Several things selected, a view among them: pressed in its picture, they all move together, as
+  // anything selected does. What a view shows is picked in it once it is selected alone.
+  if (!(e.shiftKey || e.ctrlKey || e.metaKey) && s.selection.length > 1 && selectedPictureAt(c, world)) {
+    c.gesture = { kind: 'press', at, start: world, nodes: s.selection.map((id) => s.doc.nodes[id]) }
+    return
+  }
   // A socket, a switch, a door shown in an elevation is the one of the plan: pressed there, it is
   // selected, and dragged, it moves on the plan, along its wall and up or down.
   // A side of what is selected, where a view shows it, dragged: the side across stays where it is.
@@ -482,6 +488,12 @@ export const marqueeMove: Move<'marquee'> = (c, g, _e, _at, world, out) => {
  * moves it, as a 3D view's does and a group's first click does (the owner's choice); the next goes
  * into it.
  */
+/** Whether `world` is in the picture of a view that is selected (not on its line, on the plan). */
+function selectedPictureAt(c: Canvas, world: Vec2): boolean {
+  const selected = new Set(get().selection)
+  return c.scene.some((item) => item.node.type === 'elevation' && item.id === item.node.id && selected.has(item.id) && !!item.bounds && boundsContainPoint(item.bounds, world))
+}
+
 function elevationAt(c: Canvas, world: Vec2) {
   const s = get()
   const selected = new Set(s.selection)

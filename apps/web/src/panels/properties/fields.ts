@@ -175,6 +175,8 @@ const STYLE: FieldSpec[] = [...stroke(STROKE), fill('#ffffff', msg('default'))]
 
 /** A room in two parts: what is written in it (its name, its area), and its floor. */
 const ROOM_LABEL = msg('Label')
+/** What a room writes under its name: its area, its perimeter. */
+const UNDER_NAME = msg('Shown under the name')
 
 export const FLOOR = msg('Floor')
 
@@ -256,14 +258,16 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
   // A paper's size is its format and scale, set under Sheet: here only where it lies.
   paper: [{ ...len('x', msg('X')), row: { id: 'at', name: 'X', label: msg('Position') } }, { ...len('y', msg('Y')), row: { id: 'at', name: 'Y', label: msg('Position') } }],
   // Where the name is written is where the room is: its X and Y are the name's.
+  // A room in three parts, each a section whose name says what its fields are of, so that their
+  // labels stay short enough to be read whole: its label (where its name is written, how large,
+  // in what colour), what is written under its name, and its floor.
   room: [
-    len('x', msg('X'), undefined, ROOM_LABEL),
-    len('y', msg('Y'), undefined, ROOM_LABEL),
-    // Said as the text's: a bare size or colour could be taken for the room's.
-    len('size', msg('Text size'), 250, ROOM_LABEL),
-    { path: 'style.stroke', label: msg('Text colour'), type: 'color', section: ROOM_LABEL, fallback: '#1f1f1f', unset: msg('from layer') },
-    { path: 'showArea', label: msg('Show area'), type: 'boolean', section: ROOM_LABEL, fallback: true },
-    { path: 'showPerimeter', label: msg('Show perimeter'), type: 'boolean', section: ROOM_LABEL, fallback: false },
+    { ...len('x', msg('X'), undefined, ROOM_LABEL), row: { id: 'at', name: 'X', label: msg('Position') } },
+    { ...len('y', msg('Y'), undefined, ROOM_LABEL), row: { id: 'at', name: 'Y', label: msg('Position') } },
+    len('size', msg('Size'), 250, ROOM_LABEL),
+    { path: 'style.stroke', label: msg('Color'), type: 'color', section: ROOM_LABEL, fallback: '#1f1f1f', unset: msg('from layer') },
+    { path: 'showArea', label: msg('Area'), type: 'boolean', section: UNDER_NAME, fallback: true },
+    { path: 'showPerimeter', label: msg('Perimeter'), type: 'boolean', section: UNDER_NAME, fallback: false },
     fill('#dfe6f0', msg('default'), { section: FLOOR }),
   ],
   divider: AB,
@@ -297,6 +301,7 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
         return [{ op: 'update_node', id: node.id, patch: { scale: Math.abs(factor - 1) < 1e-9 ? null : factor } }]
       },
     },
+    { path: 'marker', label: msg('Marker on the plan'), type: 'boolean', fallback: true, section: REPRESENTATION, note: msg('The printed symbol on the plan pointing the way it looks, with its number. The elevations of a room share one: each takes its own triangle off.') },
     { ...len('a.x', msg('X'), undefined, VIEW_SEES), row: { id: 'a', name: 'X', label: msg('Start') } },
     { ...len('a.y', msg('Y'), undefined, VIEW_SEES), row: { id: 'a', name: 'Y', label: msg('Start') } },
     { ...len('b.x', msg('X'), undefined, VIEW_SEES), row: { id: 'b', name: 'X', label: msg('End') } },
