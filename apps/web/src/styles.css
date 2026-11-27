@@ -2413,6 +2413,10 @@ button.crumb.ahead:hover {
   color: var(--muted);
 }
 
+.dialog .feedback-none {
+  margin: 4px 8px;
+}
+
 @media (max-width: 640px) {
   .with-reports > .feedback-body {
     grid-template-columns: minmax(0, 1fr);

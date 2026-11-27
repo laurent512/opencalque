@@ -29,6 +29,7 @@ export function ReportList({ selected, onSelect }: { selected: number | null; on
         <Plus size={14} /> {t('New report')}
       </button>
       <h3>{t('Your reports')}</h3>
+      {reports.length === 0 && <p className="hint feedback-none">{t('The reports you send from here will be listed here, with the answers to them.')}</p>}
       <ul className="feedback-reports">
         {reports.map((r) => (
           <li key={r.number}>

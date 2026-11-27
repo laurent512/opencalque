@@ -1137,6 +1137,7 @@ export const tr: Record<string, string> = {
   "Report a bug or suggest an idea": "Hata bildir veya fikir öner",
   "The server could not be reached.": "Sunucuya ulaşılamadı.",
   "Thank you. Your report is on GitHub, where the answers will be written:": "Teşekkürler. Bildiriminiz GitHub’da; yanıtlar orada yazılacak:",
+  "The reports you send from here will be listed here, with the answers to them.": "Buradan gönderdiğiniz bildirimler, yanıtlarıyla birlikte burada listelenecek.",
   "Feedback": "Geri bildirim",
   "Feedback…": "Geri bildirim…",
   "There is a new answer to your report “{title}”: see Feedback, in the Preferences menu.": "“{title}” bildiriminize yeni bir yanıt var: Tercihler menüsündeki Geri bildirim’e bakın.",

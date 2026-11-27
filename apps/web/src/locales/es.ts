@@ -1137,6 +1137,7 @@ export const es: Record<string, string> = {
   "Report a bug or suggest an idea": "Informar de un error o proponer una idea",
   "The server could not be reached.": "No se pudo contactar con el servidor.",
   "Thank you. Your report is on GitHub, where the answers will be written:": "Gracias. Tu informe está en GitHub, donde se escribirán las respuestas:",
+  "The reports you send from here will be listed here, with the answers to them.": "Los informes que envíes desde aquí aparecerán aquí, con sus respuestas.",
   "Feedback": "Comentarios",
   "Feedback…": "Comentarios…",
   "There is a new answer to your report “{title}”: see Feedback, in the Preferences menu.": "Hay una respuesta nueva a tu informe «{title}»: mira Comentarios, en el menú Preferencias.",

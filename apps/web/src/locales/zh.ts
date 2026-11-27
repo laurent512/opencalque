@@ -1137,6 +1137,7 @@ export const zh: Record<string, string> = {
   "Report a bug or suggest an idea": "报告问题或提出建议",
   "The server could not be reached.": "无法连接服务器。",
   "Thank you. Your report is on GitHub, where the answers will be written:": "谢谢。您的报告已发布到 GitHub，回复也会写在那里：",
+  "The reports you send from here will be listed here, with the answers to them.": "从这里发送的报告会连同回复列在这里。",
   "Feedback": "反馈",
   "Feedback…": "反馈…",
   "There is a new answer to your report “{title}”: see Feedback, in the Preferences menu.": "您的报告“{title}”有新回复：请在“偏好设置”菜单中查看“反馈”。",

@@ -1137,6 +1137,7 @@ export const ja: Record<string, string> = {
   "Report a bug or suggest an idea": "不具合を報告・アイデアを提案",
   "The server could not be reached.": "サーバーに接続できません。",
   "Thank you. Your report is on GitHub, where the answers will be written:": "ありがとうございます。報告は GitHub に投稿されました。回答はこちらに書かれます：",
+  "The reports you send from here will be listed here, with the answers to them.": "ここから送った報告は、回答とともにここに表示されます。",
   "Feedback": "フィードバック",
   "Feedback…": "フィードバック…",
   "There is a new answer to your report “{title}”: see Feedback, in the Preferences menu.": "報告「{title}」に新しい回答があります：環境設定メニューの「フィードバック」をご覧ください。",

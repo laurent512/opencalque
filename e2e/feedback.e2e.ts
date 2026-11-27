@@ -182,8 +182,8 @@ test('lists the reports sent from here beside a new one, with their answers, and
   await page.keyboard.type('Feedback')
   await page.keyboard.press('Enter')
   const form = page.locator('.dialog.feedback')
-  // Nothing sent from here yet: no list.
-  await expect(form.locator('.feedback-side')).toHaveCount(0)
+  // Nothing sent from here yet: the list says what will be there.
+  await expect(form.locator('.feedback-side')).toContainText('The reports you send from here will be listed here')
   await form.getByLabel('Title').fill('Wall types')
   await form.getByRole('button', { name: 'Send' }).click()
   await expect(form).toContainText('You will find the answers here too')

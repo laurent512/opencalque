@@ -1137,6 +1137,7 @@ export const ko: Record<string, string> = {
   "Report a bug or suggest an idea": "버그 신고 또는 아이디어 제안",
   "The server could not be reached.": "서버에 연결할 수 없습니다.",
   "Thank you. Your report is on GitHub, where the answers will be written:": "감사합니다. 신고가 GitHub에 올라갔으며, 답변도 그곳에 작성됩니다:",
+  "The reports you send from here will be listed here, with the answers to them.": "여기서 보낸 신고가 답변과 함께 여기에 표시됩니다.",
   "Feedback": "피드백",
   "Feedback…": "피드백…",
   "There is a new answer to your report “{title}”: see Feedback, in the Preferences menu.": "신고 “{title}”에 새 답변이 있습니다: 환경설정 메뉴의 피드백을 확인하세요.",

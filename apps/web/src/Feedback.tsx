@@ -40,9 +40,9 @@ let ids = 0
  * GitHub by the site's worker (`apps/web/worker`), so that no GitHub account is needed. What is
  * written and attached stays when the window is closed, until it is sent. Nothing is attached at
  * first, since the issue is public: each attachment is added by the person and shown as a tile
- * they can take out; the rest of what is sent is shown under "What else is sent". Once a report
- * has been sent from here, a list down the side holds a new report and those sent, each opened
- * with its answers and a place to reply (`feedback/MyReports.tsx`).
+ * they can take out; the rest of what is sent is shown under "What else is sent". A list down the
+ * side holds a new report and those sent from here, each opened with its answers and a place to
+ * reply (`feedback/MyReports.tsx`).
  */
 export function Feedback() {
   const open = useWindows((s) => s.feedbackOpen)
@@ -206,7 +206,7 @@ export function Feedback() {
   return (
     <div className="palette-backdrop" onMouseDown={close} onKeyDown={(e) => e.key === 'Escape' && (shown ? setShown(null) : close())}>
       <div
-        className={`dialog feedback${mine.length > 0 ? ' with-reports' : ''}`}
+        className="dialog feedback with-reports"
         role="dialog"
         aria-label={t('Feedback')}
         tabIndex={-1}
@@ -220,16 +220,14 @@ export function Feedback() {
           </button>
         </header>
         <div className="feedback-body">
-          {mine.length > 0 && (
-            <ReportList
-              selected={opened?.number ?? null}
-              onSelect={(feedbackReport) => {
-                // A new report after one was sent starts empty.
-                if (feedbackReport === null && status.step === 'sent') setStatus({ step: 'writing' })
-                useWindows.setState({ feedbackReport })
-              }}
-            />
-          )}
+          <ReportList
+            selected={opened?.number ?? null}
+            onSelect={(feedbackReport) => {
+              // A new report after one was sent starts empty.
+              if (feedbackReport === null && status.step === 'sent') setStatus({ step: 'writing' })
+              useWindows.setState({ feedbackReport })
+            }}
+          />
           <div className="feedback-main">
             {opened ? (
               <ReportThread key={opened.number} report={opened} />
