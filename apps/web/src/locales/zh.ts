@@ -1055,6 +1055,8 @@ export const zh: Record<string, string> = {
   "Elevation or section: the face of a wall seen from in front, or a cut along a line, drawn from the plan": "立面或剖面：从正面看到的墙面，或沿一条线的剖切，由平面图生成",
   "Elevation or section": "立面或剖面",
   "Click beside a wall for an elevation of its face on that side": "在墙边点击，生成该侧墙面的立面",
+  "inside a room, of each of its walls": "在房间内，为其每面墙",
+  "beside an outer wall, of the four sides of the building": "在外墙旁，为建筑的四个立面",
   "click elsewhere to start a section line": "在别处点击开始剖切线",
   "Click where the section line ends": "点击剖切线的终点",
   "Extension": "延长线",

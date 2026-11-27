@@ -1055,6 +1055,8 @@ export const ko: Record<string, string> = {
   "Elevation or section: the face of a wall seen from in front, or a cut along a line, drawn from the plan": "입면 또는 단면: 앞에서 본 벽면, 또는 선을 따라 자른 면, 평면도에서 생성",
   "Elevation or section": "입면 또는 단면",
   "Click beside a wall for an elevation of its face on that side": "벽 옆을 클릭하면 그쪽 벽면의 입면",
+  "inside a room, of each of its walls": "방 안에서는 각 벽의 입면도",
+  "beside an outer wall, of the four sides of the building": "외벽 옆에서는 건물 네 면의 입면도",
   "click elsewhere to start a section line": "다른 곳을 클릭하면 단면선 시작",
   "Click where the section line ends": "단면선이 끝날 곳을 클릭",
   "Extension": "연장선",

@@ -1,4 +1,4 @@
-import { applyOps, dimensionChainOps, extendWallOps, flipWallOps, newId, sideViews, splitWallOps, trimWallOps, wallContains, wallEndsAt, wallMiddle, wallsIn, type Node, type NodeInput, type Op } from '@opencalque/core'
+import { applyOps, dimensionChainOps, extendWallOps, flipWallOps, newId, sideViews, splitWallOps, trimWallOps, wallContains, wallEndsAt, wallMiddle, wallsIn, type BuildingSide, type Node, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
 import { drawing } from '../canvas/drawing'
 import { flipPatch } from '../canvas/flips'
 import { registry } from '../extensions'
@@ -21,25 +21,33 @@ export function dimensionWalls(): void {
 }
 
 /**
- * The elevations of the four sides of the building, seen from outside (`sideViews`): of the
- * selected walls, else of every wall of the plan. Each comes as one the Elevation or section tool
- * makes, named after the views already there and with its automatic dimensions; they are put
- * down round the plan, in one step, and selected, to be moved or set up.
+ * Views put down in one step, each as one the Elevation or section tool makes: named after the
+ * views already there, with its automatic dimensions; then selected, to be moved or set up.
  */
-export function elevateSides(): void {
-  const { doc, scope, selection } = get()
-  const chosen = selection.flatMap((id) => (doc.nodes[id]?.type === 'wall' ? [doc.nodes[id] as Extract<Node, { type: 'wall' }>] : []))
-  const views = sideViews(doc, scope, chosen.length > 0 ? chosen : undefined)
-  if (views.length === 0) return toast(t('Draw the walls of the building first.'))
+export function putViews(views: { a: Vec2; b: Vec2; depth: number; x: number; y: number }[]): void {
+  const { doc, scope } = get()
   const before = Object.values(doc.nodes).filter((node) => node.type === 'elevation').length
   const ids = views.map(() => newId())
   apply(
-    views.flatMap(({ side: _, ...line }, i): Op[] => [
+    views.flatMap((line, i): Op[] => [
       { op: 'add_node', node: { id: ids[i], type: 'elevation', parent: scope, ...layerHere(), name: t('Elevation {n}', { n: String(before + i + 1) }), ...line } as NodeInput },
       { op: 'add_node', node: { id: `${ids[i]}_dimensions`, type: 'autodimensions', parent: ids[i], unit: unit(), ...layerHere() } as NodeInput },
     ]),
   )
   select(ids)
+}
+
+/**
+ * The elevations of the sides of the building, seen from outside (`sideViews`), put down round
+ * the plan: of the selected walls, else of every wall of the plan; all four, or the one `side`
+ * (the Elevation tool, on an outer face).
+ */
+export function elevateSides(side?: BuildingSide): void {
+  const { doc, scope, selection } = get()
+  const chosen = selection.flatMap((id) => (doc.nodes[id]?.type === 'wall' ? [doc.nodes[id] as Extract<Node, { type: 'wall' }>] : []))
+  const views = sideViews(doc, scope, chosen.length > 0 ? chosen : undefined).filter((view) => !side || view.side === side)
+  if (views.length === 0) return toast(t('Draw the walls of the building first.'))
+  putViews(views.map(({ side: _, ...line }) => line))
 }
 
 /** Whether the plan being edited has walls to see the sides of. */

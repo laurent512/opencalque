@@ -50,7 +50,7 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
       return [['', t('Click inside a closed region of walls')]]
     case 'elevation':
       return step === 0
-        ? [['', t('Click beside a wall for an elevation of its face on that side')], ['', t('click elsewhere to start a section line')]]
+        ? [['', t('Click beside a wall for an elevation of its face on that side')], ['', t('inside a room, of each of its walls')], ['Shift', t('beside an outer wall, of the four sides of the building')], ['', t('click elsewhere to start a section line')]]
         : [['', t('Click where the section line ends')], ['Esc', t('cancels')]]
     case 'camera':
       return step === 0 ? [['', t('Click where you stand')], rested] : [['', t('Click the way you look')], angles, free, ['Esc', t('cancels')]]

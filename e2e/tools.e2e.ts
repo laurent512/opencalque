@@ -836,6 +836,42 @@ test('draws an elevation of the face of a wall beside the pointer, put down wher
 })
 
 
+test('draws the elevations of every wall of a room clicked inside, and of a side of the building clicked beside an outer wall, or all four with Shift', async ({ page }) => {
+  const at = await blank(page)
+  // A room of 4 by 3 m, walls 200 thick on their lines.
+  for (const [from, to] of [[[0, 0], [4000, 0]], [[4000, 0], [4000, 3000]], [[4000, 3000], [0, 3000]], [[0, 3000], [0, 0]]] as [number, number][][]) {
+    await page.keyboard.press('w')
+    await click(page, at(...from))
+    await click(page, at(...to))
+    await page.keyboard.press('Escape')
+  }
+  const views = async () => (await saved(page)).filter((n) => n.type === 'elevation')
+  await page.keyboard.press('Shift+W')
+  await expect(page.locator('.hint-bar')).toContainText('inside a room, of each of its walls')
+  // Inside the room: a view of each of its four walls, seen from inside, put down at once and selected.
+  await page.mouse.move(at(2000, 1500).x, at(2000, 1500).y)
+  await page.screenshot({ path: test.info().outputPath('room-lit.png') })
+  await click(page, at(2000, 1500))
+  await expect.poll(async () => (await views()).length).toBe(4)
+  await expect(objectRows(page).filter({ hasText: /^Elevation [1-4]$/ }).first()).toHaveClass(/selected/)
+  for (const view of await views()) expect(view.depth).toBe(1000)
+  // Beside the outer face of the bottom wall: the bottom side of the building, seen from outside.
+  await page.keyboard.press('Shift+W')
+  await page.mouse.move(at(2000, 3300).x, at(2000, 3300).y)
+  await page.screenshot({ path: test.info().outputPath('side-lit.png') })
+  await click(page, at(2000, 3300))
+  await expect.poll(async () => (await views()).length).toBe(5)
+  expect((await views())[4]).toMatchObject({ a: { x: -100, y: 4100 }, b: { x: 4100, y: 4100 } })
+  // With Shift, all four sides.
+  await page.keyboard.press('Shift+W')
+  await page.keyboard.down('Shift')
+  await page.mouse.move(at(2000, 3320).x, at(2000, 3320).y)
+  await page.screenshot({ path: test.info().outputPath('sides-lit.png') })
+  await click(page, at(2000, 3300))
+  await page.keyboard.up('Shift')
+  await expect.poll(async () => (await views()).length).toBe(9)
+})
+
 /** A wall 4 m long along y = 0 with a socket on its lower face, 2 m along, and an elevation of that face (its line 1 m in front of it) drawn with its floor at y = 6000. */
 /** Selects the elevation by its name, so that a click in it then takes what it shows. */
 const openView = (page: Page) => page.locator('.view-label .view-frame-name').click()

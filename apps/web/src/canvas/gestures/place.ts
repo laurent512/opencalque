@@ -1,5 +1,6 @@
-import { canSplit, hitTest, newId, roomAt, snapMountToWall, snapOpeningToWall, splitOps, splitPlace, trimOps, trimPlace, viewOfFace, wallFaceAt, wallSides, type Document, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
+import { canSplit, hitTest, newId, outerFaces, outerSide, roomAt, roomFaces, roomViews, snapMountToWall, snapOpeningToWall, splitOps, splitPlace, trimOps, trimPlace, viewOfFace, wallFaceAt, wallSides, type Document, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
 import { libraryOps, pickStyle } from '../../actions'
+import { elevateSides, putViews } from '../../actions/walls'
 import { registry } from '../../extensions'
 import { t } from '../../i18n'
 import { apply, cancel, commit, layerHere, preview, select, setTool, useStore, type Placing } from '../../store'
@@ -54,19 +55,32 @@ function facing<T extends { a: Vec2; b: Vec2 }>(view: T, p: Vec2): T {
 }
 
 /**
- * The tool of views. A click beside a wall makes an elevation of its face, seen from that side; a
- * click elsewhere starts a section line, which the next click ends, wherever it is. Either view
- * then follows the pointer, and is put down where it is drawn; for a section, the side of its line
- * it is put down on is the side it is seen from.
+ * The tool of views. A click beside an inner face of a wall makes an elevation of it, seen from
+ * that side, which then follows the pointer to be put down; beside an outer face, the elevation of
+ * that whole side of the building (`sideViews`), and with Shift of all four; inside a room, an
+ * elevation of each of its walls (`roomViews`). Those are put down at once, round or below the plan,
+ * and selected. A click elsewhere starts a section line, which the next click ends, wherever it is,
+ * and whose view is put down on the side of its line it is seen from.
  */
 export const elevationDown: Press = (c, e, at, world) => {
   const s = get()
   if (c.gesture.kind !== 'section') {
-    const face = wallFaceAt(s.base ?? s.doc, s.scope, world, MOUNT_REACH / s.view.zoom)
+    const doc = s.base ?? s.doc
+    const face = wallFaceAt(doc, s.scope, world, MOUNT_REACH / s.view.zoom)
+    const side = face && outerSide(doc, s.scope, face)
+    if (side) {
+      setTool('select')
+      return elevateSides(e.shiftKey ? undefined : side)
+    }
     if (face) {
       // Its line 1 m in front of the face, where whoever looks at it stands, and its far side on the face.
       setTool('place', viewPlacing(s.doc, viewOfFace(face), t('Elevation {n}', { n: String(count(s.doc, 'elevation') + 1) })))
       return
+    }
+    const room = roomViews(doc, s.scope, world)
+    if (room.length > 0) {
+      setTool('select')
+      return putViews(room)
     }
   }
   sectionDown(c, e, at, world)
@@ -166,10 +180,16 @@ export const toolHover: Move<'idle'> = (c, _g, e, _at, world, out) => {
       out.status = t('No closed space here: the walls around it must meet all the way round')
     }
   } else if (s.tool === 'elevation') {
-    // Beside a wall, the face lit is the one an elevation will show, seen from this side; elsewhere,
-    // a click starts a section line, from the point marked.
-    const face = wallFaceAt(s.base ?? s.doc, s.scope, world, MOUNT_REACH / s.view.zoom)
-    if (face) out.face = [[face.a, face.b]]
+    // What a click makes an elevation of is lit: beside an inner face, that face; beside an outer
+    // one, every outer face on that side of the building, or with Shift on all four; inside a room,
+    // its walls. Elsewhere, a click starts a section line, from the point marked.
+    const doc = s.base ?? s.doc
+    const face = wallFaceAt(doc, s.scope, world, MOUNT_REACH / s.view.zoom)
+    const side = face && outerSide(doc, s.scope, face)
+    const room = face ? [] : roomFaces(doc, s.scope, world)
+    if (side) out.face = outerFaces(doc, s.scope).filter((f) => e.shiftKey || f.side === side).map((f) => [f.a, f.b])
+    else if (face) out.face = [[face.a, face.b]]
+    else if (room.length > 0) out.face = room.map((f) => [f.a, f.b])
     else out.marker = snap(c, world, e, []).marker
   } else if (s.tool === 'place' && s.placing) {
     const target = snap(c, world, e, [c.placed])

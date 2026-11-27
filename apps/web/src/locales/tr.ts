@@ -1055,6 +1055,8 @@ export const tr: Record<string, string> = {
   "Elevation or section: the face of a wall seen from in front, or a cut along a line, drawn from the plan": "Görünüş veya kesit: bir duvarın önden görülen yüzü ya da bir çizgi boyunca kesit, plandan çıkarılır",
   "Elevation or section": "Görünüş veya kesit",
   "Click beside a wall for an elevation of its face on that side": "O taraftaki yüzünün görünüşü için bir duvarın yanına tıklayın",
+  "inside a room, of each of its walls": "bir odanın içinde, her duvarının",
+  "beside an outer wall, of the four sides of the building": "bir dış duvarın yanında, binanın dört cephesinin",
   "click elsewhere to start a section line": "kesit çizgisine başlamak için başka yere tıklayın",
   "Click where the section line ends": "Kesit çizgisinin bittiği yere tıklayın",
   "Extension": "Uzantı",

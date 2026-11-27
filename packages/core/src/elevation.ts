@@ -1,11 +1,12 @@
 import { isVisible, leavesOf, rootOf } from './document'
-import { applyTransform, boundsOfPoints, dist, norm, perp, sub, unionBounds, type Bounds, type Vec2 } from './geometry'
+import { applyTransform, boundsOfPoints, dist, norm, perp, pointInPolygon, sub, unionBounds, type Bounds, type Vec2 } from './geometry'
 import type { Op } from './ops'
 import { primitiveBounds, transformPrimitive, type Primitive } from './primitives'
 import type { ParametricKind, Registry } from './registry'
 import { leavesOf as everythingIn } from './document'
+import { roomAt, roomRegions, type Region } from './rooms'
 import type { Document, Node, NodeOf } from './schema'
-import { courseOf, cross, distToBody, dot, middleAcross, tidy, wallSides, type Wall } from './walls/course'
+import { courseOf, cross, distToBody, dot, middleAcross, tidy, wallContains, wallSides, type Wall } from './walls/course'
 import { followAlong } from './walls/follow'
 import { DEFAULT_WALL_HEIGHT, faceAcross, faceStretch, heightAboveFloor, heightInPlace, heightOf, mountAt, mountedOn, mountOf, propsInPlace, wallMounted } from './walls/mount'
 import { openingSpan, wallOpenings } from './walls/openings'
@@ -366,14 +367,133 @@ export function wallFaceAt(doc: Document, containerId: string, p: Vec2, reach: n
     }
   }
   if (!wall) return null
+  return faceLine(doc, wall, courseOf(wall).project(p).across >= middleAcross(wall) ? 'right' : 'left')
+}
+
+/** A face of a straight wall as `wallFaceAt` gives it. */
+function faceLine(doc: Document, wall: Wall, face: Face): WallFace {
   const course = courseOf(wall)
-  const face: Face = course.project(p).across >= middleAcross(wall) ? 'right' : 'left'
   const [from, to] = faceStretch(doc, wall, face)
   const start = course.offset(from, faceAcross(wall, face))
   const end = course.offset(to, faceAcross(wall, face))
   // Its right face is to the right of the wall's own line, so seen the way the wall runs; its left face the other way round.
   const [a, b] = face === 'right' ? [start, end] : [end, start]
   return { wall, face, a: { x: tidy(a.x), y: tidy(a.y) }, b: { x: tidy(b.x), y: tidy(b.y) } }
+}
+
+/** A face of a wall as an elevation looks at it: from `a` to `b`, seen from its right. */
+export type WallFace = { wall: Wall; face: Face; a: Vec2; b: Vec2 }
+
+/** How far off a face, on the side it is seen from, a point tells whether a room or the outside is there. */
+const OFF_FACE = 5
+
+/** The point just in front of a face, `along` its length (0 at `a`, 1 at `b`). */
+function offFace(line: { a: Vec2; b: Vec2 }, along = 0.5): Vec2 {
+  const n = viewer(line.a, line.b)
+  return { x: line.a.x + (line.b.x - line.a.x) * along + n.x * OFF_FACE, y: line.a.y + (line.b.y - line.a.y) * along + n.y * OFF_FACE }
+}
+
+/** Where along a face the space in front of it is looked at: a wall meeting it there may stand in front of one or two of them. */
+const ALONG_FACE = [0.1, 0.3, 0.5, 0.7, 0.9]
+
+const inRegion = (p: Vec2, region: Region) => pointInPolygon(p, region.outline) && !region.holes.some((hole) => pointInPolygon(p, hole))
+
+/**
+ * The faces of the walls round the room at `p` (`roomAt`), each seen from inside and as long as the
+ * room is along it, in turn round the room: what its interior elevations look at. A side of the
+ * room on no wall (a divider, a curved wall) has none. None outside a room.
+ */
+export function roomFaces(doc: Document, parent: string, p: Vec2): WallFace[] {
+  const region = roomAt(doc, parent, p)
+  if (!region) return []
+  const walls = wallsIn(doc, parent).filter((wall) => !wall.bulge)
+  let ring = region.outline
+  // Seen from inside, the room is on the right of each side: the ring is turned that way round.
+  const longest = ring.reduce((best, q, i) => (dist(q, ring[(i + 1) % ring.length]) > dist(ring[best], ring[(best + 1) % ring.length]) ? i : best), 0)
+  if (!inRegion(offFace({ a: ring[longest], b: ring[(longest + 1) % ring.length] }), region)) ring = [...ring].reverse()
+  const out: WallFace[] = []
+  for (let i = 0; i < ring.length; i++) {
+    const [a, b] = [ring[i], ring[(i + 1) % ring.length]]
+    if (dist(a, b) < 1) continue
+    let found: WallFace | null = null
+    for (const wall of walls) {
+      const face = faceUnder(wall, a, b)
+      if (face) found = { wall, face, a, b }
+      if (found) break
+    }
+    if (!found) continue
+    // Pieces of one face one after the other (where another wall meets it from behind) are one face.
+    const last = out[out.length - 1]
+    if (last && last.wall === found.wall && last.face === found.face && dist(last.b, a) <= ON_FACE) last.b = b
+    else out.push(found)
+  }
+  if (out.length > 1 && out[0].wall === out[out.length - 1].wall && out[0].face === out[out.length - 1].face && dist(out[out.length - 1].b, out[0].a) <= ON_FACE) out[0].a = out.pop()!.a
+  return out.map((f) => ({ ...f, a: { x: tidy(f.a.x), y: tidy(f.a.y) }, b: { x: tidy(f.b.x), y: tidy(f.b.y) } }))
+}
+
+/**
+ * Which side of the building a face looks out to (`BuildingSide`), when what is in front of it is
+ * in no room: an outer face. Walls that close no room yet are no building, and have none.
+ */
+export function outerSide(doc: Document, parent: string, face: { a: Vec2; b: Vec2 }): BuildingSide | null {
+  // In front of it, wherever no other wall stands against it: in no room anywhere.
+  const walls = wallsIn(doc, parent)
+  const fronts = ALONG_FACE.map((along) => offFace(face, along)).filter((p) => !walls.some((wall) => wallContains(wall, p)))
+  const regions = roomRegions(doc, parent)
+  if (regions.length === 0 || fronts.length === 0 || fronts.some((p) => regions.some((region) => inRegion(p, region)))) return null
+  const n = viewer(face.a, face.b)
+  return Math.abs(n.x) > Math.abs(n.y) ? (n.x > 0 ? 'right' : 'left') : n.y > 0 ? 'bottom' : 'top'
+}
+
+const outerCache = new WeakMap<Document['nodes'], Map<string, (WallFace & { side: BuildingSide })[]>>()
+
+/** Every outer face of the straight walls the plan of `parent` shows, with the side of the building it looks out to. */
+export function outerFaces(doc: Document, parent: string): (WallFace & { side: BuildingSide })[] {
+  let byParent = outerCache.get(doc.nodes)
+  if (!byParent) outerCache.set(doc.nodes, (byParent = new Map()))
+  let found = byParent.get(parent)
+  if (!found) {
+    found = []
+    for (const wall of wallsIn(doc, parent)) {
+      if (wall.bulge || !shownOnPlan(doc, wall)) continue
+      for (const face of ['left', 'right'] as const) {
+        const line = faceLine(doc, wall, face)
+        const side = dist(line.a, line.b) >= 1 ? outerSide(doc, parent, line) : null
+        if (side) found.push({ ...line, side })
+      }
+    }
+    byParent.set(parent, found)
+  }
+  return found
+}
+
+/** Room left below the views already put down for their dimensions, in mm at their scale. */
+const BELOW_VIEW = 1500
+/** Room between the views of a room, side by side. */
+const ROW_GAP = 1500
+
+/**
+ * The interior elevations of the room at `p` (`roomFaces`): a view of each wall, its line
+ * `ELEVATION_DEPTH` in front of the face, and where it is drawn (`x`, `y`, its floor under `a`):
+ * in a row from the left of the plan, below it and below the views of the plan already put down.
+ * None outside a room.
+ */
+export function roomViews(doc: Document, parent: string, p: Vec2): { a: Vec2; b: Vec2; depth: number; x: number; y: number }[] {
+  const faces = roomFaces(doc, parent, p)
+  if (faces.length === 0) return []
+  let box: Bounds | null = null
+  for (const wall of wallsIn(doc, parent).filter((wall) => shownOnPlan(doc, wall))) box = unionBounds(box, boundsOfPoints(wallOutline(wall, doc)))
+  if (!box) return []
+  const height = Math.max(...faces.map((f) => heightOf(doc, f.wall)))
+  const views = Object.values(doc.nodes).filter((node): node is Elevation => node.type === 'elevation' && node.parent === parent)
+  const lowest = Math.max(box.maxY + ELEVATION_DEPTH, ...views.map((view) => view.y + BELOW_VIEW * viewScale(view)))
+  const y = tidy(lowest + SIDE_GAP + height)
+  let x = box.minX
+  return faces.map((face) => {
+    const view = { ...viewOfFace(face), x: tidy(x), y }
+    x += dist(face.a, face.b) + ROW_GAP
+    return view
+  })
 }
 
 /** Which face of a straight wall the line from `a` to `b` lies on, facing the side it is seen from, if any. */

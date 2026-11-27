@@ -1055,6 +1055,8 @@ export const ja: Record<string, string> = {
   "Elevation or section: the face of a wall seen from in front, or a cut along a line, drawn from the plan": "立面または断面：正面から見た壁の面、または線に沿った切断、平面図から作成",
   "Elevation or section": "立面または断面",
   "Click beside a wall for an elevation of its face on that side": "壁の近くをクリックしてその側の面の立面",
+  "inside a room, of each of its walls": "部屋の中では、その各壁の立面図",
+  "beside an outer wall, of the four sides of the building": "外壁の近くでは、建物の四面の立面図",
   "click elsewhere to start a section line": "別の場所をクリックして切断線を開始",
   "Click where the section line ends": "切断線の終点をクリック",
   "Extension": "延長線",

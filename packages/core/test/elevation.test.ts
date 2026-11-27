@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdit, applyOps, createDocument, depthPatch, elevationWall, farSide, sideViews, elevationHeightOps, elevationItemAt, elevationMovePatch, elevationPrimitives, FORMAT_VERSION, NewerFormatError, parseDocument, Registry, serializeDocument, shownInElevations, splitWallOps, transformOps, wallFaceAt, type Document, type NodeOf, type Op, type Primitive } from '../src'
+import { applyEdit, applyOps, createDocument, depthPatch, elevationWall, farSide, sideViews, elevationHeightOps, elevationItemAt, elevationMovePatch, elevationPrimitives, FORMAT_VERSION, NewerFormatError, parseDocument, Registry, serializeDocument, shownInElevations, splitWallOps, transformOps, wallFaceAt, roomFaces, roomViews, outerSide, outerFaces, type Document, type NodeOf, type Op, type Primitive } from '../src'
 import { viewNodes, viewOps, type ViewSpec } from './view-nodes'
 
 /*
@@ -425,6 +425,76 @@ describe('elevations look at the face as it is drawn', () => {
       { op: 'update_node', id: 'w', patch: { a: { x: 500, y: 0 } } },
     ])
     expect(line(moved)).toEqual([[600, 1100], [6000, 1100]])
+  })
+})
+
+describe('a room, and the outside, under the elevation tool', () => {
+  /** The house of the four sides: a room of 5 by 3 m cut in two by a wall at 2.5 m, walls 200 thick on their lines, 100 inside. */
+  const house = (): Document =>
+    applyOps(
+      createDocument('Plan'),
+      [
+        { type: 'wall', id: 'top', a: { x: 0, y: 0 }, b: { x: 5000, y: 0 }, thickness: 200 },
+        { type: 'wall', id: 'right', a: { x: 5000, y: 0 }, b: { x: 5000, y: 3000 }, thickness: 200 },
+        { type: 'wall', id: 'bottom', a: { x: 0, y: 3000 }, b: { x: 5000, y: 3000 }, thickness: 200 },
+        { type: 'wall', id: 'left', a: { x: 0, y: 0 }, b: { x: 0, y: 3000 }, thickness: 200 },
+        { type: 'wall', id: 'inside', a: { x: 2500, y: 0 }, b: { x: 2500, y: 3000 }, thickness: 100 },
+      ].map((node): Op => ({ op: 'add_node', node: { parent: 'page_1', ...node } as never })),
+    )
+  const length = (f: { a: { x: number; y: number }; b: { x: number; y: number } }) => Math.round(Math.hypot(f.b.x - f.a.x, f.b.y - f.a.y))
+
+  it('gives the faces round a room, seen from inside, each as long as the room is along it', () => {
+    const faces = roomFaces(house(), 'page_1', { x: 1000, y: 1500 })
+    expect(faces.map((f) => [f.wall.id, length(f)]).sort()).toEqual([
+      ['bottom', 2350],
+      ['inside', 2800],
+      ['left', 2800],
+      ['top', 2350],
+    ])
+    // Each is seen from inside: the room is on its right, where its view stands.
+    for (const f of faces) {
+      const n = { x: -(f.b.y - f.a.y) / length(f), y: (f.b.x - f.a.x) / length(f) }
+      const front = { x: (f.a.x + f.b.x) / 2 + n.x * 500, y: (f.a.y + f.b.y) / 2 + n.y * 500 }
+      expect(front.x > 100 && front.x < 2450 && front.y > 100 && front.y < 2900).toBe(true)
+    }
+    // One after the other round the room.
+    for (let i = 0; i < faces.length; i++) expect(Math.hypot(faces[i].b.x - faces[(i + 1) % 4].a.x, faces[i].b.y - faces[(i + 1) % 4].a.y)).toBeLessThan(1)
+    expect(roomFaces(house(), 'page_1', { x: -2000, y: 1500 })).toEqual([])
+  })
+
+  it('tells an outer face from an inner one, and the side of the building it looks out to', () => {
+    const doc = house()
+    const at = (x: number, y: number) => outerSide(doc, 'page_1', wallFaceAt(doc, 'page_1', { x, y }, 300)!)
+    expect(at(2000, -300)).toBe('top')
+    expect(at(5300, 1500)).toBe('right')
+    expect(at(1000, 3300)).toBe('bottom')
+    expect(at(-300, 1500)).toBe('left')
+    expect(at(2000, 300)).toBeNull()
+    expect(at(2400, 1500)).toBeNull()
+    // A wall alone closes no room: there is no outside of a building yet.
+    const lone = applyOps(createDocument('Plan'), [{ op: 'add_node', node: { type: 'wall', id: 'w', parent: 'page_1', a: { x: 0, y: 0 }, b: { x: 4000, y: 0 }, thickness: 200 } as never }])
+    expect(outerSide(lone, 'page_1', wallFaceAt(lone, 'page_1', { x: 2000, y: 300 }, 300)!)).toBeNull()
+    expect(outerFaces(doc, 'page_1').map((f) => [f.wall.id, f.side]).sort()).toEqual([
+      ['bottom', 'bottom'],
+      ['left', 'left'],
+      ['right', 'right'],
+      ['top', 'top'],
+    ])
+  })
+
+  it('puts the views of a room in a row below the plan and below the views already there', () => {
+    const doc = house()
+    const views = roomViews(doc, 'page_1', { x: 1000, y: 1500 })
+    expect(views).toHaveLength(4)
+    // Each an elevation of its wall, its line 1 m in front of the face, inside the room.
+    expect(views.map((view) => elevationWall(doc, { ...view, parent: 'page_1' })?.wall.id).sort()).toEqual(['bottom', 'inside', 'left', 'top'])
+    // In a row from the left of the plan, below it: its floor under 3.1 m of plan, 1 m, 3 m of room and the height of the walls.
+    expect(views.map((view) => view.y)).toEqual(Array(4).fill(views[0].y))
+    expect(views[0].x).toBe(-100)
+    for (let i = 1; i < 4; i++) expect(views[i].x).toBeGreaterThan(views[i - 1].x + length(views[i - 1]))
+    const below = applyOps(doc, [{ op: 'add_node', node: { type: 'elevation', id: 'old', parent: 'page_1', ...views[0] } as never }])
+    expect(roomViews(below, 'page_1', { x: 1000, y: 1500 })[0].y).toBeGreaterThan(views[0].y + 1500)
+    expect(roomViews(doc, 'page_1', { x: -2000, y: 1500 })).toEqual([])
   })
 })
 

@@ -1055,6 +1055,8 @@ export const es: Record<string, string> = {
   "Elevation or section: the face of a wall seen from in front, or a cut along a line, drawn from the plan": "Alzado o sección: la cara de un muro vista de frente, o un corte a lo largo de una línea, sacado del plano",
   "Elevation or section": "Alzado o sección",
   "Click beside a wall for an elevation of its face on that side": "Haga clic junto a un muro para el alzado de su cara de ese lado",
+  "inside a room, of each of its walls": "dentro de una habitación, de cada uno de sus muros",
+  "beside an outer wall, of the four sides of the building": "junto a un muro exterior, de los cuatro lados del edificio",
   "click elsewhere to start a section line": "haga clic en otro lugar para empezar una línea de sección",
   "Click where the section line ends": "Haga clic donde termina la línea de sección",
   "Extension": "Extensión",

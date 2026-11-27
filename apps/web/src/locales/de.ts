@@ -1055,6 +1055,8 @@ export const de: Record<string, string> = {
   "Elevation or section: the face of a wall seen from in front, or a cut along a line, drawn from the plan": "Ansicht oder Schnitt: die Seite einer Wand von vorn gesehen, oder ein Schnitt entlang einer Linie, aus dem Grundriss",
   "Elevation or section": "Ansicht oder Schnitt",
   "Click beside a wall for an elevation of its face on that side": "Neben eine Wand klicken für die Ansicht ihrer Seite dort",
+  "inside a room, of each of its walls": "in einem Raum für jede seiner Wände",
+  "beside an outer wall, of the four sides of the building": "neben einer Außenwand für die vier Seiten des Gebäudes",
   "click elsewhere to start a section line": "anderswo klicken, um eine Schnittlinie zu beginnen",
   "Click where the section line ends": "Klicken Sie, wo die Schnittlinie endet",
   "Extension": "Verlängerung",
