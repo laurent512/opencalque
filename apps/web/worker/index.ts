@@ -10,9 +10,15 @@
  * files attached to a report (the drawing, pictures, recordings) are kept in an R2 bucket, served by
  * `GET /api/feedback/files/…`, and the issue links them. See ARCHITECTURE, "Reports from the
  * app", for setting it up.
+ *
+ * A new report is answered with a key, which the app keeps: with it, `POST /api/feedback/thread`
+ * reads the answers and `POST /api/feedback/reply` posts the person's reply on their report, so
+ * that they follow the exchange in the app without a GitHub account. Only the key's SHA-256 is
+ * kept, in the bucket (`keys/<number>`).
  */
 
 import { checkReport, commentBody, followedIssue, issueBody, issueTitle, LABELS, LIMITS, type Report, type StoredAttachments } from '../src/feedback/report'
+import { readable, REPLY_KEY, REPLY_LIMIT, replyBody, speakerOf, THREAD_COMMENTS, type Thread } from '../src/feedback/thread'
 import { github, GitHubError, installationToken } from './github'
 
 /** The label every report from the app carries (`LABELS`), by which a follow-up finds its issue. */
@@ -29,6 +35,8 @@ export interface Env {
   ASSETS: { fetch(request: Request): Promise<Response> }
   /** Requests a visitor may make in a minute, by address (the `ratelimits` binding). */
   FEEDBACK_LIMIT?: { limit(options: { key: string }): Promise<{ success: boolean }> }
+  /** Threads a visitor may read in a minute: the app reads those of the reports it sent when it starts. */
+  FEEDBACK_READ_LIMIT?: { limit(options: { key: string }): Promise<{ success: boolean }> }
   GITHUB_APP_ID?: string
   GITHUB_APP_KEY?: string
   /** "owner/name" of the repository issues go to. */
@@ -52,6 +60,8 @@ const CORS = {
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } })
 
 const FILES = '/api/feedback/files/'
+/** Where the hash of each report's key is kept in the bucket, apart from its files (`FILE_NAME` never serves it). */
+const KEYS = 'keys/'
 /** The only names files are kept under: a report's folder, then one of the files it may have (`screenshot.png` is how 1.13's picture was kept). */
 const FILE_NAME = /^\d{4}-\d\d-\d\d-[0-9a-f]{18}\/(screenshot\.png|picture-[1-9]\.png|recording-[1-9]\.(webm|mp4)|drawing\.opencalque)$/
 
@@ -89,6 +99,28 @@ async function storeAttachments(env: Env, origin: string, report: Report): Promi
     console.error(error)
     return { missing: 'The person attached files, but they could not be stored.' }
   }
+}
+
+const hex = (bytes: Uint8Array) => [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('')
+const hashOf = async (key: string) => hex(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(key))))
+
+/** A key for the report just made, kept as its hash; none when there is nowhere to keep it (the report is made anyway). */
+async function newKey(env: Env, number: number): Promise<string | undefined> {
+  if (!env.FEEDBACK_FILES) return undefined
+  try {
+    const key = hex(crypto.getRandomValues(new Uint8Array(32)))
+    await env.FEEDBACK_FILES.put(`${KEYS}${number}`, await hashOf(key), { httpMetadata: { contentType: 'text/plain' } })
+    return key
+  } catch (error) {
+    console.error(error)
+    return undefined
+  }
+}
+
+/** Whether `key` is the one given for report `number`. */
+async function holdsKey(env: Env, number: number, key: string): Promise<boolean> {
+  const kept = env.FEEDBACK_FILES && (await env.FEEDBACK_FILES.get(`${KEYS}${number}`))
+  return !!kept && (await new Response(kept.body).text()) === (await hashOf(key))
 }
 
 /**
@@ -145,10 +177,88 @@ export async function feedback(request: Request, env: Env): Promise<Response> {
       body: issueBody(report, stored),
       labels: LABELS[report.kind],
     })
-    return json(201, { url: issue.html_url, number: issue.number })
+    const key = await newKey(env, issue.number)
+    return json(201, { url: issue.html_url, number: issue.number, ...(key && { key }) })
   } catch (error) {
     console.error(error)
     return json(502, { error: 'GitHub did not take the report' })
+  }
+}
+
+type Issue = { number: number; title: string; state: 'open' | 'closed'; html_url: string; created_at: string; body: string | null; user: { login: string } | null; pull_request?: unknown; labels: (string | { name?: string })[] }
+type Comment = { body: string | null; created_at: string; user: { login: string } | null; author_association?: string }
+
+const isFromApp = (issue: Issue) => !issue.pull_request && issue.labels.some((label) => (typeof label === 'string' ? label : label.name) === FROM_APP)
+
+/**
+ * What `/thread` and `/reply` are asked with: a report's number and its key, checked before
+ * GitHub is reached. Either the request as read, or the answer to give.
+ */
+async function keyed(request: Request, env: Env, limit: Env['FEEDBACK_LIMIT'], size: number): Promise<{ number: number; input: Record<string, unknown> } | Response> {
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
+  if (request.method !== 'POST') return json(405, { error: 'Use POST' })
+  if (Number(request.headers.get('Content-Length') ?? 0) > size) return json(413, { error: 'Too large' })
+  if (limit && !(await limit.limit({ key: request.headers.get('CF-Connecting-IP') ?? 'unknown' })).success) return json(429, { error: 'Too many requests from this address; try again in a minute' })
+  const body = await request.text()
+  if (body.length > size) return json(413, { error: 'Too large' })
+  let input: Record<string, unknown>
+  try {
+    input = JSON.parse(body)
+  } catch {
+    return json(400, { error: 'Expected JSON' })
+  }
+  const { number, key } = input && typeof input === 'object' ? input : ({} as Record<string, unknown>)
+  if (typeof number !== 'number' || !Number.isInteger(number) || number < 1 || typeof key !== 'string' || !REPLY_KEY.test(key)) return json(400, { error: 'A report’s number and its key are needed' })
+  if (!env.GITHUB_APP_ID || !env.GITHUB_APP_KEY) return json(503, { error: 'Reports are not set up on this server' })
+  if (!(await holdsKey(env, number, key))) return json(403, { error: 'This is not the key of that report' })
+  return { number, input }
+}
+
+/** The report and its answers, for the person who sent it (`Thread`). */
+export async function thread(request: Request, env: Env): Promise<Response> {
+  const asked = await keyed(request, env, env.FEEDBACK_READ_LIMIT, 1_000)
+  if (asked instanceof Response) return asked
+  try {
+    const token = await installationToken({ id: env.GITHUB_APP_ID!, key: env.GITHUB_APP_KEY! }, env.FEEDBACK_REPO)
+    const issue = await github<Issue>(token, 'GET', `/repos/${env.FEEDBACK_REPO}/issues/${asked.number}`)
+    if (!isFromApp(issue)) return json(404, { error: 'No such report' })
+    const comments = await github<Comment[]>(token, 'GET', `/repos/${env.FEEDBACK_REPO}/issues/${asked.number}/comments?per_page=${THREAD_COMMENTS}`)
+    const bot = issue.user?.login ?? ''
+    const answer: Thread = {
+      number: issue.number,
+      title: issue.title,
+      state: issue.state,
+      url: issue.html_url,
+      entries: [
+        { from: 'you', at: issue.created_at, text: readable(issue.body) },
+        ...comments.slice(0, THREAD_COMMENTS).map((c) => ({ ...speakerOf(c, bot), at: c.created_at, text: readable(c.body) })),
+      ],
+    }
+    return json(200, answer)
+  } catch (error) {
+    console.error(error)
+    return json(error instanceof GitHubError && error.status === 404 ? 404 : 502, { error: 'GitHub did not give the report' })
+  }
+}
+
+/** The person's reply, posted on their report, which it opens again if it was closed. */
+export async function reply(request: Request, env: Env): Promise<Response> {
+  const asked = await keyed(request, env, env.FEEDBACK_LIMIT, REPLY_LIMIT * 4 + 1_000)
+  if (asked instanceof Response) return asked
+  const text = asked.input.text
+  if (typeof text !== 'string' || !text.trim()) return json(400, { error: 'The reply is empty' })
+  if (text.length > REPLY_LIMIT) return json(413, { error: `A reply is at most ${REPLY_LIMIT} characters` })
+  try {
+    const token = await installationToken({ id: env.GITHUB_APP_ID!, key: env.GITHUB_APP_KEY! }, env.FEEDBACK_REPO)
+    const issue = await github<Issue>(token, 'GET', `/repos/${env.FEEDBACK_REPO}/issues/${asked.number}`)
+    if (!isFromApp(issue)) return json(404, { error: 'No such report' })
+    const comment = await github<{ html_url: string }>(token, 'POST', `/repos/${env.FEEDBACK_REPO}/issues/${asked.number}/comments`, { body: replyBody(text) })
+    // As for a follow-up: "it still does not work" on a closed report is read only if it is open.
+    if (issue.state === 'closed') await github(token, 'PATCH', `/repos/${env.FEEDBACK_REPO}/issues/${asked.number}`, { state: 'open' }).catch((error) => console.error(error))
+    return json(201, { url: comment.html_url })
+  } catch (error) {
+    console.error(error)
+    return json(502, { error: 'GitHub did not take the reply' })
   }
 }
 
@@ -171,6 +281,8 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url)
     if (pathname === '/api/feedback') return feedback(request, env)
+    if (pathname === '/api/feedback/thread') return thread(request, env)
+    if (pathname === '/api/feedback/reply') return reply(request, env)
     if (pathname.startsWith(FILES) && request.method === 'GET') return attachment(pathname.slice(FILES.length), env)
     if (pathname.startsWith('/api/')) return json(404, { error: 'No such address' })
     return env.ASSETS.fetch(request)

@@ -4,6 +4,7 @@ import { usePrefs } from '../prefs'
 import { VERSION } from '../release'
 import { sessionSeconds } from './errors'
 import type { Report } from './report'
+import type { Thread } from './thread'
 
 /**
  * Where reports go: the worker of opencalque.com (`apps/web/worker`), from the web editor, the
@@ -52,16 +53,38 @@ export function environment(): Record<string, string> {
   }
 }
 
-export type Sent = { url: string } | { error: string; status: number }
+/** Where the report is, and the key that answers it from the app (none when it went onto another report, or the server kept none). */
+export type Sent = { url: string; number?: number; key?: string } | { error: string; status: number }
 
-/** Sends a report; says where the issue is, or why it was not made. */
-export async function sendReport(report: Report): Promise<Sent> {
+type Failed = { error: string; status: number }
+
+async function post<T>(url: string, body: unknown): Promise<T | Failed> {
   try {
-    const response = await fetch(FEEDBACK_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(report) })
-    const answer = (await response.json().catch(() => ({}))) as { url?: string; error?: string }
-    if (response.ok && answer.url) return { url: answer.url }
+    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    const answer = (await response.json().catch(() => ({}))) as T & { error?: string }
+    if (response.ok) return answer
     return { error: answer.error ?? response.statusText, status: response.status }
   } catch (error) {
     return { error: (error as Error).message, status: 0 }
   }
+}
+
+/** Sends a report; says where the issue is, or why it was not made. */
+export async function sendReport(report: Report): Promise<Sent> {
+  const answer = await post<{ url?: string; number?: number; key?: string }>(FEEDBACK_URL, report)
+  if ('status' in answer) return answer
+  if (!answer.url) return { error: 'The server did not say where the report is', status: 502 }
+  return { url: answer.url, ...(typeof answer.number === 'number' && { number: answer.number }), ...(typeof answer.key === 'string' && { key: answer.key }) }
+}
+
+/** A report this device sent, with the answers to it, read with its key. */
+export async function readThread(number: number, key: string): Promise<Thread | Failed> {
+  const answer = await post<Thread>(`${FEEDBACK_URL}/thread`, { number, key })
+  if (!('status' in answer) && !Array.isArray(answer.entries)) return { error: 'The server sent no thread', status: 502 }
+  return answer
+}
+
+/** Posts the person's reply under their report. */
+export async function sendReply(number: number, key: string, text: string): Promise<{ url: string } | Failed> {
+  return post<{ url: string }>(`${FEEDBACK_URL}/reply`, { number, key, text })
 }

@@ -2698,6 +2698,166 @@ button.feedback-thumb:focus-visible {
   word-break: break-all;
 }
 
+/* The reports sent from here, and the one opened with its answers */
+.feedback-view {
+  margin: 4px 20px 8px;
+}
+
+.feedback-view button {
+  height: 28px;
+}
+
+.feedback-reports {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feedback-reports button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.feedback-reports button:hover,
+.feedback-reports button:focus-visible {
+  background: var(--hover);
+}
+
+.feedback-report-title {
+  flex: 1 1 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.feedback-report-meta {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.feedback-new {
+  padding: 0 6px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+}
+
+.feedback-thread-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.feedback-thread-head .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.feedback-thread h3 {
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+
+.feedback-entry {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  user-select: text;
+}
+
+.feedback-entry.you {
+  background: var(--hover);
+}
+
+.dialog .feedback-entry > header {
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 0;
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.feedback-entry > header strong {
+  color: var(--text);
+}
+
+.feedback-markdown {
+  overflow-wrap: anywhere;
+}
+
+.feedback-markdown > :first-child {
+  margin-top: 0;
+}
+
+.feedback-markdown > :last-child {
+  margin-bottom: 0;
+}
+
+.feedback-markdown p,
+.feedback-markdown li {
+  white-space: pre-line;
+}
+
+.feedback-markdown p,
+.feedback-markdown ul,
+.feedback-markdown ol,
+.feedback-markdown blockquote,
+.feedback-markdown pre {
+  margin: 0 0 8px;
+}
+
+.feedback-markdown ul,
+.feedback-markdown ol {
+  padding-left: 20px;
+}
+
+.feedback-markdown h4 {
+  margin: 10px 0 4px;
+}
+
+.feedback-markdown blockquote {
+  padding-left: 10px;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.feedback-markdown pre,
+.feedback-markdown code {
+  border-radius: 4px;
+  background: var(--hover);
+  font-size: 11px;
+}
+
+.feedback-markdown pre {
+  max-height: 160px;
+  padding: 6px 8px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.feedback-markdown code {
+  padding: 0 3px;
+}
+
+.feedback-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+}
+
 /* Assistant */
 
 .assistant-panel {

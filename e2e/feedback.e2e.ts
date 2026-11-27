@@ -155,3 +155,61 @@ test('records an area of the app while it is used, and sends the recording', asy
   expect(report.recordings[0].seconds).toBeGreaterThan(0.5)
   expect(report.recordings[0].content).toMatch(/^GkXf/)
 })
+
+test('reads the answers to a report sent from here, and replies to them, under Your reports', async ({ page }) => {
+  await startWith(page)
+  const key = 'ab'.repeat(32)
+  await answerReports(page, 201, { url: 'https://github.com/laurent512/opencalque/issues/42', number: 42, key })
+  const replies: any[] = []
+  const entries = [
+    { from: 'you', at: '2026-11-22T10:00:00Z', text: 'Wall types, please' },
+    { from: 'team', at: '2026-11-23T10:00:00Z', text: 'Thanks! Two questions:\n\n1. How many **kinds** of walls?\n2. See [2.2.0](https://github.com/laurent512/opencalque/releases/tag/v2.2.0)\n\n<img src=x onerror=alert(1)>' },
+  ]
+  await page.route('https://opencalque.com/api/feedback/*', async (route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 204, headers: CORS })
+    const asked = route.request().postDataJSON()
+    expect(asked).toMatchObject({ number: 42, key })
+    if (route.request().url().endsWith('/reply')) {
+      replies.push(asked)
+      entries.push({ from: 'you', at: '2026-11-27T10:00:00Z', text: asked.text })
+      return route.fulfill({ status: 201, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify({ url: 'https://github.com/laurent512/opencalque/issues/42#issuecomment-1' }) })
+    }
+    const thread = { number: 42, title: 'Wall types', state: 'closed', url: 'https://github.com/laurent512/opencalque/issues/42', entries }
+    await route.fulfill({ status: 200, headers: { ...CORS, 'Content-Type': 'application/json' }, body: JSON.stringify(thread) })
+  })
+  await openEditor(page)
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('Report a bug')
+  await page.keyboard.press('Enter')
+  const form = page.locator('.dialog.feedback')
+  // Nothing sent from here yet: nothing to switch to.
+  await expect(form.getByRole('tab', { name: 'Your reports' })).toHaveCount(0)
+  await form.getByLabel('Title').fill('Wall types')
+  await form.getByRole('button', { name: 'Send' }).click()
+  await expect(form).toContainText('You will find the answers here too')
+
+  await form.getByRole('tab', { name: 'Your reports' }).click()
+  await form.getByRole('button', { name: /Wall types/ }).click()
+  const answer = form.locator('.feedback-entry.team')
+  await expect(answer.locator('strong', { hasText: 'kinds' })).toBeVisible()
+  await expect(answer.getByRole('link', { name: '2.2.0' })).toHaveAttribute('href', 'https://github.com/laurent512/opencalque/releases/tag/v2.2.0')
+  // HTML in an answer stays text.
+  await expect(answer).toContainText('<img src=x onerror=alert(1)>')
+  await expect(answer.locator('img')).toHaveCount(0)
+  await expect(form).toContainText('This report is closed. A reply opens it again.')
+  await page.screenshot({ path: test.info().outputPath('thread.png') })
+
+  await form.getByLabel('Your reply').fill('Three or four')
+  await form.getByRole('button', { name: 'Send' }).click()
+  await expect(form.locator('.feedback-entry.you').last()).toContainText('Three or four')
+  await expect(form.getByLabel('Your reply')).toHaveValue('')
+  expect(replies).toEqual([{ number: 42, key, text: 'Three or four' }])
+
+  // Kept for the next time the app is opened.
+  await page.reload()
+  await expect(page.locator('#splash:not(.leaving)')).toHaveCount(0)
+  await page.keyboard.press('Control+k')
+  await page.keyboard.type('Your reports')
+  await page.keyboard.press('Enter')
+  await expect(form.getByRole('button', { name: /Wall types/ })).toBeVisible()
+})

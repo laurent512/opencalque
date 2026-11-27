@@ -208,8 +208,13 @@ export function followedIssue(title: string): number | null {
   return number > 0 ? number : null
 }
 
-/** A report posted as a comment on the issue it follows up: its title first, as the issue would have had it. */
-export const commentBody = (report: Report, stored: StoredAttachments = {}) => `**${issueTitle(report)}**\n\n${issueBody(report, stored)}`
+/**
+ * A report posted as a comment on the issue it follows up: its title first, as the issue would
+ * have had it. Anyone can name an issue in a title, so it says it may come from someone else; the
+ * person who sent the report replies from the app with its key instead (`replyBody` in `thread.ts`).
+ */
+export const commentBody = (report: Report, stored: StoredAttachments = {}) =>
+  `**${issueTitle(report)}**\n\n${issueBody(report, stored)}\n\n_Sent from the app with this issue’s number in its title: it may not come from the person who sent the report._`
 
 /**
  * GitHub's page for a new issue, filled in with the report, for when it cannot be sent from the

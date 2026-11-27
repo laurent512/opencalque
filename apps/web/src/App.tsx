@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { About } from './About'
 import { Feedback } from './Feedback'
+import { checkAnswers } from './feedback/mine'
 import { DrawingSettingsWindow } from './DrawingSettingsWindow'
 import { startUp } from './actions'
 import { startAutosave } from './autosave'
@@ -96,6 +97,7 @@ export function App() {
   }, [])
   useEffect(startAutosave, [])
   useEffect(startRecovery, [])
+  useEffect(() => void checkAnswers(), [])
   useEffect(watchScrubKey, [])
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)

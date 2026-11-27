@@ -18,6 +18,8 @@ interface Windows {
   aboutOpen: boolean
   /** Whether the window for reporting a bug or an idea is open (`Feedback.tsx`). */
   feedbackOpen: boolean
+  /** What it shows: a new report, or those sent from here with their answers ("Your reports"). */
+  feedbackView: 'new' | 'reports'
   /** Whether the object library is open. */
   warehouse: 'components' | null
   /** What is asked before it is done (`ask`), while its window is open. */
@@ -36,7 +38,7 @@ export interface Question {
   run: () => void
 }
 
-const CLOSED: Windows = { welcomeOpen: false, preferencesOpen: false, preferencesPage: null, exportOpen: false, exportSelection: false, drawingSettingsOpen: false, aboutOpen: false, feedbackOpen: false, warehouse: null, question: null, toast: null, browsing: null }
+const CLOSED: Windows = { welcomeOpen: false, preferencesOpen: false, preferencesPage: null, exportOpen: false, exportSelection: false, drawingSettingsOpen: false, aboutOpen: false, feedbackOpen: false, feedbackView: 'new', warehouse: null, question: null, toast: null, browsing: null }
 
 export const useWindows = create<Windows>(() => CLOSED)
 

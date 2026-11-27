@@ -11,6 +11,8 @@ import { AreaPicker, boxOf, RecordingBar } from './feedback/AreaPicker'
 import { canCapture, canRecord, openSource, pictureOf, record, type Area, type Recorded, type Recorder, type Source } from './feedback/capture'
 import { LIMITS, newIssueUrl, type Report, type ReportKind } from './feedback/report'
 import { environment, sendReport } from './feedback/send'
+import { remember, unread, useMyReports } from './feedback/mine'
+import { MyReports } from './feedback/MyReports'
 
 const close = () => useWindows.setState({ feedbackOpen: false })
 
@@ -20,7 +22,7 @@ function drawingAsSaved(): { name: string; content: string } {
   return { name: `${doc.name.trim() || 'drawing'}.opencalque`, content: serializeDocument(forFile(withoutAssets(doc))) }
 }
 
-type Status = { step: 'writing' } | { step: 'sending' } | { step: 'sent'; url: string } | { step: 'failed'; reason: string }
+type Status = { step: 'writing' } | { step: 'sending' } | { step: 'sent'; url: string; kept: boolean } | { step: 'failed'; reason: string }
 
 /** Taking a picture or a recording: the window is out of the way meanwhile. */
 type Capture =
@@ -38,10 +40,13 @@ let ids = 0
  * worker (`apps/web/worker`), so that no GitHub account is needed. What is written and attached
  * stays when the window is closed, until it is sent. Nothing is attached at first, since the
  * issue is public: each attachment is added by the person and shown as a tile they can take out;
- * the rest of what is sent is shown under "What else is sent".
+ * the rest of what is sent is shown under "What else is sent". "Your reports" lists those sent
+ * from here, with their answers and a place to reply (`feedback/MyReports.tsx`).
  */
 export function Feedback() {
   const open = useWindows((s) => s.feedbackOpen)
+  const view = useWindows((s) => s.feedbackView)
+  const mine = useMyReports((s) => s.reports)
   const [kind, setKind] = useState<ReportKind>('bug')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -171,7 +176,8 @@ export function Feedback() {
     setStatus({ step: 'sending' })
     const sent = await sendReport(sending)
     if ('url' in sent) {
-      setStatus({ step: 'sent', url: sent.url })
+      if (sent.number && sent.key) remember({ number: sent.number, title: sending.title, url: sent.url, key: sent.key })
+      setStatus({ step: 'sent', url: sent.url, kept: !!(sent.number && sent.key) })
       setTitle('')
       setDescription('')
       setAttach({ drawing: false, errors: false })
@@ -194,10 +200,24 @@ export function Feedback() {
         <header>
           <h2>{t('Report a bug or suggest an idea')}</h2>
           <button className="text-button" onClick={close}>
-            {status.step === 'sent' ? t('Done') : t('Cancel')}
+            {status.step === 'sent' || view === 'reports' ? t('Done') : t('Cancel')}
           </button>
         </header>
-        {status.step === 'sent' ? (
+        {(mine.length > 0 || view === 'reports') && (
+          <Tabs
+            className="feedback-view"
+            label={t('Your reports')}
+            value={view}
+            onChange={(feedbackView) => useWindows.setState({ feedbackView })}
+            options={[
+              { value: 'new', label: t('New report') },
+              { value: 'reports', label: mine.some(unread) ? `${t('Your reports')} •` : t('Your reports') },
+            ]}
+          />
+        )}
+        {view === 'reports' ? (
+          <MyReports />
+        ) : status.step === 'sent' ? (
           <section className="feedback-sent">
             <p>{t('Thank you. Your report is on GitHub, where the answers will be written:')}</p>
             <p>
@@ -205,6 +225,7 @@ export function Feedback() {
                 {status.url}
               </a>
             </p>
+            {status.kept && <p>{t('You will find the answers here too, under Your reports, where you can reply to them.')}</p>}
           </section>
         ) : (
           <>

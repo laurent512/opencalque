@@ -37,13 +37,22 @@
 			"remote": true
 		}
 	],
-	// Five reports a minute from one address.
+	// Five reports or replies a minute from one address, and thirty threads read (the app reads
+	// those of the reports it sent when it starts).
 	"ratelimits": [
 		{
 			"name": "FEEDBACK_LIMIT",
 			"namespace_id": "1001",
 			"simple": {
 				"limit": 5,
+				"period": 60
+			}
+		},
+		{
+			"name": "FEEDBACK_READ_LIMIT",
+			"namespace_id": "1002",
+			"simple": {
+				"limit": 30,
 				"period": 60
 			}
 		}
