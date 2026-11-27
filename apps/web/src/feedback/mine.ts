@@ -97,5 +97,5 @@ export async function checkAnswers(now = Date.now()): Promise<void> {
     if (answersIn(thread) > report.answers) answered.push(report)
     update(report.number, thread, false)
   }
-  if (answered.length > 0) toast(t('There is a new answer to your report “{title}”: see Your reports, in the Preferences menu.', { title: answered[0].title }))
+  if (answered.length > 0) toast(t('There is a new answer to your report “{title}”: see Feedback, in the Preferences menu.', { title: answered[0].title }))
 }

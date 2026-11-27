@@ -2372,6 +2372,60 @@ button.crumb.ahead:hover {
   max-height: 88vh;
 }
 
+.dialog.feedback:focus {
+  outline: none;
+}
+
+/* Once reports were sent from here: their list down the side, what is open beside it, each scrolled
+   on its own in a window of one size, so that going from one to another moves nothing */
+.dialog.feedback.with-reports {
+  display: flex;
+  flex-direction: column;
+  width: min(860px, calc(100vw - 32px));
+  height: min(680px, 88vh);
+  overflow: hidden;
+}
+
+.with-reports > .feedback-body {
+  display: grid;
+  flex: 1;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-height: 0;
+  border-top: 1px solid var(--border);
+}
+
+.with-reports .feedback-main {
+  overflow-y: auto;
+}
+
+.with-reports .feedback-main > section:first-child {
+  border-top: 0;
+}
+
+.feedback-side {
+  padding: 8px;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+}
+
+.feedback-side h3 {
+  margin: 14px 8px 4px;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .with-reports > .feedback-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .feedback-side {
+    max-height: 30vh;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
 .feedback-field {
   display: flex;
   flex-direction: column;
@@ -2699,21 +2753,13 @@ button.feedback-thumb:focus-visible {
 }
 
 /* The reports sent from here, and the one opened with its answers */
-.feedback-view {
-  margin: 4px 20px 8px;
-}
-
-.feedback-view button {
-  height: 28px;
-}
-
 .feedback-reports {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.feedback-reports button {
+.feedback-pick {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
@@ -2729,9 +2775,19 @@ button.feedback-thumb:focus-visible {
   cursor: pointer;
 }
 
-.feedback-reports button:hover,
-.feedback-reports button:focus-visible {
+.feedback-pick:hover,
+.feedback-pick:focus-visible {
   background: var(--hover);
+}
+
+.feedback-pick.active {
+  background: var(--accent-soft);
+}
+
+.feedback-pick.new {
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
 }
 
 .feedback-report-title {
@@ -2756,13 +2812,12 @@ button.feedback-thumb:focus-visible {
 .feedback-thread-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
+  gap: 12px;
 }
 
-.feedback-thread-head .text-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+.feedback-thread-head a {
+  flex: none;
 }
 
 .feedback-thread h3 {

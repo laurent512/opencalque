@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { language, t } from '../i18n'
 import { read, unread, useMyReports, type MyReport } from './mine'
 import { readThread, sendReply } from './send'
@@ -18,27 +18,21 @@ const reason = (failed: { error: string; status: number }) =>
   failed.status === 0 ? t('The server could not be reached.') : failed.status === 403 || failed.status === 404 ? t('This report can no longer be answered from here.') : failed.error
 
 /**
- * The reports sent from this device, and the one opened: what was written on it, the answers, and
- * a reply, posted under the report on GitHub by the site's worker with the report's key.
+ * The side of the Feedback window: a new report first, then the reports sent from this device,
+ * newest first, those with an answer not yet read marked.
  */
-export function MyReports() {
+export function ReportList({ selected, onSelect }: { selected: number | null; onSelect: (report: number | null) => void }) {
   const reports = useMyReports((s) => s.reports)
-  const [opened, setOpened] = useState<number | null>(null)
-  const report = reports.find((r) => r.number === opened)
-  if (report) return <ReportThread report={report} onBack={() => setOpened(null)} />
-  if (reports.length === 0) {
-    return (
-      <section>
-        <p className="hint">{t('The reports you send from here are listed here with their answers, and you can reply to them.')}</p>
-      </section>
-    )
-  }
   return (
-    <section>
+    <nav className="feedback-side" aria-label={t('Your reports')}>
+      <button className={`feedback-pick new${selected === null ? ' active' : ''}`} aria-current={selected === null} onClick={() => onSelect(null)}>
+        <Plus size={14} /> {t('New report')}
+      </button>
+      <h3>{t('Your reports')}</h3>
       <ul className="feedback-reports">
         {reports.map((r) => (
           <li key={r.number}>
-            <button onClick={() => setOpened(r.number)}>
+            <button className={`feedback-pick${selected === r.number ? ' active' : ''}`} aria-current={selected === r.number} onClick={() => onSelect(r.number)}>
               <span className="feedback-report-title">{r.title}</span>
               <span className="feedback-report-meta">
                 #{r.number} · {when(r.sent)}
@@ -48,11 +42,15 @@ export function MyReports() {
           </li>
         ))}
       </ul>
-    </section>
+    </nav>
   )
 }
 
-function ReportThread({ report, onBack }: { report: MyReport; onBack: () => void }) {
+/**
+ * A report sent from here: what was written on it, the answers, and a reply, posted under the
+ * report on GitHub by the site's worker with the report's key.
+ */
+export function ReportThread({ report }: { report: MyReport }) {
   const [thread, setThread] = useState<Thread | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
   const [text, setText] = useState(drafts.get(report.number) ?? '')
@@ -87,14 +85,11 @@ function ReportThread({ report, onBack }: { report: MyReport; onBack: () => void
   return (
     <section className="feedback-thread">
       <div className="feedback-thread-head">
-        <button className="text-button" onClick={onBack}>
-          <ArrowLeft size={14} /> {t('Your reports')}
-        </button>
+        <h3>{thread?.title ?? report.title}</h3>
         <a href={report.url} target="_blank" rel="noreferrer">
           {t('See it on GitHub')}
         </a>
       </div>
-      <h3>{thread?.title ?? report.title}</h3>
       {failed && (
         <p className="feedback-failed" role="alert">
           {failed}

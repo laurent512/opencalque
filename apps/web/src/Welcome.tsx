@@ -158,7 +158,7 @@ export function Welcome() {
             <input type="checkbox" checked={show} onChange={(e) => setPrefs({ showWelcome: e.target.checked })} />
             {t('Show this window when the app starts')}
           </label>
-          <button className="text-button welcome-feedback" onClick={() => useWindows.setState({ welcomeOpen: false, feedbackOpen: true, feedbackView: 'new' })}>
+          <button className="text-button welcome-feedback" onClick={() => useWindows.setState({ welcomeOpen: false, feedbackOpen: true, feedbackReport: null })}>
             <MessageSquarePlus size={13} />
             {t('Report a bug or suggest an idea')}
           </button>
