@@ -8,8 +8,12 @@ import type { Tool } from '../tools'
 export type Gesture =
   | { kind: 'idle' }
   /** Button down on an object: becomes a move once the pointer travels far enough. */
-  /** With `beside`, the press was on no object but inside the box around the selection: released without moving, it lets the selection go. */
-  | { kind: 'press'; at: Vec2; start: Vec2; nodes: Node[]; beside?: boolean }
+  /**
+   * With `beside`, the press was on no object but inside the box around the selection: released
+   * without moving, it lets the selection go. With `picks`, it was on an object not selected inside
+   * that box: dragged, the selection moves; released without moving, that object is selected.
+   */
+  | { kind: 'press'; at: Vec2; start: Vec2; nodes: Node[]; beside?: boolean; picks?: string }
   /** The connect tool has taken a switch (or a light): the next clicks link it to what it controls (or what controls it). */
   | { kind: 'connect'; from: string }
   /** A section line being drawn: where it starts, its end to click. */

@@ -25,6 +25,7 @@ import {
   Spline,
   Square,
   SquareDashed,
+  Sun,
   SquareRoundCorner,
   StickyNote,
   Triangle,
@@ -77,6 +78,7 @@ export const ICONS: Record<Exclude<Tool, 'calibrate' | 'place'>, [title: string,
   divider: [msg('Room divider: separates two rooms where there is no wall'), SeparatorVertical],
   elevation: [msg('Elevation: the face of a wall seen from in front, the walls of a room, a side of the building, or a section along a line, drawn from the plan'), ScanEye],
   camera: [msg('Viewpoint: where you stand and the way you look, for a picture of the room in perspective'), Camera],
+  sun: [msg('Sun: where the light comes from on a day at an hour, and the shade it casts'), Sun],
   connect: [msg('Connect: click a switch, then the lights and sockets it controls'), Cable],
 }
 

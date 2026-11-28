@@ -9,7 +9,7 @@ import { registry } from './extensions'
 import { FLOATING, useFloating } from './floating'
 import { t } from './i18n'
 import { parametricPicture } from './pictures'
-import { useStore } from './store'
+import { useSettledDoc } from './store'
 
 
 /**
@@ -20,7 +20,7 @@ import { useStore } from './store'
  */
 export function EntryChoice(props: { label: string; value?: string; mixed?: boolean; exclude?: (entry: string) => boolean; pick: (entry: string) => void; trigger?: (open: () => void, shown: boolean) => ReactNode }) {
   const { label, value, mixed, exclude, pick, trigger } = props
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const box = useRef<HTMLSpanElement>(null)

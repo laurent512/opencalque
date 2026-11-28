@@ -1,9 +1,10 @@
-import { canSplit, hitTest, newId, outerFaces, outerSide, roomAt, roomFaces, roomViews, snapMountToWall, snapOpeningToWall, splitOps, splitPlace, trimOps, trimPlace, viewOfFace, wallFaceAt, wallSides, type Document, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
+import { canSplit, DEFAULT_SITE, hitTest, newId, rootOf, outerFaces, outerSide, roomAt, roomFaces, roomViews, snapMountToWall, snapOpeningToWall, splitOps, splitPlace, trimOps, trimPlace, viewOfFace, wallFaceAt, wallSides, type Document, type NodeInput, type Op, type Vec2 } from '@opencalque/core'
 import { libraryOps, pickStyle } from '../../actions'
 import { elevateSides, roomViewsName } from '../../actions/walls'
 import { registry } from '../../extensions'
 import { t } from '../../i18n'
 import { apply, cancel, commit, layerHere, preview, select, setTool, useStore, type Placing } from '../../store'
+import { guessedSite, newSunMoment } from '../../site'
 import { formatLength, unit } from '../../units'
 import { gridStep } from '../../view'
 import { snap } from '../aim'
@@ -47,6 +48,32 @@ export const placeDown: Press = (c) => {
   commit()
   if (brought) useStore.setState({ placing: { type: 'instance', component: brought, carried: placing?.carried } })
   c.placed = newId()
+}
+
+/** A sun is put down once where it is clicked, and selected, to set its day and hour. */
+export const sunDown: Press = (c) => {
+  const { base } = get()
+  if (!base) return
+  const id = c.placed
+  commit()
+  setTool('select')
+  select([id])
+  c.placed = newId()
+}
+
+/**
+ * The sun the tool would put down at `p`, for today at the hour it is: a sun goes on the plan of a
+ * page, never in a component nor inside a view. In a drawing that does not say where its building
+ * is, the place of the computer's time zone is written in with the first sun, to be corrected.
+ */
+function sunHere(doc: Document, scope: string, p: Vec2, id: string, layer: Record<string, unknown>): Op[] | null {
+  if (rootOf(doc, scope)?.type !== 'page' || doc.nodes[scope]?.type === 'elevation') return null
+  const guessed = doc.settings?.site ? null : guessedSite()
+  const moment = newSunMoment(doc.settings?.site ?? guessed ?? DEFAULT_SITE)
+  return [
+    ...(guessed ? [{ op: 'set_document', settings: { site: guessed } } as Op] : []),
+    { op: 'add_node', node: { id, type: 'sun', parent: scope, ...layer, x: Math.round(p.x), y: Math.round(p.y), ...moment } as NodeInput },
+  ]
 }
 
 /** A section's line, its ends swapped so that it is seen from the side `p` is on: its right, which is where a view is seen from. */
@@ -181,6 +208,15 @@ export const toolHover: Move<'idle'> = (c, _g, e, _at, world, out) => {
     } else {
       cancel()
       out.status = t('No closed space here: the walls around it must meet all the way round')
+    }
+  } else if (s.tool === 'sun') {
+    const target = snap(c, world, e, [c.placed])
+    out.marker = target.marker
+    const ops = sunHere(s.base ?? s.doc, s.scope, target.p, c.placed, layerHere(s))
+    if (ops) out.previewed = preview(ops)
+    else {
+      cancel()
+      out.status = t('A sun goes on the plan of a page, not inside a component or a view')
     }
   } else if (s.tool === 'elevation') {
     // What a click makes an elevation of is lit: beside an inner face, that face; beside an outer

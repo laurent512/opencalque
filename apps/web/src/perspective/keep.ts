@@ -1,4 +1,4 @@
-import { lookedAt, massing, newId, rootOf, type Camera, type Document, type Op, type Solid } from '@opencalque/core'
+import { cameraSun, lookedAt, massing, newId, rootOf, type Camera, type Document, type Op, type Solid } from '@opencalque/core'
 import { registry } from '../extensions'
 import { t } from '../i18n'
 import { usePrefs } from '../prefs'
@@ -27,6 +27,7 @@ export async function viewPicture(doc: Document, camera: Camera, look: Look, r: 
   const view = new View(big)
   try {
     view.setSolids(solids)
+    view.setSun(cameraSun(doc, camera))
     view.render(camera, look, width * sharp, height * sharp, sharp)
     const out = document.createElement('canvas')
     out.width = width
@@ -60,7 +61,7 @@ async function base64(blob: Blob): Promise<string> {
 
 /** The state of the drawing the pictures were last made for, and in what look: nothing to make again while it is the same. */
 let keptFor: { nodes: Document['nodes']; look: Look } | null = null
-/** What each view's kept picture was made of (where it stands and looks, its shape, its look, what it sees), by its picture: not made again while that is the same. */
+/** What each view's kept picture was made of (where it stands and looks, its shape, its look, the sun it is lit by, what it sees), by its picture: not made again while that is the same. */
 const madeOf = new Map<string, string>()
 
 /**
@@ -83,7 +84,7 @@ export async function keepViewPictures(): Promise<void> {
     const solids = seenBy(doc, camera)
     if (!solids) continue
     const r = frame.width / frame.height
-    const of = JSON.stringify([camera.a, camera.b, camera.fov, camera.eyeHeight, camera.pitch, Math.round(r * 1000), look, solids])
+    const of = JSON.stringify([camera.a, camera.b, camera.fov, camera.eyeHeight, camera.pitch, Math.round(r * 1000), look, cameraSun(doc, camera), solids])
     // Seeing what it saw when its picture was made, as it saw it: the picture it keeps is right.
     if (camera.picture && doc.assets?.[camera.picture] && madeOf.get(camera.picture) === of) {
       if (!camera.frame) ops.push({ op: 'update_node', id: camera.id, patch: framed })

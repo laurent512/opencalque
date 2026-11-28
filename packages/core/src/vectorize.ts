@@ -2,7 +2,13 @@ import { childrenOf, isVisible, newId } from './document'
 import { LAYER_COLOR } from './colors'
 import { kindOf, nodePrimitives, objectBacking, parametricPrimitives } from './kinds'
 import type { NodeInput, Op } from './ops'
-import { transformPrimitive, type Primitive } from './primitives'
+import { transformPrimitive, type Primitive, type TextRun } from './primitives'
+import { spansOf, type TextStyle } from './richtext'
+
+/** The spans that set a text apart as its runs are, one after the other. */
+function runSpans(runs: TextRun[]): ReturnType<typeof spansOf> {
+  return spansOf(runs.flatMap(({ text, ...style }): TextStyle[] => new Array(text.length).fill(style)))
+}
 import type { Registry } from './registry'
 import type { Document, NodeOf } from './schema'
 
@@ -24,7 +30,7 @@ export function primitiveNodes(prims: Primitive[], parent: string, layer?: strin
       case 'ellipse':
         return [{ ...common, type: 'ellipse', cx: p.cx, cy: p.cy, rx: p.rx, ry: p.ry, ...(p.rotation ? { rotation: p.rotation } : {}) } as NodeInput]
       case 'text':
-        return [{ ...common, type: 'text', x: p.x, y: p.y, text: p.text, size: p.size, ...(p.rotation ? { rotation: p.rotation } : {}), ...(p.align && p.align !== 'left' ? { align: p.align } : {}), ...(p.font ? { font: p.font } : {}), ...(p.bold ? { bold: true } : {}) } as NodeInput]
+        return [{ ...common, type: 'text', x: p.x, y: p.y, text: p.text, size: p.size, ...(p.rotation ? { rotation: p.rotation } : {}), ...(p.align && p.align !== 'left' ? { align: p.align } : {}), ...(p.font ? { font: p.font } : {}), ...(p.bold ? { bold: true } : {}), ...(p.runs ? { spans: runSpans(p.runs) } : {}) } as NodeInput]
       default:
         return []
     }

@@ -2,13 +2,33 @@ import { Check, ChevronDown } from 'lucide-react'
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { FLOATING, useFloating } from './floating'
+import { t } from './i18n'
 
 /*
  * The app's dropdown, in place of the system's: a button that says what is chosen, and under it a
  * list drawn as the app's menus are, the chosen one ticked. It is driven from the keyboard as the
  * system's is (arrows, Home, End, Enter or Space, a letter to go to what starts with it, Escape),
- * the focus staying on the button. Every list of choices in the app is one of these.
+ * the focus staying on the button. Every list of choices in the app is one of these. A long one (the
+ * time zones) has a box at the top of its list to find what is typed in it (`search`), and is
+ * `SEARCHED_HEIGHT` tall whatever is left in it, so that it stays against its field; the keys then go
+ * to that box.
  */
+
+/** How tall the list of a Select with a box to search it is, in pixels (`.select-list.searched`), less where the window has no room. */
+const SEARCHED_HEIGHT = 360
+
+/** The options whose label, value or group holds what is typed; a group named so keeps all of its own. */
+function found(items: SelectItem[], typed: string): SelectItem[] {
+  const words = typed.trim().toLocaleLowerCase()
+  if (!words) return items
+  const has = (text: string) => text.toLocaleLowerCase().includes(words)
+  return items.flatMap((item): SelectItem[] => {
+    if (!('group' in item)) return has(item.label) || has(item.value) ? [item] : []
+    if (has(item.group)) return [item]
+    const options = item.options.filter((option) => has(option.label) || has(option.value))
+    return options.length > 0 ? [{ ...item, options }] : []
+  })
+}
 
 export interface SelectOption {
   value: string
@@ -42,14 +62,22 @@ export function Select(props: {
   onChange: (value: string) => void
   /** Shown on the button when the value is none of the options: what choosing does ("Add…"). */
   placeholder?: string
+  /** Shown on the button instead of the placeholder, where a word would take too much room (a bar of icons); `title` then says what it does. */
+  icon?: ReactNode
   className?: string
   title?: string
   disabled?: boolean
   'aria-label'?: string
   style?: CSSProperties
+  /** A box at the top of the list to find an option by what is typed in it, this its hint: for a long list. */
+  search?: string
 }) {
-  const { value, options, onChange } = props
+  const { value, onChange } = props
   const [open, setOpen] = useState(false)
+  const [typed, setTyped] = useState('')
+  const options = props.search ? found(props.options, typed) : props.options
+  const current = flatten(props.options).find((option) => option.value === value)
+  const searchBox = useRef<HTMLInputElement>(null)
   /** The option the keyboard is on, as an index into every option. */
   const [active, setActive] = useState(-1)
   const button = useRef<HTMLButtonElement>(null)
@@ -57,8 +85,21 @@ export function Select(props: {
   const id = useId()
   const all = flatten(options)
   const chosen = all.findIndex((option) => option.value === value)
-  const close = () => setOpen(false)
-  const { closing, style } = useFloating(open, close, button, list)
+  const close = () => {
+    setOpen(false)
+    setTyped('')
+    // The keys were the search box's: they go back to the button, unless the click that closed it was on something else.
+    if (list.current?.contains(document.activeElement)) button.current?.focus()
+  }
+  const { closing, style, placed } = useFloating(open, close, button, list)
+  // The search box takes the keys once the list is in place (hidden until then, it could not).
+  useEffect(() => {
+    if (open && placed && props.search) searchBox.current?.focus()
+  }, [open, placed])
+  // What is typed changes the list: the keyboard goes to the first of what is left.
+  useEffect(() => {
+    if (open && props.search) setActive(typed.trim() ? next(-1, 1) : chosen >= 0 ? chosen : next(-1, 1))
+  }, [typed])
 
   const show = () => {
     setActive(chosen >= 0 && !all[chosen].disabled ? chosen : next(-1, 1))
@@ -156,12 +197,14 @@ export function Select(props: {
         }}
         onKeyDown={onKeyDown}
       >
-        {chosen >= 0 && all[chosen].picture ? (
-          <span className="select-value select-picture" title={all[chosen].label}>
-            {all[chosen].picture}
+        {current?.picture ? (
+          <span className="select-value select-picture" title={current.label}>
+            {current.picture}
           </span>
+        ) : !current && props.icon ? (
+          <span className="select-value select-picture">{props.icon}</span>
         ) : (
-          <span className={`select-value${chosen < 0 ? ' faint' : ''}`}>{chosen >= 0 ? all[chosen].label : (props.placeholder ?? '')}</span>
+          <span className={`select-value${current ? '' : ' faint'}`}>{current ? current.label : (props.placeholder ?? '')}</span>
         )}
         <ChevronDown className="select-chevron" size={12} aria-hidden />
       </button>
@@ -170,15 +213,32 @@ export function Select(props: {
           <div
             ref={list}
             id={`${id}-list`}
-            className={`select-list ${FLOATING}`}
+            className={`select-list${props.search ? ' searched' : ''} ${FLOATING}`}
             role="listbox"
             aria-label={props['aria-label']}
-            style={{ ...style, minWidth: button.current?.getBoundingClientRect().width }}
+            style={{ ...style, ...(props.search && 'maxHeight' in style ? { maxHeight: `min(${SEARCHED_HEIGHT}px, ${style.maxHeight})` } : {}), minWidth: button.current?.getBoundingClientRect().width }}
             // The focus stays on the button, which the keys go to; and a press or a click in the list is
             // the list's, not that of what the field is in (a row, a window), where React would carry it.
             onPointerDown={(e) => (e.preventDefault(), e.stopPropagation())}
             onClick={(e) => e.stopPropagation()}
           >
+            {props.search && (
+              <input
+                ref={searchBox}
+                className="select-search"
+                value={typed}
+                placeholder={props.search}
+                aria-label={props.search}
+                aria-controls={`${id}-list`}
+                aria-activedescendant={active >= 0 ? `${id}-${active}` : undefined}
+                onChange={(e) => setTyped(e.target.value)}
+                onKeyDown={(e) => {
+                  // Arrows, Enter and Tab move in the list and choose; Escape closes it (`useFloating`); the rest is typed.
+                  if (['ArrowDown', 'ArrowUp', 'Enter', 'Tab'].includes(e.key)) onKeyDown(e)
+                }}
+              />
+            )}
+            {props.search && all.length === 0 && <div className="select-none">{t('Nothing matches')}</div>}
             {options.map((item) =>
               'group' in item ? (
                 <div key={`group:${item.group}`} role="group" aria-label={item.group}>

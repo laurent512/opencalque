@@ -27,8 +27,16 @@ export function createComponent(
   if (all.length !== picked.size) throw new OpError('Objects of a component must all be on the same page')
   // A viewpoint stays on the page, whose plan it looks at and where its view is shown; so does one inside a group taken in.
   const inside = (n: Node): Node[] => childrenOf(doc, n.id).flatMap((child) => [child, ...inside(child)])
-  const nodes = all.filter((n) => n.type !== 'camera' && !inside(n).some((child) => child.type === 'camera'))
-  if (nodes.length === 0) throw new OpError(all.some((n) => n.type === 'camera') ? 'A viewpoint stays on the page, whose plan it looks at: it cannot go in a component' : 'Select at least one object to create a component')
+  const onPage = (n: Node) => n.type === 'camera' || n.type === 'sun'
+  const nodes = all.filter((n) => !onPage(n) && !inside(n).some(onPage))
+  if (nodes.length === 0)
+    throw new OpError(
+      all.some((n) => n.type === 'camera')
+        ? 'A viewpoint stays on the page, whose plan it looks at: it cannot go in a component'
+        : all.some((n) => n.type === 'sun')
+          ? 'A sun stays on the page, whose plan it lights: it cannot go in a component'
+          : 'Select at least one object to create a component',
+    )
 
   const ctx = { doc, registry, depth: 0 }
   const bounds = boundsOf(nodes.flatMap((n) => nodePrimitives(n, ctx)))

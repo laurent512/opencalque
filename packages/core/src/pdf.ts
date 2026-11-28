@@ -3,7 +3,7 @@ import { rotate, type Vec2 } from './geometry'
 import { decodePng } from './png'
 import { isVisible, leavesOf, rootOf } from './document'
 import { nodePrimitives } from './kinds'
-import { PRINT_MM_PER_PIXEL, printedPrims, type Primitive } from './primitives'
+import { HELVETICA_WIDTHS, PRINT_MM_PER_PIXEL, printedPrims, runLook, textRuns, type Primitive } from './primitives'
 import type { Registry } from './registry'
 import { buildScene, paintOrder, printedScene, type PaintStep } from './scene'
 import type { Document, NodeOf } from './schema'
@@ -21,17 +21,33 @@ import { readTrueType, type TrueTypeFont } from './truetype'
  * embedded. JPEG pictures are taken as they are; PNG ones are read into plain pixels.
  */
 
-/** The fonts a text can print in, in the order they are numbered (F1 to F6): a family, plain then bold. */
-const FONTS = ['Helvetica', 'Helvetica-Bold', 'Times-Roman', 'Times-Bold', 'Courier', 'Courier-Bold']
+/**
+ * The fonts a text can print in, in the order they are numbered: each family upright (F1 to F6),
+ * plain then bold, then slanted (F7 to F12), as parts of a text set in italics need.
+ */
+const FONTS = [
+  'Helvetica',
+  'Helvetica-Bold',
+  'Times-Roman',
+  'Times-Bold',
+  'Courier',
+  'Courier-Bold',
+  'Helvetica-Oblique',
+  'Helvetica-BoldOblique',
+  'Times-Italic',
+  'Times-BoldItalic',
+  'Courier-Oblique',
+  'Courier-BoldOblique',
+]
 
 /** Which of the fonts stands for a CSS font family, and how wide its letters run compared with Helvetica's. */
-function fontFor(family: string | undefined, bold: boolean | undefined): { index: number; fixed: boolean; widen: number } {
+function fontFor(family: string | undefined, bold: boolean | undefined, italic?: boolean): { index: number; fixed: boolean; widen: number } {
   const name = (family ?? '').toLowerCase()
   const mono = /mono|courier|consol/.test(name)
   const serif = !mono && /(^|[^-])\bserif|times|georgia|garamond/.test(name.replace(/sans-serif/g, ''))
   const narrow = /narrow|condensed/.test(name)
   // Only Helvetica's widths are known here; the others are told apart well enough to centre a text.
-  return { index: (mono ? 4 : serif ? 2 : 0) + (bold ? 1 : 0), fixed: mono, widen: (serif ? 0.92 : 1) * (bold && !mono ? 1.06 : 1) * (narrow ? 0.82 : 1) }
+  return { index: (italic ? 6 : 0) + (mono ? 4 : serif ? 2 : 0) + (bold ? 1 : 0), fixed: mono, widen: (serif ? 0.92 : 1) * (bold && !mono ? 1.06 : 1) * (narrow ? 0.82 : 1) }
 }
 
 /** Points per millimetre: a PDF measures in 1/72 of an inch. */
@@ -39,12 +55,6 @@ const POINT = 72 / 25.4
 /** What one screen pixel of line weight becomes on paper, in points. */
 const WEIGHT = PRINT_MM_PER_PIXEL * POINT
 
-/** Widths of the printable ASCII characters in Helvetica, in thousandths of the font size. */
-const WIDTHS = [
-  278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556, 1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500,
-  667, 556, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556, 333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556, 556, 556, 333, 500, 278, 556, 500,
-  722, 500, 500, 500, 334, 260, 334, 584,
-]
 /** Characters outside Latin-1 that the standard encoding has all the same, and where. */
 const SPECIAL: Record<string, number> = { '€': 0x80, '…': 0x85, 'Œ': 0x8c, '‘': 0x91, '’': 0x92, '“': 0x93, '”': 0x94, '–': 0x96, '—': 0x97, 'œ': 0x9c }
 
@@ -60,7 +70,7 @@ function encode(text: string): number[] {
   })
 }
 /** How wide a text is in Helvetica at a given size. Accented letters are taken as about a lower-case letter wide. */
-const textWidth = (bytes: number[], size: number) => bytes.reduce((sum, b) => sum + (b >= 32 && b < 127 ? WIDTHS[b - 32] : 556), 0) * (size / 1000)
+const textWidth = (bytes: number[], size: number) => bytes.reduce((sum, b) => sum + (b >= 32 && b < 127 ? HELVETICA_WIDTHS[b - 32] : 556), 0) * (size / 1000)
 
 const n = (value: number) => String(Math.round(value * 1000) / 1000)
 
@@ -152,8 +162,8 @@ function pageContent(doc: Document, paper: Paper, registry: Registry, resources:
   const height = paper.height * perMm
   const at = (p: Vec2) => `${n((p.x - paper.x) * perMm)} ${n(height - (p.y - paper.y) * perMm)}`
   const out: string[] = []
-  const alpha = (fill: number, stroke: number) => {
-    if (fill >= 1 && stroke >= 1) return
+  const alpha = (fill: number, stroke: number, always = false) => {
+    if (fill >= 1 && stroke >= 1 && !always) return
     const key = `${n(fill)} ${n(stroke)}`
     if (!resources.alphas.includes(key)) resources.alphas.push(key)
     out.push(`/GS${resources.alphas.indexOf(key) + 1} gs`)
@@ -167,41 +177,72 @@ function pageContent(doc: Document, paper: Paper, registry: Registry, resources:
       out.push('W n')
     }
     if (prim.kind === 'text') {
-      const ink = parseColor(prim.stroke) ?? { r: 0, g: 0, b: 0, a: 1 }
-      const size = prim.size * perMm
+      const black = { r: 0, g: 0, b: 0, a: 1 }
+      const base = parseColor(prim.stroke) ?? black
       // A condensed face has no standard font: Helvetica is squeezed sideways instead.
       const narrow = /narrow|condensed/i.test(prim.font ?? '')
       const squeeze = narrow ? ' 82 Tz' : ''
-      // How the text is set, then shown, and how wide it comes out.
-      let setting = squeeze
-      let shown: string
-      let wide: number
-      if (!printable(prim.text) && resources.fonts.length > 0) {
-        // The given fonts stand for every family. Bold is made by outlining the letters in their own colour.
-        const runs = runsOf(resources.fonts, prim.text)
-        const advance = runs.reduce((sum, { font, numbers }) => {
-          const embedded = resources.fonts[font]
-          return sum + numbers.reduce((width, number) => width + embedded.font.advance(embedded.glyphs[number]), 0) / embedded.font.unitsPerEm
-        }, 0)
-        wide = advance * size * (narrow ? 0.82 : 1)
-        if (prim.bold) setting += ` 2 Tr ${n(size * 0.035)} w ${n(ink.r)} ${n(ink.g)} ${n(ink.b)} RG`
-        shown = runs.map(({ font, numbers }) => `/F${FONTS.length + font + 1} ${n(size)} Tf <${numbers.map((number) => number.toString(16).padStart(4, '0')).join('')}> Tj`).join(' ')
-      } else {
-        const bytes = encode(prim.text)
-        const font = fontFor(prim.font, prim.bold)
-        wide = font.fixed ? bytes.length * 0.6 * size : textWidth(bytes, size) * font.widen
-        setting += ` /F${font.index + 1} ${n(size)} Tf`
-        shown = `(${bytes.map((b) => (b === 40 || b === 41 || b === 92 ? `\\${String.fromCharCode(b)}` : b < 127 ? String.fromCharCode(b) : `\\${b.toString(8)}`)).join('')}) Tj`
-      }
+      const embed = !printable(prim.text) && resources.fonts.length > 0
+      // Each run (all the text, when it has none set apart): how it is set, then shown, and how
+      // wide it comes out. Runs follow one another in one text object, as words do.
+      const pieces = textRuns(prim).map((run) => {
+        const look = runLook(prim, run)
+        const size = look.size * perMm
+        const ink = run.color === undefined ? base : (parseColor(run.color) ?? base)
+        let setting: string
+        let shown: string
+        let wide: number
+        if (embed) {
+          // The given fonts stand for every family, upright. Bold is made by outlining the letters in their own colour.
+          const runs = runsOf(resources.fonts, run.text)
+          const advance = runs.reduce((sum, { font, numbers }) => {
+            const embedded = resources.fonts[font]
+            return sum + numbers.reduce((width, number) => width + embedded.font.advance(embedded.glyphs[number]), 0) / embedded.font.unitsPerEm
+          }, 0)
+          wide = advance * size * (narrow ? 0.82 : 1)
+          setting = look.bold ? ` 2 Tr ${n(size * 0.035)} w ${n(ink.r)} ${n(ink.g)} ${n(ink.b)} RG` : prim.runs ? ' 0 Tr' : ''
+          shown = runs.map(({ font, numbers }) => `/F${FONTS.length + font + 1} ${n(size)} Tf <${numbers.map((number) => number.toString(16).padStart(4, '0')).join('')}> Tj`).join(' ')
+        } else {
+          const bytes = encode(run.text)
+          const font = fontFor(prim.font, look.bold, look.italic)
+          wide = font.fixed ? bytes.length * 0.6 * size : textWidth(bytes, size) * font.widen
+          setting = ` /F${font.index + 1} ${n(size)} Tf`
+          shown = `(${bytes.map((b) => (b === 40 || b === 41 || b === 92 ? `\\${String.fromCharCode(b)}` : b < 127 ? String.fromCharCode(b) : `\\${b.toString(8)}`)).join('')}) Tj`
+        }
+        return { run, size, ink, setting, shown, wide }
+      })
+      const wide = pieces.reduce((sum, piece) => sum + piece.wide, 0)
       const turn = ((prim.rotation ?? 0) * Math.PI) / 180
       // The page's Y runs up where the drawing's runs down, so a clockwise turn there is the opposite one here.
       const [cos, sin] = [Math.cos(turn), Math.sin(turn)]
       const back = prim.align === 'center' ? wide / 2 : prim.align === 'right' ? wide : 0
       const x = (prim.x - paper.x) * perMm - back * cos
       const y = height - (prim.y - paper.y) * perMm + back * sin
+      const matrix = `${n(cos)} ${n(-sin)} ${n(sin)} ${n(cos)} ${n(x)} ${n(y)}`
       // Letters drawn bold are outlined in their own colour, and see-through as they are.
-      alpha(ink.a, ink.a)
-      out.push(`BT${setting} ${n(ink.r)} ${n(ink.g)} ${n(ink.b)} rg ${n(cos)} ${n(-sin)} ${n(sin)} ${n(cos)} ${n(x)} ${n(y)} Tm ${shown} ET`)
+      alpha(base.a, base.a)
+      if (!prim.runs) {
+        const [{ setting, shown }] = pieces
+        out.push(`BT${squeeze}${setting} ${n(base.r)} ${n(base.g)} ${n(base.b)} rg ${matrix} Tm ${shown} ET`)
+      } else {
+        out.push(`BT${squeeze} ${matrix} Tm`)
+        for (const { ink, setting, shown } of pieces) {
+          if (ink.a !== base.a) alpha(ink.a, ink.a, true)
+          out.push(`${n(ink.r)} ${n(ink.g)} ${n(ink.b)} rg${setting} ${shown}`)
+          if (ink.a !== base.a) alpha(base.a, base.a, true)
+        }
+        out.push('ET')
+        // Lines under and through runs, in the text's own frame, where each run was set.
+        const lines: string[] = []
+        let along = 0
+        for (const { run, size, ink, wide: width } of pieces) {
+          const thick = size * 0.06
+          const bars = [run.underline ? -size * 0.12 - thick : null, run.strike ? size * 0.3 - thick / 2 : null].filter((at): at is number => at !== null)
+          for (const at of bars) lines.push(`${n(ink.r)} ${n(ink.g)} ${n(ink.b)} rg ${n(along)} ${n(at)} ${n(width)} ${n(thick)} re f`)
+          along += width
+        }
+        if (lines.length > 0) out.push(`q ${matrix} cm`, ...lines, 'Q')
+      }
     } else if (prim.kind === 'image') {
       const [, format, data] = /^data:image\/(jpeg|png);base64,(.*)$/s.exec(prim.href) ?? []
       let index = resources.imageByHref.get(prim.href)

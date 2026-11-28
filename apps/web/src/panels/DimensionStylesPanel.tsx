@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react'
 import { newDimensionStyle, newId, type DimensionStyle, type Node } from '@opencalque/core'
 import { msg, t } from '../i18n'
-import { apply, useStore } from '../store'
+import { apply, useSettledDoc, useStore } from '../store'
 import { EditableText, IconButton } from '../ui'
 import { unit } from '../units'
 import { PanelActions } from '../panelHead'
@@ -101,7 +101,7 @@ function StyleCard({ style, uses, open, onToggle }: { style: DimensionStyle; use
  * dimension sets for itself, stays each dimension's own.
  */
 export function DimensionStyles() {
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const styles = Object.values(doc.dimensionStyles ?? {})
   // The style of the one dimension selected, or of the next ones the tool draws, is shown open.
   const current = useStore((s) => {

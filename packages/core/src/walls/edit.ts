@@ -6,6 +6,7 @@ import type { Document, Node } from '../schema'
 import { courseOf, cross, dot, JOIN_TOLERANCE, middleAcross, tidy, wallArc, wallContains, wallPoints, wallSides, type Wall } from './course'
 import { lineCircle, moveCornerOps, wallEndsAt, wallEndsOf } from './joints'
 import { openingIndex } from './openings'
+import { roomFollowOps } from '../rooms'
 import { withoutEnd } from './outline'
 import { wallIndex, wallsIn, wallsNear } from './spatial'
 
@@ -19,14 +20,16 @@ const flatten = (doc: Document, nodes: Node[]): Node[] => nodes.flatMap((n) => (
  * to each other, and openings to walls, by position only, so this is where the ties are honoured:
  * - an end of another wall joined to an end of a moved wall goes with it, so that wall stretches
  *   and turns instead of being left behind (an end set loose there, joined to nothing, stays);
- * - a door or window sitting in a moved wall goes with it.
+ * - a door or window sitting in a moved wall goes with it;
+ * - a room whose space is bounded only by what is moved goes with it (`roomFollowOps`).
  * `doc` is the drawing before the move. The result does not include the move itself.
  */
 export function wallFollowOps(doc: Document, moved: Node[], d: Vec2, registry: Registry): Op[] {
   const leaves = flatten(doc, moved)
   const going = new Set(leaves.map((n) => n.id))
   const walls = leaves.filter((n): n is Wall => n.type === 'wall')
-  if (walls.length === 0) return []
+  const rooms = roomFollowOps(doc, leaves, d)
+  if (walls.length === 0) return rooms
   const ends = new Map<string, { a?: Vec2; b?: Vec2 }>()
   const ops: Op[] = []
   // The walls joined to a moved one at its ends, and those only: not one set loose there, nor a
@@ -45,7 +48,7 @@ export function wallFollowOps(doc: Document, moved: Node[], d: Vec2, registry: R
       if (host && going.has(host.id) && !going.has(id) && other?.type === 'parametric') ops.push({ op: 'update_node', id, patch: { x: other.x + d.x, y: other.y + d.y } })
     }
   }
-  return [...[...ends].map(([id, patch]): Op => ({ op: 'update_node', id, patch })), ...ops]
+  return [...[...ends].map(([id, patch]): Op => ({ op: 'update_node', id, patch })), ...ops, ...rooms]
 }
 
 /** Moves a point beside a wall across it by `by`, to its right when positive: straight across, or for a curved wall towards or away from its centre. */

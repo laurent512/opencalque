@@ -459,6 +459,63 @@ test('keeps a view while the plan is zoomed away from it and back, drawing nothi
   await expect.poll(() => inked(page), { timeout: 15000 }).toBeGreaterThan(200)
 })
 
+test('shows the picture a view keeps from the moment its drawing opens, and draws the view only once the plan stands still', async ({ page }) => {
+  await startWith(page)
+  await recordSaves(page)
+  await openEditor(page)
+  // The picture the view kept at its last save: all red, so as to be told apart from the view.
+  const red = await page.evaluate(() => {
+    const picture = document.createElement('canvas')
+    picture.width = 160
+    picture.height = 100
+    const context = picture.getContext('2d')!
+    context.fillStyle = '#ff0000'
+    context.fillRect(0, 0, 160, 100)
+    return picture.toDataURL('image/png').split(',')[1]
+  })
+  const wall = (id: string, a: [number, number], b: [number, number], order: string) => ({ id, type: 'wall', parent: 'page_1', layer: 'layer_1', order, a: { x: a[0], y: a[1] }, b: { x: b[0], y: b[1] }, thickness: 200 })
+  const plan = drawing(
+    {
+      n: wall('n', [0, 0], [4000, 0], 'a1'),
+      e: wall('e', [4000, 0], [4000, 3000], 'a2'),
+      s: wall('s', [4000, 3000], [0, 3000], 'a3'),
+      w: wall('w', [0, 3000], [0, 0], 'a4'),
+      c: { id: 'c', type: 'camera', parent: 'page_1', layer: 'layer_1', order: 'a5', name: 'Viewpoint 1', a: { x: 2000, y: 2800 }, b: { x: 2000, y: 1000 }, frame: { x: 5000, y: 0, width: 4000, height: 2500 }, picture: 'asset_p' },
+    },
+    { version: 6, assets: { asset_p: { id: 'asset_p', mime: 'image/png', data: red, width: 160, height: 100 } } },
+  )
+  /** Whether the plan paints the middle of the view's frame red: the picture kept, not the view. */
+  const keptShown = () =>
+    page.evaluate(() => {
+      const plan = document.querySelector<HTMLCanvasElement>('.stage canvas.canvas')!
+      const frame = document.querySelector('.view-frame')!.getBoundingClientRect()
+      const at = plan.getBoundingClientRect()
+      const scale = plan.width / at.width
+      const copy = document.createElement('canvas')
+      copy.width = plan.width
+      copy.height = plan.height
+      copy.getContext('2d')!.drawImage(plan, 0, 0)
+      const [r, g, b] = copy.getContext('2d')!.getImageData(Math.round((frame.left + frame.width / 2 - at.left) * scale), Math.round((frame.top + frame.height / 2 - at.top) * scale), 1, 1).data
+      return r > 200 && g < 80 && b < 80
+    })
+  // Not yet drawn, its canvas is as the browser makes it, 300 pixels wide.
+  const drawnLive = () => page.evaluate(() => document.querySelector<HTMLCanvasElement>('.view-frame canvas')!.width !== 300)
+  await choose(page, () => page.keyboard.press('Control+o'), 'plan.opencalque', plan)
+  // Panned about at once, and on for two seconds: the picture it keeps is shown, and the view waits.
+  const box = (await canvas(page).boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await expect.poll(keptShown).toBe(true)
+  for (let i = 0; i < 40; i++) {
+    await page.mouse.wheel(i % 20 < 10 ? 8 : -8, 0)
+    await page.waitForTimeout(50)
+  }
+  expect(await drawnLive()).toBe(false)
+  expect(await keptShown()).toBe(true)
+  // The plan still, the view is drawn, and shown in place of the picture.
+  await expect.poll(() => inked(page), { timeout: 15000 }).toBeGreaterThan(200)
+  await expect.poll(keptShown).toBe(false)
+})
+
 test('exports the eyes of viewpoints and the lines of views only when asked to in the export window', async ({ page }) => {
   await startWith(page)
   await recordSaves(page)

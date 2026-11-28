@@ -1,12 +1,12 @@
 import { sceneOf } from '../scenes'
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { Lock } from 'lucide-react'
-import { buildScene, coveredInScene, fovOf, hitTest, isLocked, isVisible, leavesOf, lookAround, solidAt, stepAside, type Camera } from '@opencalque/core'
+import { buildScene, cameraSun, coveredInScene, fovOf, hitTest, isLocked, isVisible, leavesOf, lookAround, solidAt, span, stepAside, type Asset, type Camera, type Document } from '@opencalque/core'
 import { t } from '../i18n'
 import { usePrefs } from '../prefs'
 import { commit, preview, select, useStore } from '../store'
 import type { PerspectiveView } from './render'
-import { camerasOf, framesOf, later, useSeen, type Frame, type Look } from './seen'
+import { camerasOf, framesOf, later, planMoved, useSeen, type Frame, type Look } from './seen'
 import { viewPainted, viewPictures } from '../canvas/draw'
 import { nameBox } from '../canvas/ElevationLabels'
 import { registry } from '../extensions'
@@ -93,6 +93,47 @@ function letGo(id: string): void {
   if (at >= 0) holding.splice(at, 1)
 }
 
+/** How wide the picture shown before a view is drawn is made, in pixels: stretched over the frame, it is soft, which says it is not the view yet. */
+const SOFT_WIDTH = 320
+/** The soft pictures made, by the picture they were made from. */
+const softened = new WeakMap<Asset, Promise<HTMLCanvasElement | null>>()
+
+/**
+ * The picture a view keeps in the drawing (`picture`, made at the last save), small and blurred: what
+ * its frame shows from the moment the drawing opens until the view is drawn, which waits for the
+ * plan to stand still. Decoded and shrunk off the page's thread (`createImageBitmap`); null where it
+ * cannot be.
+ */
+function softPicture(asset: Asset): Promise<HTMLCanvasElement | null> {
+  let made = softened.get(asset)
+  if (!made) {
+    made = (async () => {
+      try {
+        const bytes = Uint8Array.from(atob(asset.data), (c) => c.charCodeAt(0))
+        const width = Math.min(SOFT_WIDTH, asset.width ?? SOFT_WIDTH)
+        const bitmap = await createImageBitmap(new Blob([bytes], { type: asset.mime }), { resizeWidth: width, resizeQuality: 'medium' })
+        const out = document.createElement('canvas')
+        out.width = bitmap.width
+        out.height = bitmap.height
+        const context = out.getContext('2d')!
+        context.fillStyle = '#ffffff'
+        context.fillRect(0, 0, out.width, out.height)
+        context.filter = 'blur(2px)'
+        context.drawImage(bitmap, 0, 0)
+        bitmap.close()
+        return out
+      } catch {
+        return null
+      }
+    })()
+    softened.set(asset, made)
+  }
+  return made
+}
+
+/** The sun a view is lit by, on the plan it looks at, as the drawing `doc` is. */
+const sunOf = (doc: Document, camera: Camera) => cameraSun(doc, doc.nodes[camera.id]?.type === 'camera' ? (doc.nodes[camera.id] as Camera) : camera)
+
 /** Whether the plan has stood still for `SETTLE` ms: false while it is zoomed or panned. */
 function useSettled(): boolean {
   const view = useStore((s) => s.view)
@@ -104,6 +145,7 @@ function useSettled(): boolean {
       return
     }
     setSettled(false)
+    planMoved()
     const id = window.setTimeout(() => setSettled(true), SETTLE)
     return () => window.clearTimeout(id)
   }, [view.zoom, view.x, view.y])
@@ -169,15 +211,37 @@ function ViewFrame(props: { camera: Camera; frame: Frame; box: { left: number; t
   const drawer = useRef<PerspectiveView | null>(null)
   const [ready, setReady] = useState(false)
   const [failed, setFailed] = useState(false)
+  // Its shaders compiled (`prepare`), and its picture drawn live at least once: until then the
+  // plan paints the picture it keeps, softened (`softPicture`), or its white sheet.
+  const [warm, setWarm] = useState(false)
+  const [live, setLive] = useState(false)
+  const soft = useRef<HTMLCanvasElement | null>(null)
+  const kept = useStore((s) => (camera.picture ? s.doc.assets?.[camera.picture] : undefined))
+  useEffect(() => {
+    if (!kept || live) return
+    let on = true
+    softPicture(kept).then((picture) => {
+      if (!on || !picture) return
+      soft.current = picture
+      viewPictures.set(camera.id, picture)
+      viewPainted()
+    })
+    return () => {
+      on = false
+    }
+  }, [kept, live])
 
   // Its renderer, made when it is first shown and the editor is idle, then kept (`seenNow`).
   const release = useRef(() => {
     drawer.current?.dispose()
     drawer.current = null
     given.current = null
-    viewPictures.delete(camera.id)
+    if (soft.current) viewPictures.set(camera.id, soft.current)
+    else viewPictures.delete(camera.id)
     viewPainted()
     setReady(false)
+    setWarm(false)
+    setLive(false)
   })
   useEffect(() => {
     if (!shown || ready || failed) return
@@ -188,9 +252,7 @@ function ViewFrame(props: { camera: Camera; frame: Frame; box: { left: number; t
         (module) => {
           if (!live || !canvas.current || drawer.current) return
           try {
-            drawer.current = new module.PerspectiveView(canvas.current)
-            // Its picture is painted with the plan, where its viewpoint is stacked (`viewPictures`).
-            viewPictures.set(camera.id, canvas.current)
+            drawer.current = span('views: a renderer made', () => new module.PerspectiveView(canvas.current!))
             setReady(true)
           } catch {
             setFailed(true)
@@ -210,16 +272,26 @@ function ViewFrame(props: { camera: Camera; frame: Frame; box: { left: number; t
     () => () => {
       letGo(camera.id)
       release.current()
+      viewPictures.delete(camera.id)
     },
     [camera.id],
   )
 
   // Its slabs built, only while it is shown: never in the middle of a zoom, and not again for the same.
+  // The first time, its shaders are then compiled beside the page before it is drawn (`prepare`).
   const given = useRef<unknown>(null)
   useEffect(() => {
     if (!ready || !seen || !shown || given.current === seen.solids) return
+    const first = given.current === null
     given.current = seen.solids
-    drawer.current?.setSolids(seen.solids)
+    const view = drawer.current
+    span('views: slabs built', () => view?.setSolids(seen.solids))
+    if (!first || !view) return
+    view.setSun(sunOf(seen.doc, camera))
+    view
+      .prepare()
+      .catch(() => {})
+      .then(() => drawer.current === view && setWarm(true))
   }, [ready, seen?.solids, shown])
 
   // What is selected is lit where the view shows it, whether picked there or on the plan; a group, all it holds.
@@ -240,16 +312,23 @@ function ViewFrame(props: { camera: Camera; frame: Frame; box: { left: number; t
   }, [box.width, box.height, props.settled])
 
   useEffect(() => {
-    if (!ready || !seen || !shown || drawn.width < 1) return
+    if (!ready || !warm || !seen || !shown || drawn.width < 1) return
     // Drawn twice as large as shown, its lines two pixels apart: one on the screen, smooth; while
     // something is dragged, as large as shown, to keep up.
     const scale = Math.min(Math.min(2, window.devicePixelRatio || 1) * (editing ? 1 : 2), MOST_PIXELS / drawn.width)
     const id = requestAnimationFrame(() => {
-      drawer.current?.render(camera, look, drawn.width * scale, drawn.height * scale, Math.max(1, Math.floor(scale)))
+      if (!drawer.current) return
+      drawer.current.setSun(sunOf(seen.doc, camera))
+      span('views: drawn', () => drawer.current?.render(camera, look, drawn.width * scale, drawn.height * scale, Math.max(1, Math.floor(scale))))
+      // Drawn: its own picture is painted with the plan from now on, where its viewpoint is stacked (`viewPictures`).
+      if (!live && canvas.current) {
+        viewPictures.set(camera.id, canvas.current)
+        setLive(true)
+      }
       viewPainted()
     })
     return () => cancelAnimationFrame(id)
-  }, [ready, seen, camera, look, drawn, editing, lit, shown])
+  }, [ready, warm, seen, camera, look, drawn, editing, lit, shown])
 
   /*
    * Clicked, it selects what is under the pointer. Dragged, if it is in hand, the view is taken

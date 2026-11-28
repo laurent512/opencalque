@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyOps, buildScene, createDocument, hitTest, moveOps, Registry, roomAt, roomRegions, segmentsInside, toDXF, wallFollowOps, type Document, type Op } from '../src'
+import { applyOps, buildScene, createDocument, hitTest, moveOps, Registry, roomAt, roomBounds, roomRegions, segmentsInside, toDXF, wallFollowOps, type Document, type Op } from '../src'
 
 const registry = new Registry()
 const add = (node: Record<string, unknown>): Op => ({ op: 'add_node', node: { parent: 'page_1', ...node } }) as Op
@@ -80,6 +80,62 @@ describe('rooms', () => {
     const moved = applyOps(doc, [...moveOps(doc, doc.nodes.partition, d), ...wallFollowOps(doc, [doc.nodes.partition], d, registry)])
     expect(drawn(moved).bounds).toMatchObject({ minX: 100, maxX: 2950 })
     expect(moved.nodes.living).toEqual(doc.nodes.living)
+  })
+
+  it('knows the walls and dividers round its space, those inside it included', () => {
+    const doc = applyOps(withRoom(house), [add({ type: 'room', id: 'study', name: 'Study', x: 5000, y: 2000 })])
+    const ids = (id: string) => roomBounds(doc, doc.nodes[id] as never).map((n) => n.id).sort()
+    expect(ids('living')).toEqual(['bottom', 'left', 'partition', 'stub', 'top'])
+    expect(ids('study')).toEqual(['bottom', 'partition', 'right', 'top'])
+    const split = applyOps(doc, [add({ type: 'divider', id: 'd', a: { x: 4000, y: 1000 }, b: { x: 6000, y: 1000 } })])
+    expect(roomBounds(split, split.nodes.study as never).map((n) => n.id).sort()).toEqual(['bottom', 'd', 'partition', 'right'])
+    const open = applyOps(doc, [{ op: 'remove_node', id: 'right' }])
+    expect(roomBounds(open, open.nodes.study as never)).toEqual([])
+  })
+
+  describe('goes with its walls when they are all moved', () => {
+    const moveAll = (doc: Document, ids: string[], d: { x: number; y: number }) => {
+      const nodes = ids.map((id) => doc.nodes[id])
+      return applyOps(doc, [...nodes.flatMap((n) => moveOps(doc, n, d)), ...wallFollowOps(doc, nodes, d, registry)])
+    }
+    const box = applyOps(createDocument(), [
+      wall('n', 0, 0, 4000, 0),
+      wall('e', 4000, 0, 4000, 3000),
+      wall('s', 4000, 3000, 0, 3000),
+      wall('w', 0, 3000, 0, 0),
+      add({ type: 'room', id: 'r', name: 'Bedroom', x: 2000, y: 1500 }),
+    ])
+    const sides = ['n', 'e', 's', 'w']
+
+    it('far from where it was, so that its name is not left behind in no space', () => {
+      const d = { x: 20000, y: -15000 }
+      const moved = moveAll(box, sides, d)
+      expect(moved.nodes.r).toMatchObject({ x: 22000, y: -13500 })
+      expect(m2(roomAt(moved, 'page_1', moved.nodes.r as never)!.area)).toBe(m2(3800 * 2800))
+    })
+
+    it('every room of a plan moved whole, in a group or not', () => {
+      const doc = applyOps(withRoom(house), [add({ type: 'room', id: 'study', name: 'Study', x: 5000, y: 2000 })])
+      const moved = moveAll(doc, ['top', 'right', 'bottom', 'left', 'partition', 'stub'], { x: 0, y: 30000 })
+      expect(moved.nodes.living).toMatchObject({ x: 2000, y: 32000 })
+      expect(moved.nodes.study).toMatchObject({ x: 5000, y: 32000 })
+      const grouped = applyOps(box, [add({ type: 'group', id: 'g' }), ...sides.map((id): Op => ({ op: 'update_node', id, patch: { parent: 'g' } }))])
+      expect(moveAll(grouped, ['g'], { x: 9000, y: 0 }).nodes.r).toMatchObject({ x: 11000, y: 1500 })
+    })
+
+    it('but stays where part of what bounds it stays', () => {
+      const d = { x: 20000, y: 0 }
+      expect(moveAll(box, ['n', 'e', 's'], d).nodes.r).toEqual(box.nodes.r)
+      // The left room is bounded by the partition and the stub too; the right one by the partition.
+      const doc = applyOps(withRoom(house), [add({ type: 'room', id: 'study', name: 'Study', x: 5000, y: 2000 })])
+      const outer = moveAll(doc, ['top', 'right', 'bottom', 'left'], d)
+      expect(outer.nodes.living).toEqual(doc.nodes.living)
+      expect(outer.nodes.study).toEqual(doc.nodes.study)
+      // A column standing in the room, moved or not, is part of what bounds it.
+      const column = applyOps(box, [wall('c', 1000, 1000, 1000, 1400, 400)])
+      expect(moveAll(column, ['c'], { x: 500, y: 0 }).nodes.r).toEqual(box.nodes.r)
+      expect(moveAll(column, sides, d).nodes.r).toEqual(box.nodes.r)
+    })
   })
 
   it('is picked by its name, not by its floor, so what stands in the room stays clickable', () => {

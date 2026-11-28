@@ -5,7 +5,7 @@ import { FillChoice } from '../FillChoice'
 import { t, tn } from '../i18n'
 import { addCommon } from '../materials'
 import { MoreMenu } from '../MoreMenu'
-import { apply, useStore } from '../store'
+import { apply, useSettledDoc, useStore } from '../store'
 import { EditableText, IconButton } from '../ui'
 import { ask } from '../windows'
 import { PanelActions } from '../panelHead'
@@ -60,7 +60,7 @@ function opensFill(e: MouseEvent<HTMLDivElement>): void {
 
 /** A material, on one row: how it is drawn, as a swatch, then its name and how many things are made of it. A click on the row changes how it is drawn, a double-click on its name renames it. */
 function MaterialRow({ material }: { material: Material }) {
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const set = (patch: Record<string, unknown>) => apply([{ op: 'update_material', id: material.id, patch }])
   const { walls, floors } = usesOf(doc, material.id)
   return (
@@ -108,7 +108,7 @@ function DefaultRow() {
 }
 
 export function Materials() {
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const materials = Object.values(doc.materials ?? {}).filter((material) => material.id !== DEFAULT_MATERIAL)
   const add = () => apply([{ op: 'add_material', material: { id: newId('material'), name: t('Material {n}', { n: materials.length + 1 }), fill: '#e7e5e4' } }])
   const actions = (

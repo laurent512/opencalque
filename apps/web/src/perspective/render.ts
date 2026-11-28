@@ -18,6 +18,10 @@ import { eyeHeightOf, fovOf, lookOf, pitchOf, seenFrom, type Camera, type Primit
  * that they show in every look but the depth map.
  *
  * The plan's (x, y), and the height h above the floor, are three.js's (x, h, y): Y up.
+ *
+ * With a sun on the plan it looks at (`cameraSun`), the view is lit by it and its shade is cast by
+ * a shadow map: shaded, as light; in lines, as a grey laid over the white (`shadowed`), which a pass
+ * of its own draws on the nearest faces only.
  */
 
 /** How the view is drawn: black lines on white, shaded grey with its lines, or how far each point is. */
@@ -62,6 +66,8 @@ const EDGES = /* glsl */ `
   uniform sampler2D mask;
   uniform bool marked;
   uniform vec3 accent;
+  // In lines, a sun's shade, drawn over white into the shaded picture.
+  uniform bool shadowed;
   varying vec2 vUv;
 
   // 1/z is what is linear across a flat surface on the picture: its second difference is 0 there.
@@ -114,7 +120,7 @@ const EDGES = /* glsl */ `
     float edge = max(smoothstep(0.004, 0.012, jump), smoothstep(0.08, 0.2, turn));
     // What the objects' own drawings put on their faces, over white or the shaded picture; both
     // are in linear light, made sRGB here as the screen shows it.
-    vec3 light = look == 1 ? texture2D(shaded, vUv).rgb : vec3(1.0);
+    vec3 light = look == 1 || shadowed ? texture2D(shaded, vUv).rgb : vec3(1.0);
     vec3 base = pow(light * texture2D(inks, vUv).rgb, vec3(1.0 / 2.2));
     vec3 ink = look == 1 ? vec3(0.25) : vec3(0.0);
     gl_FragColor = chosen(mix(base, ink, edge));
@@ -432,6 +438,15 @@ export class PerspectiveView {
   private drawingKeys = new WeakMap<Primitive[], string>()
   /** What a solid is, as text, while the same solid is looked at: the plan raised again keeps those of objects it did not change. */
   private solidKeys = new WeakMap<Solid, string>()
+  /** The light of the sky, and of the sun: a soft light of its own with no sun on the plan, else that sun, casting shade. */
+  private sky = new THREE.HemisphereLight(0xffffff, 0xb8b4ac, 1.6)
+  private sunLight = new THREE.DirectionalLight(0xffffff, 1.4)
+  private sun: { towards: Vec2; altitude: number } | null = null
+  /** The box round the solids, and how high they go: what the sun's shade is worked out over. */
+  private box = { minX: -5000, minY: -5000, maxX: 5000, maxY: 5000, top: 3000 }
+  /** In lines, the depth of the nearest faces first, then the shade where they are in it, over white. */
+  private depthOnly = new THREE.MeshBasicMaterial({ colorWrite: false, side: THREE.DoubleSide })
+  private shadeOnly = new THREE.ShadowMaterial({ opacity: 0.18, side: THREE.DoubleSide, depthWrite: false, depthFunc: THREE.LessEqualDepth })
 
   constructor(readonly canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, preserveDrawingBuffer: true })
@@ -458,6 +473,7 @@ export class PerspectiveView {
         reach: { value: 10000 },
         mask: { value: this.maskTarget.texture },
         marked: { value: false },
+        shadowed: { value: false },
         // As the page gives it: the last pass writes its colours as they are, with no conversion from linear light.
         accent: { value: new THREE.Color().setStyle('#2f80ed', THREE.LinearSRGBColorSpace) },
       },
@@ -466,11 +482,60 @@ export class PerspectiveView {
     })
     this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material)
     this.quadScene.add(this.quad)
-    this.shadedScene.add(new THREE.HemisphereLight(0xffffff, 0xb8b4ac, 1.6))
-    const sun = new THREE.DirectionalLight(0xffffff, 1.4)
-    sun.position.set(0.4, 1, 0.25)
-    this.shadedScene.add(sun)
+    this.shadedScene.add(this.sky)
+    this.sunLight.position.set(0.4, 1, 0.25)
+    this.shadedScene.add(this.sunLight, this.sunLight.target)
     this.shadedScene.background = new THREE.Color(0xffffff)
+    // Its shade made again only when the sun or the solids change, not as the view turns.
+    this.renderer.shadowMap.enabled = true
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
+    this.renderer.shadowMap.autoUpdate = false
+    this.sunLight.shadow.mapSize.set(2048, 2048)
+    this.sunLight.shadow.bias = -0.0004
+    this.sunLight.shadow.normalBias = 12
+  }
+
+  /**
+   * The sun the view is lit by, coming from `towards` on the plan at `altitude` degrees; null for none,
+   * the soft light of its own. Down, it lights nothing and the sky is dim.
+   */
+  setSun(sun: { towards: Vec2; altitude: number } | null): void {
+    const same = sun === this.sun || (sun && this.sun && sun.altitude === this.sun.altitude && sun.towards.x === this.sun.towards.x && sun.towards.y === this.sun.towards.y)
+    if (same) return
+    this.sun = sun
+    this.placeSun()
+  }
+
+  /** The sun placed, and its shade's box fitted round the solids and the shade they cast. */
+  private placeSun(): void {
+    const light = this.sunLight
+    const sun = this.sun
+    if (!sun || sun.altitude <= 0) {
+      light.castShadow = false
+      light.position.set(0.4, 1, 0.25)
+      light.target.position.set(0, 0, 0)
+      light.intensity = sun ? 0 : 1.4
+      this.sky.intensity = sun ? 0.9 : 1.6
+      return
+    }
+    const { minX, minY, maxX, maxY, top } = this.box
+    const centre = new THREE.Vector3((minX + maxX) / 2, top / 2, (minY + maxY) / 2)
+    const altitude = (Math.max(sun.altitude, 2) * Math.PI) / 180
+    const way = new THREE.Vector3(sun.towards.x * Math.cos(altitude), Math.sin(altitude), sun.towards.y * Math.cos(altitude)).normalize()
+    // Round all of it, and as far again as its shade reaches on the ground, up to 30 m.
+    const radius = Math.hypot(maxX - minX, maxY - minY, top) / 2 + Math.min(30000, top / Math.tan(Math.max(altitude, (10 * Math.PI) / 180)))
+    light.position.copy(centre).addScaledVector(way, radius * 2)
+    light.target.position.copy(centre)
+    light.target.updateMatrixWorld()
+    const camera = light.shadow.camera
+    ;[camera.left, camera.right, camera.top, camera.bottom] = [-radius, radius, radius, -radius]
+    ;[camera.near, camera.far] = [Math.max(1, radius * 2 - radius * 1.5), radius * 2 + radius * 1.5]
+    camera.updateProjectionMatrix()
+    light.castShadow = true
+    // Shade as light as a view with no sun is all over; what the sun reaches, lighter.
+    light.intensity = 1.8
+    this.sky.intensity = 1.6
+    this.renderer.shadowMap.needsUpdate = true
   }
 
   /** What a drawing draws, as text: the key of what is painted of it. */
@@ -540,6 +605,11 @@ export class PerspectiveView {
       if (parts.length === 0) return
       const geometry = merged(parts)
       const mesh = material ? new THREE.Mesh(geometry, material) : new THREE.Mesh(geometry)
+      // In the light of a sun: everything takes shade, and all but glass casts it.
+      if (scene === this.shadedScene) {
+        mesh.receiveShadow = true
+        mesh.castShadow = material !== this.materials.get('shaded glass')
+      }
       scene.add(mesh)
       this.batches.push({ geometry, meshes: [{ scene, mesh }] })
     }
@@ -559,6 +629,46 @@ export class PerspectiveView {
     }
     for (const [material, parts] of shaded) add(this.shadedScene, material, parts)
     for (const [material, parts] of inks) add(this.inkScene, material, parts)
+  }
+
+  /**
+   * The shaders of every pass compiled before the view is first drawn, by the graphics driver
+   * beside the page (`compileAsync`, with KHR_parallel_shader_compile where the browser has it):
+   * left to the first drawing, they held the page for a third of a second, in the middle of a pan
+   * when one had started. Each pass is compiled as it is drawn (into a target or onto the screen,
+   * lit by the scene it draws), else the drawing would compile it again. Whatever does not match
+   * (a colour first seen later, the sun's shadow map) is compiled when drawn, as before.
+   */
+  async prepare(): Promise<void> {
+    const r = this.renderer
+    const plane = new THREE.PlaneGeometry(1, 1)
+    const holding = (materials: THREE.Material[], receive = false) => {
+      const scene = new THREE.Scene()
+      for (const material of materials) {
+        const mesh = new THREE.Mesh(plane, material)
+        mesh.receiveShadow = receive
+        scene.add(mesh)
+      }
+      return scene
+    }
+    const waits: Promise<unknown>[] = []
+    try {
+      r.setRenderTarget(this.target)
+      waits.push(r.compileAsync(holding([this.normalMaterial, this.black]), this.eye, this.scene))
+      r.setRenderTarget(this.maskTarget)
+      waits.push(r.compileAsync(holding([this.whiteOver]), this.eye, this.maskScene))
+      r.setRenderTarget(this.shadedTarget)
+      waits.push(r.compileAsync(this.shadedScene, this.eye))
+      waits.push(r.compileAsync(holding([this.depthOnly, this.shadeOnly], true), this.eye, this.shadedScene))
+      r.setRenderTarget(this.inkTarget)
+      waits.push(r.compileAsync(this.inkScene, this.eye))
+      r.setRenderTarget(null)
+      waits.push(r.compileAsync(this.quadScene, this.quadCamera))
+      await Promise.all(waits)
+    } finally {
+      r.setRenderTarget(null)
+      plane.dispose()
+    }
   }
 
   /**
@@ -646,7 +756,10 @@ export class PerspectiveView {
       ],
     }
     for (const { scene, mesh } of this.ground.meshes) scene.add(mesh)
+    this.ground.meshes[1].mesh.receiveShadow = true
     this.corners = solids.flatMap((solid) => solid.outline)
+    this.box = { minX, minY, maxX, maxY, top: solids.reduce((most, solid) => Math.max(most, solid.top), 0) || 3000 }
+    this.placeSun()
   }
 
   /**
@@ -681,6 +794,17 @@ export class PerspectiveView {
     this.scene.overrideMaterial = this.normalMaterial
     pass(this.scene, this.target, 0x8080ff)
     if (look === 'clay') pass(this.shadedScene, this.shadedTarget, 0xffffff)
+    // In lines, the sun's shade: the depth of what is nearest, then the shade on it alone.
+    const shadowed = look === 'lines' && this.sunLight.castShadow
+    if (shadowed) {
+      this.shadedScene.overrideMaterial = this.depthOnly
+      pass(this.shadedScene, this.shadedTarget, 0xffffff)
+      this.shadedScene.overrideMaterial = this.shadeOnly
+      this.renderer.autoClear = false
+      this.renderer.render(this.shadedScene, this.eye)
+      this.renderer.autoClear = true
+      this.shadedScene.overrideMaterial = null
+    }
     if (look !== 'depth') pass(this.inkScene, this.inkTarget, 0xffffff)
     // What is selected: the whole view in black, its faces nearest, then the selected over it in white where they are seen.
     const marked = this.chosen !== null
@@ -694,6 +818,7 @@ export class PerspectiveView {
     this.scene.overrideMaterial = this.normalMaterial
     const uniforms = this.quad.material.uniforms
     uniforms.marked.value = marked
+    uniforms.shadowed.value = shadowed
     uniforms.texel.value.set(1 / width, 1 / height)
     uniforms.look.value = look === 'lines' ? 0 : look === 'clay' ? 1 : 2
     // Whole pixels: compared at uneven distances on each side, a flat surface seen at a slant would show lines.
@@ -723,6 +848,9 @@ export class PerspectiveView {
     for (const target of [this.target, this.shadedTarget, this.inkTarget, this.maskTarget]) target.dispose()
     this.black.dispose()
     this.whiteOver.dispose()
+    this.depthOnly.dispose()
+    this.shadeOnly.dispose()
+    this.sunLight.dispose()
     this.quad.geometry.dispose()
     this.quad.material.dispose()
     this.normalMaterial.dispose()

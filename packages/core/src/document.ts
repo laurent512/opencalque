@@ -232,11 +232,11 @@ export function serializeDocument(doc: Document): string {
   const assets = Object.fromEntries(Object.entries(doc.assets ?? {}).filter(([id]) => used.has(id)))
   const { assets: _, ...rest } = doc
   // A drawing says the oldest version that knows all it holds, so that older versions of the app
-  // still open it: 7 with a spline pulled by its points (2.3), 6 with a viewpoint or an elevation (2.2; from 1.9 to 2.1 an elevation was the
+  // still open it: 8 with a sun (2.4), 7 with a spline pulled by its points (2.3), 6 with a viewpoint or an elevation (2.2; from 1.9 to 2.1 an elevation was the
   // view of a line of its own, which they would misread), 5 with a desk that an older version would
   // draw with an office chair (1.12), 4 with a link (1.10), else 2 (1.2).
   const nodes = Object.values(doc.nodes)
-  const needed = nodes.some((n) => n.type === 'polyline' && n.smooth === 'spline') ? 7 : nodes.some((n) => n.type === 'camera' || n.type === 'elevation') ? 6 : nodes.some(deskDrewChair) ? 5 : nodes.some((n) => n.type === 'link') ? 4 : 2
+  const needed = nodes.some((n) => n.type === 'sun') ? 8 : nodes.some((n) => n.type === 'polyline' && n.smooth === 'spline') ? 7 : nodes.some((n) => n.type === 'camera' || n.type === 'elevation') ? 6 : nodes.some(deskDrewChair) ? 5 : nodes.some((n) => n.type === 'link') ? 4 : 2
   const version = Math.min(doc.version, needed)
   return JSON.stringify(used.size > 0 ? { ...rest, version, assets } : { ...rest, version }, null, 2) + '\n'
 }

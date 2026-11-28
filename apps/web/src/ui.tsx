@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
-import { BrickWall, Cable, Camera, ChevronDown, Link2, Link2Off, ScanEye, Circle, Hexagon, Component, File, Group, Image, Lock, LockOpen, MessageSquare, Minus, RulerDimensionLine, Shapes, SeparatorVertical, Spline, Square, SquareDashed, StickyNote, Table, Type, type LucideIcon } from 'lucide-react'
+import { BrickWall, Cable, Camera, ChevronDown, Link2, Link2Off, ScanEye, Circle, Hexagon, Component, File, Group, Image, Lock, LockOpen, MessageSquare, Minus, RulerDimensionLine, Shapes, SeparatorVertical, Spline, Square, SquareDashed, StickyNote, Sun, Table, Type, type LucideIcon } from 'lucide-react'
 import type { Document, Node } from '@opencalque/core'
 import { GridLine } from './icons'
 import { msg, t } from './i18n'
 import { registry } from './extensions'
 import { setPrefs, usePrefs } from './prefs'
-import { collapseHistory, useStore } from './store'
+import { collapseHistory, holdEdits, releaseEdits, useStore } from './store'
 import { dashIndex, DASHES } from './strokes'
 import { formatNumber, parseLength, parseNumber, unitSuffix } from './units'
 import { Select } from './Select'
@@ -25,6 +25,7 @@ const TYPE_LABELS: Record<Node['type'], string> = {
   elevation: msg('Elevation'),
   autodimensions: msg('Automatic dimensions'),
   camera: msg('Viewpoint'),
+  sun: msg('Sun'),
   link: msg('Link'),
   table: msg('Table of quantities'),
   ellipse: msg('Ellipse'),
@@ -51,6 +52,7 @@ const TYPE_ICONS: Record<Node['type'], LucideIcon> = {
   elevation: ScanEye,
   autodimensions: RulerDimensionLine,
   camera: Camera,
+  sun: Sun,
   link: Cable,
   table: Table,
   ellipse: Circle,
@@ -76,6 +78,8 @@ export function TypeIcon({ node }: { node: Node }) {
 /** The name shown for a node that the user has not named. */
 export function labelOf(doc: Document, node: Node): string {
   if (node.name) return node.name
+  // A sun by its moment, which tells two apart.
+  if (node.type === 'sun') return `${t('Sun')} ${node.time}, ${node.date}`
   // A text is known by its first line; a note by its words, when it has some.
   if (node.type === 'text' || (node.type === 'annotation' && node.text.trim())) return node.text.split('\n')[0]
   if (node.type === 'gridline' && node.label.trim()) return t('Grid line {label}', { label: node.label })
@@ -152,7 +156,7 @@ const LENGTH_STEP = 10
  * for less, Shift for ten times faster. `read` gives the number as it is now (null when there is
  * none to start from) and `write` is called with each new one. With `snap`, the number starts from
  * the nearest multiple of it, so that the steps land on whole values. However far the drag goes,
- * it is one step to undo.
+ * it is one gesture (`holdEdits`) and one step to undo.
  */
 export function scrub(read: () => number | null, write: (value: number) => void, step = 1, min = -Infinity, snap?: number) {
   return {
@@ -166,7 +170,8 @@ export function scrub(read: () => number | null, write: (value: number) => void,
       input.blur()
       input.setPointerCapture(e.pointerId)
       const from = e.clientX
-      const mark = useStore.getState().past.length
+      // A gesture, as a drag on the canvas: what waits for an edit to be over waits until it is let go.
+      holdEdits()
       let last = now
       const move = (m: PointerEvent) => {
         const next = Math.max(min, Math.round((start + Math.round(m.clientX - from) * step * (m.shiftKey ? 10 : 1)) * 1e6) / 1e6)
@@ -178,7 +183,7 @@ export function scrub(read: () => number | null, write: (value: number) => void,
         input.removeEventListener('pointermove', move)
         input.removeEventListener('pointerup', end)
         input.removeEventListener('pointercancel', end)
-        collapseHistory(mark)
+        releaseEdits()
       }
       input.addEventListener('pointermove', move)
       input.addEventListener('pointerup', end)

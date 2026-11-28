@@ -67,8 +67,8 @@ describe('letters the standard PDF fonts lack', () => {
     expect(pdf).toMatch(/\/F1 [\d.]+ Tf[^\n]*\(Plain\) Tj/)
     expect(pdf).toMatch(/\/BaseFont \/[A-Z]{6}\+NotoSans-Regular /)
     expect(pdf).toMatch(/\/BaseFont \/[A-Z]{6}\+NotoSansSC-Regular /)
-    // Each run of the text goes in its own font; bold outlines the letters.
-    expect(pdf).toMatch(/2 Tr [^\n]*\/F8 [\d.]+ Tf <00010002> Tj \/F7 [\d.]+ Tf <[0-9a-f]+> Tj/)
+    // Each run of the text goes in its own font, numbered after the twelve standard ones; bold outlines the letters.
+    expect(pdf).toMatch(/2 Tr [^\n]*\/F14 [\d.]+ Tf <00010002> Tj \/F13 [\d.]+ Tf <[0-9a-f]+> Tj/)
     expect(pdf).toContain('<0001> <623f>')
     expect(pdf.length).toBeLessThan(30000)
   })

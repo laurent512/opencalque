@@ -145,6 +145,36 @@ select {
   user-select: none;
 }
 
+/* A long list, of this height from the start (`SEARCHED_HEIGHT`), so that it is placed against its
+   field as a short one is, and stays so as typing in its search box leaves fewer options in it. */
+.select-list.searched {
+  height: 360px;
+}
+
+/* A long list's box to find an option by what is typed, kept at the top as the list scrolls under it. */
+.select-search {
+  position: sticky;
+  top: -4px;
+  z-index: 1;
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 26px;
+  margin: -4px 0 4px;
+  padding: 0 8px;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 6px 6px 0 0;
+  background: var(--bg);
+  outline: 0;
+  user-select: text;
+}
+
+.select-none {
+  padding: 4px 8px 6px;
+  color: var(--muted);
+}
+
 .select-group {
   margin: 8px 8px 2px;
   color: var(--muted);
@@ -3965,6 +3995,117 @@ button.feedback-thumb:focus-visible {
   background: none;
   color: #1f1f1f;
   user-select: text;
+}
+
+/* A text's box grows with what is typed; its last empty line is held open by a line break. */
+.text-editor.rich {
+  overflow: visible;
+  cursor: text;
+  caret-color: var(--accent);
+}
+
+/*
+ * The prop that holds each line of a text being typed where the canvas draws it (`render` in
+ * TextEditor.tsx): from its largest letters above the baseline to a quarter of them below.
+ */
+.text-editor.rich::before,
+.text-editor.rich .line-break::after {
+  content: '';
+  display: inline-block;
+  width: 0;
+  height: calc(var(--up) + var(--down));
+  vertical-align: calc(0px - var(--down));
+}
+
+/* The bar floating over a text being typed in place */
+
+.text-format-bar {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--bg);
+  box-shadow: 0 4px 18px rgb(0 0 0 / 16%), 0 0 0 1px var(--ring);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.text-format-gap {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--border);
+}
+
+.text-format-font,
+.text-format-field {
+  height: 28px;
+}
+
+/* The fields of the bar look as its buttons do: no background of their own, the buttons' tint
+   under the pointer or while their list is open, their icons in the buttons' grey. A size being
+   typed keeps the accent outline every field has while typed in. */
+.text-format-bar .select,
+.text-format-bar .text-format-size {
+  --icon-tint: color-mix(in srgb, var(--text) 9%, transparent);
+  border-radius: 6px;
+  background: none;
+}
+
+.text-format-bar .select {
+  color: var(--faint);
+}
+
+.text-format-bar .select:hover:not(:disabled),
+.text-format-bar .select[aria-expanded='true'],
+.text-format-bar .text-format-size:hover:not(:focus-within) {
+  border-color: transparent;
+  background: var(--icon-tint);
+  color: var(--text);
+}
+
+.text-format-bar .select .font-sample {
+  color: inherit;
+}
+
+/* A font shown by letters written in it, on the button and in its list. */
+.font-sample {
+  font-size: 15px;
+  line-height: 1;
+  color: var(--text);
+}
+
+.text-format-size {
+  height: 28px;
+  padding: 0 6px;
+}
+
+.text-format-size input {
+  width: 40px;
+  text-align: center;
+}
+
+/* The letter in the colour of the words, over a band of it, as word processors show it. */
+.text-format-color {
+  flex-direction: column;
+  gap: 1px;
+  color: var(--text);
+}
+
+.text-format-letter {
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.text-format-color i {
+  width: 16px;
+  height: 4px;
+  border-radius: 1px;
+  box-shadow: 0 0 0 1px var(--ring);
 }
 
 /* Shown while files from outside are dragged over the window */

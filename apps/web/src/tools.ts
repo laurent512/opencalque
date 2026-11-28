@@ -5,13 +5,13 @@ import { t } from './i18n'
  * each step of using one (`hintsFor`). What a tool does on the drawing is in `canvas/gestures/`
  * (`PRESSES`, and the gestures it starts); its command and shortcut are in `commands.ts` (`tool(…)`).
  */
-export type Tool = 'select' | 'hand' | 'line' | 'curve' | 'spline' | 'arc' | 'rect' | 'ellipse' | 'circle' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'extend' | 'fillet' | 'offset' | 'rotate' | 'move' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'elevation' | 'camera' | 'connect' | 'place'
+export type Tool = 'select' | 'hand' | 'line' | 'curve' | 'spline' | 'arc' | 'rect' | 'ellipse' | 'circle' | 'wall' | 'dimension' | 'measure' | 'angle' | 'split' | 'trim' | 'extend' | 'fillet' | 'offset' | 'rotate' | 'move' | 'calibrate' | 'eyedropper' | 'text' | 'annotation' | 'gridline' | 'paper' | 'room' | 'divider' | 'elevation' | 'camera' | 'sun' | 'connect' | 'place'
 
 /** The plain shapes, which share one toolbar button. */
 // A paper is drawn as a rectangle is, by its corners: it is offered with the shapes.
 export const SHAPE_TOOLS: Tool[] = ['line', 'curve', 'spline', 'arc', 'rect', 'ellipse', 'circle', 'paper']
-/** The tools for naming spaces, and for the views of their walls, which share another. */
-export const ROOM_TOOLS: Tool[] = ['room', 'divider', 'elevation', 'camera']
+/** The tools for naming spaces, for the views of their walls, and for the sun that lights them, which share another. */
+export const ROOM_TOOLS: Tool[] = ['room', 'divider', 'elevation', 'camera', 'sun']
 /** The tools for writing on the drawing, which share a third. */
 export const TEXT_TOOLS: Tool[] = ['text', 'annotation', 'dimension', 'gridline']
 /** The tools that work on the lines of what is drawn: cutting them in two or a stretch away, carrying them on, making two meet, or copying them alongside. */
@@ -54,6 +54,8 @@ export function hintsFor(tool: Tool, step: number, opening: boolean, selected = 
         : [['', t('Click where the section line ends')], ['Esc', t('cancels')]]
     case 'camera':
       return step === 0 ? [['', t('Click where you stand')], rested] : [['', t('Click the way you look')], angles, free, ['Esc', t('cancels')]]
+    case 'sun':
+      return [['', t('Click where the circle of the sky goes, beside the plan')], ['', t('its shade falls on the whole page')]]
     case 'connect':
       return step === 0
         ? [['', t('Click a switch, a dimmer or a push button')], ['', t('then each light or socket it controls')]]

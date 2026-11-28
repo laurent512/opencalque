@@ -1,4 +1,4 @@
-import { add, CONTROL, DEFAULT_MATERIAL, sheetScaleAt, viewScale, type NodeOf, type Document, drawnSolid, frameGrips, heightInPlace, type Node, norm, OBJECT_FILL, type Op, type ParametricKind, portsOf, resizeFrame, resizePatch, scale, sub, TEXT_FIELDS, type Pattern } from '@opencalque/core'
+import { add, CONTROL, DEFAULT_MATERIAL, SHADE_FILL, SUNLIT_FILL, sheetScaleAt, viewScale, type NodeOf, type Document, drawnSolid, frameGrips, heightInPlace, type Node, norm, OBJECT_FILL, type Op, type ParametricKind, portsOf, resizeFrame, resizePatch, scale, sub, TEXT_FIELDS, type Pattern } from '@opencalque/core'
 import { msg, t } from '../../i18n'
 import { registry } from '../../extensions'
 import { frameShown } from '../../perspective/seen'
@@ -67,6 +67,9 @@ export interface FieldSpec {
 }
 
 export const GEOMETRY = msg('Geometry')
+/** A sun's shade on the plan: whether it is drawn, and its colours. */
+const SHADE = msg('Shade')
+const shaded = (node: Node) => node.type === 'sun' && node.shadows !== false
 /** The parts of a view's settings, as its parts are listed under it in Structure: its line of view (or a viewpoint's camera), on the plan; and its representation, on the sheet. */
 export const VIEW_SEES = msg('Line of view')
 /** The part of a view that is drawn on the sheet, a viewpoint's or an elevation's: where, how large, and how. */
@@ -139,7 +142,7 @@ const len = (path: string, label: string, fallback?: number, section?: string): 
 
 const options = (...pairs: [string, string][]): Option[] => pairs.map(([value, label]) => ({ value, label }))
 
-const FONTS = options(['', msg('Sans-serif')], ['"Arial Narrow", sans-serif', msg('Condensed')], ['serif', msg('Serif')], ['monospace', msg('Monospace')])
+export const FONTS = options(['', msg('Sans-serif')], ['"Arial Narrow", sans-serif', msg('Condensed')], ['serif', msg('Serif')], ['monospace', msg('Monospace')])
 
 const MARKERS = options(['tick', msg('Tick')], ['arrow', msg('Arrow')], ['open-arrow', msg('Open arrow')], ['dot', msg('Dot')], ['none', msg('None')])
 
@@ -269,6 +272,7 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
     { path: 'showArea', label: msg('Area'), type: 'boolean', section: UNDER_NAME, fallback: true },
     { path: 'showPerimeter', label: msg('Perimeter'), type: 'boolean', section: UNDER_NAME, fallback: false },
     fill('#dfe6f0', msg('default'), { section: FLOOR }),
+    { path: 'open', label: msg('Open to the sky'), type: 'boolean', fallback: false, section: FLOOR, note: msg('A courtyard or a terrace: no ceiling over it, in 3D views and for the sun, which lights its floor. Every other space the walls close has one.') },
   ],
   divider: AB,
   // What it counts, and its columns, are set above (`TableSettings`); here, how it is written.
@@ -322,6 +326,20 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
     { ...len('b.x', msg('X'), undefined, CAMERA), row: { id: 'b', name: 'X', label: msg('Looks towards') } },
     { ...len('b.y', msg('Y'), undefined, CAMERA), row: { id: 'b', name: 'Y', label: msg('Looks towards') } },
   ],
+  // A sun: where its circle of the sky is drawn and how large, and whether it shades the plan. Its
+  // day and hour, and where the building is, are in sections of their own (`sun.tsx`).
+  sun: [
+    { ...len('x', msg('X')), row: { id: 'at', name: 'X', label: msg('Position') } },
+    { ...len('y', msg('Y')), row: { id: 'at', name: 'Y', label: msg('Position') } },
+    { ...len('radius', msg('Size'), 2000), note: msg('The radius of its circle of the sky.') },
+    // The hours along its path, and N in proportion; unset, in proportion to its circle.
+    { ...len('size', msg('Text size')), optional: true, empty: msg('in proportion') },
+    // Its shade, in a section of its own: whether it is drawn, and in what colours. How long it is
+    // is not a setting: it is where the sun is, and a shadow study must say it right.
+    { path: 'shadows', label: msg('On the plan'), type: 'boolean', fallback: true, section: SHADE, note: msg('The shade it casts on the ground, and the floors it lights through the doors and windows, drawn under everything on the page.') },
+    { path: 'shade', label: msg('Shade'), type: 'color', fallback: SHADE_FILL, unset: msg('default'), section: SHADE, when: shaded, note: msg('See-through, to show what is under it: set its opacity in the colour window.') },
+    { path: 'sunlit', label: msg('Sunlit floors'), type: 'color', fallback: SUNLIT_FILL, unset: msg('default'), section: SHADE, when: shaded },
+  ],
   table: [
     { path: 'title', label: msg('Title'), type: 'string', optional: true },
     len('x', msg('X')),
@@ -345,15 +363,12 @@ const FIELDS: Partial<Record<Node['type'], FieldSpec[]>> = {
     ...SHAPE_STYLE,
   ],
   text: [
-    { path: 'text', label: msg('Text'), type: 'string', multiline: true },
+    // Its words are typed on the drawing, where they are seen (a double-click on it), not here.
     len('x', msg('X')),
     len('y', msg('Y')),
     len('size', msg('Size')),
     num('rotation', msg('Rotation'), 0),
-    { path: 'font', label: msg('Font'), type: 'string', options: FONTS },
-    { path: 'bold', label: msg('Bold'), type: 'boolean', fallback: false },
-    { path: 'align', label: msg('Alignment'), type: 'string', options: options(['', msg('Left')], ['center', msg('Centred')], ['right', msg('Right')]) },
-    { path: 'style.stroke', label: msg('Color'), type: 'color', section: msg('Style'), fallback: '#1f1f1f', unset: msg('from layer') },
+    // Its font, its alignment, its colour and what sets its words apart are set in the bar over it while it is typed (`TextFormatBar.tsx`).
   ],
   // Open, a polyline has ends and nothing inside it; closed, a polygon, the other way round. Closing,
   // opening, curving and straightening it are commands (Object menu, right-click), not properties.

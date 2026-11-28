@@ -21,6 +21,7 @@ import { CornerPanel, WallCurve, WallEnds, WallLine, WallMaterial, WallToolMater
 import { TableSettings } from './tables'
 import { PlacingOpening, WallToolPresets } from './presets'
 import { ViewCamera, ViewDescription, ViewPicture } from './viewpoint'
+import { SiteFields, SunMoment } from './sun'
 import { Select } from '../../Select'
 
 /* The Properties panel: what is selected, or the tool in use when nothing is. */
@@ -216,6 +217,9 @@ function Selection({ nodes }: { nodes: Node[] }) {
     single && node.type === 'camera' && { title: REPRESENTATION, after: <ViewPicture camera={node} /> },
     single && node.type === 'camera' && { title: CAMERA, ...(pagesOf(doc).length > 1 ? { before: <LooksAt node={node} /> } : {}), after: <ViewCamera camera={node} /> },
     single && node.type === 'camera' && { title: msg('Description'), before: <ViewDescription camera={node} /> },
+    // A sun: its day and hour; then where the building is, the drawing's, and north, its page's.
+    single && node.type === 'sun' && { title: msg('Sun'), before: <SunMoment sun={node} /> },
+    single && node.type === 'sun' && { title: msg('Where the building is'), before: <SiteFields page={node.parent} /> },
     single &&
       node.type === 'group' && {
         title: msg('Group'),
@@ -253,7 +257,8 @@ function Selection({ nodes }: { nodes: Node[] }) {
       ),
     },
     single &&
-      (node.type === 'text' || node.type === 'annotation') && {
+      // A text's fields are put in from the bar over it while it is typed, where the caret is.
+      node.type === 'annotation' && {
         title: msg('Fields'),
         before: (
           <>

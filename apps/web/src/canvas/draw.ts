@@ -1,5 +1,5 @@
 import { gridLevels, type GridSetting } from '../view'
-import { boundsFrame, frameGrips, paintOrder, primitiveBounds, rotate, sceneBounds, type Bounds, type MoveGuides, type PaintStep, type Primitive, type ResizeFrame, type SceneItem, type Snap, type Vec2 } from '@opencalque/core'
+import { boundsFrame, count, frameGrips, span, paintOrder, primitiveBounds, rotate, sceneBounds, type Bounds, type MoveGuides, type PaintStep, type Primitive, type ResizeFrame, runLook, type TextPrim, type TextRun, type SceneItem, type Snap, type Vec2 } from '@opencalque/core'
 
 // Pictures decode asynchronously. Until one is ready it is simply not drawn, and the canvas is
 // told to repaint when it arrives.
@@ -424,6 +424,33 @@ function paint(ctx: CanvasRenderingContext2D, step: PaintStep, zoom: number, ink
   ctx.restore()
 }
 
+/** The CSS font of a run of a text, as the canvas and the editor over it set it. */
+export function runFont(prim: TextPrim, run: TextRun): string {
+  const look = runLook(prim, run)
+  return `${look.italic ? 'italic ' : ''}${look.bold ? 'bold ' : ''}${look.size}px ${prim.font ?? FONT}`
+}
+
+/** A line of a text in runs set apart, one after the other from where it starts, with their lines under and through. */
+function drawRuns(ctx: CanvasRenderingContext2D, prim: TextPrim, ink: CanvasPalette['ink']): void {
+  ctx.textAlign = 'left'
+  const widths = prim.runs!.map((run) => {
+    ctx.font = runFont(prim, run)
+    return ctx.measureText(run.text).width
+  })
+  const total = widths.reduce((sum, w) => sum + w, 0)
+  let x = prim.align === 'center' ? -total / 2 : prim.align === 'right' ? -total : 0
+  prim.runs!.forEach((run, i) => {
+    const { size } = runLook(prim, run)
+    ctx.font = runFont(prim, run)
+    ctx.fillStyle = ink(run.color ?? prim.stroke ?? 'black', true)
+    ctx.fillText(run.text, x, 0)
+    const thick = Math.max(size * 0.06, 0)
+    if (run.underline) ctx.fillRect(x, size * 0.12, widths[i], thick)
+    if (run.strike) ctx.fillRect(x, -size * 0.3 - thick / 2, widths[i], thick)
+    x += widths[i]
+  })
+}
+
 function paintWhole(ctx: CanvasRenderingContext2D, { prim, stroke, fill, widthScale, widthExtra, seam }: PaintStep, zoom: number, ink: CanvasPalette['ink']): void {
   if (prim.kind === 'image') {
     const picture = pictureFor(prim.href)
@@ -445,10 +472,13 @@ function paintWhole(ctx: CanvasRenderingContext2D, { prim, stroke, fill, widthSc
     ctx.save()
     ctx.translate(prim.x, prim.y)
     if (prim.rotation) ctx.rotate((prim.rotation * Math.PI) / 180)
-    ctx.font = `${prim.bold ? 'bold ' : ''}${prim.size}px ${prim.font ?? FONT}`
-    ctx.textAlign = prim.align ?? 'left'
-    ctx.fillStyle = ink(prim.stroke ?? 'black', true)
-    ctx.fillText(prim.text, 0, 0)
+    if (prim.runs) drawRuns(ctx, prim, ink)
+    else {
+      ctx.font = `${prim.bold ? 'bold ' : ''}${prim.size}px ${prim.font ?? FONT}`
+      ctx.textAlign = prim.align ?? 'left'
+      ctx.fillStyle = ink(prim.stroke ?? 'black', true)
+      ctx.fillText(prim.text, 0, 0)
+    }
     ctx.restore()
     return
   }
@@ -621,6 +651,47 @@ function paintBase(
   return canvas
 }
 
+/** Pixels around what changed that are painted again too: lines are drawn wider than the points they join, and markers stand out from them. */
+const CHANGE_MARGIN = 40
+/** Past this share of the view, what changed is painted with the rest: one pass over the whole costs no more. */
+const MOST_OF_THE_VIEW = 0.5
+
+const samePrims = (a: Primitive[], b: Primitive[]) => a === b || (a.length === b.length && a.every((prim, i) => prim === b[i]))
+
+/**
+ * Where, on the screen, a scene differs from the one painted before it: the boxes, old and new, of
+ * the primitives of the items that changed, grown by `CHANGE_MARGIN`; null when that cannot be told
+ * (the items are not the same ones in the same order, a primitive has no extent) or is most of the
+ * view, and the whole is then painted again. An edit leaves its items
+ * as they were (`buildScene`), so typing in a text changes the text alone, which is all that is
+ * painted again instead of the whole plan at every key.
+ */
+function changedRect(was: SceneItem[], now: SceneItem[], view: View, width: number, height: number, dpr: number): Rect | null {
+  if (was.length !== now.length) return null
+  let box: Bounds | null = null
+  for (let i = 0; i < now.length; i++) {
+    const [before, after] = [was[i], now[i]]
+    if (before.id !== after.id) return null
+    if (before === after || samePrims(before.prims, after.prims)) continue
+    // Where its primitives lie, every one of them: a box leaves out what is drawn only to work with.
+    for (const prim of [...before.prims, ...after.prims]) {
+      const b = extentOf(prim)
+      if (!b) return null
+      box = box ? { minX: Math.min(box.minX, b.minX), minY: Math.min(box.minY, b.minY), maxX: Math.max(box.maxX, b.maxX), maxY: Math.max(box.maxY, b.maxY) } : b
+    }
+  }
+  if (!box) return { x: 0, y: 0, w: 0, h: 0 }
+  // On whole pixels of the canvas, so that its edge leaves no seam on a screen that scales.
+  const down = (v: number) => Math.floor(v * dpr) / dpr
+  const up = (v: number) => Math.ceil(v * dpr) / dpr
+  const x0 = Math.max(0, down(box.minX * view.zoom + view.x - CHANGE_MARGIN))
+  const y0 = Math.max(0, down(box.minY * view.zoom + view.y - CHANGE_MARGIN))
+  const x1 = Math.min(width, up(box.maxX * view.zoom + view.x + CHANGE_MARGIN))
+  const y1 = Math.min(height, up(box.maxY * view.zoom + view.y + CHANGE_MARGIN))
+  const rect = { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0) }
+  return rect.w * rect.h > width * height * MOST_OF_THE_VIEW ? null : rect
+}
+
 /**
  * Moves the kept drawing with the view, which was panned by less than its size: what was painted is
  * moved, and only the strips that come into sight are painted, so that what lies outside shows as
@@ -688,8 +759,15 @@ export function drawScene(
   const moving = lastView !== null && (lastView.zoom !== view.zoom || lastView.x !== view.x || lastView.y !== view.y)
   lastView = view
   clearTimeout(settling)
-  const whole = () => (base = { canvas: paintBase(base?.canvas, ctx.canvas, size, view, scene, around, showGrid, palette, grid), key, view, sharp: true })
-  if (!base || !same || base.view.zoom !== view.zoom) whole()
+  const whole = () => (base = { canvas: span('canvas: the drawing painted whole', () => paintBase(base?.canvas, ctx.canvas, size, view, scene, around, showGrid, palette, grid)), key, view, sharp: true })
+  // Only the scene changed, seen exactly as it was painted: painted again where it changed.
+  const edited = !!base && !same && base.sharp && base.view.zoom === view.zoom && base.view.x === view.x && base.view.y === view.y && base.key.every((value, i) => i === 0 || value === key[i])
+  const rect = edited ? changedRect(base!.key[0] as SceneItem[], scene, view, width, height, dpr) : null
+  if (rect) {
+    count('canvas: painted where it changed')
+    if (rect.w > 0 && rect.h > 0) span('canvas: the drawing painted where it changed', () => paintBase(base!.canvas, ctx.canvas, size, view, scene, around, showGrid, palette, grid, rect))
+    base = { ...base!, key }
+  } else if (!base || !same || base.view.zoom !== view.zoom) whole()
   else {
     const off = base.view.x !== view.x || base.view.y !== view.y
     // Still, it is painted again where it is not exactly what the view shows.
@@ -732,7 +810,8 @@ export function drawScene(
     }
     for (const prim of item.prims) {
       // The lines of a pattern are a surface, not an outline: lit up, they would hide the shape and what is under it.
-      if (prim.kind === 'text' || prim.kind === 'image' || prim.texture) continue
+      // Nor is what is drawn aside from it (a sun's shade, in its soft layers): lit up, it ringed the building.
+      if (prim.kind === 'text' || prim.kind === 'image' || prim.texture || prim.aside) continue
       paint(ctx, { prim: { ...prim, stroke: ACCENT, strokeWidth: 1.5, dash: undefined }, stroke: true, fill: false, widthScale: 1, widthExtra: 0, seam: 0 }, view.zoom)
     }
   }
@@ -741,7 +820,7 @@ export function drawScene(
   // deeply grouped, or the box of a component's placement, whose every line would be noise, and of
   // a text or a picture, which have none.
   const thing = overlay.hovered && !selection.includes(overlay.hovered.thing.id) ? overlay.hovered.thing : undefined
-  const outlined = thing?.prims.filter((prim) => prim.kind !== 'text' && prim.kind !== 'image' && !prim.texture) ?? []
+  const outlined = thing?.prims.filter((prim) => prim.kind !== 'text' && prim.kind !== 'image' && !prim.texture && !prim.aside) ?? []
   const boxed = thing && (thing.node.type === 'instance' || thing.node.type === 'elevation' || outlined.length === 0) ? thing.bounds : null
   if (thing && !boxed) {
     for (const prim of outlined) paint(ctx, { prim: { ...prim, stroke: ACCENT, strokeWidth: 1, dash: undefined }, stroke: true, fill: false, widthScale: 1, widthExtra: 0, seam: 0 }, view.zoom)

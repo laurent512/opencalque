@@ -4,7 +4,7 @@ import { convexHull, DEFAULT_WALL_HEIGHT, heightOf, heightsOf, outlineOf, shownO
 import { nodePrimitives } from './kinds'
 import type { Primitive } from './primitives'
 import type { Finish, KindSolid, ParametricKind, Registry } from './registry'
-import { roomAt, type Region } from './rooms'
+import { roomAt, roomRegions, type Region } from './rooms'
 import type { Document, Node, NodeOf } from './schema'
 import { heightAboveFloor, heightInPlace, mountOf, propsInPlace } from './walls/mount'
 import { hostWall, openingSpan, wallOpenings } from './walls/openings'
@@ -131,21 +131,38 @@ export function massing(doc: Document, pageId: string, registry: Registry, also:
       }
     }
   }
+  // Each space the walls close has a ceiling, the room named there or not (a hall, a corridor, the
+  // stairs: without one, the sun shone down into them and on through their doors and windows), but
+  // for a room open to the sky (`open`: a courtyard, a terrace). A ceiling is its room's, to pick.
   const regions = new Map<Region, string>()
-  for (const leaf of leavesOf(doc, pageId)) {
-    if (leaf.type !== 'room' || !shownOnPlan(doc, leaf)) continue
-    const region = roomAt(doc, leaf.parent, leaf)
-    if (region && !regions.has(region) && near(region.outline)) regions.set(region, leaf.id)
+  const open = new Set<Region>()
+  const rooms = leavesOf(doc, pageId).filter((leaf): leaf is NodeOf<'room'> => leaf.type === 'room')
+  for (const room of rooms) {
+    const region = room.open ? roomAt(doc, room.parent, room) : null
+    if (region) open.add(region)
   }
+  for (const room of rooms) {
+    if (!shownOnPlan(doc, room)) continue
+    const region = roomAt(doc, room.parent, room)
+    if (region && !open.has(region) && !regions.has(region) && near(region.outline)) regions.set(region, room.id)
+  }
+  for (const region of roomRegions(doc, pageId)) if (!open.has(region) && !regions.has(region) && near(region.outline)) regions.set(region, '')
   for (const p of also) {
     const region = roomAt(doc, pageId, p)
-    if (region && !regions.has(region)) regions.set(region, '')
+    if (region && !open.has(region) && !regions.has(region)) regions.set(region, '')
   }
+  const wallParts = solids.filter((solid) => solid.role === 'wall' && solid.bottom >= 0)
   for (const [region, node] of regions) {
     // Each a little larger than its room, into the walls around it, so that two rooms with no wall
     // between them have no crack between their ceilings; open where a stair in the room goes up.
     const holes = [...region.holes, ...throughCeiling.filter((cut) => pointInPolygon(centreOf(cut), region.outline) && !region.holes.some((hole) => pointInPolygon(centreOf(cut), hole)))]
-    solids.push({ node, role: 'ceiling', outline: grown(region.outline, CEILING_REACH), ...(holes.length > 0 ? { holes } : {}), bottom: ceiling, top: ceiling + SLAB })
+    const outline = grown(region.outline, CEILING_REACH)
+    // As high as the highest of the walls round it, whose faces it reaches into: a taller wing, or a
+    // garden wall, elsewhere on the page leaves no gap over the walls of this room for light to come through.
+    const box = boundsOfPoints(outline)
+    const round = wallParts.filter((part) => box && boundsTouch(boundsOfPoints(part.outline)!, box) && part.outline.some((p) => pointInPolygon(p, outline)))
+    const height = round.length > 0 ? Math.max(...round.map((part) => part.top)) : ceiling
+    solids.push({ node, role: 'ceiling', outline, ...(holes.length > 0 ? { holes } : {}), bottom: height, top: height + SLAB })
   }
   return solids
 }

@@ -19,7 +19,22 @@ function stepToSvg({ prim, stroke, fill, widthScale, widthExtra, seam }: PaintSt
   if (prim.kind === 'text') {
     const turn = prim.rotation ? ` transform="rotate(${num(prim.rotation)} ${num(prim.x)} ${num(prim.y)})"` : ''
     const anchor = (prim.align === 'center' ? ' text-anchor="middle"' : prim.align === 'right' ? ' text-anchor="end"' : '') + (prim.font ? ` font-family="${esc(prim.font)}"` : '') + (prim.bold ? ' font-weight="bold"' : '')
-    return `<text x="${num(prim.x)}" y="${num(prim.y)}" font-size="${num(prim.size)}"${colour('fill', prim.stroke ?? 'black')}${anchor}${turn}>${esc(prim.text)}</text>`
+    // Runs set apart are pieces of the line in a row, which SVG lays out one after the other as it would plain words.
+    const words = prim.runs
+      ? prim.runs
+          .map((run) => {
+            const lines = [run.underline ? 'underline' : '', run.strike ? 'line-through' : ''].filter(Boolean).join(' ')
+            const set =
+              (run.scale !== undefined ? ` font-size="${num(prim.size * run.scale)}"` : '') +
+              (run.bold !== undefined ? ` font-weight="${run.bold ? 'bold' : 'normal'}"` : '') +
+              (run.italic ? ' font-style="italic"' : '') +
+              (lines ? ` text-decoration="${lines}"` : '') +
+              (run.color !== undefined ? colour('fill', run.color) : '')
+            return set ? `<tspan${set}>${esc(run.text)}</tspan>` : esc(run.text)
+          })
+          .join('')
+      : esc(prim.text)
+    return `<text x="${num(prim.x)}" y="${num(prim.y)}" font-size="${num(prim.size)}"${colour('fill', prim.stroke ?? 'black')}${anchor}${turn}${prim.runs ? ' xml:space="preserve"' : ''}>${words}</text>`
   }
   if (prim.kind === 'image') {
     const turn = prim.rotation ? ` transform="rotate(${num(prim.rotation)} ${num(prim.x)} ${num(prim.y)})"` : ''

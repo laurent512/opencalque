@@ -4,7 +4,9 @@ import { leavesOf, rootOf } from './document'
 import { distToSegment, pointInPolygon, type Vec2 } from './geometry'
 import type { Op } from './ops'
 import type { Document, Node, NodeOf } from './schema'
-import { wallOutline } from './walls'
+import { distToBody } from './walls/course'
+import { wallOutline } from './walls/outline'
+import { drawnWith, wallIndex, wallsOver } from './walls/spatial'
 
 /**
  * Rooms are found, not stored. A `room` node is only a point with a name; the space it stands for
@@ -159,6 +161,85 @@ export function middleOf(region: Region): Vec2 {
 const roomsIn = (doc: Document, parentId: string): NodeOf<'room'>[] => {
   const root = rootOf(doc, parentId)
   return root ? leavesOf(doc, root.id).filter((n): n is NodeOf<'room'> => n.type === 'room') : []
+}
+
+/** How far apart, in mm, the points looked at along the edge of a space are, to find what bounds it. */
+const SAMPLE = 250
+/** At most so many points looked at along one edge of a space. */
+const SAMPLES_PER_EDGE = 200
+
+/**
+ * The walls and dividers that bound a space of the plan of `parentId` (`roomRegions`), round its
+ * outline and its holes (a column standing in it, the walls of a room inside it): those within
+ * `GAP` of its edge, looked at every `SAMPLE` mm along it, in the order of the drawing.
+ */
+export function spaceBounds(doc: Document, parentId: string, region: Region): Node[] {
+  return span('rooms: what bounds a space', () => {
+    const index = wallIndex(doc, parentId)
+    const dividers = drawnWith(doc, parentId).filter((n): n is NodeOf<'divider'> => n.type === 'divider')
+    const found = new Set<Node>()
+    for (const ring of [region.outline, ...region.holes]) {
+      for (let i = 0; i < ring.length; i++) {
+        const [a, b] = [ring[i], ring[(i + 1) % ring.length]]
+        const steps = Math.min(SAMPLES_PER_EDGE, Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / SAMPLE)))
+        for (let k = 0; k < steps; k++) {
+          const t = (k + 0.5) / steps
+          const p = { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t }
+          for (const wall of wallsOver(index, p, GAP)) if (distToBody(p, wall) < GAP) found.add(wall)
+          for (const divider of dividers) if (distToSegment(p, divider.a, divider.b) < GAP) found.add(divider)
+        }
+      }
+    }
+    return [...found]
+  })
+}
+
+/** The walls and dividers round a room's space (`spaceBounds`), in the order of the drawing; none when its walls do not close. */
+export function roomBounds(doc: Document, room: NodeOf<'room'>): Node[] {
+  const region = room.parent ? roomAt(doc, room.parent, room) : null
+  return region && room.parent ? spaceBounds(doc, room.parent, region) : []
+}
+
+/**
+ * The rooms that go with nodes moved by `d` (`moved`, groups taken apart): a room not moved itself
+ * whose space is bounded only by walls and dividers that are (`spaceBounds`), so that the space
+ * goes whole and its name goes with it rather than being left behind in no space. A room whose
+ * space is bounded by anything else as well (a wall that stays, one stretched to follow, a column
+ * standing in it) stays where it is: its space changes shape rather than moving. `doc` is the
+ * drawing before the move.
+ */
+export function roomFollowOps(doc: Document, moved: Node[], d: Vec2): Op[] {
+  if (Math.hypot(d.x, d.y) < 1e-9) return []
+  const going = new Set(moved.map((n) => n.id))
+  const bounding = moved.filter((n): n is NodeOf<'wall'> | NodeOf<'divider'> => n.type === 'wall' || n.type === 'divider')
+  if (bounding.length === 0) return []
+  return span('rooms follow', () => {
+    const ops: Op[] = []
+    const roots = new Map<string, string>()
+    for (const node of bounding) {
+      const root = rootOf(doc, node.parent)
+      if (root && node.parent && !roots.has(root.id)) roots.set(root.id, node.parent)
+    }
+    // The boxes of what moves, grown by the gap taken as touching: a space none of them reaches is not looked at.
+    const boxes = bounding.map((n) => {
+      const pad = (n.type === 'wall' ? n.thickness + Math.abs(n.bulge ?? 0) : 0) + GAP
+      return { x0: Math.min(n.a.x, n.b.x) - pad, x1: Math.max(n.a.x, n.b.x) + pad, y0: Math.min(n.a.y, n.b.y) - pad, y1: Math.max(n.a.y, n.b.y) + pad }
+    })
+    for (const parentId of roots.values()) {
+      for (const room of roomsIn(doc, parentId)) {
+        if (going.has(room.id)) continue
+        const region = roomAt(doc, room.parent, room)
+        if (!region) continue
+        const xs = region.outline.map((p) => p.x)
+        const ys = region.outline.map((p) => p.y)
+        const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
+        if (!boxes.some((b) => b.x0 <= x1 && b.x1 >= x0 && b.y0 <= y1 && b.y1 >= y0)) continue
+        const bounds = spaceBounds(doc, parentId, region)
+        if (bounds.length > 0 && bounds.every((n) => going.has(n.id))) ops.push({ op: 'update_node', id: room.id, patch: { x: room.x + d.x, y: room.y + d.y } })
+      }
+    }
+    return ops
+  })
 }
 
 /** Whether an edit made by `ops` touched what bounds spaces: walls and dividers. */

@@ -15,6 +15,16 @@ export type Surroundings = 'faded' | 'alone'
  * the drawing's own nodes, as they are; those seen through a placement are drawn where the
  * component's coordinates put them, and are snapped to by their drawn points and lines only.
  */
+/** Nothing around: one list, the same each time, so that the canvas sees nothing changed there. */
+const NOTHING: SceneItem[] = []
+/**
+ * What was found around last time: the scene of each place on the way, which the next is built from
+ * as the canvas builds its own (`buildScene`), what each item seen through placements became there,
+ * and the list given, given again while every item in it is the same.
+ */
+let kept: { scenes: Map<string, { doc: Document; scene: SceneItem[] }>; version: number; items: SceneItem[] } = { scenes: new Map(), version: 0, items: NOTHING }
+const placedItems = new WeakMap<SceneItem, { by: string; item: SceneItem }>()
+
 export function surroundings(
   doc: Document,
   page: string,
@@ -22,9 +32,12 @@ export function surroundings(
   through: string[] | null,
   registry: Registry,
   show: { groups: Surroundings; components: Surroundings },
+  /** The version of the extensions in use (`useExtensions`): what was drawn with others is drawn again. */
+  version = 0,
 ): SceneItem[] {
-  if (scope === page) return []
+  if (scope === page) return NOTHING
   const { steps, through: way } = scopePath(doc, page, scope, through)
+  const scenes = new Map<string, { doc: Document; scene: SceneItem[] }>()
   const out: SceneItem[][] = []
   // Undoing the placements crossed so far, the outermost first: what is out there is placed by them.
   let undo: Transform[] = []
@@ -47,10 +60,25 @@ export function surroundings(
       undo = [back, ...undo]
       leading = placement.id
     }
-    const items = buildScene(doc, outer.id, registry).filter((item) => item.id !== leading)
-    out.unshift(undo.length === 0 ? items : items.map((item) => placedBack(item, undo)))
+    const scene = buildScene(doc, outer.id, registry, kept.version === version ? kept.scenes.get(outer.id) : undefined)
+    scenes.set(outer.id, { doc, scene })
+    const items = scene.filter((item) => item.id !== leading)
+    const by = JSON.stringify(undo)
+    out.unshift(undo.length === 0 ? items : items.map((item) => placedOnce(item, undo, by)))
   }
-  return out.flat()
+  const items = out.flat()
+  const same = items.length === kept.items.length && items.every((item, i) => item === kept.items[i])
+  kept = { scenes, version, items: same ? kept.items : items.length === 0 ? NOTHING : items }
+  return kept.items
+}
+
+/** `placedBack`, worked out once for an item and the same placements. */
+function placedOnce(item: SceneItem, undo: Transform[], by: string): SceneItem {
+  const known = placedItems.get(item)
+  if (known?.by === by) return known.item
+  const placed = placedBack(item, undo)
+  placedItems.set(item, { by, item: placed })
+  return placed
 }
 
 /**

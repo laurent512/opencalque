@@ -55,4 +55,19 @@ describe('what is shown around what is being edited', () => {
     expect(ids(surroundings(doc, 'page_1', 'basin', ['sink_1'], registry, faded))).toEqual(['around:beside', 'around:counter', 'rim'])
     expect(ids(surroundings(doc, 'page_1', 'basin', ['sink_1'], registry, { groups: 'faded', components: 'alone' }))).toEqual(['rim'])
   })
+
+  it('is the same list while nothing around changes, so that the canvas paints again only what an edit changed', () => {
+    expect(surroundings(doc, 'page_1', 'page_1', [], registry, faded)).toBe(surroundings(doc, 'page_1', 'page_1', [], registry, faded))
+    const inGroup = surroundings(doc, 'page_1', 'kitchen', [], registry, faded)
+    const typed = applyOps(doc, [{ op: 'update_node', id: 'counter', patch: { b: { x: 2000, y: 600 } } }] as Op[])
+    expect(surroundings(typed, 'page_1', 'kitchen', [], registry, faded)).toBe(inGroup)
+    const inSink = surroundings(typed, 'page_1', 'sink', ['sink_1'], registry, faded)
+    const drained = applyOps(typed, [{ op: 'update_node', id: 'drain', patch: { b: { x: 350, y: 100 } } }] as Op[])
+    expect(surroundings(drained, 'page_1', 'sink', ['sink_1'], registry, faded)).toBe(inSink)
+    // What changed around is there as it is now.
+    const moved = applyOps(typed, [{ op: 'update_node', id: 'beside', patch: { b: { x: 1500, y: 0 } } }] as Op[])
+    const now = surroundings(moved, 'page_1', 'kitchen', [], registry, faded)
+    expect(now).not.toBe(inGroup)
+    expect(now[0].node).toBe(moved.nodes.beside)
+  })
 })

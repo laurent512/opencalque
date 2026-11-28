@@ -207,6 +207,15 @@ export const selectDown: Press = (c, e, at, world) => {
     c.gesture = { kind: 'marquee', start: world, keep: adding ? s.selection : [] }
     return
   }
+  // Inside the box around several things selected, a drag moves them all, even when it starts on
+  // something else (the name of a room whose walls are selected): a click there still picks it.
+  if (!adding && s.selection.length > 1 && !s.selection.includes(hit.id)) {
+    const box = gripBox(c)
+    if (box && frameContains(box, world, 6 / s.view.zoom)) {
+      c.gesture = { kind: 'press', at, start: world, nodes: s.selection.map((id) => s.doc.nodes[id]), picks: hit.id }
+      return
+    }
+  }
   let ids = s.selection
   if (adding) ids = ids.includes(hit.id) ? ids.filter((id) => id !== hit.id) : [...ids, hit.id]
   else if (!ids.includes(hit.id)) ids = [hit.id]
@@ -686,6 +695,7 @@ export const hover: Move<'idle'> = (c, _g, _e, at, world, out) => {
 
 export const pressUp: Release<'press'> = (c, g) => {
   if (g.beside) select([])
+  if (g.picks) select([g.picks])
   c.gesture = { kind: 'idle' }
 }
 

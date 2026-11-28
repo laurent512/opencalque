@@ -3,7 +3,7 @@ import { span } from '@opencalque/core'
 import { useWindows } from '../windows'
 import { stopBrowsing } from '../actions/instances'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { type NodeOf, type Primitive, depthOf, dist, elevationItemsOf, elevationSides, elevationSplits, lookedAt, viewScale, rootOf, seenArea, shownInElevations, gridlineBubbles, wallEndState, boundsFrame, buildScene, connectedWalls, frameContains, frameGrips, hitTest, kindOf, modifierKind, modifierParams, newId, placedScene, resizeFrame, sceneAfterViewpoints, rotate, sceneBounds, turnedBox, wallEdgeLines, wallLength, wallMiddle } from '@opencalque/core'
+import { type NodeOf, type Primitive, type SceneItem, depthOf, dist, elevationItemsOf, elevationSides, elevationSplits, lookedAt, viewScale, rootOf, seenArea, shownInElevations, gridlineBubbles, wallEndState, boundsFrame, buildScene, connectedWalls, roomBounds, frameContains, frameGrips, hitTest, kindOf, modifierKind, modifierParams, newId, placedScene, resizeFrame, sceneAfterViewpoints, rotate, sceneBounds, turnedBox, wallEdgeLines, wallLength, wallMiddle } from '@opencalque/core'
 import { t } from '../i18n'
 import { finishTextEdit, zoomToFit } from '../actions'
 import { commandFor, onCommand } from '../commands'
@@ -99,7 +99,7 @@ export function CanvasView() {
   const editGroups = usePrefs((p) => p.editGroups)
   const editComponents = usePrefs((p) => p.editComponents)
   const around = useMemo(
-    () => surroundings(doc, page, scope, through, registry, { groups: editGroups, components: editComponents }),
+    () => surroundings(doc, page, scope, through, registry, { groups: editGroups, components: editComponents }, extensionsVersion),
     [doc, page, scope, through, editGroups, editComponents, extensionsVersion],
   )
   const snappable = useMemo(() => (around.length > 0 ? [...scene, ...around] : scene), [scene, around])
@@ -323,6 +323,9 @@ export function CanvasView() {
   // next, so that the painter can keep the drawing it painted from it (`drawScene`). Each viewpoint
   // of the page paints the picture of its view in its frame, where it is in the stacking order, a
   // white sheet under it: what is stacked over it in Structure shows over it (`viewPictures`).
+  // Each viewpoint's frame as last painted, kept while it and its place are the same, so that the
+  // painter sees nothing changed there and paints again only what an edit changed (`changedRect`).
+  const framed = useRef(new Map<string, { item: SceneItem; at: string; drawn: SceneItem }>())
   const drawnScene = useMemo(() => {
     const typed = editingId ? shown.map((item) => (item.id === editingId ? { ...item, prims: withoutTyped(item.prims, editingBubble) } : item)) : shown
     const cameras = typed.filter((item) => item.node.type === 'camera' && !item.foreign)
@@ -331,10 +334,15 @@ export function CanvasView() {
     return typed.map((item) => {
       const frame = item.node.type === 'camera' && !item.foreign ? frames.get(item.id) : undefined
       if (!frame) return item
+      const at = `${frame.x},${frame.y},${frame.width},${frame.height}`
+      const kept = framed.current.get(item.id)
+      if (kept && kept.item === item && kept.at === at) return kept.drawn
       const sheet: Primitive = { kind: 'path', points: [{ x: frame.x, y: frame.y }, { x: frame.x + frame.width, y: frame.y }, { x: frame.x + frame.width, y: frame.y + frame.height }, { x: frame.x, y: frame.y + frame.height }], closed: true, fill: '#ffffff', stroke: 'none', screen: true }
       const picture: Primitive = { kind: 'image', x: frame.x, y: frame.y, width: frame.width, height: frame.height, href: `view:${item.id}`, screen: true }
       // What it keeps for printing (its picture, `picture`) is not shown: the view is drawn live; its eye is.
-      return { ...item, prims: [sheet, picture, ...item.prims.filter((p) => p.screen)] }
+      const drawn = { ...item, prims: [sheet, picture, ...item.prims.filter((p) => p.screen)] }
+      framed.current.set(item.id, { item, at, drawn })
+      return drawn
     })
   }, [shown, editingId, editingBubble, doc])
 
@@ -346,8 +354,11 @@ export function CanvasView() {
       canvas.height = viewport.height * dpr
     }
     // The words being typed are shown by their editor instead; the rest of the object stays drawn.
-    span('paint canvas', () => drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, selection, drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), inViewSplits: inViewGrips.flatMap(({ item, splits }) => splits.map((y) => ({ box: item.box, y }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? selectionLabels, titles, frames, corner, grips: tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: frame && { grips: frame.grips, up: frame.up }, box: overlay.box ?? ownBox, edgeHover: edgeLines, wallLinks, clearances: clearanceLines, flips, controls }, showGrid, palette, around, grid))
-  }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, grid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines, flips, inViews, inViewGrips, viewLines, drawnHandles])
+    // Its box is the editor's, outlined: the selection's box, grips and sizes would be a second one.
+    const typing = editingId !== undefined
+    const picked = typing ? [] : selection
+    span('paint canvas', () => drawScene(canvas.getContext('2d')!, { ...viewport, dpr }, view, drawnScene, picked, typing ? [] : drawnHandles, { ...overlay, inViews, inViewGrips: inViewGrips.flatMap(({ item, sides }) => sides.map((side) => ({ box: item.box, side }))), inViewSplits: inViewGrips.flatMap(({ item, splits }) => splits.map((y) => ({ box: item.box, y }))), viewLines, viewWords: { start: t('Left'), end: t('Right'), front: t('Front') }, labels: overlay.labels ?? (typing ? [] : selectionLabels), titles, frames, corner, grips: !typing && tool === 'select' && !roomsOnly(doc, selection) && !lockedAmong(doc, selection), boxless: roomsOnly(doc, selection), frame: !typing && frame ? { grips: frame.grips, up: frame.up } : null, box: overlay.box ?? (typing ? null : ownBox), edgeHover: edgeLines, wallLinks, clearances: clearanceLines, flips, controls }, showGrid, palette, around, grid))
+  }, [drawnScene, around, view, viewport, selection, handles, frame, ownBox, selectionLabels, titles, frames, corner, overlay, showGrid, grid, palette, pictures, tool, edgeLines, wallLinks, clearanceLines, flips, inViews, inViewGrips, viewLines, drawnHandles, editingId])
 
   // Lets the quick bar finish the shape in progress with the sizes typed there.
   useEffect(() => {
@@ -466,11 +477,15 @@ export function CanvasView() {
     const hit = hitTest(c.scene, toWorld(local(c, e), s.view), 5 / s.view.zoom)
     // A double-click goes inside what was clicked (a component, a group, the words of a text), or,
     // on a wall, takes in the walls joined to it end to end: its run, then, once that is selected,
-    // every wall that holds together with it. Cutting a wall in two is the Split tool's.
+    // every wall that holds together with it; on a room's name, takes the walls and dividers round
+    // its space, to move or change them together (the room goes with them). Cutting a wall in two is the Split tool's.
     if (hit?.node.type === 'wall') {
       const run = connectedWalls(s.doc, hit.node)
       const whole = run.every((id) => s.selection.includes(id)) && s.selection.length === run.length
       select(whole ? connectedWalls(s.doc, hit.node, true) : run)
+    } else if (hit?.node.type === 'room') {
+      const bounds = roomBounds(s.doc, hit.node).map((n) => n.id)
+      if (bounds.length > 0) select(bounds)
     } else if (hit?.node.type === 'instance') editComponent(hit.node.component, hit.node)
     // Into a view, to draw and change its dimensions and notes, in its own coordinates.
     else if (hit?.node.type === 'elevation' && hit.id === hit.node.id) editComponent(hit.id)

@@ -110,6 +110,65 @@ export interface TextPrim extends PrimStyle {
   /** CSS font family. */
   font?: string
   bold?: boolean
+  /**
+   * The line in pieces set apart (rich text), one after the other from where the line starts:
+   * `text` is still all of it. What a run leaves out is as the primitive says; its `scale`
+   * multiplies `size`, so a transform that changes `size` changes the runs too.
+   */
+  runs?: TextRun[]
+}
+
+export interface TextRun {
+  text: string
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  strike?: boolean
+  scale?: number
+  /** Its colour; the primitive's `stroke` otherwise. */
+  color?: string
+}
+
+/** The size, weight and slant a run of a text is drawn in: its own where it has them, the text's otherwise. */
+export function runLook(p: TextPrim, run: TextRun): { size: number; bold: boolean; italic: boolean } {
+  return { size: p.size * (run.scale ?? 1), bold: run.bold ?? !!p.bold, italic: !!run.italic }
+}
+
+/** The runs of a text: its own, or the whole of it as one. */
+export const textRuns = (p: TextPrim): TextRun[] => p.runs ?? [{ text: p.text }]
+
+/**
+ * Widths of the printable ASCII characters in Helvetica, in thousandths of the font size: what the
+ * PDF sets its words with, and close to the sans-serif the editor draws them in (Segoe UI, Arial).
+ */
+export const HELVETICA_WIDTHS = [
+  278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556, 1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500,
+  667, 556, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556, 333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556, 556, 556, 333, 500, 278, 556, 500,
+  722, 500, 500, 500, 334, 260, 334, 584,
+]
+
+/** Whether a character is written a whole size wide: those of Chinese, Japanese and Korean, and the full-width forms. */
+const fullWidth = (code: number) => (code >= 0x2e80 && code <= 0xa4cf) || (code >= 0xac00 && code <= 0xd7a3) || (code >= 0xf900 && code <= 0xfaff) || (code >= 0xff00 && code <= 0xff60)
+
+/** How much wider or narrower than Helvetica's the letters of a family are, about: a serif one's narrower, a condensed one's much narrower. */
+const familyWidth = (font: string | undefined): number => (!font ? 1 : /narrow|condensed/i.test(font) ? 0.82 : /serif/i.test(font) && !/sans/i.test(font) ? 0.9 : 1)
+
+/**
+ * About how wide a run is: letter by letter, at Helvetica's widths (a space or an i is much
+ * narrower than an m), each letter of a fixed-width font 0.6 of the size, bold a little wider.
+ * Exact metrics depend on the renderer's font, which the core does not have; this is what the box
+ * of a text, its selection and what it is picked by, are drawn from, and it was wider than the
+ * words on screen when every letter was counted 0.55 of the size.
+ */
+export const runWidth = (p: TextPrim, run: TextRun): number => {
+  const look = runLook(p, run)
+  if (p.font && /mono/i.test(p.font)) return [...run.text].length * look.size * 0.6
+  let thousandths = 0
+  for (const char of run.text) {
+    const code = char.codePointAt(0)!
+    thousandths += code >= 32 && code < 127 ? HELVETICA_WIDTHS[code - 32] : fullWidth(code) ? 1000 : 556
+  }
+  return (thousandths / 1000) * look.size * familyWidth(p.font) * (look.bold ? 1.08 : 1)
 }
 
 export interface ImagePrim extends PrimStyle {
@@ -177,13 +236,15 @@ function transformGeometry(p: Primitive, t: Transform): Primitive {
 
 /** Approximate outline of a text primitive; exact metrics depend on the renderer's font. */
 function textCorners(p: TextPrim): Vec2[] {
-  const w = p.text.length * p.size * (p.bold ? 0.6 : 0.55)
+  const runs = textRuns(p)
+  const w = runs.reduce((sum, run) => sum + runWidth(p, run), 0)
+  const tall = p.runs ? Math.max(...runs.map((run) => runLook(p, run).size)) : p.size
   const x0 = p.align === 'center' ? -w / 2 : p.align === 'right' ? -w : 0
   const local = [
-    { x: x0, y: -p.size },
-    { x: x0 + w, y: -p.size },
-    { x: x0 + w, y: p.size * 0.25 },
-    { x: x0, y: p.size * 0.25 },
+    { x: x0, y: -tall },
+    { x: x0 + w, y: -tall },
+    { x: x0 + w, y: tall * 0.25 },
+    { x: x0, y: tall * 0.25 },
   ]
   return local.map((q) => applyTransform(q, { x: p.x, y: p.y, rotation: p.rotation }))
 }

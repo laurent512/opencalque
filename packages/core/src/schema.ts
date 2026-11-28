@@ -6,7 +6,7 @@ z.config({ jitless: true })
 export const FORMAT = 'opencalque'
 /** What `format` was before the project was renamed. Such drawings are still read. */
 export const FORMER_FORMAT = 'opencad'
-export const FORMAT_VERSION = 7
+export const FORMAT_VERSION = 8
 
 const Id = z.string().min(1)
 
@@ -199,7 +199,17 @@ export const WallEdgeSchema = z.object({
 export const NodeSchema = z
   .discriminatedUnion('type', [
     z
-      .object({ ...base, type: z.literal('page'), wallHeight: z.number().positive().optional().describe('How high the walls of this page stand, in mm, unless a wall gives its own. Used to measure wall faces; nothing is drawn with it.') })
+      .object({
+        ...base,
+        type: z.literal('page'),
+        wallHeight: z.number().positive().optional().describe('How high the walls of this page stand, in mm, unless a wall gives its own. Used to measure wall faces; nothing is drawn with it.'),
+        north: z
+          .number()
+          .min(-360)
+          .max(360)
+          .optional()
+          .describe("Which way true north is on this page's plan, in degrees clockwise from up: 90 when north is to the right. Where the sun shines from (\"sun\") depends on it. Left out, 0: north is up."),
+      })
       .describe('A drawing sheet. Top-level container.'),
     z
       .object({
@@ -266,6 +276,7 @@ export const NodeSchema = z
         y: z.number(),
         size: z.number().positive().optional().describe('Size of the name and area written at (x, y), in mm. Defaults to 250.'),
         showArea: z.boolean().optional().describe('Whether the floor area is written under the name. Defaults to true.'),
+        open: z.boolean().optional().describe('true: open to the sky (a courtyard, a terrace between walls): it has no ceiling, in 3D views and for the sun, which lights its floor. Every other space walls close has one, a room named there or not. Defaults to false.'),
         showPerimeter: z.boolean().optional().describe('Whether how far it is round the floor (along the faces of its walls, doors included) is written under the name and area, in m or ft as the drawing settings say. Defaults to false.'),
         system: z.enum(['metric', 'imperial']).optional().describe("'imperial' writes the floor area in square feet, 'metric' in square metres, in place of the drawing's \"settings\". Left out (as it should be), the drawing's."),
         decimal: z.enum(['.', ',']).optional().describe("The decimal separator of the area, in place of the drawing's \"settings\". Left out (as it should be), the drawing's."),
@@ -323,6 +334,7 @@ export const NodeSchema = z
         eyeHeight: z.number().nonnegative().optional().describe('How high above the floor the eye is, in mm. Defaults to 1500.'),
         pitch: z.number().min(-60).max(60).optional().describe('How far it looks up (positive) or down (negative) from level, in degrees. Defaults to 0: level, vertical lines staying vertical.'),
         page: Id.optional().describe('The id of the page whose plan it looks at, when its view is shown on another page (where this node is). Left out, the plan of the page it is on.'),
+        sun: Id.optional().describe('The id of the sun ("sun") its view is lit by, among those on the plan it looks at. Left out, or one that is not there, the first on that plan; with none, a soft light of its own.'),
         fixed: z.boolean().optional().describe('true keeps where it stands and the way it looks: in the editor, dragging in its view or the wheel over it does not move it, nor does dragging its eye on the plan. Its values set here still change it. Left out, free.'),
         frame: z
           .object({ x: z.number(), y: z.number(), width: z.number().positive(), height: z.number().positive().optional() })
@@ -332,6 +344,24 @@ export const NodeSchema = z
       })
       .describe(
         'A viewpoint: someone standing at a, looking towards b (level, or tilted up or down by pitch), as a photograph of the room would be taken. Drawn on the plan as a dot and the lines of what it sees; the editor shows the view it takes of the walls, doors, windows and furniture, raised to their heights, as a picture to give an image model with a description of what is in view.',
+      ),
+    z
+      .object({
+        ...base,
+        type: z.literal('sun'),
+        x: z.number(),
+        y: z.number(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("The day, as 'YYYY-MM-DD': '2026-06-21'."),
+        time: z.string().regex(/^\d{1,2}:\d{2}$/).describe("The hour on the clocks of the site (its time zone, summer time included), as 'HH:MM': '15:30'."),
+        radius: z.number().positive().optional().describe('How large the circle of the sky it draws is, in mm, from (x, y). Defaults to 2000.'),
+        size: z.number().positive().optional().describe('The size of the hours written along its path, in mm, and of N in proportion. Left out, in proportion to its radius.'),
+        reach: z.number().min(0.25).max(4).optional().describe('How far its shade reaches, times as far as the sun at that moment casts it: the sun is drawn that much lower (more) or higher (less), on the plan and in 3D views, the patches of sun through the openings going with it. Defaults to 1, the shade of the real sun.'),
+        shadows: z.boolean().optional().describe('false leaves out the shade and the sunlit floors it draws on the plan. Drawn when left out.'),
+        shade: z.string().optional().describe('The colour of the shade it draws on the plan, see-through when written with eight hex digits (its last two the opacity). Left out, a see-through grey-blue.'),
+        sunlit: z.string().optional().describe('The colour of the floors it lights through the doors and windows, see-through as the shade is. Left out, a see-through yellow.'),
+      })
+      .describe(
+        "The sun at a moment: on the plan of its page, the sky round (x, y) as seen from above (the horizon its circle, north as the page says, the day's path of the sun with its hours, the sun where it is at that hour), and the shade it casts of the walls, ceilings and objects raised to their heights, with the floors it lights through the doors and windows. Where the building is, its latitude, longitude and time zone, is the drawing's (\"settings\", site). A viewpoint looking at the page is lit by it. There may be several, one for each moment compared; each draws its own shade.",
       ),
     z
       .object({
@@ -431,6 +461,23 @@ export const NodeSchema = z
         font,
         bold: z.boolean().optional(),
         align: z.enum(['left', 'center', 'right']).optional().describe("Which part of each line is at x: its left end (the default), its middle, or its right end."),
+        spans: z
+          .array(
+            z.object({
+              from: z.number().int().nonnegative(),
+              to: z.number().int().nonnegative(),
+              bold: z.boolean().optional(),
+              italic: z.boolean().optional(),
+              underline: z.boolean().optional(),
+              strike: z.boolean().optional(),
+              scale: z.number().positive().optional().describe('Times the size of the text.'),
+              color: z.string().optional().describe("A colour, as the style's stroke is written."),
+            }),
+          )
+          .optional()
+          .describe(
+            'Parts of the text set apart (rich text): each covers the characters of `text` from `from` to `to` (excluded, counted as JavaScript counts a string) and says only what it changes. When the words change, give the spans again.',
+          ),
       })
       .describe(
         'Text anchored at the left end of the baseline of its first line; a line break in the text starts a new line below. Size is the font size in mm. These fields are filled in when it is drawn: {date}, {page} (name of the page it is on), {page-number}, {pages} (how many pages there are), {document}.',
@@ -569,6 +616,14 @@ export const NodeSchema = z
 export const DrawingSettingsSchema = z.object({
   system: z.enum(['metric', 'imperial']).optional().describe("'imperial': areas in square feet, and the lengths, volumes and thicknesses of tables of quantities in feet and inches. Defaults to 'metric' (square metres, metres)."),
   decimal: z.enum(['.', ',']).optional().describe("The decimal separator of the areas, tables and dimensions. Defaults to '.'."),
+  site: z
+    .object({
+      latitude: z.number().min(-90).max(90).describe('In degrees, north positive: 48.857 for Paris.'),
+      longitude: z.number().min(-180).max(180).describe('In degrees, east positive: 2.352 for Paris, -74.006 for New York.'),
+      timeZone: z.string().optional().describe("The time zone of its clocks, as IANA names them ('Europe/Paris'), with its summer time. Left out, the hour of the longitude."),
+    })
+    .optional()
+    .describe('Where the building stands, for where the sun is ("sun"). Left out, a sun takes Paris.'),
   titleBlock: z
     .object({
       layout: z

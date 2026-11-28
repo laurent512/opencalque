@@ -13,7 +13,7 @@ import { msg, t } from '../i18n'
 import { MoreMenu } from '../MoreMenu'
 import { editComponent, showPage } from '../navigation'
 import { setPrefs, usePrefs } from '../prefs'
-import { apply, select, selectViewPart, setTool, useStore, type ViewPart } from '../store'
+import { apply, select, selectViewPart, setTool, useSettledDoc, useStore, type ViewPart } from '../store'
 import { EditableText, IconButton, labelOf, TypeIcon } from '../ui'
 import { useWindows } from '../windows'
 import { PanelActions } from '../panelHead'
@@ -24,7 +24,7 @@ const rename = (id: string) => (name: string) => apply([{ op: 'update_node', id,
  * colour of their own. Changing one here changes everything linked to it.
  */
 export function Colors() {
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const colors = colorsOf(doc)
   const update = (id: string, patch: Record<string, unknown>) => apply([{ op: 'update_color', id, patch }])
   const add = () => apply([{ op: 'add_color', color: { name: t('Colour {n}', { n: colors.length + 1 }), value: '#0d99ff' } }])
@@ -116,7 +116,7 @@ function useRowDrag(list: 'pages' | 'objects', id: string, enabled: boolean, tak
 
 /** A page in the list: a click shows it; dragged, it takes its place among the others. */
 function PageRow({ id, count }: { id: string; count: number }) {
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const scope = useStore((s) => s.scope)
   const page = doc.nodes[id]
   // The first page comes first: dropped above a page, a page goes before it.
@@ -137,7 +137,7 @@ function PageRow({ id, count }: { id: string; count: number }) {
 }
 
 export function Pages() {
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const pages = pagesOf(doc)
   return (
     <section className="section untitled">
@@ -154,7 +154,7 @@ export function Pages() {
 }
 
 export function Layers() {
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const active = useStore((s) => s.activeLayer)
   const layers = layersOf(doc)
   const update = (id: string, patch: Record<string, unknown>) => apply([{ op: 'update_layer', id, patch }])
@@ -220,9 +220,8 @@ const placeModel = (model: Variant) => (carried = false) => setTool('place', { t
  * the properties of a paper.
  */
 export function Components() {
-  const doc = useStore((s) => s.doc)
-  // While something is dragged the drawing changes at every move: the pictures follow once it is let go.
-  const drawn = useStore((s) => s.base ?? s.doc)
+  // As it stands outside a drag or a text being typed, which change it at every move or key: the list and its pictures follow once it is let go.
+  const doc = useSettledDoc()
   const selection = useStore((s) => s.selection)
   const version = useExtensions((s) => s.version)
   const view = usePrefs((p) => p.componentsView)
@@ -230,18 +229,18 @@ export function Components() {
   const components = componentsOf(doc).filter((c) => !c.sheet)
   const models = modelsOf(doc)
   const words = searchable(search).split(/\s+/).filter(Boolean)
-  const pictures = useMemo(() => new Map(componentsOf(drawn).map((c) => [c.id, svgUrl(toSVG(drawn, c.id, registry))])), [drawn, version])
+  const pictures = useMemo(() => new Map(componentsOf(doc).map((c) => [c.id, svgUrl(toSVG(doc, c.id, registry))])), [doc, version])
   const modelPictures = useMemo(
     () =>
       new Map(
-        modelsOf(drawn).map((m) => {
+        modelsOf(doc).map((m) => {
           const kind = registry.parametric.get(m.kind)
           return [m.key, kind ? parametricPicture(kind, m.props) : '']
         }),
       ),
-    [drawn, version],
+    [doc, version],
   )
-  const placed = useMemo(() => componentPlacements(drawn), [drawn])
+  const placed = useMemo(() => componentPlacements(doc), [doc])
   const unused = components.filter((c) => !placed.get(c.id)).length
   const chosen = new Set(selection.flatMap((id) => entryOf(doc.nodes[id]) ?? []))
   const browsing = useWindows((s) => s.browsing?.entry)
@@ -403,7 +402,7 @@ function linesOf(doc: Document, container: string, open: ReadonlySet<string>): L
  * the rows keep a column for it, so that a list without groups starts where the panel's title does.
  */
 function ObjectRow({ node, depth, open, toggle, show, twists }: { node: Node; depth: number; open: boolean; toggle: () => void; show: () => void; twists: boolean }) {
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const scope = useStore((s) => s.scope)
   const selection = useStore((s) => s.selection)
   const top = node.parent === scope
@@ -516,7 +515,7 @@ const PARTS: Record<'camera' | 'elevation', Record<ViewPart, string>> = {
  * faint, with that page's name, and a click there goes to it.
  */
 function PartRow({ node, part, depth, twists }: { node: NodeOf<'camera' | 'elevation'>; part: ViewPart; depth: number; twists: boolean }) {
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const scope = useStore((s) => s.scope)
   // The view selected whole (by its row, by its picture), both its parts are; picked by one, that one.
   const chosen = useStore((s) => s.selection.length === 1 && s.selection[0] === node.id && (s.viewPart === null || s.viewPart === part))
@@ -557,7 +556,7 @@ function PartRow({ node, part, depth, twists }: { node: NodeOf<'camera' | 'eleva
  * line is; it is moved in the order of its own page, not here.
  */
 function ForeignViewRow({ node, open, toggle }: { node: Node; open: boolean; toggle: () => void }) {
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const selected = useStore((s) => s.selection.includes(node.id))
   const own = rootOf(doc, node.parent)
   return (
@@ -589,7 +588,7 @@ function ForeignViewRow({ node, open, toggle }: { node: Node; open: boolean; tog
  * change.
  */
 export function Objects() {
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const scope = useStore((s) => s.scope)
   const selection = useStore((s) => s.selection)
   const [open, setOpen] = useState<ReadonlySet<string>>(new Set())

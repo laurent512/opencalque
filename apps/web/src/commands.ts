@@ -74,6 +74,7 @@ import { toggleTheme, useTheme } from './theme'
 import { labelOf } from './ui'
 import { checkForUpdate, useUpdate } from './updates'
 import { RESERVED_KEYS, readShortcutsFile, settleShortcuts, shortcutsFile } from './shortcuts'
+import { richEditor, SIZE_STEP } from './textFormat'
 
 /**
  * Everything the user can trigger, in one list. The command palette, the keyboard handler, the
@@ -121,6 +122,8 @@ const drawingLine = () => get().drawStep > 0 && ['line', 'curve', 'spline', 'wal
 /** Something is being dragged with the select tool: moved, or reshaped by one of its points. */
 const dragging = () => get().tool === 'select' && get().base !== null && !get().editingText
 const canHold = () => drawingLine() || dragging()
+/** A text is being typed in place, its words to be set apart (`textFormat.ts`). */
+const typingRich = () => richEditor() !== null
 /** Holds what is being drawn or dragged level or upright, or lets it go when it is already held that way. */
 const lockAxis = (axis: 'x' | 'y') => {
   useStore.setState({ axisLock: get().axisLock === axis ? null : axis })
@@ -156,7 +159,7 @@ function storeOverrides(overrides: Record<string, string[]>): void {
 const tool = (id: Tool, title: string, key: string, keywords?: string): Command => ({ id: `tool.${id}`, title, category: 'Tools', keys: [key], ...(keywords && { keywords }), run: () => setTool(id) })
 
 /** The categories commands are grouped under, listed here so that their names get translated. */
-export const CATEGORIES = [msg('General'), msg('File'), msg('Edit'), msg('Components'), msg('View'), msg('Panels'), msg('Tools'), msg('Pages'), msg('Layers'), msg('Insert'), msg('Extensions')]
+export const CATEGORIES = [msg('General'), msg('File'), msg('Edit'), msg('Components'), msg('View'), msg('Panels'), msg('Tools'), msg('Pages'), msg('Layers'), msg('Insert'), msg('Extensions'), msg('Text')]
 
 const panel = (id: PanelId, keys?: string[]): Command => ({
   id: `view.panel.${id}`,
@@ -169,6 +172,15 @@ const panel = (id: PanelId, keys?: string[]): Command => ({
 })
 
 const STATIC: Command[] = [
+  // While a text is typed in place: before every other command, so that their keys (Mod+I) are theirs there.
+  { id: 'text.bold', title: msg('Bold'), category: 'Text', keys: ['Mod+B'], global: true, when: typingRich, run: () => richEditor()?.toggle('bold') },
+  { id: 'text.italic', title: msg('Italic'), category: 'Text', keys: ['Mod+I'], global: true, when: typingRich, run: () => richEditor()?.toggle('italic') },
+  { id: 'text.underline', title: msg('Underline'), category: 'Text', keys: ['Mod+U'], global: true, when: typingRich, run: () => richEditor()?.toggle('underline') },
+  { id: 'text.strike', title: msg('Strikethrough'), category: 'Text', keys: ['Mod+Shift+X'], global: true, when: typingRich, run: () => richEditor()?.toggle('strike') },
+  { id: 'text.bigger', title: msg('Larger text'), category: 'Text', keys: ['Mod+Shift+>'], global: true, when: typingRich, run: () => richEditor()?.grow(SIZE_STEP) },
+  { id: 'text.smaller', title: msg('Smaller text'), category: 'Text', keys: ['Mod+Shift+<'], global: true, when: typingRich, run: () => richEditor()?.grow(1 / SIZE_STEP) },
+  { id: 'text.plain', title: msg('Clear formatting'), category: 'Text', keys: ['Mod+\\'], global: true, when: typingRich, run: () => richEditor()?.plain() },
+
   { id: 'palette.open', title: msg('Show all commands'), category: 'General', keys: ['Mod+K'], global: true, run: () => useCommands.setState({ paletteOpen: true }) },
   { id: 'shortcuts.reset', title: msg('Reset all keyboard shortcuts'), category: 'General', run: () => (storeOverrides({}), toast(t('Keyboard shortcuts reset'))) },
   { id: 'shortcuts.export', title: msg('Export keyboard shortcuts…'), category: 'General', keywords: 'export backup', run: exportShortcuts },
@@ -387,6 +399,8 @@ const STATIC: Command[] = [
   // It makes sections too: found by that word, in the user's language as well (`matchesCommand`).
   tool('elevation', msg('Elevation'), 'Shift+W', msg('section cut')),
   tool('camera', msg('Viewpoint'), 'Shift+P'),
+  // Found by the words of a shadow study too, in the user's language as well.
+  tool('sun', msg('Sun'), 'Shift+S', msg('shade shadow sunlight')),
   tool('connect', msg('Connect switches to lights'), 'Shift+C'),
   { id: 'tool.calibrate', title: msg('Set the scale of an imported plan'), category: 'Tools', run: () => setTool('calibrate') },
 
@@ -593,8 +607,10 @@ const SLIDER_KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 
  * after a slider was dragged or a box ticked.
  */
 function forTheField(e: KeyboardEvent): boolean {
-  // The app's dropdown (`Select`) is a button, its keys its own as a list's are.
-  const field = (e.target as HTMLElement).closest('input, textarea, select, .select')
+  // The app's dropdown (`Select`) is a button, its keys its own as a list's are: arrows, Enter, Space,
+  // letters; not Ctrl or Cmd with a key, so that Ctrl+Z undoes right after a choice in one.
+  const field = (e.target as HTMLElement).closest('input, textarea, select, .select, [contenteditable]')
+  if (field instanceof HTMLButtonElement && field.classList.contains('select') && (e.ctrlKey || e.metaKey)) return false
   if (!(field instanceof HTMLInputElement)) return field !== null
   if (field.type === 'checkbox' || field.type === 'radio' || field.type === 'button') return false
   return field.type !== 'range' || SLIDER_KEYS.includes(e.key)

@@ -230,6 +230,16 @@ const SETTINGS: ToolSettings = {
 }
 
 export const useStore = create<State>(() => ({ ...session(createDocument(), null), ...IDLE, ...SETTINGS, viewport: { width: 0, height: 0 } }))
+
+/**
+ * The drawing as it stands outside the preview under way (a drag, a text being typed): `base` while
+ * there is one, else `doc`. What lists what the drawing holds (the panels at the side, the chooser
+ * of its components, the Export window) reads this rather than `doc`, so that it is not drawn again
+ * at every key or movement of the pointer, which made typing on a large drawing lag; it catches up
+ * once the preview is committed or given up. What shows the preview itself (the canvas, Properties)
+ * reads `doc`.
+ */
+export const useSettledDoc = () => useStore((s) => s.base ?? s.doc)
 const get = useStore.getState
 const set = useStore.setState
 
@@ -238,15 +248,18 @@ function settle(s: State, doc: Document): Partial<State> {
   const page = doc.nodes[s.page]?.type === 'page' ? s.page : pagesOf(doc)[0].id
   const scopeNode = doc.nodes[s.scope]
   const scope = scopeNode && holdsChildren(scopeNode) ? s.scope : page
+  // What is selected is in the place being edited; but something an elevation shows, inside a group
+  // there, is picked where it is shown and stays selected while it stays in its group.
+  const selection = s.selection.filter((id) => doc.nodes[id]?.parent === scope || (scope === s.scope && doc.nodes[id] !== undefined && doc.nodes[id].parent === s.doc.nodes[id]?.parent))
   return {
     doc,
     page,
     scope,
     through: scope === s.scope ? s.through : [],
     trail: scope === s.scope ? s.trail : null,
-    // What is selected is in the place being edited; but something an elevation shows, inside a group
-    // there, is picked where it is shown and stays selected while it stays in its group.
-    selection: s.selection.filter((id) => doc.nodes[id]?.parent === scope || (scope === s.scope && doc.nodes[id] !== undefined && doc.nodes[id].parent === s.doc.nodes[id]?.parent)),
+    // The same list when nothing left it: a new one, at every key typed or movement of a drag, drew
+    // again everything that shows the selection.
+    selection: selection.length === s.selection.length ? s.selection : selection,
     // A corner is a place, not an object: after an undo no wall may end there any more.
     corner: s.corner && wallEndsAt(doc, scope, s.corner).length > 0 ? s.corner : null,
     activeLayer: doc.layers[s.activeLayer] ? s.activeLayer : layersOf(doc)[0].id,
@@ -314,7 +327,31 @@ function appliedNow(doc: Document, ops: Op[]): { doc: Document; ops: Op[] } {
 export function applyOrThrow(ops: Op[]): void {
   const s = get()
   const done = applied(s.doc, ops)
+  if (holding) {
+    // One step of a value dragged in a field: shown as a preview is, from the drawing as it is now.
+    set({ ...settle(s, done.doc), base: s.base ?? s.doc })
+    pending = [...pending, ...done.ops]
+    return
+  }
   record(done.doc, s.base ? [...pending, ...done.ops] : done.ops)
+}
+
+/** Whether the edits applied now are the steps of a value dragged in a field (`holdEdits`). */
+let holding = false
+
+/**
+ * Makes the edits applied from now until `releaseEdits` one gesture, as a drag on the canvas is: a
+ * value dragged with Alt in a field changes the drawing at every pixel, and as separate edits each
+ * drew again what waits for an edit to be over (the panels at the side, the 3D views, the autosave).
+ * Shown as they come, they are recorded as one step when released.
+ */
+export function holdEdits(): void {
+  holding = true
+}
+
+export function releaseEdits(): void {
+  holding = false
+  commit()
 }
 
 /** Applies operations as one undoable step. Reports failures to the user and returns false. */

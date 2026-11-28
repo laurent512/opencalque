@@ -4,10 +4,26 @@ What changed in each version of OpenCalque. The app shows this list under About,
 a version becomes the description of its release on GitHub. Newest first; one `## version — date`
 heading per version, then `### New`, `### Improved` or `### Fixed` with one line per change.
 
-## Unreleased
+## 2.4.0 — 2026-11-28
+
+### New
+- The sun: the Sun tool (`Shift+S`, with the room tools) puts a sun beside the plan, on a day and at an hour set in its Properties or by dragging it along its path through the sky. It draws the shade of the building on the ground round it and the patches of sun on the floors through the doors and windows, soft-edged and as long as you set them (the real sun's length unless you say otherwise), the furniture and the other wings of the building in the way, in colours of your choice, and lights the 3D views with their shadows. Where the building is, first taken from the computer's time zone, goes for the whole drawing; which way north is, for each page. A drawing with a sun is saved in a new version of the format, which earlier versions of the app refuse to open, saying so. Asked for in #48.
+- Rich text: while a text is typed, a bar floats over it to make words larger or smaller, bold, italic, underlined, struck through or of another colour, to change the text's font and alignment, and to put a field ({page}, {date}…) where the caret is (Ctrl+B, Ctrl+I, Ctrl+U, Ctrl+Shift+X, Ctrl+Shift+> and <, Ctrl+\ to clear). The font is shown by letters written in it and the field by an icon. With every word selected, its colour is that of the whole text, which can follow the layer's or a shared colour. Ctrl+Z goes back through the typing a word at a time, a change of font, alignment or colour included, and Ctrl+Y forward again. These are no longer in the Properties panel of a text, its colour included, and nor are its words: a text is typed where it is, by a double-click on it. A text being typed stays exactly where it is drawn, in one box. The words keep their look in SVG and PDF exports; DXF gets the words without it, and versions before this one show them plain.
 
 ### Improved
+- A long list (the time zones) has a box at its top to find what you type in it, and is no taller than 360 pixels.
+- A value dragged with Alt in Properties changes the drawing as smoothly as a drag on the plan does: the side panels and the 3D views wait until it is let go, instead of being drawn again at every pixel.
+- In 3D views, every space the walls close has a ceiling, a room named there or not, as high as the walls round it (no longer as the highest wall on the page): a hall or a corridor seen through a door is no longer open to the sky. A courtyard or a terrace is made open to the sky in the Properties of its room.
+- Typing a text, and dragging, are smoother on a large drawing: each key or movement no longer draws the side panels again, nor the whole plan, only the part of it that changed (half as much work at each key on a drawing of 800 objects).
+- A double-click on a room's name selects the walls and dividers round it, to move or change them together.
+- Several things selected are dragged together from anywhere inside the box around them, even from something not selected (the name of a room whose walls are selected); a click there, without dragging, still picks what is under the pointer.
+- Panning or zooming right after opening a drawing with 3D views no longer stutters: the views wait until the plan stands still before they are first drawn, their first drawing takes a quarter of the time it did, and meanwhile each shows the picture it kept at the last save, softened.
 - The elevations of a room's walls follow the pointer, in their row, to be put down where you click, instead of being put down below the whole plan, often far from where you were looking.
+
+### Fixed
+- Ctrl+Z undoes right after a choice in a list: it did nothing until something else was clicked.
+- The box around a selected text is as wide as its words: every letter, a space or an i as much as an n, was counted more than half as wide as the text is tall, which made it a fifth wider than the box the text is typed in on a long line. Letters are now counted at the widths of the sans-serif they are drawn in.
+- Moving all the walls round a room takes the room with them: its name was left behind where the room had been, in no space, and with rooms put in by themselves the space moved got a second room.
 
 ## 2.3.0 — 2026-11-27
 

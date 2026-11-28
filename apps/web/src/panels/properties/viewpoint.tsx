@@ -1,12 +1,12 @@
 import { useMemo, useRef } from 'react'
 import { ClipboardCopy, Lock, LockOpen } from 'lucide-react'
-import { cameraPrompt, eyeHeightOf, focalOf, fovOf, fovOfFocal, pitchOf, type Camera, type Op } from '@opencalque/core'
+import { cameraPrompt, eyeHeightOf, focalOf, fovOf, fovOfFocal, lookedAt, pitchOf, rootOf, sunFor, sunsOf, type Camera, type Op } from '@opencalque/core'
 import { msg, t } from '../../i18n'
 import { platform } from '../../platform'
 import { usePrefs, setPrefs, type Prefs } from '../../prefs'
 import { Select } from '../../Select'
 import { apply, useStore } from '../../store'
-import { Field, YesNo } from '../../ui'
+import { Field, labelOf, YesNo } from '../../ui'
 import { toast } from '../../windows'
 import { framesOf, useSeen, type Look } from '../../perspective/seen'
 import { viewPicture } from '../../perspective/keep'
@@ -94,6 +94,7 @@ export function ViewCamera({ camera }: { camera: Camera }) {
         note={t('Up when positive, down when negative; level, vertical lines stay vertical')}
         onCommit={(deg: number) => apply(patch({ pitch: Math.max(-60, Math.min(60, Math.round(deg))) || undefined }))}
       />
+      <ViewSun camera={camera} />
       {/* Apart from Status, above, which locks the view where it is on the plan. */}
       <div className="field">
         <span>{t('Fixed in place')}</span>
@@ -107,6 +108,20 @@ export function ViewCamera({ camera }: { camera: Camera }) {
       </div>
       <p className="hint">{t('Fixed, the camera keeps where it stands and the way it looks: dragging in its view and the wheel over it no longer move it, nor dragging its eye on the plan. Status, above, locks the view where it is on the plan.')}</p>
     </>
+  )
+}
+
+/** The sun the view is lit by, among those on the plan it looks at; with none, how to have one. */
+function ViewSun({ camera }: { camera: Camera }) {
+  const doc = useStore((s) => s.doc)
+  const page = rootOf(doc, lookedAt(doc, camera))
+  const suns = page ? sunsOf(doc, page.id) : []
+  if (suns.length === 0) return <p className="hint">{t('With a sun on the plan (the Sun tool), the view is lit by it, at its day and hour, with its shade.')}</p>
+  return (
+    <div className="field">
+      <span>{t('Lit by')}</span>
+      <Select aria-label={t('Lit by')} value={sunFor(doc, camera, page!.id)?.id ?? ''} options={suns.map((sun) => ({ value: sun.id, label: labelOf(doc, sun) }))} onChange={(sun) => apply([{ op: 'update_node', id: camera.id, patch: { sun } }])} />
+    </div>
   )
 }
 

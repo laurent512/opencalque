@@ -334,6 +334,34 @@ test('puts a room in the space walls close, and another in the part a divider sp
   await expect.poll(async () => (await rooms()).map((n) => [n.name, n.x, n.y])).toEqual([['Room 01', 2000, 1500]])
 })
 
+test('selects the walls round a room by a double-click on its name, and the room goes with them when they are moved', async ({ page }) => {
+  const at = await blank(page)
+  await page.keyboard.press('w')
+  for (const [x, y] of [[0, 0], [4000, 0], [4000, 3000], [0, 3000], [0, 0]]) await click(page, at(x, y))
+  await page.keyboard.press('Escape')
+  // A wall beside the room, not round it.
+  await page.keyboard.press('w')
+  for (const [x, y] of [[-1500, 0], [-1500, 3000]]) await click(page, at(x, y))
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('v')
+  const rooms = async () => (await saved(page)).filter((n) => n.type === 'room')
+  await expect.poll(async () => (await rooms()).map((n) => [n.x, n.y])).toEqual([[2000, 1500]])
+  // Its name is written just above its point.
+  const selected = page.locator('[data-panel="objects"] .row.selected')
+  await page.mouse.dblclick(at(2000, 1450).x, at(2000, 1450).y)
+  await expect(selected).toHaveCount(4)
+  // Dragged, even by the room's name, they all go, the room with them, and no second room comes in.
+  await drag(page, at(2000, 1450), at(2000, 4950))
+  await expect.poll(async () => (await rooms()).map((n) => [n.x, n.y])).toEqual([[2000, 5000]])
+  const walls = (await saved(page)).filter((n) => n.type === 'wall')
+  expect(walls.filter((n) => n.a.y >= 3500)).toHaveLength(4)
+  expect(walls).toContainEqual(expect.objectContaining({ a: { x: -1500, y: 0 }, b: { x: -1500, y: 3000 } }))
+  // A click on the name, not a drag, picks the room.
+  await click(page, at(2000, 4950))
+  await expect(selected).toHaveCount(1)
+  await expect(selected).toContainText('Room 01')
+})
+
 test('dimensions the plan round its building with dimensions of its own, in a group, that follow the walls', async ({ page }) => {
   const at = await blank(page)
   await page.keyboard.press('w')

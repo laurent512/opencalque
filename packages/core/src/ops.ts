@@ -68,7 +68,7 @@ export type Op =
   | { op: 'update_preset'; id: string; patch: Record<string, unknown> }
   | { op: 'remove_preset'; id: string }
   | { op: 'add_asset'; asset: Omit<Asset, 'id'> & { id?: string } }
-  | { op: 'set_document'; name?: string; info?: Record<string, string | null>; settings?: { system?: 'metric' | 'imperial' | null; decimal?: '.' | ',' | null; titleBlock?: { layout?: 'corner' | 'strip'; labels?: Record<string, string> } | null; grid?: { spacing: number; divisions?: number } | null } }
+  | { op: 'set_document'; name?: string; info?: Record<string, string | null>; settings?: { system?: 'metric' | 'imperial' | null; decimal?: '.' | ',' | null; titleBlock?: { layout?: 'corner' | 'strip'; labels?: Record<string, string> } | null; grid?: { spacing: number; divisions?: number } | null; site?: { latitude: number; longitude: number; timeZone?: string } | null } }
 
 const patch = z
   .record(z.string(), z.unknown())
@@ -129,11 +129,12 @@ export const OpSchema = z.discriminatedUnion('op', [
           decimal: z.enum(['.', ',']).nullable().optional(),
           titleBlock: z.object({ layout: z.enum(['corner', 'strip']).optional(), labels: z.record(z.string(), z.string()).optional() }).nullable().optional(),
           grid: z.object({ spacing: z.number(), divisions: z.number().int().optional() }).nullable().optional(),
+          site: z.object({ latitude: z.number(), longitude: z.number(), timeZone: z.string().optional() }).nullable().optional(),
         })
         .optional(),
     })
     .describe(
-      'Renames the document and/or changes what it says about itself ("info": project, client, address, author), shown in title blocks, and/or how it writes its numbers and lays out its title blocks ("settings": system, decimal, titleBlock) and the grid the editor shows ("grid": spacing of its main lines in mm, and the divisions of each square). In "info" and "settings" each key replaces that entry and a null or empty value removes it.',
+      'Renames the document and/or changes what it says about itself ("info": project, client, address, author), shown in title blocks, and/or how it writes its numbers and lays out its title blocks ("settings": system, decimal, titleBlock), the grid the editor shows ("grid": spacing of its main lines in mm, and the divisions of each square) and where the building stands, for the sun ("site": latitude, longitude, timeZone). In "info" and "settings" each key replaces that entry and a null or empty value removes it.',
     ),
 ])
 
@@ -172,6 +173,18 @@ function gridSetting(value: unknown): { spacing: number; divisions?: number } {
   if (divisions !== undefined && (typeof divisions !== 'number' || !Number.isInteger(divisions) || divisions < 1 || divisions > GRID_DIVISIONS))
     throw new OpError(`The grid's divisions are a whole number from 1 to ${GRID_DIVISIONS}, not ${JSON.stringify(divisions)}.`)
   return { spacing, ...(divisions !== undefined && divisions > 1 ? { divisions } : {}) }
+}
+
+/** Where the building stands as a `set_document` gives it, checked: a latitude and a longitude in degrees, and a time zone. */
+function siteSetting(value: unknown): { latitude: number; longitude: number; timeZone?: string } {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) throw new OpError('The setting "site" is an object with "latitude", "longitude" (in degrees) and "timeZone".')
+  const { latitude, longitude, timeZone, ...rest } = value as Record<string, unknown>
+  const unknown = Object.keys(rest)[0]
+  if (unknown !== undefined) throw new OpError(`Unknown site setting "${unknown}". Use latitude, longitude or timeZone.`)
+  if (typeof latitude !== 'number' || !(latitude >= -90 && latitude <= 90)) throw new OpError(`The site's latitude is in degrees from -90 to 90 (north positive), not ${JSON.stringify(latitude)}.`)
+  if (typeof longitude !== 'number' || !(longitude >= -180 && longitude <= 180)) throw new OpError(`The site's longitude is in degrees from -180 to 180 (east positive), not ${JSON.stringify(longitude)}.`)
+  if (timeZone !== undefined && (typeof timeZone !== 'string' || timeZone.trim() === '')) throw new OpError(`The site's time zone is a name such as "Europe/Paris", not ${JSON.stringify(timeZone)}.`)
+  return { latitude, longitude, ...(typeof timeZone === 'string' ? { timeZone } : {}) }
 }
 
 /** Validates untrusted JSON into a list of operations. */
@@ -374,6 +387,8 @@ function checkNode(d: Document, node: Node): void {
   if (node.type === 'autodimensions' && node.dimensionStyle !== undefined && !d.dimensionStyles?.[node.dimensionStyle]) throw new OpError(`Unknown dimension style "${node.dimensionStyle}"`)
   // A viewpoint looks at the plan of its page, where its view is shown: inside a component it would see nothing and show nowhere.
   if (node.type === 'camera' && root.type === 'component') throw new OpError(`Node ${node.id}: a viewpoint goes on a page, not in a component: it looks at the plan of its page`)
+  // A sun shades the plan of its page, where its north is: inside a component it would have neither.
+  if (node.type === 'sun' && root.type === 'component') throw new OpError(`Node ${node.id}: a sun goes on a page, not in a component: it lights the plan of its page`)
   if (node.layer !== undefined && root.type === 'component') {
     throw new OpError(`Node ${node.id}: what is inside a component has no layer, each placement of the component giving its own. Leave "layer" out.`)
   }
@@ -598,8 +613,13 @@ function applyOp(d: Document, op: Op, batch: Batch): void {
             else settings[key] = gridSetting(value)
             continue
           }
+          if (key === 'site') {
+            if (value === null || value === undefined) delete settings[key]
+            else settings[key] = siteSetting(value)
+            continue
+          }
           const allowed = key === 'system' ? ['metric', 'imperial'] : key === 'decimal' ? ['.', ','] : null
-          if (!allowed) throw new OpError(`Unknown drawing setting "${key}". Use system, decimal, titleBlock or grid.`)
+          if (!allowed) throw new OpError(`Unknown drawing setting "${key}". Use system, decimal, titleBlock, grid or site.`)
           if (value === null || value === undefined) delete settings[key]
           else if (typeof value !== 'string' || !allowed.includes(value)) throw new OpError(`The setting "${key}" is ${allowed.map((one) => `"${one}"`).join(' or ')}, not "${String(value)}".`)
           else settings[key] = value

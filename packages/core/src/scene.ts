@@ -5,7 +5,7 @@ import { drawnSolid, kindOf, nodePrimitives, objectBacking, PAPER_EDGE, PAPER_FI
 import { mergedOutlines } from './merge'
 import { distToPrimitive, insidePrimitive, primitiveBounds, primitiveTouches, printedPrims, transformPrimitive, type Primitive } from './primitives'
 import type { Registry } from './registry'
-import type { Document, Node, NodeOf } from './schema'
+import { NODE_TYPES, type Document, type Node, type NodeOf } from './schema'
 import { hostWall } from './walls/openings'
 import { viewPlacement, viewsLookingAt } from './elevation'
 
@@ -92,7 +92,8 @@ export function buildScene(doc: Document, containerId: string, registry: Registr
  * What else in the drawing each type of thing is drawn from, by type: a wall from the walls it
  * meets, a room from the walls and dividers round it, a door or anything placed from the wall it is
  * in or against; a sheet from the pages, sheets and components it shows names of; a text from the
- * pages it may name; a link from what it joins; a table of quantities from what it counts. Not
+ * pages it may name; a link from what it joins; a table of quantities from what it counts; a sun
+ * from all that is raised, which casts its shade. Not
  * listed: drawn from itself alone. A view is drawn from all of the plan it looks at (`ANYTHING`).
  */
 const WALLS = ['wall', 'divider', 'parametric']
@@ -106,6 +107,8 @@ const DRAWN_FROM: Record<string, string[]> = {
   link: ['parametric', 'instance'],
   // What it counts: walls, floors, doors and windows, objects placed, and what holds or hides them.
   table: ['wall', 'divider', 'room', 'parametric', 'instance', 'group', 'component', 'page', 'paper'],
+  // The shade it casts, of everything raised; neither the other suns nor the viewpoints change it.
+  sun: NODE_TYPES.filter((type) => type !== 'sun' && type !== 'camera'),
 }
 const ANYTHING = new Set(['elevation', 'camera', 'autodimensions'])
 

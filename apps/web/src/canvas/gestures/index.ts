@@ -5,7 +5,7 @@ import { arcMove, drawDown, drawMove, drawUp, lineDown, offsetMove, polyMove, po
 import { angleDown, angleMove, measureDown, measureMove } from './measure'
 import { offsetDown, parallelMove } from './offset'
 import { extendDown, filletDown, filletMove } from './fit'
-import { elevationDown, eyedropperDown, placeDown, sectionMove, splitDown, toolHover, trimDown } from './place'
+import { elevationDown, eyedropperDown, placeDown, sectionMove, splitDown, sunDown, toolHover, trimDown } from './place'
 import { cornerMove, cropMove, dragUp, elevatedMove, gripMove, splitMove, endMove, faceMove, handleMove, hover, marqueeMove, marqueeUp, moveMove, pressMove, pressUp, resizeMove, rotateMove, scaleMove, selectDown } from './select'
 import { displaceMove, moveToolDown } from './move'
 import { connectDown, connectMove } from './connect'
@@ -24,6 +24,7 @@ export const PRESSES: Partial<Record<Tool, Press>> = {
   text: textDown,
   place: placeDown,
   room: placeDown,
+  sun: sunDown,
   elevation: elevationDown,
   connect: connectDown,
   split: splitDown,

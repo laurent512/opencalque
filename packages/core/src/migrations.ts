@@ -401,4 +401,6 @@ export const MIGRATIONS: ((doc: Raw) => Raw)[] = [
   withLinesInViews,
   // Version 7 brings splines pulled by their points (a polyline's `smooth` of 'spline'). Nothing else changes.
   (doc) => doc,
+  // Version 8 brings the sun (the `sun` node type), which casts shade on the plan. Nothing else changes.
+  (doc) => doc,
 ]

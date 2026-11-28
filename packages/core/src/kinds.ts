@@ -5,7 +5,8 @@ import { DIMENSION_MARKER_SIZE, DIMENSION_TEXT_SIZE, styledDimension } from './d
 import { fillFields } from './fields'
 import { formatFeetInches } from './imperial'
 import { applyModifiers, movedModifiers, HATCH_INK, HATCH_WEIGHT, patternStrokes } from './modifiers'
-import { primitiveBounds, transformPrimitive, type Primitive } from './primitives'
+import { primitiveBounds, transformPrimitive, type Primitive, type TextRun } from './primitives'
+import { styledLines } from './richtext'
 import { tidy, turned, type Placing } from './similarity'
 import { sheetContentOf } from './templates'
 import type { Op } from './ops'
@@ -16,6 +17,7 @@ import { regionPerimeter, roomAt } from './rooms'
 import { autoDimensionPrimitives, drawElevationsWith, elevationPrimitives, keptViewPatch, lineHere, lookedAt, markerPrimitives, moveViewCorner, moveViewEdge, moveViewEnd, seenArea, viewMarkers, viewPlacement, type Measure } from './elevation'
 import { tablePrimitives } from './tables'
 import { cameraEdges, cameraPrimitives, fovThrough, frameHeight, markTip } from './camera'
+import { sunPrimitives, sunSpot, timeNear } from './sunmark'
 import { bendThrough, linkMiddle, linkPrimitives } from './networks'
 import { bulgeThrough, heightAboveFloor, hostWall, materialSeams, mountOf, wallArc, wallMiddle, wallParallel, wallPoints, wallPolygons, wallSeams, wallOutlineRuns, wallSides, wallSpot } from './walls'
 
@@ -534,6 +536,33 @@ function textLines(text: string, at: Vec2, size: number, look: { rotation?: numb
   })
 }
 
+/**
+ * A text node: as `textLines` when nothing in it is set apart; otherwise each line as one
+ * primitive of runs (`TextPrim.runs`), each line as far below the one before as its largest
+ * letters and the deepest of the line above need. Fields are filled in run by run, so one
+ * written across two styles stays as written.
+ */
+function textNodePrimitives(node: NodeOf<'text'>, ctx: KindContext): Primitive[] {
+  const look = { rotation: node.rotation, font: node.font, align: node.align, bold: node.bold }
+  if (!node.spans || node.spans.length === 0) return textLines(said(node.text, node.parent, ctx), node, node.size, look)
+  const out: Primitive[] = []
+  let y = 0
+  let below = 0
+  styledLines(node.text, node.spans).forEach((line, i) => {
+    const tallest = line.length === 0 ? 1 : Math.max(...line.map((run) => run.style.scale ?? 1))
+    if (i > 0) y += (below + tallest) * node.size
+    below = tallest * 0.25
+    const runs = line.flatMap((run): TextRun[] => {
+      const text = said(run.text, node.parent, ctx)
+      return text === '' ? [] : [{ ...run.style, text }]
+    })
+    if (runs.length === 0) return
+    const down = rotate({ x: 0, y }, node.rotation ?? 0)
+    out.push({ kind: 'text', x: node.x + down.x, y: node.y + down.y, text: runs.map((run) => run.text).join(''), size: node.size, ...look, runs })
+  })
+  return out
+}
+
 /** The angles an ellipse is an arc between, or null when it is whole. One angle given alone runs to or from the X axis. */
 export function arcOf(node: { from?: number; to?: number }): { from: number; to: number } | null {
   return node.from === undefined && node.to === undefined ? null : { from: node.from ?? 0, to: node.to ?? 360 }
@@ -871,6 +900,23 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     snapLines: () => [],
     transform: transformAB,
   },
+  sun: {
+    // The sky round its point, its day's path and itself at its hour, over the shade it casts and the
+    // floors it lights (`sunmark.ts`); those are not part of its box, nor clicked.
+    primitives: (node, ctx) => sunPrimitives(node, ctx.doc, ctx.registry),
+    move: moveXY,
+    // Its centre, which moves it; the sun on its path, dragged along it to change the hour.
+    handles: (node, _, doc) => [{ x: node.x, y: node.y }, ...(doc ? [sunSpot(doc, node)] : [])],
+    moveHandle: (node, index, p, _, doc) => {
+      if (index === 0) return moveXY(node, sub(p, node))
+      const time = doc ? timeNear(doc, node, p) : null
+      return time === null ? {} : { time }
+    },
+    snapPoints: (node) => [{ x: node.x, y: node.y }],
+    snapLines: () => [],
+    // Where the sun is depends on where the building is, not on how the plan is turned: only its circle goes along.
+    transform: (node, t) => ({ ...t.point(node), ...(node.radius === undefined && t.scale === 1 ? {} : { radius: t.length(node.radius ?? 2000) }), ...(node.size === undefined ? {} : { size: t.length(node.size) }) }),
+  },
   elevation: {
     // Its dimensions are drawn as dimensions are, in the drawing's way of writing numbers. Its
     // line, on the plan of the page it is on, is drawn there to place it, never printed (`screen`):
@@ -1010,7 +1056,7 @@ const KINDS: { [T in NodeType]: NodeKind<NodeOf<T>> } = {
     centre: (node) => ({ x: node.cx, y: node.cy }),
   },
   text: {
-    primitives: (node, ctx) => textLines(said(node.text, node.parent, ctx), node, node.size, { rotation: node.rotation, font: node.font, align: node.align, bold: node.bold }),
+    primitives: textNodePrimitives,
     move: moveXY,
     snapPoints: (node) => [{ x: node.x, y: node.y }],
     // Its width is not known exactly without the renderer's font; this matches the estimate used for picking.
@@ -1287,8 +1333,11 @@ export function nodePrimitives(node: Node, ctx: KindContext): Primitive[] {
       const stroke = split && p.stroke === 'none' ? 'none' : (paint(p.own ? p.stroke : p.over ? (p.stroke ?? style?.stroke) : (style?.stroke ?? p.stroke)) ?? layerColor ?? ctx.ink ?? DEFAULT_INK)
       // So does a line drawn over the shape that says it has no fill, as between the layers of a wall: a fill of the style would fill the curve it makes.
       const fill = (split || p.over) && p.fill === 'none' ? 'none' : paint(p.own ? p.fill : (style?.fill ?? p.fill))
+      // A part of a text in a colour of its own: a shared colour or the layer's followed here too.
+      const runs = p.kind === 'text' && p.runs?.some((run) => run.color !== undefined) ? { runs: p.runs.map((run) => (run.color === undefined ? run : { ...run, color: paint(run.color) })) } : {}
       return {
         ...p,
+        ...runs,
         stroke,
         strokeWidth: (p.own ? p.strokeWidth : p.over ? (p.strokeWidth ?? style?.strokeWidth) : (style?.strokeWidth ?? p.strokeWidth)) ?? 1,
         fill: fill === 'stroke' ? stroke : fill,

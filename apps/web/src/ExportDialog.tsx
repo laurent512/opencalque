@@ -6,7 +6,7 @@ import { language, msg, t, tn } from './i18n'
 import { preparePdfFonts } from './pdfFonts'
 import { setPrefs, usePrefs } from './prefs'
 import { registry } from './extensions'
-import { apply, useStore } from './store'
+import { apply, useSettledDoc, useStore } from './store'
 import { Field, labelOf, Tabs } from './ui'
 import { useWindows } from './windows'
 import { Select } from './Select'
@@ -37,7 +37,7 @@ const FORMATS: [Format, string, string, LucideIcon][] = [
  */
 export function ExportDialog() {
   const open = useWindows((s) => s.exportOpen)
-  const doc = useStore((s) => s.doc)
+  const doc = useSettledDoc()
   const page = useStore((s) => s.page)
   const selection = useStore((s) => s.selection)
   const [format, setFormat] = useState<Format>('pdf')

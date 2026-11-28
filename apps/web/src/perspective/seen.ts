@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { FRAME_SHAPE, frameHeight, leavesOf, lookedAt, massing, rootOf, type Bounds, type Camera, type Document, type Solid } from '@opencalque/core'
+import { FRAME_SHAPE, frameHeight, leavesOf, lookedAt, massing, onlySunsMoved, rootOf, span, type Bounds, type Camera, type Document, type Solid } from '@opencalque/core'
 import { registry, useExtensions } from '../extensions'
 import type { Prefs } from '../prefs'
 import { useStore } from '../store'
@@ -20,7 +20,21 @@ const MOVED_WAIT = 100
 /** The longest an edited plan waits for the editor to be idle before its views follow it anyway, in ms. */
 const IDLE_AT_MOST = 400
 
-/** Work to do one piece at a time when the editor is idle: the views of an edited plan, raised again. */
+/**
+ * How long the plan must have stood still (not panned nor zoomed) before the views do work that
+ * waits for the editor to be idle, in ms: someone moving about the plan is not looking at the views,
+ * even just after a drawing opens, and a third of a second of work started in a pause stopped the
+ * pan that followed it.
+ */
+const STILL = 600
+/** When the plan last moved (`planMoved`), in ms of `performance.now()`. */
+let movedAt = -Infinity
+/** Says that the plan has just been panned or zoomed: what the views do later waits until it has been still for `STILL` ms. */
+export function planMoved(): void {
+  movedAt = performance.now()
+}
+
+/** Work to do one piece at a time when the editor is idle and the plan still: the views of an edited plan, raised again. */
 const waiting: (() => void)[] = []
 let waking = false
 export function later(job: () => void): void {
@@ -30,24 +44,28 @@ export function later(job: () => void): void {
 function wake(): void {
   if (waking || waiting.length === 0) return
   waking = true
+  const idle = () => {
+    if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(one, { timeout: IDLE_AT_MOST })
+    else setTimeout(one, 50)
+  }
   const one = () => {
+    // Moved meanwhile: not yet, whatever the idle callback says (it runs between two steps of a pan too).
+    const wait = movedAt + STILL - performance.now()
+    if (wait > 0) {
+      setTimeout(idle, wait)
+      return
+    }
     waking = false
     waiting.shift()?.()
     wake()
   }
-  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(one, { timeout: IDLE_AT_MOST })
-  else setTimeout(one, 50)
+  idle()
 }
 
 export type Look = Prefs['perspective']['look']
 
-/** Whether nothing but viewpoints changed from one set of nodes to the next: what they see then stands as it was. */
-function onlyViewpointsMoved(before: Document['nodes'], after: Document['nodes']): boolean {
-  if (before === after) return true
-  const keys = Object.keys(after)
-  if (keys.length !== Object.keys(before).length) return false
-  return keys.every((id) => before[id] === after[id] || (after[id].type === 'camera' && before[id]?.type === 'camera'))
-}
+/** Whether nothing but viewpoints and suns changed from one set of nodes to the next: what they see then stands as it was, only lit otherwise. */
+const onlyViewpointsMoved = onlySunsMoved
 
 /** The plan as `camera` sees it, raised from the drawing as it was then; null until it is, or while `active` is false. */
 export function useSeen(camera: Camera | null, active: boolean): { doc: Document; solids: Solid[] } | null {
@@ -77,7 +95,7 @@ export function useSeen(camera: Camera | null, active: boolean): { doc: Document
       return
     }
     next.current = () => {
-      const solids = massing(doc, page.id, registry, [camera.a], camera.a)
+      const solids = span('views: the plan raised', () => massing(doc, page.id, registry, [camera.a], camera.a))
       raised.current = { nodes: doc.nodes, key, solids }
       setSeen({ doc, solids })
     }
